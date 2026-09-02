@@ -3,8 +3,8 @@
 :root {
   --background: #000000;
   --foreground: #ffffff;
-  --font-sans-stack: var(--font-chill-body), Arial, Helvetica, sans-serif;
-  --font-brand-stack: var(--font-chill-brand), var(--font-sans-stack);
+  --font-sans-stack: "Trebuchet MS", "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-brand-stack: "Arial Black", Impact, "Trebuchet MS", Arial, sans-serif;
   --font-mono-stack: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
