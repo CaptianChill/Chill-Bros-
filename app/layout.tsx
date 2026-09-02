@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Chill Bros Operational Command Center",
-  description: "Neon-branded internal operations dashboard for manager, technician, and client workflows.",
+  description: "Chill Bros branded internal operations dashboard for manager, technician, and client workflows.",
   icons: {
     icon: "/logo-icon.png",
     apple: "/logo-icon.png",

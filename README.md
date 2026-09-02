@@ -1,6 +1,6 @@
 # Chill Bros Operational Command Center
 
-A Next.js App Router prototype for the Chill Bros internal operational app brief. The app includes a neon-branded command center, manager controls, technician workflow pages, a mobile timesheet view, inventory and CRM screens, and a customer portal route.
+A Next.js App Router operational app for Chill Bros. The app includes a fully branded command center, manager controls, technician workflow pages, a mobile timesheet view, inventory and CRM screens, and a customer portal route.
 
 ## Getting started
 
@@ -23,13 +23,13 @@ Open `http://localhost:3000` in your browser after the dev server starts.
 
 ## Branding assets
 
-Production artwork should live in these public paths:
+The active Chill Bros artwork is served from these public paths:
 
 - `public/logo.png`
 - `public/logo-text.png`
 - `public/logo-icon.png`
 
-This repository currently wires those exact PNG paths into the app shell and metadata so the assets can be replaced directly without further code changes.
+These PNG assets are wired into the app shell and metadata for consistent branding across all routes.
 
 ## Commands
 

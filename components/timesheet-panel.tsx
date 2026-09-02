@@ -24,19 +24,19 @@ export function TimesheetPanel() {
       <div className="grid gap-4 md:grid-cols-2">
         <label className="space-y-2">
           <span className="inline-flex items-center gap-2 text-sm text-zinc-300">
-            <MapPin className="h-4 w-4 text-cyan-300" />
+            <MapPin className="h-4 w-4 text-[#8ffafa]" />
             Job site / location tag
           </span>
           <input
             value={location}
             onChange={(event) => setLocation(event.target.value)}
-            className="w-full rounded-2xl border border-cyan-400/30 bg-black px-4 py-3 text-sm text-white outline-none"
+            className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none"
           />
         </label>
-        <div className="rounded-2xl border border-cyan-400/20 bg-black/40 p-4">
+        <div className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
           <p className="text-sm text-zinc-400">Daily total</p>
           <p className="mt-2 text-3xl font-semibold text-white">{total} hrs</p>
-          <p className="mt-2 text-sm text-cyan-200">Labor + drive time saved per technician session.</p>
+          <p className="mt-2 text-sm text-[#bafcfc]">Labor + drive time saved per technician session.</p>
         </div>
       </div>
 
@@ -46,7 +46,7 @@ export function TimesheetPanel() {
           <input
             value={laborTime}
             onChange={(event) => setLaborTime(event.target.value)}
-            className="w-full rounded-2xl border border-cyan-400/30 bg-black px-4 py-3 text-sm text-white outline-none"
+            className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none"
           />
         </label>
         <label className="space-y-2">
@@ -54,7 +54,7 @@ export function TimesheetPanel() {
           <input
             value={driveTime}
             onChange={(event) => setDriveTime(event.target.value)}
-            className="w-full rounded-2xl border border-cyan-400/30 bg-black px-4 py-3 text-sm text-white outline-none"
+            className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none"
           />
         </label>
       </div>
@@ -63,7 +63,7 @@ export function TimesheetPanel() {
         <button
           type="button"
           onClick={() => setClockedInAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300 bg-cyan-400/10 px-4 py-3 font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#61f7f7] bg-[#00f0f0]/10 px-4 py-3 font-medium text-[#defefe] transition hover:bg-[#00f0f0]/20"
         >
           <Clock3 className="h-4 w-4" />
           Clock in
@@ -71,7 +71,7 @@ export function TimesheetPanel() {
         <button
           type="button"
           onClick={() => setClockedOutAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-400/30 px-4 py-3 text-white transition hover:bg-cyan-400/10"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#00f0f0]/30 px-4 py-3 text-white transition hover:bg-[#00f0f0]/10"
         >
           <Clock3 className="h-4 w-4" />
           Clock out

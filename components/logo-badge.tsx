@@ -15,7 +15,7 @@ export function LogoBadge({ variant = "full", className = "" }: LogoBadgeProps) 
   const image = sources[variant];
 
   return (
-    <div className={`overflow-hidden rounded-2xl border border-cyan-400/50 bg-black/80 shadow-[0_0_35px_rgba(34,211,238,0.18)] ${className}`}>
+    <div className={`overflow-hidden rounded-2xl border border-[#00f0f0]/50 bg-black/80 shadow-[0_0_35px_rgba(0,240,240,0.18)] ${className}`}>
       <Image
         src={image.src}
         alt={image.alt}
