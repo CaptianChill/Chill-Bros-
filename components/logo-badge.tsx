@@ -6,9 +6,9 @@ type LogoBadgeProps = {
 };
 
 const sources = {
-  icon: { src: "/logo-icon.png", alt: "Chill Bros icon logo", width: 56, height: 56 },
-  text: { src: "/logo-text.png", alt: "Chill Bros text logo", width: 240, height: 72 },
-  full: { src: "/logo.png", alt: "Chill Bros primary logo", width: 220, height: 220 },
+  icon: { src: "/logo.png", alt: "Chill Bros neon logo", width: 220, height: 220 },
+  text: { src: "/logo.png", alt: "Chill Bros neon logo", width: 220, height: 220 },
+  full: { src: "/logo.png", alt: "Chill Bros neon logo", width: 220, height: 220 },
 };
 
 export function LogoBadge({ variant = "full", className = "" }: LogoBadgeProps) {

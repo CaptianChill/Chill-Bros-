@@ -7,9 +7,9 @@ type StatusPillProps = {
 
 const toneMap = {
   cyan: "neon-tube bg-[#2d7dff]/10 text-[#d9fbff]",
-  emerald: "border-emerald-400/50 bg-emerald-500/10 text-emerald-200",
-  amber: "border-amber-400/50 bg-amber-500/10 text-amber-200",
-  rose: "border-rose-400/50 bg-rose-500/10 text-rose-200",
+  emerald: "border-[#2d7dff]/70 bg-[#2d7dff]/10 text-[#d9fbff] shadow-[0_0_7px_rgba(45,125,255,0.65)]",
+  amber: "border-[#2d7dff]/70 bg-[#2d7dff]/10 text-[#d9fbff] shadow-[0_0_7px_rgba(45,125,255,0.65)]",
+  rose: "border-[#2d7dff]/70 bg-[#2d7dff]/10 text-[#d9fbff] shadow-[0_0_7px_rgba(45,125,255,0.65)]",
 };
 
 export function StatusPill({ children, tone = "cyan" }: StatusPillProps) {

@@ -20,7 +20,7 @@ export function AppShell({ children, title, description, highlight }: AppShellPr
         <header className="sticky top-0 z-20 mb-6 neon-frame sign-surface rounded-3xl px-4 py-4 backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <LogoBadge variant="icon" className="w-14 shrink-0" />
+              <LogoBadge variant="full" className="w-14 shrink-0" />
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusPill>Internal operational app</StatusPill>
@@ -32,11 +32,11 @@ export function AppShell({ children, title, description, highlight }: AppShellPr
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#00f0f0]/40 px-3 py-2 text-[#defefe]">
+              <div className="inline-flex items-center gap-2 rounded-full border neon-tube px-3 py-2 text-[#d9fbff]">
                 <Bell className="h-4 w-4" />
                 All automated notices copy chillbrostx@gmail.com
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#00f0f0]/40 px-3 py-2 text-[#defefe]">
+              <div className="inline-flex items-center gap-2 rounded-full border neon-tube px-3 py-2 text-[#d9fbff]">
                 <Snowflake className="h-4 w-4" />
                 Firebase-ready role model
               </div>
@@ -47,7 +47,7 @@ export function AppShell({ children, title, description, highlight }: AppShellPr
               <Link
                 key={item.href}
                 href={item.href}
-                className="whitespace-nowrap rounded-full border border-[#00f0f0]/30 px-4 py-2 font-brand text-sm uppercase tracking-[0.12em] text-[#defefe] transition hover:border-[#61f7f7] hover:bg-[#00f0f0]/10"
+                className="whitespace-nowrap rounded-full border neon-tube px-4 py-2 font-brand text-sm uppercase tracking-[0.12em] text-[#d9fbff] transition hover:bg-[#2d7dff]/15"
               >
                 <span className="sm:hidden">{item.shortLabel}</span>
                 <span className="hidden sm:inline">{item.label}</span>
