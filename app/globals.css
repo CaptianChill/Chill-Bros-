@@ -1,10 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
-  --foreground: #ffffff;
+  --background: #020407;
+  --foreground: #f4fbff;
+  --neon-blue: #2d7dff;
+  --neon-cyan: #82efff;
+  --sign-black: #020407;
+  --sign-muted: #8b9aac;
   --font-sans-stack: "Trebuchet MS", "Segoe UI", Arial, Helvetica, sans-serif;
-  --font-brand-stack: "Arial Black", Impact, "Trebuchet MS", Arial, sans-serif;
+  --font-brand-stack: "Arial Narrow", "Arial Black", Impact, sans-serif;
   --font-mono-stack: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
@@ -21,15 +25,48 @@
 }
 
 html {
-  background: #000;
+  background: var(--sign-black);
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top, rgba(0, 240, 240, 0.2), transparent 35%),
-    linear-gradient(180deg, rgba(0, 18, 24, 0.98), #000 30%);
+    linear-gradient(rgba(45, 125, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 125, 255, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at 50% -10%, rgba(45, 125, 255, 0.18), transparent 42%),
+    var(--sign-black);
+  background-size: 44px 44px, 44px 44px, auto, auto;
   color: var(--foreground);
+}
+
+::selection {
+  background: var(--neon-cyan);
+  color: var(--sign-black);
+}
+
+:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 3px;
+}
+
+.neon-frame {
+  border: 1px solid rgba(45, 125, 255, 0.72);
+  box-shadow: 0 0 8px rgba(45, 125, 255, 0.9), 0 0 28px rgba(45, 125, 255, 0.28), inset 0 0 18px rgba(45, 125, 255, 0.08);
+}
+
+.neon-tube {
+  border: 1px solid rgba(130, 239, 255, 0.7);
+  box-shadow: 0 0 7px rgba(130, 239, 255, 0.9), 0 0 22px rgba(45, 125, 255, 0.3);
+}
+
+.neon-text {
+  text-shadow: 0 0 7px rgba(130, 239, 255, 0.95), 0 0 22px rgba(45, 125, 255, 0.55);
+}
+
+.sign-surface {
+  background: rgba(2, 4, 7, 0.88);
+  backdrop-filter: blur(14px);
 }
 
 h1,

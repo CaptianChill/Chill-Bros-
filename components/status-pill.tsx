@@ -6,7 +6,7 @@ type StatusPillProps = {
 };
 
 const toneMap = {
-  cyan: "border-[#00f0f0]/50 bg-[#00f0f0]/10 text-[#bafcfc]",
+  cyan: "neon-tube bg-[#2d7dff]/10 text-[#d9fbff]",
   emerald: "border-emerald-400/50 bg-emerald-500/10 text-emerald-200",
   amber: "border-amber-400/50 bg-amber-500/10 text-amber-200",
   rose: "border-rose-400/50 bg-rose-500/10 text-rose-200",
