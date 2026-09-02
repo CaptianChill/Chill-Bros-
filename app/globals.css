@@ -3,7 +3,8 @@
 :root {
   --background: #000000;
   --foreground: #ffffff;
-  --font-sans-stack: Arial, Helvetica, sans-serif;
+  --font-sans-stack: var(--font-chill-body), Arial, Helvetica, sans-serif;
+  --font-brand-stack: var(--font-chill-brand), var(--font-sans-stack);
   --font-mono-stack: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
@@ -11,6 +12,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans-stack);
+  --font-brand: var(--font-brand-stack);
   --font-mono: var(--font-mono-stack);
 }
 
@@ -25,9 +27,16 @@ html {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top, rgba(34, 211, 238, 0.12), transparent 35%),
-    linear-gradient(180deg, rgba(8, 15, 24, 0.98), #000 30%);
+    radial-gradient(circle at top, rgba(0, 240, 240, 0.2), transparent 35%),
+    linear-gradient(180deg, rgba(0, 18, 24, 0.98), #000 30%);
   color: var(--foreground);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-brand-stack);
+  letter-spacing: 0.02em;
 }
 
 button,

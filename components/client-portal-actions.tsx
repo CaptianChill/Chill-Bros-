@@ -32,7 +32,7 @@ export function ClientPortalActions() {
           value={signature}
           onChange={(event) => setSignature(event.target.value)}
           placeholder="Type signer name"
-          className="w-full rounded-2xl border border-cyan-400/30 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+          className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
         />
       </label>
 
@@ -42,7 +42,7 @@ export function ClientPortalActions() {
             key={option}
             type="button"
             onClick={() => setPaymentMethod(option)}
-            className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${paymentMethod === option ? "border-cyan-300 bg-cyan-400/10 text-cyan-100" : "border-cyan-400/20 bg-black/40 text-zinc-300 hover:bg-cyan-400/10"}`}
+            className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${paymentMethod === option ? "border-[#61f7f7] bg-[#00f0f0]/10 text-[#defefe]" : "border-[#00f0f0]/20 bg-black/40 text-zinc-300 hover:bg-[#00f0f0]/10"}`}
           >
             <span className="inline-flex items-center gap-2">
               <Wallet className="h-4 w-4" />
@@ -56,21 +56,21 @@ export function ClientPortalActions() {
         <button
           type="button"
           onClick={() => setApproved(Boolean(signature.trim()))}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300 bg-cyan-400/10 px-4 py-3 font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#61f7f7] bg-[#00f0f0]/10 px-4 py-3 font-medium text-[#defefe] transition hover:bg-[#00f0f0]/20"
         >
           <BadgeCheck className="h-4 w-4" />
           Approve & sign
         </button>
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-400/30 px-4 py-3 text-white transition hover:bg-cyan-400/10"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#00f0f0]/30 px-4 py-3 text-white transition hover:bg-[#00f0f0]/10"
         >
           <Mail className="h-4 w-4" />
           Send digital link to client
         </button>
       </div>
 
-      <p className="text-sm text-zinc-400">Selected payment method: <span className="text-cyan-200">{paymentMethod}</span></p>
+      <p className="text-sm text-zinc-400">Selected payment method: <span className="text-[#bafcfc]">{paymentMethod}</span></p>
     </div>
   );
 }
