@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chill Bros Operational Command Center
 
-## Getting Started
+A Next.js App Router prototype for the Chill Bros internal operational app brief. The app includes a neon-branded command center, manager controls, technician workflow pages, a mobile timesheet view, inventory and CRM screens, and a customer portal route.
 
-First, run the development server:
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Included routes
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `/` — operational overview dashboard
+- `/manager` — manager / owner controls
+- `/technician` — technician service and quote workflow
+- `/timesheet` — mobile timesheet form
+- `/inventory` — parts catalog and fee controls
+- `/crm` — customer directory and email logs
+- `/portal/INV-2409` — client-facing quote / invoice portal
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Branding assets
 
-## Learn More
+Production artwork should live in these public paths:
 
-To learn more about Next.js, take a look at the following resources:
+- `public/logo.png`
+- `public/logo-text.png`
+- `public/logo-icon.png`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This repository currently wires those exact PNG paths into the app shell and metadata so the assets can be replaced directly without further code changes.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Commands
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run lint`
+- `npm run build`
