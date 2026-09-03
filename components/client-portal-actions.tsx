@@ -1,23 +1,46 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState, useTransition } from "react";
 import { BadgeCheck, Mail, Wallet } from "lucide-react";
 
-import { paymentOptions } from "@/lib/mock-data";
+import { approveInvoiceAction, setInvoicePaymentMethodAction } from "@/lib/chillbros/mutations";
+import { PAYMENT_METHOD_LABELS, type Invoice, type PaymentMethod } from "@/lib/chillbros/types";
 import { StatusPill } from "@/components/status-pill";
 
-export function ClientPortalActions() {
+const PAYMENT_METHODS = Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[];
+
+export function ClientPortalActions({ invoice }: { invoice: Invoice }) {
   const [signature, setSignature] = useState("");
-  const [approved, setApproved] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState(paymentOptions[0]);
+  const [approved, setApproved] = useState(invoice.status === "approved");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(invoice.paymentMethod);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  const status = useMemo(() => {
-    if (approved) {
-      return "Approved • manager dashboard and chillbrostx@gmail.com notified";
+  const status = approved ? "Approved • manager dashboard and chillbrostx@gmail.com notified" : "Awaiting signature approval";
+
+  const handleApprove = () => {
+    if (!signature.trim()) {
+      setError("Type your name to sign.");
+      return;
     }
+    setError(null);
+    startTransition(async () => {
+      const result = await approveInvoiceAction(invoice.portalToken, signature);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setApproved(true);
+    });
+  };
 
-    return "Awaiting signature approval";
-  }, [approved]);
+  const handlePaymentMethod = (method: PaymentMethod) => {
+    setPaymentMethod(method);
+    startTransition(async () => {
+      const result = await setInvoicePaymentMethodAction(invoice.portalToken, method);
+      if (!result.ok) setError(result.error);
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -26,27 +49,31 @@ export function ClientPortalActions() {
         <StatusPill>Secure client link</StatusPill>
       </div>
 
+      {error ? <p className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
+
       <label className="block space-y-2">
         <span className="text-sm text-zinc-300">Digital signature</span>
         <input
           value={signature}
           onChange={(event) => setSignature(event.target.value)}
           placeholder="Type signer name"
-          className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+          disabled={approved}
+          className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 disabled:opacity-60"
         />
       </label>
 
       <div className="grid gap-3 md:grid-cols-2">
-        {paymentOptions.map((option) => (
+        {PAYMENT_METHODS.map((method) => (
           <button
-            key={option}
+            key={method}
             type="button"
-            onClick={() => setPaymentMethod(option)}
-            className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${paymentMethod === option ? "border-[#61f7f7] bg-[#00f0f0]/10 text-[#defefe]" : "border-[#00f0f0]/20 bg-black/40 text-zinc-300 hover:bg-[#00f0f0]/10"}`}
+            onClick={() => handlePaymentMethod(method)}
+            disabled={pending}
+            className={`rounded-2xl border px-4 py-3 text-left text-sm transition disabled:opacity-60 ${paymentMethod === method ? "border-[#61f7f7] bg-[#00f0f0]/10 text-[#defefe]" : "border-[#00f0f0]/20 bg-black/40 text-zinc-300 hover:bg-[#00f0f0]/10"}`}
           >
             <span className="inline-flex items-center gap-2">
               <Wallet className="h-4 w-4" />
-              {option}
+              {PAYMENT_METHOD_LABELS[method]}
             </span>
           </button>
         ))}
@@ -55,22 +82,24 @@ export function ClientPortalActions() {
       <div className="grid gap-3 sm:grid-cols-2">
         <button
           type="button"
-          onClick={() => setApproved(Boolean(signature.trim()))}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#61f7f7] bg-[#00f0f0]/10 px-4 py-3 font-medium text-[#defefe] transition hover:bg-[#00f0f0]/20"
+          onClick={handleApprove}
+          disabled={pending || approved}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#61f7f7] bg-[#00f0f0]/10 px-4 py-3 font-medium text-[#defefe] transition hover:bg-[#00f0f0]/20 disabled:opacity-60"
         >
           <BadgeCheck className="h-4 w-4" />
-          Approve & sign
+          {approved ? "Approved" : "Approve & sign"}
         </button>
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#00f0f0]/30 px-4 py-3 text-white transition hover:bg-[#00f0f0]/10"
+          disabled
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#00f0f0]/30 px-4 py-3 text-white transition hover:bg-[#00f0f0]/10 disabled:opacity-60"
         >
           <Mail className="h-4 w-4" />
           Send digital link to client
         </button>
       </div>
 
-      <p className="text-sm text-zinc-400">Selected payment method: <span className="text-[#bafcfc]">{paymentMethod}</span></p>
+      <p className="text-sm text-zinc-400">Selected payment method: <span className="text-[#bafcfc]">{paymentMethod ? PAYMENT_METHOD_LABELS[paymentMethod] : "None yet"}</span></p>
     </div>
   );
 }
