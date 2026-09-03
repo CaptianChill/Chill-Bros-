@@ -1,0 +1,60 @@
+"use client";
+
+import { useMemo, useState, useTransition } from "react";
+import { Plus, Save, Search, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+import { createPartAction, deletePartAction, updateFeeAction, updatePartAction } from "@/lib/chillbros/operations";
+import type { FeeSetting, PartsCatalogItem } from "@/lib/chillbros/types";
+
+export function InventoryAdmin({ parts, fees }: { parts: PartsCatalogItem[]; fees: FeeSetting[] }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [newPart, setNewPart] = useState({ name: "", partNumber: "", defaultCost: "0", retailPrice: "0", stock: "0" });
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return parts;
+    return parts.filter((p) => `${p.name} ${p.partNumber}`.toLowerCase().includes(q));
+  }, [parts, query]);
+
+  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, success: string) => {
+    setError(null); setMessage(null);
+    startTransition(async () => {
+      const result = await fn();
+      if (!result.ok) { setError(result.error ?? "Action failed."); return; }
+      setMessage(success); router.refresh();
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {error ? <p className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p> : null}
+      {message ? <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{message}</p> : null}
+
+      <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
+        <div className="mb-3 flex items-center gap-2 text-white"><Plus className="h-4 w-4 text-[#8ffafa]" /><p className="font-medium">Add catalog part</p></div>
+        <div className="grid gap-2 md:grid-cols-5"><input value={newPart.name} onChange={(e) => setNewPart({ ...newPart, name: e.target.value })} placeholder="Part name" className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-sm text-white" /><input value={newPart.partNumber} onChange={(e) => setNewPart({ ...newPart, partNumber: e.target.value })} placeholder="Part #" className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-sm text-white" /><input type="number" min="0" step="0.01" value={newPart.defaultCost} onChange={(e) => setNewPart({ ...newPart, defaultCost: e.target.value })} placeholder="Cost" className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-sm text-white" /><input type="number" min="0" step="0.01" value={newPart.retailPrice} onChange={(e) => setNewPart({ ...newPart, retailPrice: e.target.value })} placeholder="Retail" className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-sm text-white" /><input type="number" min="0" value={newPart.stock} onChange={(e) => setNewPart({ ...newPart, stock: e.target.value })} placeholder="Stock" className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-sm text-white" /></div>
+        <button onClick={() => run(() => createPartAction({ name: newPart.name, partNumber: newPart.partNumber, defaultCost: Number(newPart.defaultCost), retailPrice: Number(newPart.retailPrice), stock: Number(newPart.stock) }), "Part added.")} disabled={pending || !newPart.name.trim() || !newPart.partNumber.trim()} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#2d7dff] bg-[#2d7dff]/10 px-4 py-2 text-sm text-[#d9fbff] disabled:opacity-50"><Plus className="h-4 w-4" />Add part</button>
+      </div>
+
+      <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-zinc-500" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search parts by name or part number" className="w-full rounded-2xl border border-[#2d7dff]/20 bg-black/40 py-2.5 pl-10 pr-3 text-sm text-white" /></div>
+      <div className="space-y-2">{filtered.map((part) => <PartRow key={part.id} part={part} pending={pending} save={(data) => run(() => updatePartAction(data), "Part updated.")} remove={() => run(() => deletePartAction(part.id), "Part deleted.")} />)}{filtered.length === 0 ? <p className="text-sm text-zinc-500">No matching parts.</p> : null}</div>
+
+      <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4"><p className="mb-3 font-medium text-white">Baseline fees</p><div className="space-y-2">{fees.map((fee) => <FeeRow key={fee.id} fee={fee} pending={pending} save={(amount) => run(() => updateFeeAction(fee.id, amount), "Fee updated.")} />)}</div></div>
+    </div>
+  );
+}
+
+function PartRow({ part, pending, save, remove }: { part: PartsCatalogItem; pending: boolean; save: (input: Parameters<typeof updatePartAction>[0]) => void; remove: () => void }) {
+  const [name, setName] = useState(part.name); const [partNumber, setPartNumber] = useState(part.partNumber); const [cost, setCost] = useState(String(part.defaultCost)); const [retail, setRetail] = useState(String(part.retailPrice)); const [stock, setStock] = useState(String(part.stock));
+  return <div className="grid gap-2 rounded-2xl border border-[#2d7dff]/15 bg-zinc-950/70 p-3 md:grid-cols-[1.4fr_1fr_110px_110px_90px_auto_auto]"><input value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-[#2d7dff]/15 bg-black px-2 py-2 text-sm text-white" /><input value={partNumber} onChange={(e) => setPartNumber(e.target.value)} className="rounded-lg border border-[#2d7dff]/15 bg-black px-2 py-2 text-sm text-white" /><input type="number" min="0" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} className="rounded-lg border border-[#2d7dff]/15 bg-black px-2 py-2 text-sm text-white" /><input type="number" min="0" step="0.01" value={retail} onChange={(e) => setRetail(e.target.value)} className="rounded-lg border border-[#2d7dff]/15 bg-black px-2 py-2 text-sm text-white" /><input type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} className="rounded-lg border border-[#2d7dff]/15 bg-black px-2 py-2 text-sm text-white" /><button onClick={() => save({ id: part.id, name, partNumber, defaultCost: Number(cost), retailPrice: Number(retail), stock: Number(stock) })} disabled={pending} className="rounded-lg border border-[#2d7dff]/30 p-2 text-[#d9fbff] disabled:opacity-50"><Save className="h-4 w-4" /></button><button onClick={remove} disabled={pending} className="rounded-lg border border-rose-500/20 p-2 text-rose-300 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button></div>;
+}
+
+function FeeRow({ fee, pending, save }: { fee: FeeSetting; pending: boolean; save: (amount: number) => void }) {
+  const [amount, setAmount] = useState(String(fee.amount));
+  return <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#2d7dff]/15 bg-zinc-950/70 p-3"><span className="text-sm text-white">{fee.label}</span><div className="flex items-center gap-2"><input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-28 rounded-lg border border-[#2d7dff]/15 bg-black px-2 py-2 text-sm text-white" /><button onClick={() => save(Number(amount))} disabled={pending} className="rounded-lg border border-[#2d7dff]/30 p-2 text-[#d9fbff] disabled:opacity-50"><Save className="h-4 w-4" /></button></div></div>;
+}
