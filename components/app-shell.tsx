@@ -22,7 +22,10 @@ export async function AppShell({ children, title, description, highlight }: AppS
   return (
     <div className="min-h-screen bg-transparent text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-3 pb-8 pt-2.5 sm:px-6 sm:pt-4 lg:px-8">
-        <header className="sticky top-0 z-20 mb-3 rounded-2xl border border-[#2d7dff]/45 bg-[#020407]/94 px-3 py-2.5 shadow-[0_0_16px_rgba(45,125,255,0.36)] backdrop-blur-xl sm:mb-5 sm:rounded-3xl sm:px-4 sm:py-4">
+        <header
+          className="sticky z-40 mb-3 rounded-2xl border border-[#2d7dff]/45 bg-[#020407]/98 px-3 py-2.5 shadow-[0_0_16px_rgba(45,125,255,0.36)] backdrop-blur-xl sm:mb-5 sm:rounded-3xl sm:px-4 sm:py-4"
+          style={{ top: "max(env(safe-area-inset-top), 8px)", WebkitTransform: "translateZ(0)" }}
+        >
           <div className="flex items-center gap-2.5 sm:gap-4">
             <LogoBadge variant="full" className="w-9 shrink-0 sm:w-12 lg:w-14" />
 
@@ -80,10 +83,10 @@ export async function AppShell({ children, title, description, highlight }: AppS
         </header>
 
         <div className="mb-4 grid gap-4 lg:mb-6 lg:grid-cols-[1.35fr_0.65fr]">
-          <section className="rounded-2xl border border-[#2d7dff]/35 bg-gradient-to-br from-[#2d7dff]/10 via-[#020407]/92 to-[#020407]/96 p-4 shadow-[0_0_18px_rgba(45,125,255,0.18)] sm:rounded-3xl sm:p-5 lg:p-6">
+          <section className="rounded-2xl border border-[#2d7dff]/35 bg-gradient-to-br from-[#2d7dff]/10 via-[#020407]/92 to-[#020407]/96 p-4 text-center shadow-[0_0_18px_rgba(45,125,255,0.18)] sm:rounded-3xl sm:p-5 sm:text-left lg:p-6">
             <p className="font-brand text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8ffafa] sm:text-xs sm:tracking-[0.3em]">Chill Bros operational command center</p>
             <h1 className="neon-text mt-2 text-2xl font-semibold leading-[1.05] text-white sm:mt-3 sm:text-3xl lg:text-4xl">{title}</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300 sm:mt-3 sm:text-base sm:leading-7">{description}</p>
+            <p className="mx-auto mt-2 max-w-3xl text-sm leading-6 text-zinc-300 sm:mx-0 sm:mt-3 sm:text-base sm:leading-7">{description}</p>
           </section>
           <section className="hidden rounded-3xl border border-[#2d7dff]/35 bg-[#020407]/92 p-5 shadow-[0_0_18px_rgba(45,125,255,0.16)] lg:block">{highlight}</section>
         </div>
