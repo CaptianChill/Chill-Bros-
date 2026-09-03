@@ -9,6 +9,7 @@ import type { PaymentMethod, StaffRole } from "./types";
 
 type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 type EstimateLineItemInput = { label: string; amount: number };
+type EstimateRpcRow = { estimate_id: string; estimate_number: string; estimate_token: string };
 
 async function requireManager() {
   const profile = await getCurrentStaffProfile();
@@ -95,15 +96,16 @@ export async function createEstimateAction(
     return { ok: false, error: error?.message ?? "Could not create the estimate." };
   }
 
+  const estimate = data as unknown as EstimateRpcRow;
   revalidatePath("/technician");
   revalidatePath("/manager");
   revalidatePath("/");
   return {
     ok: true,
     data: {
-      estimateId: data.estimate_id,
-      estimateNumber: data.estimate_number,
-      portalToken: data.estimate_token,
+      estimateId: estimate.estimate_id,
+      estimateNumber: estimate.estimate_number,
+      portalToken: estimate.estimate_token,
     },
   };
 }
