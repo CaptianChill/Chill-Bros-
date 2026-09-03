@@ -1,86 +1,28 @@
-import { Search, Wrench } from "lucide-react";
+import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { InventoryAdmin } from "@/components/inventory-admin";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { getFeeSettings, getPartsCatalog } from "@/lib/chillbros/queries";
-
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function InventoryPage() {
+  const profile = await getCurrentStaffProfile();
+  if (!profile || profile.role !== "manager") redirect("/");
   const [partsCatalog, feeSettings] = await Promise.all([getPartsCatalog(), getFeeSettings()]);
-
+  const lowStock = partsCatalog.filter((part) => part.stock < 5).length;
   return (
     <AppShell
-      title="Parts catalog, stock visibility, and automatic fee presets for quotes and invoices."
-      description="The inventory workspace keeps standard parts searchable for technicians while giving managers a clean admin surface for pricing, cost, and stock control."
-      highlight={
-        <div className="space-y-3">
-          <p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Catalog state</p>
-          <p className="text-3xl font-semibold text-white">{partsCatalog.length} standard parts</p>
-          <StatusPill>Quick-search ready</StatusPill>
-        </div>
-      }
+      title="Manage the live parts catalog, stock, cost, retail pricing, and baseline service fees."
+      description="Inventory is now an actual manager workspace rather than a read-only display. Changes feed technician part selection and estimate suggestions immediately."
+      highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Inventory state</p><p className="text-3xl font-semibold text-white">{partsCatalog.length} parts</p><StatusPill tone={lowStock > 0 ? "amber" : "emerald"}>{lowStock} low stock</StatusPill><StatusPill>{feeSettings.length} fee presets</StatusPill></div>}
     >
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <SectionCard eyebrow="Parts database" title="Searchable service inventory" description="Standard parts pricing so technician quotes and customer invoices stay consistent.">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#2d7dff]/30 px-4 py-2 text-sm text-[#d9fbff]">
-            <Search className="h-4 w-4" />
-            Quick search lookups available while filling service tickets
-          </div>
-          {partsCatalog.length === 0 ? (
-            <p className="text-sm text-zinc-400">No parts in the catalog yet.</p>
-          ) : (
-            <div className="overflow-hidden rounded-3xl border border-[#2d7dff]/20 bg-black/40">
-              <table className="min-w-full text-left text-sm text-zinc-300">
-                <thead className="bg-[#2d7dff]/10 text-[#d9fbff]">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Part</th>
-                    <th className="px-4 py-3 font-medium">Part #</th>
-                    <th className="px-4 py-3 font-medium">Cost</th>
-                    <th className="px-4 py-3 font-medium">Retail</th>
-                    <th className="px-4 py-3 font-medium">Stock</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {partsCatalog.map((part) => (
-                    <tr key={part.id} className="border-t border-[#2d7dff]/10">
-                      <td className="px-4 py-3">{part.name}</td>
-                      <td className="px-4 py-3 text-zinc-400">{part.partNumber}</td>
-                      <td className="px-4 py-3">${part.defaultCost}</td>
-                      <td className="px-4 py-3 text-[#bafcfc]">${part.retailPrice}</td>
-                      <td className="px-4 py-3">{part.stock}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard eyebrow="Auto fees" title="Baseline service charges" description="Managers can keep dispatch and arrival pricing aligned so new jobs open with the correct defaults.">
-          <div className="space-y-3">
-            {feeSettings.map((fee) => (
-              <div key={fee.id} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-white">{fee.label}</p>
-                    <p className="mt-1 text-sm text-zinc-400">Editable manager-level pricing control</p>
-                  </div>
-                  <p className="text-xl font-semibold text-[#bafcfc]">${fee.amount}</p>
-                </div>
-              </div>
-            ))}
-            <div className="rounded-2xl border border-dashed border-[#2d7dff]/30 bg-black/20 p-4 text-sm text-zinc-300">
-              <div className="flex items-center gap-2 text-[#bafcfc]">
-                <Wrench className="h-4 w-4" />
-                Live in Supabase — parts_catalog and fee_settings tables, edited directly for now.
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-      </div>
+      <SectionCard eyebrow="Manager price book" title="Parts, stock & service fees" description="Search, add, edit, and safely retire inventory while keeping cost and retail pricing centralized.">
+        <InventoryAdmin parts={partsCatalog} fees={feeSettings} />
+      </SectionCard>
     </AppShell>
   );
 }
