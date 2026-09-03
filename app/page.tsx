@@ -35,13 +35,13 @@ export default async function HomePage() {
 
   return (
     <AppShell
-      title="Run dispatch, service, approvals, billing, and customer visibility from one black-and-cyan workspace."
-      description="This Chill Bros command center carries the official logo pack and matching black, ice-white, and electric-cyan brand treatment across manager controls, technician workflows, the mobile timesheet experience, inventory + CRM dashboards, and the customer portal."
+      title="Run dispatch, service, approvals, billing, and customer visibility from one blue neon sign workspace."
+      description="This Chill Bros command center carries the official neon logo and matching black, ice-white, and electric-blue brand treatment across manager controls, technician workflows, the mobile timesheet experience, inventory + CRM dashboards, and the customer portal."
       highlight={
         <div className="flex h-full flex-col justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Brand spotlight</p>
-            <p className="mt-2 text-sm leading-7 text-zinc-300">Primary, text, and icon logos are sourced directly from the Chill Bros PNG assets in /public for consistent brand presentation on every route.</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Brand system</p>
+            <p className="mt-2 text-sm leading-7 text-zinc-300">Primary, text, and icon logos are now sourced directly from the provided Chill Bros PNG assets in /public for consistent brand presentation on every route.</p>
           </div>
           <LogoBadge variant="full" className="mx-auto w-full max-w-[12rem]" />
         </div>
@@ -52,7 +52,7 @@ export default async function HomePage() {
           <SectionCard eyebrow="Live overview" title="Operational pulse" description="Key metrics across dispatch, approvals, inventory, and communication.">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {dashboardMetrics.map((metric) => (
-                <div key={metric.label} className="rounded-2xl border border-[#00f0f0]/25 bg-black/40 p-4">
+                <div key={metric.label} className="rounded-2xl border border-[#2d7dff]/25 bg-black/40 p-4">
                   <p className="text-sm text-zinc-400">{metric.label}</p>
                   <p className="mt-3 text-3xl font-semibold text-white">{metric.value}</p>
                   <p className="mt-2 text-sm text-[#bafcfc]">{metric.detail}</p>
@@ -67,7 +67,7 @@ export default async function HomePage() {
             ) : (
               <div className="grid gap-4 lg:grid-cols-3">
                 {customers.slice(0, 6).map((customer) => (
-                  <div key={customer.id} className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+                  <div key={customer.id} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                     <h3 className="font-medium text-white">{customer.name}</h3>
                     <p className="mt-2 text-sm text-zinc-300">{customer.address ?? "No address on file"}</p>
                   </div>
@@ -81,7 +81,7 @@ export default async function HomePage() {
           <SectionCard eyebrow="Access model" title="Role-based visibility" description="A single Supabase-backed role system maps exactly to the manager, technician, and client experiences.">
             <div className="space-y-4">
               {roleAccess.map((role) => (
-                <div key={role.role} className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+                <div key={role.role} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="font-medium text-white">{role.role}</h3>
                     <ShieldCheck className="h-4 w-4 text-[#8ffafa]" />
@@ -102,13 +102,13 @@ export default async function HomePage() {
           <SectionCard eyebrow="System automation" title="Recent email activity" description="Every major state change is framed around branded customer links and internal alerts.">
             <div className="space-y-3 text-sm text-zinc-300">
               {emailLog.length === 0 ? (
-                <div className="flex items-start gap-3 rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+                <div className="flex items-start gap-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                   <Mail className="mt-0.5 h-5 w-5 text-[#8ffafa]" />
                   No outbound email events logged yet.
                 </div>
               ) : (
                 emailLog.map((entry) => (
-                  <div key={entry.id} className="flex items-start gap-3 rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+                  <div key={entry.id} className="flex items-start gap-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                     <ClipboardList className="mt-0.5 h-5 w-5 text-[#8ffafa]" />
                     <div>
                       <p className="text-white">{entry.subject}</p>

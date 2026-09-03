@@ -48,29 +48,29 @@ export default async function TechnicianPage() {
           <SectionCard eyebrow="Top half" title="Service log & media uploads" description="Dispatch metadata, work performed notes, parts used, and a collapsible before/after upload section.">
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+                <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                   <p className="text-sm text-zinc-400">Customer</p>
                   <p className="mt-2 text-lg font-medium text-white">{job.customerName}</p>
                   <p className="mt-2 text-sm text-zinc-300">{job.location ?? "No location tagged"}</p>
                 </div>
-                <div className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+                <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                   <p className="text-sm text-zinc-400">Assigned technician</p>
                   <p className="mt-2 text-lg font-medium text-white">{job.assignedTechName ?? profile.fullName}</p>
                   <p className="mt-2 text-sm text-zinc-300">{job.scheduledWindow ?? "No window set"}</p>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+              <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                 <p className="text-sm text-zinc-400">Dispatch scope</p>
                 <p className="mt-2 text-sm leading-7 text-white">{job.scope ?? "No scope notes yet."}</p>
               </div>
 
-              <div className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+              <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                 <p className="text-sm text-zinc-400">Work performed</p>
                 <p className="mt-2 text-sm leading-7 text-white">{job.workPerformed ?? "Not recorded yet."}</p>
               </div>
 
-              <div className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+              <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium text-white">Parts used</p>
                   <StatusPill>Quick lookup pricing</StatusPill>
@@ -80,7 +80,7 @@ export default async function TechnicianPage() {
                     <p className="text-sm text-zinc-400">No parts logged yet.</p>
                   ) : (
                     job.parts.map((part) => (
-                      <div key={part.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#00f0f0]/10 bg-zinc-950/80 px-4 py-3">
+                      <div key={part.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#2d7dff]/10 bg-zinc-950/80 px-4 py-3">
                         <div>
                           <p className="text-white">{part.name}</p>
                           <p className="text-sm text-zinc-400">{part.partNumber} · qty {part.quantity}</p>
@@ -99,14 +99,14 @@ export default async function TechnicianPage() {
           <SectionCard eyebrow="Bottom half" title="Customer quote & approval" description="Calculated quote rows, customer signature controls, and digital link workflow entry points for remote approval.">
             {invoice ? (
               <div className="space-y-5">
-                <div className="space-y-3 rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+                <div className="space-y-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                   {invoice.lineItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[#00f0f0]/10 pb-3 last:border-none last:pb-0">
+                    <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[#2d7dff]/10 pb-3 last:border-none last:pb-0">
                       <p className="text-zinc-300">{item.label}</p>
                       <p className="font-medium text-white">${item.amount}</p>
                     </div>
                   ))}
-                  <div className="flex items-center justify-between border-t border-[#00f0f0]/20 pt-3">
+                  <div className="flex items-center justify-between border-t border-[#2d7dff]/20 pt-3">
                     <p className="text-lg font-medium text-white">Quote total</p>
                     <p className="text-2xl font-semibold text-[#bafcfc]">${total}</p>
                   </div>
@@ -114,7 +114,7 @@ export default async function TechnicianPage() {
 
                 <ClientPortalActions invoice={invoice} />
 
-                <div className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4 text-sm text-zinc-300">
+                <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-sm text-zinc-300">
                   Client link: <span className="text-[#bafcfc]">/portal/{invoice.portalToken}</span>
                 </div>
               </div>

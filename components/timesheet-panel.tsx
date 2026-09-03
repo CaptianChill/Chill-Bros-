@@ -67,10 +67,10 @@ export function TimesheetPanel() {
             value={location}
             onChange={(event) => setLocation(event.target.value)}
             placeholder="Customer name / address"
-            className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+            className="w-full rounded-2xl border border-[#2d7dff]/30 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
           />
         </label>
-        <div className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+        <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
           <p className="text-sm text-zinc-400">Daily total</p>
           <p className="mt-2 text-3xl font-semibold text-white">{total} hrs</p>
           <p className="mt-2 text-sm text-[#bafcfc]">Labor + drive time saved per technician session.</p>
@@ -83,7 +83,7 @@ export function TimesheetPanel() {
           <input
             value={laborTime}
             onChange={(event) => setLaborTime(event.target.value)}
-            className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none"
+            className="w-full rounded-2xl border border-[#2d7dff]/30 bg-black px-4 py-3 text-sm text-white outline-none"
           />
         </label>
         <label className="space-y-2">
@@ -91,7 +91,7 @@ export function TimesheetPanel() {
           <input
             value={driveTime}
             onChange={(event) => setDriveTime(event.target.value)}
-            className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none"
+            className="w-full rounded-2xl border border-[#2d7dff]/30 bg-black px-4 py-3 text-sm text-white outline-none"
           />
         </label>
       </div>
@@ -101,7 +101,7 @@ export function TimesheetPanel() {
           type="button"
           onClick={handleClockIn}
           disabled={pending || Boolean(clockedInAt && !clockedOutAt)}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#61f7f7] bg-[#00f0f0]/10 px-4 py-3 font-medium text-[#defefe] transition hover:bg-[#00f0f0]/20 disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2d7dff] bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] transition hover:bg-[#2d7dff]/20 disabled:opacity-60"
         >
           <Clock3 className="h-4 w-4" />
           Clock in
@@ -110,7 +110,7 @@ export function TimesheetPanel() {
           type="button"
           onClick={handleClockOut}
           disabled={pending || !timesheetId || Boolean(clockedOutAt)}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#00f0f0]/30 px-4 py-3 text-white transition hover:bg-[#00f0f0]/10 disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/30 px-4 py-3 text-white transition hover:bg-[#2d7dff]/10 disabled:opacity-60"
         >
           <Clock3 className="h-4 w-4" />
           Clock out

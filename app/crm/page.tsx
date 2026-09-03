@@ -28,7 +28,7 @@ export default async function CrmPage() {
           ) : (
             <div className="space-y-4">
               {customers.map((customer) => (
-                <div key={customer.id} className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+                <div key={customer.id} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h3 className="text-lg font-medium text-white">{customer.name}</h3>
@@ -36,11 +36,11 @@ export default async function CrmPage() {
                     </div>
                   </div>
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-[#00f0f0]/10 bg-zinc-950/80 p-3 text-sm text-zinc-300">
+                    <div className="rounded-2xl border border-[#2d7dff]/10 bg-zinc-950/80 p-3 text-sm text-zinc-300">
                       <p>{customer.phone ?? "No phone on file"}</p>
                       <p className="mt-1 text-[#bafcfc]">{customer.email ?? "No email on file"}</p>
                     </div>
-                    <div className="rounded-2xl border border-[#00f0f0]/10 bg-zinc-950/80 p-3 text-sm text-zinc-300">
+                    <div className="rounded-2xl border border-[#2d7dff]/10 bg-zinc-950/80 p-3 text-sm text-zinc-300">
                       <p className="mb-2 text-zinc-500">Past service history</p>
                       {customer.history.length === 0 ? (
                         <p className="text-zinc-500">No service history yet.</p>
@@ -65,7 +65,7 @@ export default async function CrmPage() {
           ) : (
             <div className="space-y-3">
               {emailLog.map((entry) => (
-                <div key={entry.id} className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+                <div key={entry.id} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="font-medium text-white">{entry.subject}</p>
                     <StatusPill tone={entry.status === "failed" ? "rose" : entry.status === "sent" ? "emerald" : "amber"}>{entry.status}</StatusPill>

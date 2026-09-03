@@ -19,7 +19,7 @@ export function SignInForm({ next }: { next: string }) {
           required
           autoComplete="username"
           placeholder="you@chillbros.local"
-          className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+          className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
         />
       </label>
       <label className="block space-y-2">
@@ -29,7 +29,7 @@ export function SignInForm({ next }: { next: string }) {
           type="password"
           required
           autoComplete="current-password"
-          className="w-full rounded-2xl border border-[#00f0f0]/30 bg-black px-4 py-3 text-sm text-white outline-none"
+          className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none"
         />
       </label>
 
@@ -38,7 +38,7 @@ export function SignInForm({ next }: { next: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#61f7f7] bg-[#00f0f0]/10 px-4 py-3 font-medium text-[#defefe] transition hover:bg-[#00f0f0]/20 disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl neon-tube bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] transition hover:bg-[#2d7dff]/20 disabled:opacity-60"
       >
         <LogIn className="h-4 w-4" />
         {pending ? "Signing in…" : "Sign in"}
