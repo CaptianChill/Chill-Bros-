@@ -25,7 +25,7 @@ function PhotoColumn({ jobId, phase, photos, label, readOnly }: { jobId: string;
   };
 
   return (
-    <div className="rounded-2xl border border-[#00f0f0]/20 bg-zinc-950/80 p-4">
+    <div className="rounded-2xl border border-[#2d7dff]/20 bg-zinc-950/80 p-4">
       <div className="mb-3 flex items-center gap-2 text-[#bafcfc]">
         <Camera className="h-4 w-4" />
         <h3 className="font-medium">{label}</h3>
@@ -34,7 +34,7 @@ function PhotoColumn({ jobId, phase, photos, label, readOnly }: { jobId: string;
       <div className="grid grid-cols-2 gap-3">
         {photos.map((photo) =>
           photo.url ? (
-            <div key={photo.id} className="relative aspect-square overflow-hidden rounded-2xl border border-[#00f0f0]/20 bg-black/60">
+            <div key={photo.id} className="relative aspect-square overflow-hidden rounded-2xl border border-[#2d7dff]/20 bg-black/60">
               <Image src={photo.url} alt={photo.caption ?? `${label} photo`} fill className="object-cover" unoptimized />
             </div>
           ) : null,
@@ -55,7 +55,7 @@ function PhotoColumn({ jobId, phase, photos, label, readOnly }: { jobId: string;
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={pending}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#00f0f0]/40 px-4 py-3 text-sm text-[#defefe] transition hover:bg-[#00f0f0]/10 disabled:opacity-60"
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#2d7dff]/40 px-4 py-3 text-sm text-[#d9fbff] transition hover:bg-[#2d7dff]/10 disabled:opacity-60"
           >
             <Upload className="h-4 w-4" />
             {pending ? "Uploading…" : `Capture / upload ${phase} image`}
@@ -68,7 +68,7 @@ function PhotoColumn({ jobId, phase, photos, label, readOnly }: { jobId: string;
 
 export function MediaAccordion({ jobId, beforePhotos, afterPhotos, readOnly }: { jobId: string; beforePhotos: Photo[]; afterPhotos: Photo[]; readOnly?: boolean }) {
   return (
-    <details className="group rounded-3xl border border-[#00f0f0]/30 bg-black/40 p-4">
+    <details className="group rounded-3xl border border-[#2d7dff]/30 bg-black/40 p-4">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-white">Before &amp; After Photos</p>

@@ -77,7 +77,7 @@ export default async function ManagerPage() {
           <SectionCard eyebrow="Pricing admin" title="Automatic fee controls" description="Baseline fees that auto-populate on new service quotes and invoices.">
             <div className="space-y-3">
               {feeSettings.map((fee) => (
-                <div key={fee.id} className="flex items-center justify-between rounded-2xl border border-[#00f0f0]/20 bg-black/40 px-4 py-3">
+                <div key={fee.id} className="flex items-center justify-between rounded-2xl border border-[#2d7dff]/20 bg-black/40 px-4 py-3">
                   <div>
                     <p className="text-white">{fee.label}</p>
                     <p className="text-sm text-zinc-400">Applies automatically on new customer quotes</p>
@@ -90,13 +90,13 @@ export default async function ManagerPage() {
 
           <SectionCard eyebrow="Dispatch and communication" title="Order review + email center" description="Customer approvals surface here immediately so parts ordering and office follow-up can happen without delay.">
             <div className="grid gap-4 lg:grid-cols-2">
-              <div className="space-y-3 rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+              <div className="space-y-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                 <h3 className="font-medium text-white">Invoice approvals</h3>
                 {invoices.length === 0 ? (
                   <p className="text-sm text-zinc-400">Nothing awaiting approval yet.</p>
                 ) : (
                   invoices.map((invoice) => (
-                    <div key={invoice.id} className="rounded-2xl border border-[#00f0f0]/10 bg-zinc-950/80 p-3">
+                    <div key={invoice.id} className="rounded-2xl border border-[#2d7dff]/10 bg-zinc-950/80 p-3">
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-medium text-white">{invoice.customerName} • {invoice.invoiceNumber}</p>
                         <StatusPill tone={invoice.status === "approved" ? "emerald" : "amber"}>{invoice.status === "approved" ? "Approved" : "Awaiting"}</StatusPill>
@@ -108,13 +108,13 @@ export default async function ManagerPage() {
                   ))
                 )}
               </div>
-              <div className="space-y-3 rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+              <div className="space-y-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
                 <h3 className="font-medium text-white">Email logs</h3>
                 {emailLog.length === 0 ? (
                   <p className="text-sm text-zinc-400">No outbound email events logged yet.</p>
                 ) : (
                   emailLog.map((entry) => (
-                    <div key={entry.id} className="rounded-2xl border border-[#00f0f0]/10 bg-zinc-950/80 p-3">
+                    <div key={entry.id} className="rounded-2xl border border-[#2d7dff]/10 bg-zinc-950/80 p-3">
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-medium text-white">{entry.subject}</p>
                         <StatusPill>{entry.status}</StatusPill>

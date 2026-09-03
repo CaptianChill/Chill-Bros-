@@ -38,7 +38,7 @@ export default async function PortalPage({ params }: PortalPageProps) {
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <SectionCard eyebrow="Customer view" title="Itemized quote and work summary" description="Transparent line-item pricing, service explanation, and proof-of-work media for online review.">
           <div className="space-y-5">
-            <div className="rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+            <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-zinc-400">Invoice</p>
@@ -50,18 +50,18 @@ export default async function PortalPage({ params }: PortalPageProps) {
               {invoice.notes ? <p className="mt-3 text-sm text-zinc-400">{invoice.notes}</p> : null}
             </div>
 
-            <div className="space-y-3 rounded-2xl border border-[#00f0f0]/20 bg-black/40 p-4">
+            <div className="space-y-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
               {invoice.lineItems.length === 0 ? (
                 <p className="text-sm text-zinc-400">No line items on this invoice yet.</p>
               ) : (
                 invoice.lineItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[#00f0f0]/10 pb-3 last:border-none last:pb-0">
+                  <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[#2d7dff]/10 pb-3 last:border-none last:pb-0">
                     <p className="text-zinc-300">{item.label}</p>
                     <p className="font-medium text-white">${item.amount}</p>
                   </div>
                 ))
               )}
-              <div className="flex items-center justify-between border-t border-[#00f0f0]/20 pt-3">
+              <div className="flex items-center justify-between border-t border-[#2d7dff]/20 pt-3">
                 <p className="text-lg font-medium text-white">Total due</p>
                 <p className="text-2xl font-semibold text-[#bafcfc]">${total}</p>
               </div>
