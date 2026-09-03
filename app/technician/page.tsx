@@ -2,12 +2,12 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { ClientPortalActions } from "@/components/client-portal-actions";
+import { EstimateComposer } from "@/components/estimate-composer";
 import { MediaAccordion } from "@/components/media-accordion";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
-import { getActiveJobForTech, getInvoiceByJobId } from "@/lib/chillbros/queries";
+import { getActiveJobForTech, getFeeSettings, getInvoiceByJobId } from "@/lib/chillbros/queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-
 
 export const dynamic = "force-dynamic";
 
@@ -16,13 +16,24 @@ export default async function TechnicianPage() {
   if (!profile) redirect("/sign-in");
 
   const job = await getActiveJobForTech(profile.id);
-  const invoice = job ? await getInvoiceByJobId(job.id) : null;
+  const [invoice, feeSettings] = job
+    ? await Promise.all([getInvoiceByJobId(job.id), getFeeSettings()])
+    : [null, []];
   const total = invoice?.lineItems.reduce((sum, item) => sum + item.amount, 0) ?? 0;
+  const suggestedItems = job
+    ? [
+        ...feeSettings.map((fee) => ({ label: fee.label, amount: fee.amount })),
+        ...job.parts.map((part) => ({
+          label: `${part.name}${part.quantity > 1 ? ` x${part.quantity}` : ""}`,
+          amount: part.retailPrice * part.quantity,
+        })),
+      ].slice(0, 10)
+    : [];
 
   return (
     <AppShell
-      title="Technician service workflow with compact media uploads and on-site quote approval."
-      description="Service notes and media capture up top, then customer-facing quote approval and digital link actions below for clean mobile use."
+      title="Technician service workflow with compact media uploads and on-site estimate approval."
+      description="Service notes and media capture up top, then customer-facing estimate creation, approval, and secure digital link actions below for clean mobile use."
       highlight={
         job ? (
           <div className="space-y-3">
@@ -96,30 +107,39 @@ export default async function TechnicianPage() {
             </div>
           </SectionCard>
 
-          <SectionCard eyebrow="Bottom half" title="Customer quote & approval" description="Calculated quote rows, customer signature controls, and digital link workflow entry points for remote approval.">
+          <SectionCard eyebrow="Bottom half" title="Customer estimate & approval" description="Atomic estimate creation, customer signature controls, and secure link workflow entry points for remote approval.">
             {invoice ? (
               <div className="space-y-5">
                 <div className="space-y-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2d7dff]/20 pb-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Estimate</p>
+                      <p className="mt-1 font-medium text-white">{invoice.invoiceNumber}</p>
+                    </div>
+                    <StatusPill tone={invoice.status === "approved" ? "emerald" : "amber"}>
+                      {invoice.status === "approved" ? "Approved" : "Awaiting approval"}
+                    </StatusPill>
+                  </div>
                   {invoice.lineItems.map((item) => (
                     <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[#2d7dff]/10 pb-3 last:border-none last:pb-0">
                       <p className="text-zinc-300">{item.label}</p>
-                      <p className="font-medium text-white">${item.amount}</p>
+                      <p className="font-medium text-white">${item.amount.toFixed(2)}</p>
                     </div>
                   ))}
                   <div className="flex items-center justify-between border-t border-[#2d7dff]/20 pt-3">
-                    <p className="text-lg font-medium text-white">Quote total</p>
-                    <p className="text-2xl font-semibold text-[#bafcfc]">${total}</p>
+                    <p className="text-lg font-medium text-white">Estimate total</p>
+                    <p className="text-2xl font-semibold text-[#bafcfc]">${total.toFixed(2)}</p>
                   </div>
                 </div>
 
                 <ClientPortalActions invoice={invoice} />
 
                 <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-sm text-zinc-300">
-                  Client link: <span className="text-[#bafcfc]">/portal/{invoice.portalToken}</span>
+                  Secure client link: <span className="break-all text-[#bafcfc]">/portal/{invoice.portalToken}</span>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-zinc-400">No invoice created for this job yet.</p>
+              <EstimateComposer jobId={job.id} suggestedItems={suggestedItems} />
             )}
           </SectionCard>
         </div>
