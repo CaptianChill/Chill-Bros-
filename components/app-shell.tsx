@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Bell, LogOut, Snowflake } from "lucide-react";
+import { LogOut, Snowflake } from "lucide-react";
 
 import { navItems } from "@/lib/chillbros/nav";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -17,7 +17,7 @@ type AppShellProps = {
 
 export async function AppShell({ children, title, description, highlight }: AppShellProps) {
   const profile = await getCurrentStaffProfile();
-  const visibleNavItems = profile?.role === "manager" ? navItems : navItems.filter((item) => item.href !== "/manager");
+  const visibleNavItems = navItems.filter((item) => !item.managerOnly || profile?.role === "manager");
 
   return (
     <div className="min-h-screen bg-transparent text-foreground">
@@ -29,7 +29,7 @@ export async function AppShell({ children, title, description, highlight }: AppS
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusPill>Internal operational app</StatusPill>
-                  <StatusPill tone="emerald">Mobile ready</StatusPill>
+                  <StatusPill tone="emerald">Production</StatusPill>
                 </div>
                 <div className="w-full max-w-[15rem] sm:max-w-[18rem]">
                   <LogoBadge variant="text" className="w-full" />
@@ -38,12 +38,8 @@ export async function AppShell({ children, title, description, highlight }: AppS
             </div>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <div className="inline-flex items-center gap-2 rounded-full border neon-tube px-3 py-2 text-[#d9fbff]">
-                <Bell className="h-4 w-4" />
-                All automated notices copy chillbrostx@gmail.com
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border neon-tube px-3 py-2 text-[#d9fbff]">
                 <Snowflake className="h-4 w-4" />
-                Supabase-backed role model
+                Supabase-backed operations
               </div>
               {profile ? (
                 <form action={signOutAction} className="inline-flex">
@@ -60,11 +56,7 @@ export async function AppShell({ children, title, description, highlight }: AppS
           </div>
           <nav className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {visibleNavItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="whitespace-nowrap rounded-full border neon-tube px-4 py-2 font-brand text-sm uppercase tracking-[0.12em] text-[#d9fbff] transition hover:bg-[#2d7dff]/15"
-              >
+              <Link key={item.href} href={item.href} className="whitespace-nowrap rounded-full border neon-tube px-4 py-2 font-brand text-sm uppercase tracking-[0.12em] text-[#d9fbff] transition hover:bg-[#2d7dff]/15">
                 <span className="sm:hidden">{item.shortLabel}</span>
                 <span className="hidden sm:inline">{item.label}</span>
               </Link>
@@ -78,9 +70,7 @@ export async function AppShell({ children, title, description, highlight }: AppS
             <h1 className="neon-text mt-3 text-3xl font-semibold text-white sm:text-4xl">{title}</h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-300 sm:text-base">{description}</p>
           </section>
-          <section className="neon-frame sign-surface rounded-3xl p-5">
-            {highlight}
-          </section>
+          <section className="neon-frame sign-surface rounded-3xl p-5">{highlight}</section>
         </div>
 
         <main className="flex-1">{children}</main>
