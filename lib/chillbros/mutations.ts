@@ -8,6 +8,8 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import type { PaymentMethod, StaffRole } from "./types";
 
 type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
+type EstimateLineItemInput = { label: string; amount: number };
+type EstimateRpcRow = { estimate_id: string; estimate_number: string; estimate_token: string };
 
 async function requireManager() {
   const profile = await getCurrentStaffProfile();
@@ -18,6 +20,94 @@ async function requireManager() {
 
 function generateTempPassword(): string {
   return randomBytes(9).toString("base64url");
+}
+
+function generateEstimateNumber(): string {
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const time = now.toISOString().slice(11, 19).replace(/:/g, "");
+  const suffix = randomBytes(2).toString("hex").toUpperCase();
+  return `EST-${date}-${time}-${suffix}`;
+}
+
+function validateEstimateLineItems(lineItems: EstimateLineItemInput[]) {
+  if (!Array.isArray(lineItems) || lineItems.length < 1 || lineItems.length > 10) {
+    return { ok: false as const, error: "Add between 1 and 10 estimate line items." };
+  }
+
+  const cleaned: EstimateLineItemInput[] = [];
+  let total = 0;
+  for (const item of lineItems) {
+    const label = String(item.label ?? "").trim();
+    const amount = Number(item.amount);
+    if (!label || label.length > 200 || !Number.isFinite(amount) || amount < 0 || amount > 100000) {
+      return { ok: false as const, error: "Each line item needs a valid label and amount." };
+    }
+    const rounded = Math.round(amount * 100) / 100;
+    cleaned.push({ label, amount: rounded });
+    total += rounded;
+  }
+
+  if (total <= 0 || total > 250000) {
+    return { ok: false as const, error: "Estimate total must be greater than $0 and no more than $250,000." };
+  }
+
+  return { ok: true as const, lineItems: cleaned };
+}
+
+export async function createEstimateAction(
+  jobId: string,
+  lineItems: EstimateLineItemInput[],
+  notes: string,
+): Promise<ActionResult<{ estimateId: string; estimateNumber: string; portalToken: string }>> {
+  const profile = await getCurrentStaffProfile();
+  if (!profile) return { ok: false, error: "Not signed in." };
+
+  const validated = validateEstimateLineItems(lineItems);
+  if (!validated.ok) return validated;
+
+  const cleanNotes = String(notes ?? "").trim();
+  if (cleanNotes.length > 2000) return { ok: false, error: "Estimate notes must be 2,000 characters or fewer." };
+
+  const supabase = createServiceRoleClient();
+  if (profile.role === "technician") {
+    const { data: assignedJob, error: assignmentError } = await supabase
+      .from("chillbros_jobs")
+      .select("id")
+      .eq("id", jobId)
+      .eq("assigned_tech_id", profile.id)
+      .in("status", ["scheduled", "in_progress"])
+      .maybeSingle();
+    if (assignmentError || !assignedJob) return { ok: false, error: "That job is not assigned to you or is no longer active." };
+  }
+
+  const estimateNumber = generateEstimateNumber();
+  const { data, error } = await supabase
+    .rpc("chillbros_create_estimate", {
+      p_job_id: jobId,
+      p_invoice_number: estimateNumber,
+      p_notes: cleanNotes || null,
+      p_line_items: validated.lineItems,
+    })
+    .single();
+
+  if (error || !data) {
+    if (error?.code === "23505") return { ok: false, error: "This job already has an active estimate. Revoke it before creating a replacement." };
+    return { ok: false, error: error?.message ?? "Could not create the estimate." };
+  }
+
+  const estimate = data as unknown as EstimateRpcRow;
+  revalidatePath("/technician");
+  revalidatePath("/manager");
+  revalidatePath("/");
+  return {
+    ok: true,
+    data: {
+      estimateId: estimate.estimate_id,
+      estimateNumber: estimate.estimate_number,
+      portalToken: estimate.estimate_token,
+    },
+  };
 }
 
 export async function addStaffAccountAction(input: { fullName: string; email: string; role: StaffRole }): Promise<ActionResult<{ tempPassword: string }>> {
@@ -122,28 +212,38 @@ export async function clockOutAction(timesheetId: string, laborHours: number, dr
   return { ok: true, data: { clockOutAt } };
 }
 
-// --- Client portal actions (token-authenticated, no login) ---
-
 async function loadInvoiceByToken(token: string) {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_invoices").select("id, status").eq("portal_token", token).maybeSingle();
+  const { data, error } = await supabase
+    .from("chillbros_invoices")
+    .select("id, status, payment_status, revoked_at")
+    .eq("portal_token", token)
+    .is("revoked_at", null)
+    .neq("status", "void")
+    .maybeSingle();
   if (error || !data) return null;
   return data;
 }
 
 export async function approveInvoiceAction(token: string, signatureName: string): Promise<ActionResult> {
   const name = signatureName.trim();
-  if (!name) return { ok: false, error: "A signature is required." };
+  if (name.length < 2) return { ok: false, error: "Type at least two characters to sign." };
 
   const invoice = await loadInvoiceByToken(token);
-  if (!invoice) return { ok: false, error: "Invoice not found." };
+  if (!invoice) return { ok: false, error: "This estimate link is no longer active." };
+  if (invoice.status === "approved") return { ok: true, data: undefined };
+  if (invoice.status !== "awaiting_approval") return { ok: false, error: "This estimate cannot be approved in its current state." };
 
   const supabase = createServiceRoleClient();
-  const { error } = await supabase
+  const { data: approved, error } = await supabase
     .from("chillbros_invoices")
     .update({ status: "approved", signature_name: name, signed_at: new Date().toISOString() })
-    .eq("id", invoice.id);
-  if (error) return { ok: false, error: error.message };
+    .eq("id", invoice.id)
+    .eq("status", "awaiting_approval")
+    .is("revoked_at", null)
+    .select("id")
+    .maybeSingle();
+  if (error || !approved) return { ok: false, error: error?.message ?? "This estimate is no longer available for approval." };
 
   await supabase.from("chillbros_email_log").insert({
     subject: `Customer approval received • ${token.slice(0, 8)}`,
@@ -153,21 +253,28 @@ export async function approveInvoiceAction(token: string, signatureName: string)
   });
 
   revalidatePath(`/portal/${token}`);
+  revalidatePath("/manager");
   return { ok: true, data: undefined };
 }
 
 export async function setInvoicePaymentMethodAction(token: string, method: PaymentMethod): Promise<ActionResult> {
   const invoice = await loadInvoiceByToken(token);
-  if (!invoice) return { ok: false, error: "Invoice not found." };
+  if (!invoice) return { ok: false, error: "This estimate link is no longer active." };
+  if (invoice.payment_status === "paid") return { ok: false, error: "Payment is already recorded for this estimate." };
 
   const supabase = createServiceRoleClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("chillbros_invoices")
     .update({ payment_method: method, payment_status: "pending_manual_review" })
-    .eq("id", invoice.id);
-  if (error) return { ok: false, error: error.message };
+    .eq("id", invoice.id)
+    .is("revoked_at", null)
+    .neq("status", "void")
+    .select("id")
+    .maybeSingle();
+  if (error || !updated) return { ok: false, error: error?.message ?? "This estimate link is no longer active." };
 
   revalidatePath(`/portal/${token}`);
+  revalidatePath("/manager");
   return { ok: true, data: undefined };
 }
 
@@ -176,14 +283,47 @@ export async function markInvoicePaidAction(invoiceId: string): Promise<ActionRe
   if (!guard.ok) return guard;
 
   const supabase = createServiceRoleClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("chillbros_invoices")
-    .update({ payment_status: "paid", paid_at: new Date().toISOString() })
-    .eq("id", invoiceId);
-  if (error) return { ok: false, error: error.message };
+    .update({
+      payment_status: "paid",
+      paid_at: new Date().toISOString(),
+      paid_recorded_by: guard.profile.id,
+    })
+    .eq("id", invoiceId)
+    .eq("status", "approved")
+    .is("revoked_at", null)
+    .neq("payment_status", "paid")
+    .select("id, portal_token")
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: error?.message ?? "Only an active approved estimate can be marked paid." };
 
   revalidatePath("/manager");
   revalidatePath("/crm");
+  revalidatePath(`/portal/${data.portal_token}`);
+  return { ok: true, data: undefined };
+}
+
+export async function revokeEstimateAction(invoiceId: string): Promise<ActionResult> {
+  const guard = await requireManager();
+  if (!guard.ok) return guard;
+
+  const supabase = createServiceRoleClient();
+  const revokedAt = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("chillbros_invoices")
+    .update({ status: "void", revoked_at: revokedAt, revoked_by: guard.profile.id })
+    .eq("id", invoiceId)
+    .is("revoked_at", null)
+    .neq("status", "void")
+    .neq("payment_status", "paid")
+    .select("id, portal_token")
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: error?.message ?? "Paid or already-revoked estimates cannot be revoked." };
+
+  revalidatePath("/manager");
+  revalidatePath("/technician");
+  revalidatePath(`/portal/${data.portal_token}`);
   return { ok: true, data: undefined };
 }
 

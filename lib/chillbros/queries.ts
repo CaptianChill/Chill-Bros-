@@ -180,7 +180,6 @@ export async function getJob(jobId: string): Promise<Job | null> {
   };
 }
 
-/** Most recently scheduled/in-progress job assigned to a technician, for the field workflow page. */
 export async function getActiveJobForTech(techId: string): Promise<Job | null> {
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
@@ -203,6 +202,8 @@ export async function getInvoiceByToken(token: string): Promise<Invoice | null> 
       "id, invoice_number, portal_token, status, customer_id, job_id, signature_name, signed_at, payment_method, payment_status, notes, customer:chillbros_customers(name)",
     )
     .eq("portal_token", token)
+    .is("revoked_at", null)
+    .neq("status", "void")
     .maybeSingle();
   if (error || !invoice) return null;
 
@@ -233,7 +234,15 @@ export async function getInvoiceByToken(token: string): Promise<Invoice | null> 
 
 export async function getInvoiceByJobId(jobId: string): Promise<Invoice | null> {
   const supabase = createServiceRoleClient();
-  const { data } = await supabase.from("chillbros_invoices").select("portal_token").eq("job_id", jobId).maybeSingle();
+  const { data } = await supabase
+    .from("chillbros_invoices")
+    .select("portal_token")
+    .eq("job_id", jobId)
+    .is("revoked_at", null)
+    .neq("status", "void")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   if (!data) return null;
   return getInvoiceByToken(data.portal_token);
 }
