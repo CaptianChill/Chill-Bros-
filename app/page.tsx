@@ -40,8 +40,8 @@ export default async function HomePage() {
       highlight={
         <div className="flex h-full flex-col justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Brand spotlight</p>
-            <p className="mt-2 text-sm leading-7 text-zinc-300">Primary, text, and icon logos are sourced directly from the Chill Bros PNG assets in /public for consistent brand presentation on every route.</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Brand system</p>
+            <p className="mt-2 text-sm leading-7 text-zinc-300">Primary, text, and icon logos are now sourced directly from the provided Chill Bros PNG assets in /public for consistent brand presentation on every route.</p>
           </div>
           <LogoBadge variant="full" className="mx-auto w-full max-w-[12rem]" />
         </div>

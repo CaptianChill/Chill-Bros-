@@ -32,7 +32,7 @@ export async function AppShell({ children, title, description, highlight }: AppS
                   <StatusPill tone="emerald">Mobile ready</StatusPill>
                 </div>
                 <div className="w-full max-w-[15rem] sm:max-w-[18rem]">
-                  <LogoBadge variant="text" className="border-none bg-transparent shadow-none" />
+                  <LogoBadge variant="text" className="w-full" />
                 </div>
               </div>
             </div>

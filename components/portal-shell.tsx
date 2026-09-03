@@ -22,7 +22,7 @@ export function PortalShell({ children, title, description, highlight }: PortalS
           <div className="flex items-center gap-4">
             <LogoBadge variant="full" className="w-14 shrink-0" />
             <div className="w-full max-w-[15rem] sm:max-w-[18rem]">
-              <LogoBadge variant="text" className="border-none bg-transparent shadow-none" />
+              <LogoBadge variant="text" className="w-full" />
             </div>
           </div>
         </header>
