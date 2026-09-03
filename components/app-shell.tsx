@@ -29,7 +29,7 @@ export async function AppShell({ children, title, description, highlight }: AppS
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-brand text-[1.55rem] font-black italic uppercase leading-none tracking-[0.025em] text-[#edfaff] [text-shadow:0_0_2px_#fff,0_0_7px_#8fe7ff,0_0_13px_#2d7dff,0_0_24px_#2d7dff] sm:text-[2rem] lg:text-[2.35rem]">
+                  <div className="truncate font-serif text-[1.55rem] font-black italic uppercase leading-none tracking-[0.015em] text-[#071126] [-webkit-text-stroke:1px_#9ffcff] [text-shadow:0_0_2px_#ffffff,0_0_6px_#8ffcff,0_0_12px_#2d7dff,0_0_22px_#0057ff,0_0_30px_#004cff] sm:text-[2rem] sm:[-webkit-text-stroke:1.2px_#9ffcff] lg:text-[2.35rem]">
                     Chill Bros
                   </div>
                   <div className="mt-1 truncate font-brand text-[0.48rem] font-semibold uppercase tracking-[0.2em] text-[#d9fbff] sm:text-[0.62rem] sm:tracking-[0.28em]">
