@@ -25,12 +25,20 @@
 }
 
 html {
+  min-height: 100%;
   background: var(--sign-black);
   color-scheme: dark;
+  overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
   background:
     linear-gradient(rgba(45, 125, 255, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(45, 125, 255, 0.035) 1px, transparent 1px),
@@ -38,6 +46,9 @@ body {
     var(--sign-black);
   background-size: 44px 44px, 44px 44px, auto, auto;
   color: var(--foreground);
+  overscroll-behavior-y: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {
@@ -90,4 +101,19 @@ summary::-webkit-details-marker {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+@media (display-mode: standalone) {
+  html,
+  body {
+    min-height: 100dvh;
+  }
 }
