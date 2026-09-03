@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Bell, Snowflake } from "lucide-react";
+import { Bell, LogOut, Snowflake } from "lucide-react";
 
-import { navItems } from "@/lib/mock-data";
+import { navItems } from "@/lib/chillbros/nav";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { signOutAction } from "@/app/sign-in/actions";
 import { LogoBadge } from "@/components/logo-badge";
 import { StatusPill } from "@/components/status-pill";
 
@@ -13,7 +15,10 @@ type AppShellProps = {
   highlight?: ReactNode;
 };
 
-export function AppShell({ children, title, description, highlight }: AppShellProps) {
+export async function AppShell({ children, title, description, highlight }: AppShellProps) {
+  const profile = await getCurrentStaffProfile();
+  const visibleNavItems = profile?.role === "manager" ? navItems : navItems.filter((item) => item.href !== "/manager");
+
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-10 pt-4 sm:px-6 lg:px-8">
@@ -38,12 +43,23 @@ export function AppShell({ children, title, description, highlight }: AppShellPr
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#00f0f0]/40 px-3 py-2 text-[#defefe]">
                 <Snowflake className="h-4 w-4" />
-                Firebase-ready role model
+                Supabase-backed role model
               </div>
+              {profile ? (
+                <form action={signOutAction} className="inline-flex">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[#00f0f0]/40 px-3 py-2 text-[#defefe]">
+                    <span>{profile.fullName} · {profile.role === "manager" ? "Manager" : "Technician"}</span>
+                    <button type="submit" className="inline-flex items-center gap-1 rounded-full border border-[#00f0f0]/30 px-2 py-1 text-xs transition hover:bg-[#00f0f0]/10" aria-label="Sign out">
+                      <LogOut className="h-3.5 w-3.5" />
+                      Sign out
+                    </button>
+                  </div>
+                </form>
+              ) : null}
             </div>
           </div>
           <nav className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

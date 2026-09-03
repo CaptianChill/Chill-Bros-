@@ -3,6 +3,9 @@ import { SectionCard } from "@/components/section-card";
 import { TimesheetPanel } from "@/components/timesheet-panel";
 import { StatusPill } from "@/components/status-pill";
 
+
+export const dynamic = "force-dynamic";
+
 export default function TimesheetPage() {
   return (
     <AppShell
