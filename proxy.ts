@@ -9,20 +9,16 @@ function isPublicPath(pathname: string): boolean {
 
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request });
-
   const url = (process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
   const anonKey = (process.env.SUPABASE_ANON_KEY || "").trim();
 
   if (!url || !anonKey) {
-    // Auth isn't configured yet; don't lock the app out, just pass through.
-    return response;
+    return new NextResponse("Chill Bros authentication configuration is unavailable.", { status: 503 });
   }
 
   const supabase = createServerClient(url, anonKey, {
     cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
+      getAll() { return request.cookies.getAll(); },
       setAll(cookiesToSet) {
         for (const { name, value } of cookiesToSet) request.cookies.set(name, value);
         for (const { name, value, options } of cookiesToSet) response.cookies.set(name, value, options);
@@ -30,9 +26,7 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user && !isPublicPath(request.nextUrl.pathname)) {
     const signInUrl = new URL("/sign-in", request.url);
