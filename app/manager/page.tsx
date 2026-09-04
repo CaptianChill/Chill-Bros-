@@ -8,14 +8,14 @@ import { ManagerUserPanel } from "@/components/manager-user-panel";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { getInvoiceV2ByToken, getWorkflowEvents, invoiceTotals } from "@/lib/chillbros/invoice-v2";
-import { PAYMENT_METHOD_LABELS, type Invoice } from "@/lib/chillbros/types";
+import { PAYMENT_METHOD_LABELS, type DetailedInvoice } from "@/lib/chillbros/types";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { getFeeSettings, getStaffAccounts } from "@/lib/chillbros/queries";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
-type ManagerInvoice = { invoice: Invoice; customerEmail: string | null; customerPhone: string | null };
+type ManagerInvoice = { invoice: DetailedInvoice; customerEmail: string | null; customerPhone: string | null };
 
 async function getManagerInvoices(): Promise<ManagerInvoice[]> {
   const supabase = createServiceRoleClient();
