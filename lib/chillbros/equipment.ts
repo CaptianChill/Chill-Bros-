@@ -6,11 +6,18 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 type Result = { ok: true } | { ok: false; error: string };
 
+async function requireOfficeOrManager() {
+  const profile = await getCurrentStaffProfile();
+  if (!profile) return { ok: false as const, error: "Not signed in." };
+  if (!["manager", "office"].includes(profile.role)) return { ok: false as const, error: "Office or manager access required." };
+  return { ok: true as const, profile };
+}
+
 async function requireManager() {
   const profile = await getCurrentStaffProfile();
   if (!profile) return { ok: false as const, error: "Not signed in." };
   if (profile.role !== "manager") return { ok: false as const, error: "Manager access required." };
-  return { ok: true as const };
+  return { ok: true as const, profile };
 }
 
 export type EquipmentInput = { id?: string; customerId: string; equipmentType: string; manufacturer?: string; model?: string; serialNumber?: string; refrigerant?: string; notes?: string };
@@ -18,21 +25,21 @@ export type EquipmentInput = { id?: string; customerId: string; equipmentType: s
 function clean(value: string | undefined, max: number) { const v = String(value ?? "").trim(); return v ? v.slice(0, max) : null; }
 
 export async function createEquipmentAction(input: EquipmentInput): Promise<Result> {
-  const guard = await requireManager(); if (!guard.ok) return guard;
+  const guard = await requireOfficeOrManager(); if (!guard.ok) return guard;
   if (!input.customerId || !input.equipmentType.trim()) return { ok: false, error: "Customer and equipment type are required." };
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from("chillbros_equipment").insert({ customer_id: input.customerId, equipment_type: input.equipmentType.trim().slice(0, 120), manufacturer: clean(input.manufacturer, 160), model: clean(input.model, 160), serial_number: clean(input.serialNumber, 160), refrigerant: clean(input.refrigerant, 80), notes: clean(input.notes, 4000) });
   if (error) return { ok: false, error: error.message };
-  revalidatePath("/equipment"); revalidatePath("/crm"); revalidatePath("/technician");
+  revalidatePath("/equipment"); revalidatePath("/crm"); revalidatePath("/technician"); revalidatePath("/office");
   return { ok: true };
 }
 
 export async function updateEquipmentAction(input: EquipmentInput & { id: string }): Promise<Result> {
-  const guard = await requireManager(); if (!guard.ok) return guard;
+  const guard = await requireOfficeOrManager(); if (!guard.ok) return guard;
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from("chillbros_equipment").update({ customer_id: input.customerId, equipment_type: input.equipmentType.trim().slice(0, 120), manufacturer: clean(input.manufacturer, 160), model: clean(input.model, 160), serial_number: clean(input.serialNumber, 160), refrigerant: clean(input.refrigerant, 80), notes: clean(input.notes, 4000), updated_at: new Date().toISOString() }).eq("id", input.id);
   if (error) return { ok: false, error: error.message };
-  revalidatePath("/equipment"); revalidatePath("/technician");
+  revalidatePath("/equipment"); revalidatePath("/technician"); revalidatePath("/office");
   return { ok: true };
 }
 
@@ -43,6 +50,6 @@ export async function deleteEquipmentAction(id: string): Promise<Result> {
   if ((count ?? 0) > 0) return { ok: false, error: "This equipment is linked to job history and cannot be deleted." };
   const { error } = await supabase.from("chillbros_equipment").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
-  revalidatePath("/equipment");
+  revalidatePath("/equipment"); revalidatePath("/office");
   return { ok: true };
 }
