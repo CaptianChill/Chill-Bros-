@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { ChevronDown, PackagePlus, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { updateTechnicianJobAction } from "@/lib/chillbros/operations";
+import { updateTechnicianJobV2Action } from "@/lib/chillbros/job-workflow-v2";
 import { addJobPartAtomicAction, removeJobPartAtomicAction, setJobPartQuantityAtomicAction } from "@/lib/chillbros/job-parts";
 import type { Job, PartsCatalogItem } from "@/lib/chillbros/types";
 
@@ -30,7 +30,7 @@ export function TechnicianJobEditor({ job, partsCatalog }: { job: Job; partsCata
   };
 
   const saveTicket = (showMessage = false) => run(
-    () => updateTechnicianJobAction({ jobId: job.id, status, workPerformed, laborHours: Number(laborHours || 0), driveHours: Number(driveHours || 0) }),
+    () => updateTechnicianJobV2Action({ jobId: job.id, status, workPerformed, laborHours: Number(laborHours || 0), driveHours: Number(driveHours || 0) }),
     status === "completed" ? "Job completed. Manager and Dispatch updated." : showMessage ? "Service ticket saved." : "Autosaved.",
     true,
   );
