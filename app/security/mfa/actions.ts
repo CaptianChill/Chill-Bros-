@@ -42,6 +42,9 @@ function maskPhone(phone: string) {
 function smsErrorMessage(error: { message?: string; code?: string } | null) {
   const code = String(error?.code ?? "");
   const message = String(error?.message ?? "").toLowerCase();
+  if (code === "mfa_phone_enroll_not_enabled" || message.includes("mfa enroll is disabled for phone")) {
+    return "Phone verification is disabled in the Supabase project. Enable Advanced MFA Phone and configure an SMS provider before requesting a code.";
+  }
   if (code.includes("provider") || message.includes("provider") || message.includes("sms")) {
     return "Text-message verification is not enabled for this Supabase project yet. The SMS provider must be configured before a code can be sent.";
   }
