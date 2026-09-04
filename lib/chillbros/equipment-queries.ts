@@ -15,7 +15,20 @@ export type EquipmentRecord = {
   notes: string | null;
 };
 
-const mapEquipment = (row: any): EquipmentRecord => {
+type EquipmentQueryRow = {
+  id: string;
+  customer_id: string;
+  asset_tag: string | null;
+  equipment_type: string;
+  manufacturer: string | null;
+  model: string | null;
+  serial_number: string | null;
+  refrigerant: string | null;
+  notes: string | null;
+  customer: { name: string } | { name: string }[] | null;
+};
+
+const mapEquipment = (row: EquipmentQueryRow): EquipmentRecord => {
   const customer = Array.isArray(row.customer) ? row.customer[0] : row.customer;
   return {
     id: row.id,
@@ -39,7 +52,7 @@ export async function getEquipment(limit = 250): Promise<EquipmentRecord[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error || !data) return [];
-  return data.map(mapEquipment);
+  return (data as unknown as EquipmentQueryRow[]).map(mapEquipment);
 }
 
 export async function getEquipmentByCustomer(customerId: string): Promise<EquipmentRecord[]> {
@@ -50,5 +63,5 @@ export async function getEquipmentByCustomer(customerId: string): Promise<Equipm
     .eq("customer_id", customerId)
     .order("created_at", { ascending: false });
   if (error || !data) return [];
-  return data.map(mapEquipment);
+  return (data as unknown as EquipmentQueryRow[]).map(mapEquipment);
 }
