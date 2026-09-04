@@ -4,6 +4,7 @@ import { createAuthServerClient } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function requireManagerSession() {
   const auth = await createAuthServerClient();
@@ -64,15 +65,15 @@ export async function verifyManagerMfaAction(factorId: string, code: string): Pr
   if (!guard.ok) return guard;
   const cleanFactorId = String(factorId ?? "").trim();
   const cleanCode = String(code ?? "").replace(/\s/g, "");
-  if (!cleanFactorId || !/^\d{6}$/.test(cleanCode)) return { ok: false, error: "Enter the 6-digit authenticator code." };
+  if (!UUID_PATTERN.test(cleanFactorId) || !/^\d{6}$/.test(cleanCode)) {
+    return { ok: false, error: "Enter the 6-digit authenticator code." };
+  }
 
-  const { data: factors, error: listError } = await guard.auth.auth.mfa.listFactors();
-  if (listError) return { ok: false, error: "Could not verify the authenticator factor." };
-  const ownsFactor = (factors?.totp ?? []).some((factor) => factor.id === cleanFactorId);
-  if (!ownsFactor) return { ok: false, error: "Authenticator factor is not available for this account." };
-
+  // Supabase binds MFA challenges to the current authenticated user. Do not
+  // pre-filter through listFactors(), because pending/unverified TOTP factors
+  // can be omitted there before the first successful verification.
   const { error } = await guard.auth.auth.mfa.challengeAndVerify({ factorId: cleanFactorId, code: cleanCode });
-  if (error) return { ok: false, error: "That authenticator code was not accepted." };
+  if (error) return { ok: false, error: "That authenticator code was not accepted. Check the phone time and try the newest code." };
   return { ok: true, data: undefined };
 }
 
