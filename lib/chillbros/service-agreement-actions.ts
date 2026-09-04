@@ -53,7 +53,7 @@ function refresh(customerId?: string, token?: string) {
   if (token) { revalidatePath(`/agreement/${token}`); revalidatePath(`/agreement/${token}/document`); }
 }
 
-export function calculateAgreement(input: Pick<ServiceAgreementInput, "calculationMode" | "visitsPerMonth" | "hoursPerVisit" | "hourlyRate" | "monthlyFlatRate" | "discountType" | "discountValue">) {
+function calculateAgreement(input: Pick<ServiceAgreementInput, "calculationMode" | "visitsPerMonth" | "hoursPerVisit" | "hourlyRate" | "monthlyFlatRate" | "discountType" | "discountValue">) {
   const visits = Math.max(1, Math.min(31, Math.floor(Number(input.visitsPerMonth) || 1)));
   const hours = Math.max(0, Math.min(24, Number(input.hoursPerVisit) || 0));
   const hourlyRate = Math.max(0, Number(input.hourlyRate) || 0);
@@ -73,7 +73,7 @@ function validate(input: ServiceAgreementInput) {
   const title = String(input.title ?? "").trim().slice(0, 200);
   if (!customerId) return { ok: false as const, error: "Choose a customer." };
   if (!title) return { ok: false as const, error: "Plan title is required." };
-  if (!['hourly','flat'].includes(input.calculationMode)) return { ok: false as const, error: "Choose a valid pricing method." };
+  if (!["hourly", "flat"].includes(input.calculationMode)) return { ok: false as const, error: "Choose a valid pricing method." };
   const visits = Math.floor(Number(input.visitsPerMonth));
   const hours = Number(input.hoursPerVisit);
   const hourlyRate = Number(input.hourlyRate);
@@ -141,7 +141,7 @@ export async function updateServiceAgreementAction(input: ServiceAgreementInput 
   if (!existing) return { ok: false, error: "Service agreement not found." };
   const c = valid.clean;
   const signatureMustReset = ["accepted", "active"].includes(existing.status);
-  const { error } = await supabase.from("chillbros_service_agreements").update({
+  const updates: Record<string, unknown> = {
     customer_id: c.customerId,
     title: c.title,
     status: signatureMustReset ? "proposed" : existing.status,
@@ -163,10 +163,10 @@ export async function updateServiceAgreementAction(input: ServiceAgreementInput 
     discount_amount: c.discountAmount,
     monthly_subtotal: c.monthlySubtotal,
     monthly_total: c.monthlyTotal,
-    signature_name: signatureMustReset ? null : undefined,
-    signed_at: signatureMustReset ? null : undefined,
     updated_at: new Date().toISOString(),
-  }).eq("id", input.id);
+  };
+  if (signatureMustReset) { updates.signature_name = null; updates.signed_at = null; }
+  const { error } = await supabase.from("chillbros_service_agreements").update(updates).eq("id", input.id);
   if (error) return { ok: false, error: error.message };
   refresh(c.customerId, existing.portal_token);
   if (existing.customer_id !== c.customerId) refresh(existing.customer_id);
