@@ -26,14 +26,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Blender
+      - name: Install Blender export dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender
+          sudo apt-get install -y blender python3-numpy
           blender --version
+          python3 -c "import numpy; print('numpy', numpy.__version__)"
 
       - name: Generate Chill Bros 3D assets
-        run: blender --background --python scripts/blender/build_assets.py
+        run: blender --background --python-exit-code 1 --python scripts/blender/build_assets.py
 
       - name: Verify exports
         run: |
