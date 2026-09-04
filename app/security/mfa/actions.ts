@@ -33,16 +33,21 @@ export async function enrollManagerMfaAction(): Promise<Result<{ factorId: strin
     return { ok: false, error: "An authenticator is already enrolled. Enter a code from it instead." };
   }
 
-  // Clear abandoned unverified enrollment attempts so the manager can restart setup cleanly.
-  for (const factor of factors?.totp ?? []) {
-    if (factor.status !== "verified") await guard.auth.auth.mfa.unenroll({ factorId: factor.id }).catch(() => undefined);
-  }
-
+  // Supabase can retain an abandoned unverified enrollment without returning it
+  // from listFactors(). Use a unique friendly name so a restart can never be
+  // blocked by a stale factor-name conflict.
+  const enrollmentId = new Date().toISOString().replace(/[:.]/g, "-");
   const { data, error } = await guard.auth.auth.mfa.enroll({
     factorType: "totp",
-    friendlyName: "Chill Bros Manager",
+    friendlyName: `Chill Bros Manager ${enrollmentId}`,
   });
-  if (error || !data?.totp) return { ok: false, error: "Could not start authenticator setup." };
+
+  if (error || !data?.totp) {
+    if (error?.code === "mfa_factor_name_conflict") {
+      return { ok: false, error: "A previous authenticator setup is still pending. Refresh this page and start setup again." };
+    }
+    return { ok: false, error: "Could not start authenticator setup. Refresh the page and try once more." };
+  }
 
   return {
     ok: true,
