@@ -28,7 +28,8 @@ export async function clockInResilientAction(location: string): Promise<Result<{
 }
 
 export async function startBreakAction(timesheetId: string): Promise<Result<{ startedAt: string }>> {
-  const profile = await getCurrentStaffProfile(); if (!profile || !canClock(profile.role)) return { ok: false, error: "Time capture access required." };
+  const profile = await getCurrentStaffProfile();
+  if (!profile || !canClock(profile.role)) return { ok: false, error: "Time capture access required." };
   const supabase = createServiceRoleClient();
   const { data: sheet } = await supabase.from("chillbros_timesheets").select("id").eq("id", timesheetId).eq("technician_id", profile.id).is("clock_out_at", null).maybeSingle();
   if (!sheet) return { ok: false, error: "Open clock session not found." };
@@ -36,28 +37,38 @@ export async function startBreakAction(timesheetId: string): Promise<Result<{ st
   const { error } = await supabase.from("chillbros_timesheet_breaks").insert({ timesheet_id: timesheetId, started_at: startedAt });
   if (error) return { ok: false, error: error.code === "23505" ? "A break is already open." : error.message };
   await supabase.from("chillbros_profiles").update({ last_clock_event: "On break" }).eq("id", profile.id);
-  refreshTimesheets(); return { ok: true, data: { startedAt } };
+  refreshTimesheets();
+  return { ok: true, data: { startedAt } };
 }
 
 export async function endBreakAction(timesheetId: string): Promise<Result<{ endedAt: string }>> {
-  const profile = await getCurrentStaffProfile(); if (!profile || !canClock(profile.role)) return { ok: false, error: "Time capture access required." };
-  const supabase = createServiceRoleClient(); const endedAt = new Date().toISOString();
+  const profile = await getCurrentStaffProfile();
+  if (!profile || !canClock(profile.role)) return { ok: false, error: "Time capture access required." };
+  const supabase = createServiceRoleClient();
+  const { data: sheet } = await supabase.from("chillbros_timesheets").select("id").eq("id", timesheetId).eq("technician_id", profile.id).is("clock_out_at", null).maybeSingle();
+  if (!sheet) return { ok: false, error: "Open clock session not found." };
+
+  const endedAt = new Date().toISOString();
   const { data, error } = await supabase.from("chillbros_timesheet_breaks").update({ ended_at: endedAt }).eq("timesheet_id", timesheetId).is("ended_at", null).select("id").maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "No open break found." };
   await supabase.from("chillbros_profiles").update({ last_clock_event: "Working" }).eq("id", profile.id);
-  refreshTimesheets(); return { ok: true, data: { endedAt } };
+  refreshTimesheets();
+  return { ok: true, data: { endedAt } };
 }
 
 export async function clockOutResilientAction(timesheetId: string, laborHours: number, driveHours: number): Promise<Result<{ clockOutAt: string }>> {
   const profile = await getCurrentStaffProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
   if (!canClock(profile.role)) return { ok: false, error: "Time capture access required." };
-  const labor = Number(laborHours); const drive = Number(driveHours);
+  const labor = Number(laborHours);
+  const drive = Number(driveHours);
   if (!Number.isFinite(labor) || labor < 0 || labor > 24 || !Number.isFinite(drive) || drive < 0 || drive > 24) return { ok: false, error: "Labor and drive hours must be between 0 and 24." };
-  const supabase = createServiceRoleClient(); const clockOutAt = new Date().toISOString();
+  const supabase = createServiceRoleClient();
+  const clockOutAt = new Date().toISOString();
   await supabase.from("chillbros_timesheet_breaks").update({ ended_at: clockOutAt }).eq("timesheet_id", timesheetId).is("ended_at", null);
   const { data, error } = await supabase.from("chillbros_timesheets").update({ clock_out_at: clockOutAt, labor_hours: labor, drive_hours: drive }).eq("id", timesheetId).eq("technician_id", profile.id).is("clock_out_at", null).select("id").maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "This clock session is already closed or unavailable." };
   await supabase.from("chillbros_profiles").update({ last_clock_event: `Clocked out ${new Date(clockOutAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` }).eq("id", profile.id);
-  refreshTimesheets(); return { ok: true, data: { clockOutAt } };
+  refreshTimesheets();
+  return { ok: true, data: { clockOutAt } };
 }
