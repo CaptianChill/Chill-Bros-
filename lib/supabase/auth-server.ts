@@ -10,7 +10,7 @@ export type StaffProfile = {
   id: string;
   fullName: string;
   email: string;
-  role: "manager" | "technician";
+  role: "manager" | "technician" | "office";
   status: "active" | "inactive";
 };
 

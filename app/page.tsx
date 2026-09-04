@@ -13,6 +13,7 @@ export default async function HomePage() {
   const profile = await getCurrentStaffProfile();
   if (!profile) redirect("/sign-in");
   if (profile.role === "technician") redirect("/technician");
+  if (profile.role === "office") redirect("/office");
 
   const [metrics, customers, emailLog] = await Promise.all([
     getDashboardMetrics(),

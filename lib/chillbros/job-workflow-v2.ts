@@ -7,7 +7,7 @@ import type { JobStatus } from "./types";
 
 type Result = { ok: true } | { ok: false; error: string };
 const clean = (value: string | null | undefined, max: number) => { const s = String(value ?? "").trim(); return s ? s.slice(0, max) : null; };
-function refreshJobs() { for (const path of ["/technician","/dispatch","/manager","/crm","/"]) revalidatePath(path); }
+function refreshJobs() { for (const path of ["/technician","/dispatch","/manager","/office","/crm","/"]) revalidatePath(path); }
 
 export async function updateTechnicianJobV2Action(input: { jobId: string; status: "scheduled" | "in_progress" | "completed"; workPerformed?: string; laborHours?: number; driveHours?: number }): Promise<Result> {
   const profile = await getCurrentStaffProfile();
@@ -34,7 +34,7 @@ export async function updateTechnicianJobV2Action(input: { jobId: string; status
 
 export async function updateDispatchJobV2Action(input: { jobId: string; assignedTechId?: string | null; status: JobStatus; location?: string; scope?: string; workPerformed?: string; scheduledWindow?: string }): Promise<Result> {
   const profile = await getCurrentStaffProfile();
-  if (!profile || profile.role !== "manager") return { ok: false, error: "Manager access required." };
+  if (!profile || !["manager", "office"].includes(profile.role)) return { ok: false, error: "Office or manager access required." };
   const supabase = createServiceRoleClient();
   const { data: job } = await supabase.from("chillbros_jobs").select("id,customer_id,status,assigned_tech_id,location,scope,scheduled_window").eq("id", input.jobId).maybeSingle();
   if (!job) return { ok: false, error: "Job not found." };

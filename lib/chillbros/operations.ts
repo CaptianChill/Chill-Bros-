@@ -15,6 +15,13 @@ async function requireManager() {
   return { ok: true as const, profile };
 }
 
+async function requireOfficeOrManager() {
+  const profile = await getCurrentStaffProfile();
+  if (!profile) return { ok: false as const, error: "Not signed in." };
+  if (!["manager", "office"].includes(profile.role)) return { ok: false as const, error: "Office or manager access required." };
+  return { ok: true as const, profile };
+}
+
 function cleanText(value: string | null | undefined, max = 2000) {
   const text = String(value ?? "").trim();
   return text ? text.slice(0, max) : null;
@@ -26,7 +33,7 @@ export async function createCustomerAction(input: {
   phone?: string;
   email?: string;
 }): Promise<Result<{ customerId: string }>> {
-  const guard = await requireManager();
+  const guard = await requireOfficeOrManager();
   if (!guard.ok) return guard;
   const name = input.name.trim();
   if (!name) return { ok: false, error: "Customer name is required." };
@@ -47,6 +54,7 @@ export async function createCustomerAction(input: {
 
   revalidatePath("/crm");
   revalidatePath("/dispatch");
+  revalidatePath("/office");
   revalidatePath("/");
   return { ok: true, data: { customerId: data.id } };
 }
@@ -58,7 +66,7 @@ export async function updateCustomerAction(input: {
   phone?: string;
   email?: string;
 }): Promise<Result> {
-  const guard = await requireManager();
+  const guard = await requireOfficeOrManager();
   if (!guard.ok) return guard;
   const name = input.name.trim();
   if (!name) return { ok: false, error: "Customer name is required." };
@@ -78,6 +86,7 @@ export async function updateCustomerAction(input: {
 
   revalidatePath("/crm");
   revalidatePath("/dispatch");
+  revalidatePath("/office");
   return { ok: true, data: undefined };
 }
 
@@ -88,7 +97,7 @@ export async function createJobAction(input: {
   scope?: string;
   scheduledWindow?: string;
 }): Promise<Result<{ jobId: string }>> {
-  const guard = await requireManager();
+  const guard = await requireOfficeOrManager();
   if (!guard.ok) return guard;
   if (!input.customerId) return { ok: false, error: "Choose a customer." };
 
@@ -126,6 +135,7 @@ export async function createJobAction(input: {
   revalidatePath("/dispatch");
   revalidatePath("/technician");
   revalidatePath("/crm");
+  revalidatePath("/office");
   revalidatePath("/");
   return { ok: true, data: { jobId: data.id } };
 }
@@ -139,7 +149,7 @@ export async function updateJobAction(input: {
   workPerformed?: string;
   scheduledWindow?: string;
 }): Promise<Result> {
-  const guard = await requireManager();
+  const guard = await requireOfficeOrManager();
   if (!guard.ok) return guard;
 
   const supabase = createServiceRoleClient();
@@ -185,6 +195,7 @@ export async function updateJobAction(input: {
   revalidatePath("/dispatch");
   revalidatePath("/technician");
   revalidatePath("/crm");
+  revalidatePath("/office");
   revalidatePath("/");
   return { ok: true, data: undefined };
 }
@@ -237,6 +248,7 @@ export async function updateTechnicianJobAction(input: {
   revalidatePath("/technician");
   revalidatePath("/dispatch");
   revalidatePath("/crm");
+  revalidatePath("/office");
   revalidatePath("/");
   return { ok: true, data: undefined };
 }

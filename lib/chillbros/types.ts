@@ -1,4 +1,4 @@
-export type StaffRole = "manager" | "technician";
+export type StaffRole = "manager" | "technician" | "office";
 export type StaffStatus = "active" | "inactive";
 
 export type StaffAccount = { id: string; fullName: string; email: string; role: StaffRole; status: StaffStatus; phone: string | null; lastClockEvent: string | null; assignedJobs: number };
