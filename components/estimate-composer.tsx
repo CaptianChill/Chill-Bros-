@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { ChevronDown, Plus, Send, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -35,24 +35,47 @@ export function EstimateComposer({ jobId, suggestedItems }: { jobId: string; sug
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (raw) {
-        const saved = JSON.parse(raw) as { items?: DraftItem[]; notes?: string; discountType?: AdjustmentType | null; discountValue?: string; downPaymentType?: AdjustmentType | null; downPaymentValue?: string };
-        if (Array.isArray(saved.items) && saved.items.length) setItems(saved.items.slice(0, 20));
-        if (typeof saved.notes === "string") setNotes(saved.notes);
-        setDiscountType(saved.discountType ?? null); setDiscountValue(saved.discountValue ?? "0"); setDownPaymentType(saved.downPaymentType ?? null); setDownPaymentValue(saved.downPaymentValue ?? "0");
+    const timer = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem(storageKey);
+        if (raw) {
+          const saved = JSON.parse(raw) as { items?: DraftItem[]; notes?: string; discountType?: AdjustmentType | null; discountValue?: string; downPaymentType?: AdjustmentType | null; downPaymentValue?: string };
+          if (Array.isArray(saved.items) && saved.items.length) setItems(saved.items.slice(0, 20));
+          if (typeof saved.notes === "string") setNotes(saved.notes);
+          setDiscountType(saved.discountType ?? null);
+          setDiscountValue(saved.discountValue ?? "0");
+          setDownPaymentType(saved.downPaymentType ?? null);
+          setDownPaymentValue(saved.downPaymentValue ?? "0");
+        }
+      } catch {
+        // A malformed local-only draft is ignored; server data is untouched.
       }
-    } catch { /* bad local draft is ignored */ }
-    setDraftLoaded(true);
+      setDraftLoaded(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [storageKey]);
 
-  const saveDraft = () => {
-    try { window.localStorage.setItem(storageKey, JSON.stringify({ items, notes, discountType, discountValue, downPaymentType, downPaymentValue })); setDraftSaved(true); window.setTimeout(() => setDraftSaved(false), 1200); } catch { /* local storage may be blocked */ }
-  };
+  const saveDraft = useCallback(() => {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify({ items, notes, discountType, discountValue, downPaymentType, downPaymentValue }));
+      setDraftSaved(true);
+      window.setTimeout(() => setDraftSaved(false), 1200);
+    } catch {
+      // Local storage can be unavailable in private/restricted browser modes.
+    }
+  }, [discountType, discountValue, downPaymentType, downPaymentValue, items, notes, storageKey]);
 
-  useEffect(() => { if (!draftLoaded) return; const timer = window.setTimeout(saveDraft, 450); return () => window.clearTimeout(timer); }, [items, notes, discountType, discountValue, downPaymentType, downPaymentValue, draftLoaded]);
-  useEffect(() => { const listener = () => saveDraft(); window.addEventListener("chillbros-save", listener); return () => window.removeEventListener("chillbros-save", listener); }, [items, notes, discountType, discountValue, downPaymentType, downPaymentValue]);
+  useEffect(() => {
+    if (!draftLoaded) return;
+    const timer = window.setTimeout(saveDraft, 450);
+    return () => window.clearTimeout(timer);
+  }, [draftLoaded, saveDraft]);
+
+  useEffect(() => {
+    const listener = () => saveDraft();
+    window.addEventListener("chillbros-save", listener);
+    return () => window.removeEventListener("chillbros-save", listener);
+  }, [saveDraft]);
 
   const subtotal = useMemo(() => items.reduce((sum, item) => { const q = Number(item.quantity); const p = Number(item.unitPrice); return sum + (Number.isFinite(q) && Number.isFinite(p) ? q * p : 0); }, 0), [items]);
   const discount = useMemo(() => { const value = Math.max(0, Number(discountValue || 0)); return discountType === "percent" ? Math.min(subtotal, subtotal * Math.min(value, 100) / 100) : discountType === "dollar" ? Math.min(value, subtotal) : 0; }, [discountType, discountValue, subtotal]);
@@ -71,7 +94,7 @@ export function EstimateComposer({ jobId, suggestedItems }: { jobId: string; sug
     startTransition(async () => {
       const result = await createEstimateV2Action(jobId, lineItems, notes, adjustments);
       if (!result.ok) { setError(result.error); return; }
-      try { window.localStorage.removeItem(storageKey); } catch { /* ignore */ }
+      try { window.localStorage.removeItem(storageKey); } catch { /* local draft cleanup only */ }
       router.refresh();
     });
   };

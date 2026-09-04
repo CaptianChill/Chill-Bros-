@@ -105,7 +105,7 @@ export async function uploadJobPhotoAction(jobId: string, phase: "before" | "aft
   if (profile.role === "office") return { ok: false, error: "Field photos can be uploaded by the assigned technician or a manager." };
   if (phase !== "before" && phase !== "after") return { ok: false, error: "Choose a valid photo phase." };
   if (!file || file.size === 0) return { ok: false, error: "Choose a photo first." };
-  if (file.size > 10 * 1024 * 1024) return { ok: false, error: "Photo is larger than 10MB." };
+  if (file.size > 5 * 1024 * 1024) return { ok: false, error: "Photo is larger than 5MB." };
   const extension = IMAGE_TYPES.get(file.type);
   if (!extension) return { ok: false, error: "Upload a JPEG, PNG, or WebP image." };
 

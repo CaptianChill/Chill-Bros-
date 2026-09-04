@@ -13,11 +13,6 @@ export function Training3DModal({ open, onClose, visual, components }: { open: b
   const [viewerReady, setViewerReady] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.customElements?.get("model-viewer")) setViewerReady(true);
-  }, []);
-
-  useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -33,11 +28,12 @@ export function Training3DModal({ open, onClose, visual, components }: { open: b
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open || !viewerReady || !viewerHost.current) return;
+    const host = viewerHost.current;
+    if (!open || !viewerReady || !host) return;
     let cancelled = false;
 
     window.customElements.whenDefined("model-viewer").then(() => {
-      if (cancelled || !viewerHost.current) return;
+      if (cancelled) return;
       const viewer = document.createElement("model-viewer");
       viewer.setAttribute("src", `/training/model/${visual.modelSlug}`);
       viewer.setAttribute("alt", visual.modelLabel);
@@ -51,12 +47,12 @@ export function Training3DModal({ open, onClose, visual, components }: { open: b
       viewer.setAttribute("min-camera-orbit", "auto 15deg 55%");
       viewer.setAttribute("max-camera-orbit", "auto 90deg 250%");
       if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) viewer.setAttribute("auto-rotate", "");
-      viewerHost.current.replaceChildren(viewer);
+      host.replaceChildren(viewer);
     });
 
     return () => {
       cancelled = true;
-      viewerHost.current?.replaceChildren();
+      host.replaceChildren();
     };
   }, [open, viewerReady, visual.modelLabel, visual.modelSlug]);
 
@@ -68,6 +64,7 @@ export function Training3DModal({ open, onClose, visual, components }: { open: b
         src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js"
         strategy="afterInteractive"
         onLoad={() => setViewerReady(true)}
+        onReady={() => setViewerReady(true)}
       />
       {open ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/80 p-0 backdrop-blur-md sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={`${visual.modelLabel} interactive viewer`} onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
