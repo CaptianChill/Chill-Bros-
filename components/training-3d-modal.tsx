@@ -30,11 +30,6 @@ export function Training3DModal({ open, onClose, visual, components }: { open: b
 
   useEffect(() => {
     if (!open) return;
-    setSelectedComponentId(relevantComponents[0]?.id ?? modelMeta.components[0]?.id ?? null);
-  }, [open, modelMeta.components, relevantComponents]);
-
-  useEffect(() => {
-    if (!open) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
