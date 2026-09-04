@@ -59,6 +59,16 @@ export type Job = {
 export type InvoiceStatus = "draft" | "awaiting_approval" | "approved" | "void";
 export type PaymentStatus = "unpaid" | "pending_manual_review" | "paid";
 export type PaymentMethod = "cash_app" | "venmo" | "zelle" | "apple_pay" | "card";
+export type AdjustmentType = "percent" | "dollar";
+
+export type InvoiceLineItem = {
+  id: string;
+  label: string;
+  description: string | null;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+};
 
 export type Invoice = {
   id: string;
@@ -73,7 +83,22 @@ export type Invoice = {
   paymentMethod: PaymentMethod | null;
   paymentStatus: PaymentStatus;
   notes: string | null;
-  lineItems: { id: string; label: string; amount: number }[];
+  discountType: AdjustmentType | null;
+  discountValue: number;
+  discountAmount: number;
+  downPaymentType: AdjustmentType | null;
+  downPaymentValue: number;
+  downPaymentAmount: number;
+  lineItems: InvoiceLineItem[];
+};
+
+export type WorkflowEvent = {
+  id: string;
+  jobId: string | null;
+  invoiceId: string | null;
+  stage: string;
+  message: string;
+  createdAt: string;
 };
 
 export type EmailLogEntry = {
