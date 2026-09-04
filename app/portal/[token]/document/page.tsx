@@ -19,7 +19,7 @@ export default async function DocumentPage({ params }: Props) {
 
   return <main className="min-h-screen bg-white px-3 py-4 text-zinc-950 sm:px-6 sm:py-8 print:p-0">
     <div className="mx-auto max-w-4xl">
-      <DocumentToolbar invoiceNumber={invoice.invoiceNumber} />
+      <DocumentToolbar invoiceNumber={invoice.invoiceNumber} returnHref={`/portal/${token}`} />
       <article className="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-xl print:rounded-none print:border-0 print:shadow-none">
         <header className="border-b border-zinc-200 bg-[#020407] px-6 py-5 text-white sm:px-8"><div className="flex items-center justify-between gap-5"><div className="flex items-center gap-3"><LogoBadge variant="full" className="w-14" /><div><p className="text-2xl font-bold tracking-wide">CHILL BROS</p><p className="text-xs uppercase tracking-[0.24em] text-cyan-100">Operational Command Center</p></div></div><div className="text-right"><p className="text-sm font-semibold tracking-[0.18em] text-cyan-100">{documentName}</p><p className="mt-1 text-lg font-bold">{invoice.invoiceNumber}</p><p className="mt-1 text-xs text-zinc-300">{invoice.paymentStatus === "paid" ? "PAID" : invoice.status === "approved" ? "APPROVED" : "AWAITING APPROVAL"}</p></div></div></header>
 
