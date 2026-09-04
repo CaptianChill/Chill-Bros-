@@ -1,36 +1,5 @@
-import Link from "next/link";
-import { UserRoundSearch } from "lucide-react";
 import { redirect } from "next/navigation";
 
-import { AppShell } from "@/components/app-shell";
-import { CustomerEditor } from "@/components/customer-editor";
-import { SectionCard } from "@/components/section-card";
-import { StatusPill } from "@/components/status-pill";
-import { getCustomers, getEmailLog } from "@/lib/chillbros/queries";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-
-export const dynamic = "force-dynamic";
-
-export default async function CrmPage() {
-  const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
-  const [customers, emailLog] = await Promise.all([getCustomers(), getEmailLog(15)]);
-
-  return (
-    <AppShell
-      title="Edit customer records, review service history, and track communication activity."
-      description="Customer contact data is editable by authorized office staff. Each customer now has a dedicated profile for service calls, equipment assets, and monthly plans."
-      highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">CRM pulse</p><StatusPill tone="emerald">{customers.length} customers</StatusPill><StatusPill>{emailLog.length} recent communication events</StatusPill></div>}
-    >
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <SectionCard eyebrow="Customer directory" title="Editable customer records" description="Update contact information or open the full customer profile for assets, calls, and agreements.">
-          {customers.length === 0 ? <p className="text-sm text-zinc-400">No customers yet. Create the first customer from Dispatch.</p> : <div className="space-y-4">{customers.map((customer) => <div key={customer.id} className="space-y-2"><div className="flex justify-end"><Link href={`/customers/${customer.id}`} className="inline-flex items-center gap-1.5 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]"><UserRoundSearch className="h-3.5 w-3.5" />Open full customer profile</Link></div><CustomerEditor customer={customer} /></div>)}</div>}
-        </SectionCard>
-
-        <SectionCard eyebrow="Communication log" title="Customer communication events" description="Approval and payment workflow events remain visible here. Real outbound email can be enabled separately with a mail provider credential.">
-          {emailLog.length === 0 ? <p className="text-sm text-zinc-400">No communication events logged yet.</p> : <div className="space-y-3">{emailLog.map((entry) => <div key={entry.id} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><p className="font-medium text-white">{entry.subject}</p><StatusPill tone={entry.status === "failed" ? "rose" : entry.status === "sent" ? "emerald" : "amber"}>{entry.status}</StatusPill></div><p className="mt-2 text-sm text-zinc-400">{entry.recipients}</p></div>)}</div>}
-        </SectionCard>
-      </div>
-    </AppShell>
-  );
+export default function CrmPage() {
+  redirect("/customers");
 }
