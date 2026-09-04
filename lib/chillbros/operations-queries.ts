@@ -43,13 +43,14 @@ export async function getOpenTimesheet(technicianId: string): Promise<OpenTimesh
   const { data, error } = await supabase.from("chillbros_timesheets").select("id, location, clock_in_at, job_id").eq("technician_id", technicianId).is("clock_out_at", null).order("clock_in_at", { ascending: false }).limit(1).maybeSingle();
   if (error || !data) return null;
   const { data: breaks } = await supabase.from("chillbros_timesheet_breaks").select("started_at,ended_at").eq("timesheet_id", data.id).order("started_at", { ascending: true });
-  const now = Date.now();
   let breakMinutes = 0;
   let breakStartedAt: string | null = null;
   for (const b of breaks ?? []) {
-    if (!b.ended_at) breakStartedAt = b.started_at;
-    const end = b.ended_at ? new Date(b.ended_at).getTime() : now;
-    breakMinutes += Math.max(0, end - new Date(b.started_at).getTime()) / 60000;
+    if (!b.ended_at) {
+      breakStartedAt = b.started_at;
+      continue;
+    }
+    breakMinutes += Math.max(0, new Date(b.ended_at).getTime() - new Date(b.started_at).getTime()) / 60000;
   }
   return { id: data.id, location: data.location, clockInAt: data.clock_in_at, jobId: data.job_id, breakStartedAt, breakMinutes: Math.round(breakMinutes) };
 }
