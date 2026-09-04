@@ -16,9 +16,8 @@ export type StaffProfile = {
 
 /**
  * Session-aware client bound to this request's cookies (anon key — respects
- * whatever the signed-in user's own session is). Used only for
- * sign in / sign out / session reads, never for chillbros_* table access
- * (those are locked to service_role; see service-client.ts).
+ * whatever the signed-in user's own session is). Used only for auth/session
+ * operations, never for direct chillbros_* table access.
  */
 export async function createAuthServerClient() {
   const config = getSupabaseConfig();
@@ -44,8 +43,12 @@ export async function createAuthServerClient() {
   });
 }
 
-/** The signed-in staff member's profile, or null if not signed in / not staff. */
-export async function getCurrentStaffProfile(): Promise<StaffProfile | null> {
+/**
+ * Returns an active staff profile. Manager sessions fail closed unless they
+ * have reached AAL2 (password + MFA). The MFA setup route opts into the one
+ * narrow exception needed to let an AAL1 manager enroll/challenge a factor.
+ */
+export async function getCurrentStaffProfile(options: { allowManagerAal1?: boolean } = {}): Promise<StaffProfile | null> {
   const auth = await createAuthServerClient();
   const {
     data: { user },
@@ -59,6 +62,11 @@ export async function getCurrentStaffProfile(): Promise<StaffProfile | null> {
     .eq("id", user.id)
     .maybeSingle();
   if (error || !data || data.status !== "active") return null;
+
+  if (data.role === "manager" && !options.allowManagerAal1) {
+    const { data: assurance, error: assuranceError } = await auth.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assuranceError || assurance?.currentLevel !== "aal2") return null;
+  }
 
   return {
     id: data.id,
