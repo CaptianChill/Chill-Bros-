@@ -1,3 +1,5 @@
+import { getTrainingModelSource } from "@/lib/chillbros/three-d-assets";
+
 type BoxPart = {
   name: string;
   translation: [number, number, number];
@@ -93,8 +95,13 @@ function makeGltf(parts: BoxPart[]) {
   };
 }
 
-export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const productionSource = getTrainingModelSource(slug);
+  if (productionSource !== `/training/model/${slug}`) {
+    return Response.redirect(new URL(productionSource, request.url), 307);
+  }
+
   const parts = MODELS[slug];
   if (!parts) return new Response("Training model not found.", { status: 404 });
 
