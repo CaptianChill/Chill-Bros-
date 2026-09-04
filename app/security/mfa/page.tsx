@@ -21,7 +21,7 @@ export default async function ManagerMfaPage({ searchParams }: Props) {
     auth.auth.mfa.listFactors(),
     auth.auth.mfa.getAuthenticatorAssuranceLevel(),
   ]);
-  const verifiedFactor = factors?.totp?.find((factor) => factor.status === "verified") ?? null;
+  const verifiedPhoneFactor = factors?.phone?.find((factor) => factor.status === "verified") ?? null;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-4 py-8 text-foreground sm:px-6">
@@ -30,11 +30,11 @@ export default async function ManagerMfaPage({ searchParams }: Props) {
           <LogoBadge variant="full" className="w-14 shrink-0 sm:w-16" />
           <div className="min-w-0">
             <p className="font-brand text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8ffafa]">Chill Bros Security Gate</p>
-            <h1 className="neon-text mt-1 text-2xl font-semibold text-white sm:text-3xl">Manager two-factor authentication</h1>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">Owner-level controls require a password and a time-based authenticator code.</p>
+            <h1 className="neon-text mt-1 text-2xl font-semibold text-white sm:text-3xl">Manager text verification</h1>
+            <p className="mt-2 text-sm leading-6 text-zinc-400">Owner-level controls require your password plus a six-digit security code sent to your mobile phone.</p>
           </div>
         </div>
-        <ManagerMfaPanel currentLevel={assurance?.currentLevel ?? null} verifiedFactorId={verifiedFactor?.id ?? null} next={next} />
+        <ManagerMfaPanel currentLevel={assurance?.currentLevel ?? null} verifiedFactorId={verifiedPhoneFactor?.id ?? null} next={next} />
       </section>
     </main>
   );
