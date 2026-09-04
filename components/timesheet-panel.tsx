@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Clock3, Coffee, MapPin, Play, Square } from "lucide-react";
+import { Coffee, MapPin, Play, Square } from "lucide-react";
 
 import { clockInResilientAction, clockOutResilientAction, endBreakAction, startBreakAction } from "@/lib/chillbros/timesheet-operations";
 import { StatusPill } from "@/components/status-pill";
@@ -22,17 +22,27 @@ export function TimesheetPanel({ initialOpen }: { initialOpen: OpenTimesheet | n
   const [driveTime, setDriveTime] = useState("0");
   const [breakStartedAt, setBreakStartedAt] = useState<string | null>(initialOpen?.breakStartedAt ?? null);
   const [breakMinutes, setBreakMinutes] = useState(initialOpen?.breakMinutes ?? 0);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer); }, []);
-  const fullDayMs = timesheetId && clockInIso ? now - new Date(clockInIso).getTime() : 0;
-  const currentBreakMs = breakStartedAt ? Math.max(0, now - new Date(breakStartedAt).getTime()) : 0;
+  useEffect(() => {
+    const update = () => setNow(Date.now());
+    const initialTimer = window.setTimeout(update, 0);
+    const interval = window.setInterval(update, 30000);
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const effectiveNow = now || (clockInIso ? new Date(clockInIso).getTime() : 0);
+  const fullDayMs = timesheetId && clockInIso ? effectiveNow - new Date(clockInIso).getTime() : 0;
+  const currentBreakMs = breakStartedAt ? Math.max(0, effectiveNow - new Date(breakStartedAt).getTime()) : 0;
   const workedMs = Math.max(0, fullDayMs - breakMinutes * 60000 - currentBreakMs);
   const total = useMemo(() => (Number(laborTime || 0) + Number(driveTime || 0)).toFixed(1), [driveTime, laborTime]);
 
-  const handleClockIn = () => { setError(null); startTransition(async () => { const result = await clockInResilientAction(location); if (!result.ok) { setError(result.error); return; } setTimesheetId(result.data.timesheetId); setClockInIso(result.data.clockInAt); setLocation(result.data.location ?? location); setClockedOutAt(""); setNow(Date.now()); }); };
+  const handleClockIn = () => { setError(null); startTransition(async () => { const result = await clockInResilientAction(location); if (!result.ok) { setError(result.error); return; } setTimesheetId(result.data.timesheetId); setClockInIso(result.data.clockInAt); setLocation(result.data.location ?? location); setClockedOutAt(""); setNow(new Date(result.data.clockInAt).getTime()); }); };
   const handleBreak = () => { if (!timesheetId) return; setError(null); startTransition(async () => { if (breakStartedAt) { const result = await endBreakAction(timesheetId); if (!result.ok) { setError(result.error); return; } setBreakMinutes((m) => m + Math.round((new Date(result.data.endedAt).getTime() - new Date(breakStartedAt).getTime()) / 60000)); setBreakStartedAt(null); } else { const result = await startBreakAction(timesheetId); if (!result.ok) { setError(result.error); return; } setBreakStartedAt(result.data.startedAt); } }); };
   const handleClockOut = () => { if (!timesheetId) { setError("Clock in first."); return; } setError(null); startTransition(async () => { const result = await clockOutResilientAction(timesheetId, Number(laborTime || 0), Number(driveTime || 0)); if (!result.ok) { setError(result.error); return; } setClockedOutAt(result.data.clockOutAt); setTimesheetId(null); setBreakStartedAt(null); }); };
 
