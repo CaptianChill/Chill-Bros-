@@ -11,6 +11,7 @@ export const navItems: NavItem[] = [
   { href: "/", label: "Command Center", shortLabel: "Home", roles: ["manager"] },
   { href: "/office", label: "Office Hub", shortLabel: "Office", roles: ["manager", "office"] },
   { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"] },
+  { href: "/customers", label: "Customer Center", shortLabel: "Customers", roles: ["manager", "office"] },
   { href: "/agreements", label: "Monthly Plans", shortLabel: "Plans", roles: ["manager", "office"] },
   { href: "/manager", label: "Manager Hub", shortLabel: "Manager", roles: ["manager"] },
   { href: "/security", label: "Security", shortLabel: "Secure", roles: ["manager"] },
@@ -20,6 +21,5 @@ export const navItems: NavItem[] = [
   { href: "/inventory", label: "Inventory", shortLabel: "Parts", roles: ["manager"] },
   { href: "/equipment", label: "Equipment", shortLabel: "Assets", roles: ["manager", "office"] },
   { href: "/3d-studio", label: "3D Studio", shortLabel: "3D", roles: ["manager"] },
-  { href: "/crm", label: "Customer CRM", shortLabel: "CRM", roles: ["manager", "office"] },
   { href: "/reports", label: "Reports", shortLabel: "Reports", roles: ["manager"] },
 ];
