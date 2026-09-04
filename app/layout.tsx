@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Chill Bros Operational Command Center",
-  description: "Chill Bros branded internal operations dashboard for manager, technician, and client workflows.",
+  description: "Chill Bros internal operations, dispatch, field service, training, equipment, estimates, and customer workflow.",
   applicationName: "Chill Bros",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
@@ -27,8 +27,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: "cover",
   themeColor: "#020407",
   colorScheme: "dark",
