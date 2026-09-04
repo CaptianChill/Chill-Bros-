@@ -11,7 +11,7 @@ export type AssignedJobOption = { id: string; customerName: string; location: st
 
 export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_jobs").select("id, customer_id, assigned_tech_id, status, location, scope, work_performed, scheduled_window, created_at, customer:chillbros_customers(name), tech:chillbros_profiles(full_name)").order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("chillbros_jobs").select("id, customer_id, assigned_tech_id, status, location, scope, work_performed, scheduled_window, created_at, customer:chillbros_customers(name), tech:chillbros_profiles(full_name)").is("archived_at", null).order("created_at", { ascending: false }).limit(limit);
   if (error || !data) return [];
   const ids = data.map((row) => row.id);
   const [{ data: invoices }, { data: events }] = ids.length ? await Promise.all([
@@ -33,7 +33,7 @@ export async function getActiveTechnicians(): Promise<ActiveTechnician[]> {
 
 export async function getAssignedJobsForTech(technicianId: string): Promise<AssignedJobOption[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_jobs").select("id, status, location, scheduled_window, customer:chillbros_customers(name)").eq("assigned_tech_id", technicianId).in("status", ["scheduled", "in_progress"]).order("created_at", { ascending: true });
+  const { data, error } = await supabase.from("chillbros_jobs").select("id, status, location, scheduled_window, customer:chillbros_customers(name)").eq("assigned_tech_id", technicianId).in("status", ["scheduled", "in_progress"]).is("archived_at", null).order("created_at", { ascending: true });
   if (error || !data) return [];
   return data.map((row) => { const customer = Array.isArray(row.customer) ? row.customer[0] : row.customer; return { id: row.id, customerName: customer?.name ?? "Unknown customer", location: row.location, scheduledWindow: row.scheduled_window, status: row.status as "scheduled" | "in_progress" }; });
 }
@@ -46,10 +46,7 @@ export async function getOpenTimesheet(technicianId: string): Promise<OpenTimesh
   let breakMinutes = 0;
   let breakStartedAt: string | null = null;
   for (const b of breaks ?? []) {
-    if (!b.ended_at) {
-      breakStartedAt = b.started_at;
-      continue;
-    }
+    if (!b.ended_at) { breakStartedAt = b.started_at; continue; }
     breakMinutes += Math.max(0, new Date(b.ended_at).getTime() - new Date(b.started_at).getTime()) / 60000;
   }
   return { id: data.id, location: data.location, clockInAt: data.clock_in_at, jobId: data.job_id, breakStartedAt, breakMinutes: Math.round(breakMinutes) };
