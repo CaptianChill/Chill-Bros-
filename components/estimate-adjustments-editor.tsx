@@ -5,11 +5,11 @@ import { Calculator, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { updateEstimateAdjustmentsAction } from "@/lib/chillbros/estimate-actions-v2";
-import type { AdjustmentType, Invoice } from "@/lib/chillbros/types";
+import type { AdjustmentType, DetailedInvoice } from "@/lib/chillbros/types";
 
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
-export function EstimateAdjustmentsEditor({ invoice }: { invoice: Invoice }) {
+export function EstimateAdjustmentsEditor({ invoice }: { invoice: DetailedInvoice }) {
   const router = useRouter();
   const [discountType, setDiscountType] = useState<AdjustmentType | null>(invoice.discountType);
   const [discountValue, setDiscountValue] = useState(String(invoice.discountValue ?? 0));
