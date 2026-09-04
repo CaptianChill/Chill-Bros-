@@ -16,6 +16,13 @@ async function canEditJob(jobId: string) {
   return { ok: true as const };
 }
 
+function refreshPartsViews() {
+  revalidatePath("/technician");
+  revalidatePath("/inventory");
+  revalidatePath("/dispatch");
+  revalidatePath("/manager");
+}
+
 export async function addJobPartAtomicAction(jobId: string, partId: string, quantity: number): Promise<Result> {
   const allowed = await canEditJob(jobId);
   if (!allowed.ok) return allowed;
@@ -24,20 +31,26 @@ export async function addJobPartAtomicAction(jobId: string, partId: string, quan
   const supabase = createServiceRoleClient();
   const { error } = await supabase.rpc("chillbros_add_job_part", { p_job_id: jobId, p_part_id: partId, p_quantity: qty });
   if (error) return { ok: false, error: error.message.includes("insufficient stock") ? "Not enough stock for that quantity." : error.message };
-  revalidatePath("/technician"); revalidatePath("/inventory");
+  refreshPartsViews();
   return { ok: true };
 }
 
-export async function removeJobPartAtomicAction(jobPartId: string): Promise<Result> {
+export async function setJobPartQuantityAtomicAction(jobPartId: string, quantity: number): Promise<Result> {
   const profile = await getCurrentStaffProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
+  const qty = Math.floor(Number(quantity));
+  if (!Number.isFinite(qty) || qty < 0 || qty > 1000) return { ok: false, error: "Quantity must be between 0 and 1000." };
   const supabase = createServiceRoleClient();
   const { data: row } = await supabase.from("chillbros_job_parts").select("job_id, job:chillbros_jobs(assigned_tech_id,status)").eq("id", jobPartId).maybeSingle();
   if (!row) return { ok: false, error: "Job part not found." };
   const job = Array.isArray(row.job) ? row.job[0] : row.job;
   if (profile.role === "technician" && (job?.assigned_tech_id !== profile.id || !["scheduled", "in_progress"].includes(job?.status ?? ""))) return { ok: false, error: "You cannot change parts on this job." };
-  const { error } = await supabase.rpc("chillbros_remove_job_part", { p_job_part_id: jobPartId });
-  if (error) return { ok: false, error: error.message };
-  revalidatePath("/technician"); revalidatePath("/inventory");
+  const { error } = await supabase.rpc("chillbros_set_job_part_quantity", { p_job_part_id: jobPartId, p_quantity: qty });
+  if (error) return { ok: false, error: error.message.includes("insufficient stock") ? "Not enough stock for that quantity." : error.message };
+  refreshPartsViews();
   return { ok: true };
+}
+
+export async function removeJobPartAtomicAction(jobPartId: string): Promise<Result> {
+  return setJobPartQuantityAtomicAction(jobPartId, 0);
 }
