@@ -44,11 +44,10 @@ export async function createAuthServerClient() {
 }
 
 /**
- * Returns an active staff profile. Manager sessions fail closed unless they
- * have reached AAL2 (password + MFA). The MFA setup route opts into the one
- * narrow exception needed to let an AAL1 manager enroll/challenge a factor.
+ * Returns an active staff profile. Authentication is password/session based;
+ * role and active-status authorization is still enforced server-side.
  */
-export async function getCurrentStaffProfile(options: { allowManagerAal1?: boolean } = {}): Promise<StaffProfile | null> {
+export async function getCurrentStaffProfile(): Promise<StaffProfile | null> {
   const auth = await createAuthServerClient();
   const {
     data: { user },
@@ -62,11 +61,6 @@ export async function getCurrentStaffProfile(options: { allowManagerAal1?: boole
     .eq("id", user.id)
     .maybeSingle();
   if (error || !data || data.status !== "active") return null;
-
-  if (data.role === "manager" && !options.allowManagerAal1) {
-    const { data: assurance, error: assuranceError } = await auth.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (assuranceError || assurance?.currentLevel !== "aal2") return null;
-  }
 
   return {
     id: data.id,
