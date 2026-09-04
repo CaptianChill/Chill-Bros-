@@ -11,13 +11,13 @@ export const dynamic = "force-dynamic";
 
 export default async function CrmPage() {
   const profile = await getCurrentStaffProfile();
-  if (!profile || profile.role !== "manager") redirect("/");
+  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
   const [customers, emailLog] = await Promise.all([getCustomers(), getEmailLog(15)]);
 
   return (
     <AppShell
       title="Edit customer records, review service history, and track communication activity."
-      description="Customer contact data is now editable in the app. Service history is retained automatically as jobs move through dispatch and field completion."
+      description="Customer contact data is editable by authorized office staff. Service history is retained automatically as jobs move through dispatch and field completion."
       highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">CRM pulse</p><StatusPill tone="emerald">{customers.length} customers</StatusPill><StatusPill>{emailLog.length} recent communication events</StatusPill></div>}
     >
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
