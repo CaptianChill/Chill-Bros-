@@ -1,3 +1,12 @@
+export type TrainingVisual = {
+  modelSlug: "rtu" | "reach-in" | "ice-machine" | "fryer";
+  modelLabel: string;
+  referenceImage?: string;
+  referenceAlt?: string;
+  referenceCredit?: string;
+  referenceSource?: string;
+};
+
 export type TrainingCase = {
   id: string;
   title: string;
@@ -11,6 +20,7 @@ export type TrainingCase = {
   components: string[];
   tags: string[];
   safety: string;
+  visual: TrainingVisual;
 };
 
 export const trainingCases: TrainingCase[] = [
@@ -27,6 +37,14 @@ export const trainingCases: TrainingCase[] = [
     components: ["Transformer", "Thermostat Y", "Control board", "High-pressure switch", "Low-pressure switch", "Contactor coil"],
     tags: ["24v", "contactor", "no cooling", "low voltage", "thermostat"],
     safety: "Confirm meter reference and de-energize equipment before moving conductors. Line voltage remains present at the contactor even when the coil is not energized.",
+    visual: {
+      modelSlug: "rtu",
+      modelLabel: "Generic commercial package RTU training model",
+      referenceImage: "https://upload.wikimedia.org/wikipedia/commons/9/90/Rooftop_Packaged_Units.JPG",
+      referenceAlt: "Rooftop packaged HVAC units used as a real-equipment orientation reference",
+      referenceCredit: "P199 · Wikimedia Commons · Public domain",
+      referenceSource: "https://commons.wikimedia.org/wiki/File:Rooftop_Packaged_Units.JPG",
+    },
   },
   {
     id: "refrigeration-restriction",
@@ -41,6 +59,10 @@ export const trainingCases: TrainingCase[] = [
     components: ["Compressor", "Condenser", "Filter drier", "Metering device", "Evaporator"],
     tags: ["restriction", "low suction", "capillary", "txv", "filter drier"],
     safety: "Follow refrigerant recovery requirements and verify system refrigerant before service. Do not use pressure alone to identify charge or restriction.",
+    visual: {
+      modelSlug: "reach-in",
+      modelLabel: "Generic commercial reach-in refrigeration training model",
+    },
   },
   {
     id: "ice-machine-e1-sensor",
@@ -55,6 +77,10 @@ export const trainingCases: TrainingCase[] = [
     components: ["Temperature probe", "Sensor harness", "Control board", "Evaporator"],
     tags: ["e1", "probe", "sensor", "ntc", "ice machine"],
     safety: "Disconnect power before unplugging board or sensor connectors and follow manufacturer procedures for live-voltage checks.",
+    visual: {
+      modelSlug: "ice-machine",
+      modelLabel: "Generic commercial ice machine training model",
+    },
   },
   {
     id: "cooking-gas-ignition",
@@ -69,5 +95,13 @@ export const trainingCases: TrainingCase[] = [
     components: ["Thermostat", "High limit", "Igniter / pilot", "Flame safety", "Gas valve", "Burner"],
     tags: ["fryer", "oven", "gas valve", "ignition", "no heat"],
     safety: "Gas equipment requires leak checks and manufacturer combustion procedures. Stop if gas odor, unsafe combustion, or damaged safety controls are present.",
+    visual: {
+      modelSlug: "fryer",
+      modelLabel: "Generic commercial gas fryer training model",
+      referenceImage: "https://upload.wikimedia.org/wikipedia/commons/9/95/Deepfryer.jpg",
+      referenceAlt: "Commercial deep fryer used as a real-equipment orientation reference",
+      referenceCredit: "Kristofer2 · Wikimedia Commons · Public domain",
+      referenceSource: "https://commons.wikimedia.org/wiki/File:Deepfryer.jpg",
+    },
   },
 ];
