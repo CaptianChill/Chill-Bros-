@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DispatchPage() {
   const profile = await getCurrentStaffProfile();
-  if (!profile || profile.role !== "manager") redirect("/");
+  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
   const [customers, technicians, jobs] = await Promise.all([getCustomers(), getActiveTechnicians(), getDispatchJobs()]);
   return <AppShell title="Create customers, dispatch jobs, assign technicians, and manage every active service call." description="Existing service-call fields autosave, technician/customer workflow state is visible here, and the board refreshes live while idle." highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Dispatch state</p><StatusPill tone="emerald">{jobs.filter((j) => !["completed", "cancelled"].includes(j.status)).length} open jobs</StatusPill><StatusPill>{technicians.length} active technicians</StatusPill><StatusPill>{customers.length} customers</StatusPill></div>}>
     <LiveOfficeRefresh />
