@@ -47,13 +47,6 @@ export async function signInAction(_prevState: { error: string } | null, formDat
     return { error: "This staff account is not active." };
   }
 
-  if (profile.role === "manager") {
-    const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (assuranceError || assurance?.currentLevel !== "aal2") {
-      redirect(`/security/mfa?next=${encodeURIComponent(next)}`);
-    }
-  }
-
   redirect(next);
 }
 
