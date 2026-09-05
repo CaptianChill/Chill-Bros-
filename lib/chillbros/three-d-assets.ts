@@ -80,14 +80,14 @@ const assetSeeds: ThreeDAssetSeed[] = [
   },
   {
     id: "service-truck",
-    name: "Chill Bros Service Vehicle",
+    name: "Chill Bros Toyota Tundra Work Truck",
     category: "Vehicle",
     status: "queued",
     progress: 20,
-    source: "scripts/blender/build_assets.py · build_service_vehicle()",
+    source: "scripts/blender/build_actual_work_truck.py · photo-referenced exterior",
     webExport: "public/3d/vehicles/chill-bros-service-vehicle.glb",
-    purpose: "Wrap previews, ads, website scenes, and fleet visualization.",
-    nextStep: "Generate the reusable Blender vehicle shell, then refine wraps and exact fleet geometry as needed.",
+    purpose: "Photo-referenced fleet visualization of the current gray Toyota Tundra Double Cab work truck for wrap previews, branding mockups, ads, and website scenes.",
+    nextStep: "Rebuild the photo-referenced Tundra model whenever the real truck, wheels, accessories, or Chill Bros wrap changes.",
   },
 ];
 
