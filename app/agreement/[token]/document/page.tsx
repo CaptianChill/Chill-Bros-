@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { DocumentSignatureForm } from "@/components/document-signature-form";
 import { DocumentToolbar } from "@/components/document-toolbar";
 import { LogoBadge } from "@/components/logo-badge";
 import { getServiceAgreementByToken } from "@/lib/chillbros/service-agreement-queries";
@@ -16,7 +17,7 @@ export default async function AgreementDocumentPage({ params }: Props) {
 
   return <main className="min-h-screen bg-white px-3 py-4 text-zinc-950 sm:px-6 sm:py-8 print:p-0">
     <div className="mx-auto max-w-4xl">
-      <DocumentToolbar invoiceNumber={agreement.agreementNumber} returnHref={`/agreement/${agreement.portalToken}`} backLabel="Back to plan" />
+      <DocumentToolbar invoiceNumber={agreement.agreementNumber} returnHref={`/agreement/${agreement.portalToken}`} backLabel="Back" />
       <article className="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-xl print:rounded-none print:border-0 print:shadow-none">
         <header className="border-b border-zinc-200 bg-[#020407] px-6 py-5 text-white sm:px-8"><div className="flex flex-wrap items-center justify-between gap-5"><div className="flex items-center gap-3"><LogoBadge variant="full" className="w-14" /><div><p className="text-2xl font-bold tracking-wide">CHILL BROS</p><p className="text-xs uppercase tracking-[0.24em] text-cyan-100">Monthly Service Agreement</p></div></div><div className="text-right"><p className="text-sm font-semibold tracking-[0.18em] text-cyan-100">SERVICE PLAN</p><p className="mt-1 text-lg font-bold">{agreement.agreementNumber}</p><p className="mt-1 text-xs uppercase text-zinc-300">{agreement.status}</p></div></div></header>
 
@@ -32,7 +33,7 @@ export default async function AgreementDocumentPage({ params }: Props) {
 
           {agreement.terms ? <DocBlock title="Agreement terms" text={agreement.terms} /> : null}
 
-          <section className="grid gap-6 border-t border-zinc-200 pt-5 sm:grid-cols-2"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Customer acceptance</p><p className="mt-3 text-sm">Signed by: <span className="font-semibold">{agreement.signatureName ?? "Pending"}</span></p>{agreement.signedAt ? <p className="mt-1 text-xs text-zinc-500">Accepted {new Date(agreement.signedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</p> : <div className="mt-8 border-b border-zinc-500" />} </div><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Chill Bros</p><p className="mt-3 text-sm">Operational service plan prepared for {agreement.customerName}.</p><div className="mt-8 border-b border-zinc-500" /></div></section>
+          <section className="grid gap-6 border-t border-zinc-200 pt-5 sm:grid-cols-[1.25fr_0.75fr]"><div><DocumentSignatureForm kind="agreement" token={token} initialSignature={agreement.signatureName} initialSignedAt={agreement.signedAt} alreadyApproved={["accepted", "active"].includes(agreement.status)} /></div><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Chill Bros</p><p className="mt-3 text-sm">Operational service plan prepared for {agreement.customerName}.</p><div className="mt-8 border-b border-zinc-500" /></div></section>
         </div>
       </article>
     </div>

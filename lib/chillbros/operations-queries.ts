@@ -5,9 +5,11 @@ import type { JobStatus } from "./types";
 
 export type DispatchJob = { id: string; customerId: string; customerName: string; assignedTechId: string | null; assignedTechName: string | null; status: JobStatus; location: string | null; scope: string | null; workPerformed: string | null; scheduledWindow: string | null; createdAt: string; workflowStage: string };
 export type ActiveTechnician = { id: string; fullName: string };
+export type TimekeepingStaff = { id: string; fullName: string; role: "technician" | "office"; lastClockEvent: string | null };
 export type OpenTimesheet = { id: string; location: string | null; clockInAt: string; jobId: string | null; breakStartedAt: string | null; breakMinutes: number };
-export type TimesheetHistoryRow = { id: string; technicianName: string; location: string | null; clockInAt: string; clockOutAt: string | null; laborHours: number; driveHours: number };
+export type TimesheetHistoryRow = { id: string; technicianId: string; technicianName: string; jobId: string | null; location: string | null; clockInAt: string; clockOutAt: string | null; laborHours: number; driveHours: number };
 export type AssignedJobOption = { id: string; customerName: string; location: string | null; scheduledWindow: string | null; status: "scheduled" | "in_progress" };
+export type StaffCallRow = { id: string; technicianId: string; technicianName: string; customerName: string; status: JobStatus; location: string | null; scope: string | null; workPerformed: string | null; laborHours: number; driveHours: number; scheduledWindow: string | null; createdAt: string };
 
 export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
   const supabase = createServiceRoleClient();
@@ -29,6 +31,13 @@ export async function getActiveTechnicians(): Promise<ActiveTechnician[]> {
   const { data, error } = await supabase.from("chillbros_profiles").select("id, full_name").eq("role", "technician").eq("status", "active").order("full_name", { ascending: true });
   if (error || !data) return [];
   return data.map((row) => ({ id: row.id, fullName: row.full_name }));
+}
+
+export async function getTimekeepingStaff(): Promise<TimekeepingStaff[]> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase.from("chillbros_profiles").select("id,full_name,role,last_clock_event").in("role", ["technician", "office"]).eq("status", "active").order("full_name", { ascending: true });
+  if (error || !data) return [];
+  return data.map((row) => ({ id: row.id, fullName: row.full_name, role: row.role as "technician" | "office", lastClockEvent: row.last_clock_event }));
 }
 
 export async function getAssignedJobsForTech(technicianId: string): Promise<AssignedJobOption[]> {
@@ -54,7 +63,18 @@ export async function getOpenTimesheet(technicianId: string): Promise<OpenTimesh
 
 export async function getTimesheetHistory(limit = 100): Promise<TimesheetHistoryRow[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_timesheets").select("id, location, clock_in_at, clock_out_at, labor_hours, drive_hours, tech:chillbros_profiles(full_name)").order("clock_in_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("chillbros_timesheets").select("id, technician_id, job_id, location, clock_in_at, clock_out_at, labor_hours, drive_hours, tech:chillbros_profiles(full_name)").order("clock_in_at", { ascending: false }).limit(limit);
   if (error || !data) return [];
-  return data.map((row) => { const tech = Array.isArray(row.tech) ? row.tech[0] : row.tech; return { id: row.id, technicianName: tech?.full_name ?? "Unknown technician", location: row.location, clockInAt: row.clock_in_at, clockOutAt: row.clock_out_at, laborHours: Number(row.labor_hours ?? 0), driveHours: Number(row.drive_hours ?? 0) }; });
+  return data.map((row) => { const tech = Array.isArray(row.tech) ? row.tech[0] : row.tech; return { id: row.id, technicianId: row.technician_id, technicianName: tech?.full_name ?? "Unknown technician", jobId: row.job_id, location: row.location, clockInAt: row.clock_in_at, clockOutAt: row.clock_out_at, laborHours: Number(row.labor_hours ?? 0), driveHours: Number(row.drive_hours ?? 0) }; });
+}
+
+export async function getManagerStaffCalls(limit = 200): Promise<StaffCallRow[]> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase.from("chillbros_jobs").select("id,assigned_tech_id,status,location,scope,work_performed,labor_hours,drive_hours,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles(full_name)").order("created_at", { ascending: false }).limit(limit);
+  if (error || !data) return [];
+  return data.filter((row) => Boolean(row.assigned_tech_id)).map((row) => {
+    const customer = Array.isArray(row.customer) ? row.customer[0] : row.customer;
+    const tech = Array.isArray(row.tech) ? row.tech[0] : row.tech;
+    return { id: row.id, technicianId: row.assigned_tech_id as string, technicianName: tech?.full_name ?? "Unknown technician", customerName: customer?.name ?? "Unknown customer", status: row.status, location: row.location, scope: row.scope, workPerformed: row.work_performed, laborHours: Number(row.labor_hours ?? 0), driveHours: Number(row.drive_hours ?? 0), scheduledWindow: row.scheduled_window, createdAt: row.created_at };
+  });
 }

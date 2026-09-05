@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LogOut, Snowflake } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 import { navItems } from "@/lib/chillbros/nav";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -7,11 +7,10 @@ import { signOutAction } from "@/app/sign-in/actions";
 import { AppNavigation } from "@/components/app-navigation";
 import { LogoBadge } from "@/components/logo-badge";
 import { PageSyncControls } from "@/components/page-sync-controls";
-import { StatusPill } from "@/components/status-pill";
 
-type AppShellProps = { children: ReactNode; title: string; description: string; highlight?: ReactNode };
+type AppShellProps = { children: ReactNode; title: string; description?: string; highlight?: ReactNode };
 
-export async function AppShell({ children, title, description, highlight }: AppShellProps) {
+export async function AppShell({ children, title }: AppShellProps) {
   const profile = await getCurrentStaffProfile();
   const visibleNavItems = profile ? navItems.filter((item) => item.roles.includes(profile.role)) : [];
   const roleLabel = profile?.role === "manager" ? "Manager" : profile?.role === "office" ? "Office / Dispatch" : "Technician";
@@ -19,39 +18,23 @@ export async function AppShell({ children, title, description, highlight }: AppS
   return <div className="min-h-screen bg-transparent text-foreground">
     <a href="#main-content" className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-xl bg-[#8ffafa] px-4 py-2 text-sm font-semibold text-black transition focus:translate-y-0">Skip to content</a>
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-3 pb-8 pt-2.5 sm:px-6 sm:pt-4 lg:px-8">
-      <header className="sticky z-40 mb-3 rounded-2xl border border-[#2d7dff]/45 bg-[#020407]/98 px-3 py-2.5 shadow-[0_0_16px_rgba(45,125,255,0.36)] backdrop-blur-xl sm:mb-5 sm:rounded-3xl sm:px-4 sm:py-4" style={{ top: "max(env(safe-area-inset-top), 8px)", WebkitTransform: "translateZ(0)" }}>
+      <header className="sticky z-40 mb-3 rounded-2xl border border-[#2d7dff]/40 bg-[#020407]/98 px-3 py-2.5 shadow-[0_0_16px_rgba(45,125,255,0.30)] backdrop-blur-xl sm:mb-4 sm:px-4 sm:py-3" style={{ top: "max(env(safe-area-inset-top), 8px)", WebkitTransform: "translateZ(0)" }}>
         <div className="flex items-center gap-2.5 sm:gap-4">
-          <LogoBadge variant="full" className="w-9 shrink-0 sm:w-12 lg:w-14" />
+          <LogoBadge variant="full" className="w-9 shrink-0 sm:w-11" />
           <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-serif text-[1.55rem] font-black italic uppercase leading-none tracking-[0.015em] text-[#071126] [-webkit-text-stroke:1px_#9ffcff] [text-shadow:0_0_2px_#ffffff,0_0_6px_#8ffcff,0_0_12px_#2d7dff,0_0_22px_#0057ff,0_0_30px_#004cff] sm:text-[2rem] sm:[-webkit-text-stroke:1.2px_#9ffcff] lg:text-[2.35rem]">Chill Bros</div>
-                <div className="mt-1 truncate font-brand text-[0.48rem] font-semibold uppercase tracking-[0.2em] text-[#d9fbff] sm:text-[0.62rem] sm:tracking-[0.28em]">Operational Command Center</div>
-              </div>
-              <div className="hidden sm:flex sm:items-center sm:gap-2"><StatusPill>Internal operational app</StatusPill><StatusPill tone="emerald">Production</StatusPill></div>
-              <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-emerald-200 sm:hidden">Live</span>
-            </div>
+            <div className="truncate font-serif text-[1.45rem] font-black italic uppercase leading-none tracking-[0.015em] text-[#071126] [-webkit-text-stroke:1px_#9ffcff] [text-shadow:0_0_2px_#ffffff,0_0_6px_#8ffcff,0_0_12px_#2d7dff,0_0_22px_#0057ff] sm:text-[1.8rem]">Chill Bros</div>
+            <div className="mt-1 truncate font-brand text-[0.46rem] font-semibold uppercase tracking-[0.2em] text-[#d9fbff] sm:text-[0.58rem]">Operational Command Center</div>
           </div>
-        </div>
-
-        <div className="mt-2 flex items-center justify-between gap-2 border-t border-[#2d7dff]/15 pt-2 text-xs sm:mt-3 sm:flex-wrap sm:border-0 sm:pt-0">
-          <div className="hidden items-center gap-2 rounded-full border border-[#2d7dff]/25 bg-black/35 px-3 py-1.5 text-[#d9fbff] sm:inline-flex"><Snowflake className="h-3.5 w-3.5" />Supabase-backed operations</div>
-          <div className="flex min-w-0 flex-1 items-center justify-between gap-2 sm:flex-none sm:justify-end">
+          <div className="flex shrink-0 items-center gap-1.5">
             <PageSyncControls />
-            {profile ? <form action={signOutAction} className="min-w-0"><button type="submit" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#2d7dff]/30 bg-[#2d7dff]/5 px-2 py-1 text-[10px] text-[#d9fbff] transition hover:bg-[#2d7dff]/15 sm:text-xs"><LogOut className="h-3 w-3" /><span className="hidden sm:inline">{profile.fullName} · {roleLabel} · </span>Sign out</button></form> : null}
+            {profile ? <form action={signOutAction}><button type="submit" title={`Sign out ${profile.fullName}`} className="inline-flex items-center gap-1 rounded-xl border border-[#2d7dff]/25 bg-black/35 px-2.5 py-2 text-[10px] text-[#d9fbff] transition hover:bg-[#2d7dff]/15 sm:text-xs"><LogOut className="h-3.5 w-3.5" /><span className="hidden md:inline">{profile.fullName} · {roleLabel}</span><span className="md:hidden">Exit</span></button></form> : null}
           </div>
         </div>
-
         <AppNavigation items={visibleNavItems} />
       </header>
 
-      <div className="mb-4 grid gap-4 lg:mb-6 lg:grid-cols-[1.35fr_0.65fr]">
-        <section className="rounded-2xl border border-[#2d7dff]/35 bg-gradient-to-br from-[#2d7dff]/10 via-[#020407]/92 to-[#020407]/96 p-4 text-center shadow-[0_0_18px_rgba(45,125,255,0.18)] sm:rounded-3xl sm:p-5 sm:text-left lg:p-6">
-          <p className="font-brand text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8ffafa] sm:text-xs sm:tracking-[0.3em]">Chill Bros operational command center</p>
-          <h1 className="neon-text mt-2 text-2xl font-semibold leading-[1.05] text-white sm:mt-3 sm:text-3xl lg:text-4xl">{title}</h1>
-          <p className="mx-auto mt-2 max-w-3xl text-sm leading-6 text-zinc-300 sm:mx-0 sm:mt-3 sm:text-base sm:leading-7">{description}</p>
-        </section>
-        <section className="hidden rounded-3xl border border-[#2d7dff]/35 bg-[#020407]/92 p-5 shadow-[0_0_18px_rgba(45,125,255,0.16)] lg:block">{highlight}</section>
+      <div className="mb-3 flex min-h-12 items-center rounded-2xl border border-[#2d7dff]/25 bg-[#020407]/78 px-4 py-3 shadow-[0_0_14px_rgba(45,125,255,0.12)] sm:mb-4 sm:px-5">
+        <h1 className="neon-text text-xl font-semibold leading-tight text-white sm:text-2xl">{title}</h1>
       </div>
 
       <main id="main-content" className="min-w-0 flex-1">{children}</main>
