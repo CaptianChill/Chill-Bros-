@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
+import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { AdjustmentType, PaymentMethod } from "./types";
@@ -116,7 +117,7 @@ export async function updateEstimateAdjustmentsAction(invoiceId: string, adjustm
 
 async function activeInvoiceByToken(token: string) {
   const supabase = createServiceRoleClient();
-  const { data } = await supabase.from("chillbros_invoices").select("id,job_id,status,payment_status,revoked_at").eq("portal_token", token).is("revoked_at", null).neq("status", "void").maybeSingle();
+  const { data } = await supabase.from("chillbros_invoices").select("id,job_id,customer_id,invoice_number,status,payment_status,revoked_at").eq("portal_token", token).is("revoked_at", null).neq("status", "void").maybeSingle();
   return data ?? null;
 }
 
@@ -133,8 +134,9 @@ export async function approveInvoiceV2Action(token: string, signatureName: strin
   const { data, error } = await supabase.from("chillbros_invoices").update({ status: "approved", signature_name: name, signed_at: now, updated_at: now }).eq("id", invoice.id).eq("status", "awaiting_approval").is("revoked_at", null).select("id").maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "Approval could not be recorded." };
   await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.job_id, invoice_id: invoice.id, stage: "approved", message: `Customer approved estimate as ${name}.` });
-  await supabase.from("chillbros_email_log").insert({ subject: "Customer approval received", recipients: "manager + dispatch", related_invoice_id: invoice.id, status: "queued" });
-  refresh(["/manager", "/dispatch", "/technician", "/", `/portal/${token}`]);
+  const { data: customer } = await supabase.from("chillbros_customers").select("name").eq("id", invoice.customer_id).maybeSingle();
+  await sendApprovalNotification({ subject: `Chill Bros approval · ${invoice.invoice_number}`, documentLabel: "Estimate / invoice", documentNumber: invoice.invoice_number, signedBy: name, customerName: customer?.name ?? null, relatedInvoiceId: invoice.id });
+  refresh(["/manager", "/dispatch", "/technician", "/", `/portal/${token}`, `/portal/${token}/document`]);
   return { ok: true, data: undefined };
 }
 
