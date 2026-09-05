@@ -7,10 +7,11 @@ import { signOutAction } from "@/app/sign-in/actions";
 import { AppNavigation } from "@/components/app-navigation";
 import { LogoBadge } from "@/components/logo-badge";
 import { PageSyncControls } from "@/components/page-sync-controls";
+import { PageTitle } from "@/components/page-title";
 
 type AppShellProps = { children: ReactNode; title: string; description?: string; highlight?: ReactNode };
 
-export async function AppShell({ children, title }: AppShellProps) {
+export async function AppShell({ children }: AppShellProps) {
   const profile = await getCurrentStaffProfile();
   const visibleNavItems = profile ? navItems.filter((item) => item.roles.includes(profile.role)) : [];
   const roleLabel = profile?.role === "manager" ? "Manager" : profile?.role === "office" ? "Office / Dispatch" : "Technician";
@@ -33,8 +34,8 @@ export async function AppShell({ children, title }: AppShellProps) {
         <AppNavigation items={visibleNavItems} />
       </header>
 
-      <div className="mb-3 flex min-h-12 items-center rounded-2xl border border-[#2d7dff]/25 bg-[#020407]/78 px-4 py-3 shadow-[0_0_14px_rgba(45,125,255,0.12)] sm:mb-4 sm:px-5">
-        <h1 className="neon-text text-xl font-semibold leading-tight text-white sm:text-2xl">{title}</h1>
+      <div className="mb-3 flex min-h-14 items-center justify-center rounded-2xl border border-[#2d7dff]/25 bg-[#020407]/78 px-4 py-3 shadow-[0_0_14px_rgba(45,125,255,0.12)] sm:mb-4 sm:px-5">
+        <PageTitle />
       </div>
 
       <main id="main-content" className="min-w-0 flex-1">{children}</main>
