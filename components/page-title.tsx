@@ -21,7 +21,7 @@ const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/reports", "Reports"],
 ];
 
-const ART_VERSION = "20260905-1432";
+const ART_VERSION = "20260905-1448";
 
 export function PageTitle() {
   const pathname = usePathname();
