@@ -1,1 +1,0 @@
-Header image repair in progress: moving iOS title art to fresh PNG filenames and hard-refreshing the app shell so stale standalone/PWA sessions cannot retain broken image URLs.
