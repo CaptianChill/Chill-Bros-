@@ -36,7 +36,8 @@ const privateNoStoreHeaders = [
 ];
 
 const internalArtworkHeaders = [
-  { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+  { key: "Cache-Control", value: "no-store, max-age=0" },
+  { key: "Pragma", value: "no-cache" },
   { key: "Cross-Origin-Resource-Policy", value: "same-site" },
 ];
 
