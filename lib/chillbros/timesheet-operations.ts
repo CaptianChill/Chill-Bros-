@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
-type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 export type ManagerTimesheetInput = {
   timesheetId?: string;
   technicianId: string;
