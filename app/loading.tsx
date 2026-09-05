@@ -6,11 +6,13 @@ export default function Loading() {
       aria-busy="true"
       aria-label="Chill Bros loading"
     >
-      <img
-        src="/chill-bros-load-screen.png"
-        alt="Chill Bros Cooling and Cooking, Your Pros"
-        className="h-full max-h-dvh w-full max-w-[1122px] object-contain drop-shadow-[0_0_30px_rgba(45,125,255,0.28)]"
-        draggable={false}
+      <div
+        role="img"
+        aria-label="Chill Bros Cooling and Cooking, Your Pros"
+        className="h-full max-h-dvh w-full max-w-[1122px] bg-contain bg-center bg-no-repeat drop-shadow-[0_0_30px_rgba(45,125,255,0.28)]"
+        style={{
+          backgroundImage: "url('/chill-bros-load-screen.webp'), url('/logo.png')",
+        }}
       />
     </main>
   );

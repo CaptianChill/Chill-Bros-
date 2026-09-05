@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarClock, ClipboardCheck, ContactRound, FileText, Headphones, RefreshCw, ShieldCheck, UsersRound, Wrench } from "lucide-react";
+import { CalendarClock, UsersRound, Wrench } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { LiveOfficeRefresh } from "@/components/live-office-refresh";
@@ -75,15 +75,6 @@ export default async function OfficePage() {
   const awaitingApproval = invoices.filter((invoice) => invoice.status === "awaiting_approval").length;
   const approvedUnpaid = invoices.filter((invoice) => invoice.status === "approved" && invoice.paymentStatus !== "paid").length;
 
-  const responsibilities = [
-    { icon: Headphones, title: "Customer intake", text: "Answer service requests, confirm customer contact information, service address, complaint/scope, access details, and requested timing." },
-    { icon: CalendarClock, title: "Scheduling & dispatch", text: "Create service calls, assign or reassign technicians, maintain the schedule window, and keep call status accurate throughout the day." },
-    { icon: ContactRound, title: "CRM accuracy", text: "Maintain customer phone, email, address, service history, and equipment records so field technicians receive clean information." },
-    { icon: ClipboardCheck, title: "Workflow handoff", text: "Monitor technician progress, completed notes, customer approval, payment-method selection, and invoice status. Escalate exceptions to management." },
-    { icon: FileText, title: "Customer documents", text: "Open, copy, text, or email secure estimate/invoice links. Verify the correct customer and document before sending." },
-    { icon: RefreshCw, title: "Office coordination", text: "Use Save and Refresh, watch the live workflow feed, keep dispatch current, and communicate meaningful changes to technicians and management." },
-  ];
-
   return <AppShell
     title="Dispatch / Office Staff Command Center"
     description="Run customer intake, scheduling, dispatch, CRM, equipment records, customer document delivery, workflow monitoring, and the office workday from one role-specific workspace."
@@ -91,16 +82,6 @@ export default async function OfficePage() {
   >
     <LiveOfficeRefresh />
     <div className="space-y-4 sm:space-y-6">
-      <SectionCard eyebrow="Role definition" title="Dispatch / Office Staff job description" description="The office role owns the accuracy and movement of information between the customer, technician, and management.">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {responsibilities.map(({ icon: Icon, title, text }) => <div key={title} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4"><div className="flex items-center gap-2 text-[#bafcfc]"><Icon className="h-4 w-4" /><h3 className="font-medium text-white">{title}</h3></div><p className="mt-2 text-sm leading-6 text-zinc-400">{text}</p></div>)}
-        </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4"><div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-300" /><p className="font-medium text-white">Office permissions</p></div><p className="mt-2 text-sm leading-6 text-zinc-300">Dispatch, CRM, equipment create/edit, customer document sharing, workflow visibility, and personal timesheet/break tracking.</p></div>
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4"><p className="font-medium text-white">Manager escalation</p><p className="mt-2 text-sm leading-6 text-zinc-300">Inventory pricing, fee changes, staff administration, reports, payment overrides, estimate revocation, destructive actions, and owner-level decisions remain manager-only.</p></div>
-        </div>
-      </SectionCard>
-
       <SectionCard eyebrow="Today" title="Office operating pulse" description="Live production counts for the items the office should keep moving.">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {[ ["Open calls", openJobs.length], ["In progress", inProgressJobs.length], ["Unassigned", unassignedJobs.length], ["Awaiting approval", awaitingApproval], ["Approved / unpaid", approvedUnpaid] ].map(([label, value]) => <div key={String(label)} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3 text-center"><p className="text-xs text-zinc-500">{label}</p><p className="mt-2 text-2xl font-semibold text-white">{value}</p></div>)}
