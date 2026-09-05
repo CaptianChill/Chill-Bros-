@@ -29,22 +29,22 @@ export function PageTitle() {
   return (
     <div className="grid w-full grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2 sm:grid-cols-[3rem_minmax(0,1fr)_3rem] sm:gap-3">
       <Image
-        src="/internal/chill-bros-smiley.png"
+        src="/internal/chill-bros-smiley.webp"
         alt=""
         aria-hidden="true"
-        width={320}
-        height={320}
+        width={80}
+        height={80}
         className="h-9 w-9 justify-self-start object-contain drop-shadow-[0_0_8px_rgba(143,250,250,0.30)] sm:h-11 sm:w-11"
       />
       <h1 className="min-w-0 truncate text-center font-serif text-[1.45rem] font-black italic uppercase leading-none tracking-[0.015em] text-[#071126] [-webkit-text-stroke:1px_#9ffcff] [text-shadow:0_0_2px_#ffffff,0_0_6px_#8ffcff,0_0_12px_#2d7dff,0_0_22px_#0057ff] sm:text-[1.8rem]">
         {label}
       </h1>
       <Image
-        src="/internal/chill-bros-texas.png"
+        src="/internal/chill-bros-texas.webp"
         alt=""
         aria-hidden="true"
-        width={320}
-        height={298}
+        width={80}
+        height={80}
         className="h-9 w-10 justify-self-end object-contain drop-shadow-[0_0_8px_rgba(143,250,250,0.30)] sm:h-11 sm:w-12"
       />
     </div>
