@@ -29,11 +29,11 @@ export function PageTitle() {
     <div className="relative flex min-h-12 w-full items-center justify-between gap-3 overflow-visible">
       <div className="relative z-20 flex h-11 w-11 shrink-0 items-center justify-center overflow-visible sm:h-12 sm:w-12">
         <img
-          src="/internal/chill-bros-smiley-v3.png"
+          src="/internal/chill-bros-smiley-v4.png"
           alt=""
           aria-hidden="true"
-          width={64}
-          height={64}
+          width={96}
+          height={96}
           loading="eager"
           decoding="sync"
           className="block h-full w-full max-w-none object-contain [clip-path:none] [filter:none] [transform:none]"
