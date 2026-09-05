@@ -1,0 +1,56 @@
+name: Materialize Chill Bros loader asset
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".loader-final/**"
+      - ".github/workflows/materialize-loader-asset.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  materialize-loader:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild loader image from staged base64
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public
+          cat .loader-final/chill-bros-load-screen.*.b64 | tr -d '\n\r ' | base64 --decode > public/chill-bros-load-screen.webp
+
+      - name: Validate loader image
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("public/chill-bros-load-screen.webp")
+          data = p.read_bytes()
+          assert len(data) > 10000, f"loader asset unexpectedly small: {len(data)} bytes"
+          assert data[:4] == b"RIFF" and data[8:12] == b"WEBP", "loader asset is not a valid WebP container"
+          print(f"Validated {p} ({len(data)} bytes)")
+          PY
+
+      - name: Commit materialized loader asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/chill-bros-load-screen.webp
+          if git diff --cached --quiet; then
+            echo "Loader asset is already current."
+            exit 0
+          fi
+          git commit -m "Materialize Chill Bros loader image"
+          git push origin HEAD:main
