@@ -26,28 +26,38 @@ export function PageTitle() {
   const label = TITLES.find(([test]) => test(pathname))?.[1] ?? "Chill Bros";
 
   return (
-    <div className="grid w-full grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2 sm:grid-cols-[3rem_minmax(0,1fr)_3rem] sm:gap-3">
-      <img
-        src="/internal/chill-bros-smiley-v3.png"
-        alt=""
-        aria-hidden="true"
-        width={64}
-        height={64}
-        decoding="sync"
-        className="h-9 w-9 justify-self-start object-contain drop-shadow-[0_0_8px_rgba(143,250,250,0.30)] sm:h-11 sm:w-11"
-      />
-      <h1 className="min-w-0 truncate text-center font-serif text-[1.45rem] font-black italic uppercase leading-none tracking-[0.015em] text-[#071126] [-webkit-text-stroke:1px_#9ffcff] [text-shadow:0_0_2px_#ffffff,0_0_6px_#8ffcff,0_0_12px_#2d7dff,0_0_22px_#0057ff] sm:text-[1.8rem]">
+    <div className="relative flex min-h-12 w-full items-center justify-between gap-3 overflow-visible">
+      <div className="relative z-20 flex h-11 w-11 shrink-0 items-center justify-center overflow-visible sm:h-12 sm:w-12">
+        <img
+          src="/internal/chill-bros-smiley-v3.png"
+          alt=""
+          aria-hidden="true"
+          width={64}
+          height={64}
+          loading="eager"
+          decoding="sync"
+          className="block h-full w-full max-w-none object-contain [clip-path:none] [filter:none] [transform:none]"
+          style={{ WebkitTransform: "none", transform: "none", filter: "none" }}
+        />
+      </div>
+
+      <h1 className="relative z-10 min-w-0 flex-1 truncate text-center font-serif text-[1.45rem] font-black italic uppercase leading-none tracking-[0.015em] text-[#071126] [-webkit-text-stroke:1px_#9ffcff] [text-shadow:0_0_2px_#ffffff,0_0_6px_#8ffcff,0_0_12px_#2d7dff,0_0_22px_#0057ff] sm:text-[1.8rem]">
         {label}
       </h1>
-      <img
-        src="/internal/chill-bros-texas-v3.png"
-        alt=""
-        aria-hidden="true"
-        width={64}
-        height={64}
-        decoding="sync"
-        className="h-9 w-10 justify-self-end object-contain drop-shadow-[0_0_8px_rgba(143,250,250,0.30)] sm:h-11 sm:w-12"
-      />
+
+      <div className="relative z-20 flex h-11 w-12 shrink-0 items-center justify-center overflow-visible sm:h-12 sm:w-14">
+        <img
+          src="/internal/chill-bros-texas-v3.png"
+          alt=""
+          aria-hidden="true"
+          width={64}
+          height={64}
+          loading="eager"
+          decoding="sync"
+          className="block h-full w-full max-w-none object-contain [clip-path:none] [filter:none] [transform:none]"
+          style={{ WebkitTransform: "none", transform: "none", filter: "none" }}
+        />
+      </div>
     </div>
   );
 }
