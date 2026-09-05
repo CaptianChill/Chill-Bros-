@@ -34,7 +34,7 @@ export async function AppShell({ children }: AppShellProps) {
         <AppNavigation items={visibleNavItems} />
       </header>
 
-      <div className="mb-3 flex min-h-14 items-center justify-center rounded-2xl border border-[#2d7dff]/25 bg-[#020407]/78 px-4 py-3 shadow-[0_0_14px_rgba(45,125,255,0.12)] sm:mb-4 sm:px-5">
+      <div className="relative z-10 mb-3 flex min-h-[4.5rem] w-full items-center justify-center overflow-visible rounded-2xl border border-[#2d7dff]/25 bg-[#020407]/78 px-4 py-3 shadow-[0_0_14px_rgba(45,125,255,0.12)] sm:mb-4 sm:min-h-20 sm:px-5">
         <PageTitle />
       </div>
 
