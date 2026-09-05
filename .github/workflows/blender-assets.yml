@@ -36,6 +36,9 @@ jobs:
       - name: Generate Chill Bros 3D assets
         run: blender --background --python-exit-code 1 --python scripts/blender/build_assets.py
 
+      - name: Replace generic service vehicle with photo-referenced Tundra
+        run: blender --background --python-exit-code 1 --python scripts/blender/build_actual_work_truck.py
+
       - name: Verify exports
         run: |
           test -s public/3d/brand/chill-bros-neon-logo.glb
