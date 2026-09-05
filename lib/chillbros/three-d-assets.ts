@@ -80,14 +80,14 @@ const assetSeeds: ThreeDAssetSeed[] = [
   },
   {
     id: "service-truck",
-    name: "Chill Bros Toyota Tundra Work Truck",
+    name: "Chill Bros Lifted Cosmic-Wrap Toyota Tundra",
     category: "Vehicle",
     status: "queued",
     progress: 20,
-    source: "scripts/blender/build_actual_work_truck.py · photo-referenced exterior",
+    source: "scripts/blender/build_actual_work_truck.py · all-angle truck references + approved wrap render",
     webExport: "public/3d/vehicles/chill-bros-service-vehicle.glb",
-    purpose: "Photo-referenced fleet visualization of the current gray Toyota Tundra Double Cab work truck for wrap previews, branding mockups, ads, and website scenes.",
-    nextStep: "Rebuild the photo-referenced Tundra model whenever the real truck, wheels, accessories, or Chill Bros wrap changes.",
+    purpose: "Interactive fleet and branding model of the current Toyota Tundra with the approved lift, glossy-black wheel/accessory package, flat-black galaxy wrap, shooting stars, rear-building frost snowstorm, CHILL BROS door graphics, and ice-blue lighting package.",
+    nextStep: "Rebuild this vehicle asset whenever the real truck hardware or approved Chill Bros wrap changes.",
   },
 ];
 
