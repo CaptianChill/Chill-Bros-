@@ -25,7 +25,6 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
   { key: "Origin-Agent-Cluster", value: "?1" },
   { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
   { key: "X-DNS-Prefetch-Control", value: "off" },
@@ -34,6 +33,11 @@ const securityHeaders = [
 
 const privateNoStoreHeaders = [
   { key: "Cache-Control", value: "private, no-store, no-cache, max-age=0, must-revalidate" },
+];
+
+const internalArtworkHeaders = [
+  { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+  { key: "Cross-Origin-Resource-Policy", value: "same-site" },
 ];
 
 const nextConfig: NextConfig = {
@@ -50,6 +54,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      { source: "/internal/:path*", headers: internalArtworkHeaders },
       { source: "/sign-in", headers: privateNoStoreHeaders },
       { source: "/security/:path*", headers: privateNoStoreHeaders },
       { source: "/portal/:path*", headers: privateNoStoreHeaders },
