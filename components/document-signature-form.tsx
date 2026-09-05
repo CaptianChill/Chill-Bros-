@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BadgeCheck } from "lucide-react";
 
 import { approveInvoiceV2Action } from "@/lib/chillbros/estimate-actions-v2";
-import { acceptServiceAgreementAction } from "@/lib/chillbros/service-agreement-actions";
+import { acceptServiceAgreementAndNotifyAction } from "@/lib/chillbros/service-agreement-approval";
 
 type Props = {
   kind: "estimate" | "agreement";
@@ -27,7 +27,7 @@ export function DocumentSignatureForm({ kind, token, initialSignature, initialSi
     if (signature.trim().length < 2) { setError("Enter the signer name."); return; }
     setError(null);
     startTransition(async () => {
-      const result = kind === "estimate" ? await approveInvoiceV2Action(token, signature) : await acceptServiceAgreementAction(token, signature);
+      const result = kind === "estimate" ? await approveInvoiceV2Action(token, signature) : await acceptServiceAgreementAndNotifyAction(token, signature);
       if (!result.ok) { setError(result.error); return; }
       setApproved(true);
       setSignedAt(new Date().toISOString());
