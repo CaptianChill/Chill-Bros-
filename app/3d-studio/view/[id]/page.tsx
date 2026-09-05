@@ -41,7 +41,9 @@ export default async function ThreeDAssetViewerPage({ params }: { params: Promis
         {asset.status === "ready" ? (
           <ThreeDAssetViewer src={src} label={asset.name} />
         ) : (
-          <SectionCard eyebrow="Not ready" title="This asset is still in the Blender pipeline" description="The viewer unlocks automatically after the GLB export passes validation." />
+          <SectionCard eyebrow="Not ready" title="This asset is still in the Blender pipeline" description="The viewer unlocks automatically after the GLB export passes validation.">
+            <p className="text-sm text-zinc-400">Current status: {asset.status} · {asset.progress}%</p>
+          </SectionCard>
         )}
 
         <SectionCard eyebrow={asset.category} title="Asset details" description={asset.purpose}>
