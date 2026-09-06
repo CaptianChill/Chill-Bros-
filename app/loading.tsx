@@ -10,9 +10,7 @@ export default function Loading() {
         role="img"
         aria-label="Chill Bros Cooling and Cooking, Your Pros"
         className="h-full max-h-dvh w-full max-w-[1122px] bg-contain bg-center bg-no-repeat drop-shadow-[0_0_30px_rgba(45,125,255,0.28)]"
-        style={{
-          backgroundImage: "url('/chill-bros-load-screen.webp'), url('/logo.png')",
-        }}
+        style={{ backgroundImage: "url('/chill-bros-loader.webp')" }}
       />
     </main>
   );
