@@ -39,10 +39,10 @@ async function command(socket: tls.TLSSocket, text: string, expected: string[]) 
   return response;
 }
 
-async function sendGmailMessage(to: string, subject: string, text: string) {
+export async function sendCompanyEmail(to: string, subject: string, text: string) {
   const user = String(process.env.GMAIL_SMTP_USER || "").trim();
   const password = String(process.env.GMAIL_SMTP_APP_PASSWORD || "").replace(/\s+/g, "");
-  if (!user || !password) return { sent: false as const, status: "configuration_required" };
+  if (!user || !password) return { sent: false as const, status: "configuration_required" as const };
 
   const socket = tls.connect({ host: "smtp.gmail.com", port: 465, servername: "smtp.gmail.com", timeout: 12000 });
   try {
@@ -72,7 +72,7 @@ async function sendGmailMessage(to: string, subject: string, text: string) {
     const accepted = await readResponse(socket);
     if (!accepted.startsWith("250")) throw new Error("SMTP message was not accepted.");
     await command(socket, "QUIT", ["221"]);
-    return { sent: true as const, status: "sent" };
+    return { sent: true as const, status: "sent" as const };
   } finally {
     socket.destroy();
   }
@@ -94,7 +94,7 @@ export async function sendApprovalNotification(input: ApprovalNotification) {
 
   let status = "failed";
   try {
-    const result = await sendGmailMessage(to, subject, text);
+    const result = await sendCompanyEmail(to, subject, text);
     status = result.status;
   } catch (error) {
     status = `failed: ${error instanceof Error ? error.message.slice(0, 160) : "unknown SMTP error"}`;
