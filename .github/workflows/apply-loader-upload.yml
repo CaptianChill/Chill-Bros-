@@ -5,7 +5,7 @@ on:
     branches:
       - fix/correct-loader-artwork
     paths:
-      - ".loader-upload/**"
+      - ".loader-upload/READY"
 
 permissions:
   contents: write
