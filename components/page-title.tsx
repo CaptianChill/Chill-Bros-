@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 
 const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/", "Command Center"],
+  [(p) => p === "/create", "Creation Center"],
   [(p) => p === "/office", "Office Hub"],
   [(p) => p === "/dispatch", "Dispatch"],
   [(p) => p === "/customers", "Customer Center"],
@@ -12,7 +13,7 @@ const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/agreements", "Monthly Plans"],
   [(p) => p === "/manager", "Manager Hub"],
   [(p) => p === "/security", "Security"],
-  [(p) => p === "/technician", "Tech Workflow"],
+  [(p) => p === "/technician", "Field Workflow"],
   [(p) => p === "/training", "Training Bible"],
   [(p) => p.startsWith("/training/model/"), "Training Model"],
   [(p) => p === "/timesheet", "Timesheets"],
