@@ -1,7 +1,8 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
-import { CreationCenter } from "@/components/creation-center";
+import { CreationCenterServer, type CreationBillingSummary } from "@/components/creation-center-server";
 import { StatusPill } from "@/components/status-pill";
 import { getActiveTechnicians, getDispatchJobs } from "@/lib/chillbros/operations-queries";
 import { getCustomers } from "@/lib/chillbros/queries";
@@ -10,7 +11,11 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
 
-async function getBillingSummary(jobIds: string[]) {
+type Mode = "customer" | "job" | "estimate" | "invoice" | "technician" | "document";
+type Props = { searchParams: Promise<{ mode?: string; job?: string; customer?: string; success?: string; error?: string }> };
+const MODES = new Set<Mode>(["customer", "job", "estimate", "invoice", "technician", "document"]);
+
+async function getBillingSummary(jobIds: string[]): Promise<CreationBillingSummary[]> {
   if (jobIds.length === 0) return [];
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
@@ -29,17 +34,30 @@ async function getBillingSummary(jobIds: string[]) {
       jobId: row.job_id,
       invoiceNumber: row.invoice_number,
       portalToken: row.portal_token,
-      status: row.status as "draft" | "awaiting_approval" | "approved" | "void",
-      paymentStatus: row.payment_status as "unpaid" | "pending_manual_review" | "paid",
+      status: row.status as CreationBillingSummary["status"],
+      paymentStatus: row.payment_status as CreationBillingSummary["paymentStatus"],
     }];
   });
 }
 
-export default async function CreatePage() {
+function readTempPassword(raw: string | undefined) {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { email?: unknown; password?: unknown };
+    if (typeof parsed.email === "string" && typeof parsed.password === "string") return { email: parsed.email, password: parsed.password };
+  } catch {
+    // Invalid or expired flash data is ignored.
+  }
+  return null;
+}
+
+export default async function CreatePage({ searchParams }: Props) {
   const profile = await getCurrentStaffProfile();
   if (!profile) redirect("/sign-in");
   if (profile.role !== "manager") redirect("/");
 
+  const params = await searchParams;
+  const mode = MODES.has(params.mode as Mode) ? params.mode as Mode : "job";
   const [customers, technicians, jobs] = await Promise.all([
     getCustomers(),
     getActiveTechnicians(),
@@ -47,12 +65,27 @@ export default async function CreatePage() {
   ]);
   const activeJobs = jobs.filter((job) => ["scheduled", "in_progress"].includes(job.status));
   const billing = await getBillingSummary(activeJobs.map((job) => job.id));
+  const selectedJobId = activeJobs.some((job) => job.id === params.job) ? params.job! : activeJobs[0]?.id ?? "";
+  const selectedCustomerId = customers.some((customer) => customer.id === params.customer) ? params.customer! : customers[0]?.id ?? "";
+  const store = await cookies();
+  const tempPassword = readTempPassword(store.get("chillbros_creation_temp")?.value);
 
   return <AppShell
     title="Create anything you need from one owner workspace."
     description="Customers, service calls, estimates, invoices, staff, and customer documents are grouped into one simple creation flow."
     highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Creation Center</p><StatusPill tone="emerald">Owner tools</StatusPill><StatusPill>{activeJobs.length} active calls</StatusPill></div>}
   >
-    <CreationCenter customers={customers} technicians={technicians} jobs={jobs} billing={billing} />
+    <CreationCenterServer
+      mode={mode}
+      customers={customers}
+      technicians={technicians}
+      jobs={jobs}
+      billing={billing}
+      selectedJobId={selectedJobId}
+      selectedCustomerId={selectedCustomerId}
+      success={params.success}
+      error={params.error}
+      tempPassword={tempPassword}
+    />
   </AppShell>;
 }
