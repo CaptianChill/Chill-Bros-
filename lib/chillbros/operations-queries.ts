@@ -4,7 +4,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { JobStatus } from "./types";
 
 export type DispatchJob = { id: string; customerId: string; customerName: string; assignedTechId: string | null; assignedTechName: string | null; status: JobStatus; location: string | null; scope: string | null; workPerformed: string | null; scheduledWindow: string | null; createdAt: string; workflowStage: string };
-export type ActiveTechnician = { id: string; fullName: string };
+export type ActiveTechnician = { id: string; fullName: string; role: "technician" | "manager" };
 export type TimekeepingStaff = { id: string; fullName: string; role: "technician" | "office"; lastClockEvent: string | null };
 export type OpenTimesheet = { id: string; location: string | null; clockInAt: string; jobId: string | null; breakStartedAt: string | null; breakMinutes: number };
 export type TimesheetHistoryRow = { id: string; technicianId: string; technicianName: string; jobId: string | null; location: string | null; clockInAt: string; clockOutAt: string | null; laborHours: number; driveHours: number };
@@ -28,9 +28,9 @@ export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
 
 export async function getActiveTechnicians(): Promise<ActiveTechnician[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_profiles").select("id, full_name").eq("role", "technician").eq("status", "active").order("full_name", { ascending: true });
+  const { data, error } = await supabase.from("chillbros_profiles").select("id, full_name, role").in("role", ["technician", "manager"]).eq("status", "active").order("full_name", { ascending: true });
   if (error || !data) return [];
-  return data.map((row) => ({ id: row.id, fullName: row.full_name }));
+  return data.map((row) => ({ id: row.id, fullName: row.full_name, role: row.role as "technician" | "manager" }));
 }
 
 export async function getTimekeepingStaff(): Promise<TimekeepingStaff[]> {
