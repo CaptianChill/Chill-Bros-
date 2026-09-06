@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -72,9 +73,21 @@ export default async function CreatePage({ searchParams }: Props) {
 
   return <AppShell
     title="Create anything you need from one owner workspace."
-    description="Customers, service calls, estimates, invoices, staff, and customer documents are grouped into one simple creation flow."
+    description="Customers, service calls, estimates, invoices, staff, payment intake, and customer documents are grouped into one simple creation flow."
     highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Creation Center</p><StatusPill tone="emerald">Owner tools</StatusPill><StatusPill>{activeJobs.length} active calls</StatusPill></div>}
   >
+    <div className="mb-5 grid gap-3 sm:grid-cols-2">
+      <Link href="/payments" className="min-h-20 rounded-3xl border border-emerald-400/30 bg-emerald-500/5 p-4 transition hover:bg-emerald-500/10">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">Billing & Documents</p>
+        <p className="mt-1 text-lg font-semibold text-white">Payment Center</p>
+        <p className="mt-1 text-sm text-zinc-400">Record full payments, method, confirmation details, and generate receipts.</p>
+      </Link>
+      <Link href="/invoices" className="min-h-20 rounded-3xl border border-[#2d7dff]/25 bg-black/35 p-4 transition hover:bg-[#2d7dff]/10">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Billing & Documents</p>
+        <p className="mt-1 text-lg font-semibold text-white">Invoice Center</p>
+        <p className="mt-1 text-sm text-zinc-400">Open, send, adjust, review, and manage invoice status.</p>
+      </Link>
+    </div>
     <CreationCenterServer
       mode={mode}
       customers={customers}
