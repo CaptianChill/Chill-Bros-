@@ -9,6 +9,7 @@ export type NavItem = {
 
 export const navItems: NavItem[] = [
   { href: "/", label: "Command Center", shortLabel: "Home", roles: ["manager"] },
+  { href: "/create", label: "Creation Center", shortLabel: "Create", roles: ["manager"] },
   { href: "/office", label: "Office Hub", shortLabel: "Office", roles: ["manager", "office"] },
   { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"] },
   { href: "/customers", label: "Customer Center", shortLabel: "Customers", roles: ["manager", "office"] },
