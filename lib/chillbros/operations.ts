@@ -58,7 +58,7 @@ export async function createJobAction(input: { customerId: string; assignedTechI
   const supabase = createServiceRoleClient();
   const { data: customer } = await supabase.from("chillbros_customers").select("id").eq("id", input.customerId).maybeSingle();
   if (!customer) return { ok: false, error: "Customer record not found." };
-  if (input.assignedTechId) { const { data: tech } = await supabase.from("chillbros_profiles").select("id").eq("id", input.assignedTechId).eq("role", "technician").eq("status", "active").maybeSingle(); if (!tech) return { ok: false, error: "Choose an active technician." }; }
+  if (input.assignedTechId) { const { data: tech } = await supabase.from("chillbros_profiles").select("id").eq("id", input.assignedTechId).in("role", ["technician", "manager"]).eq("status", "active").maybeSingle(); if (!tech) return { ok: false, error: "Choose an active field-service account." }; }
   const { data, error } = await supabase.from("chillbros_jobs").insert({ customer_id: input.customerId, assigned_tech_id: input.assignedTechId || null, status: "scheduled", location: cleanText(input.location, 500), scope: cleanText(input.scope, 4000), scheduled_window: cleanText(input.scheduledWindow, 200) }).select("id").single();
   if (error || !data) return { ok: false, error: error?.message ?? "Could not create job." };
   await supabase.from("chillbros_customer_service_history").insert({ customer_id: input.customerId, note: `Job created${input.scheduledWindow ? ` • ${String(input.scheduledWindow).slice(0, 150)}` : ""}` });
