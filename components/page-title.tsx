@@ -10,6 +10,7 @@ const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/customers", "Customer Center"],
   [(p) => p.startsWith("/customers/"), "Customer Profile"],
   [(p) => p === "/invoices", "Invoices"],
+  [(p) => p === "/payments", "Payment Center"],
   [(p) => p === "/agreements", "Monthly Plans"],
   [(p) => p === "/manager", "Manager Hub"],
   [(p) => p === "/security", "Security"],
