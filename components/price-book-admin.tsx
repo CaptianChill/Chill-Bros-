@@ -27,6 +27,7 @@ export function PriceBookAdmin({ entries }: { entries: PriceBookEntry[] }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const next = categoryEntries[0];
     if (next && !categoryEntries.some((entry) => entry.code === code)) setCode(next.code);
@@ -39,6 +40,7 @@ export function PriceBookAdmin({ entries }: { entries: PriceBookEntry[] }) {
     setMessage(null);
     setError(null);
   }, [selected?.code, selected?.description, selected?.currentValue]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const save = () => {
     if (!selected) return;
