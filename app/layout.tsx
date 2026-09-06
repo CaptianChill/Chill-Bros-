@@ -12,9 +12,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black",
   },
   icons: {
-    icon: "/logo-icon.png",
-    apple: "/logo-icon.png",
-    shortcut: "/logo-icon.png",
+    icon: "/logo.png",
+    apple: "/logo.png",
+    shortcut: "/logo.png",
   },
   other: {
     "mobile-web-app-capable": "yes",

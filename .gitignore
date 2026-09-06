@@ -20,6 +20,11 @@
 # production
 /build
 
+# generated / staging artifacts
+/.loader-*/
+/Chill-Bros-PNG-Pack.zip
+/blender/build-output/
+
 # misc
 .DS_Store
 *.pem
