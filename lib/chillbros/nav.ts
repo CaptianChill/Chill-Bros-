@@ -14,7 +14,7 @@ export const navItems: NavItem[] = [
   { href: "/customers", label: "Customer Center", shortLabel: "Customers", roles: ["manager", "office"] },
   { href: "/invoices", label: "Invoices", shortLabel: "Invoices", roles: ["manager", "office"] },
   { href: "/timesheet", label: "Timesheets", shortLabel: "Time", roles: ["manager", "technician", "office"] },
-  { href: "/technician", label: "Tech Workflow", shortLabel: "Tech", roles: ["technician"] },
+  { href: "/technician", label: "Field Workflow", shortLabel: "Field", roles: ["manager", "technician"] },
   { href: "/equipment", label: "Equipment", shortLabel: "Assets", roles: ["manager", "office"] },
   { href: "/training", label: "Training · Bible", shortLabel: "Bible", roles: ["manager", "technician", "office"] },
   { href: "/agreements", label: "Monthly Plans", shortLabel: "Plans", roles: ["manager", "office"] },
