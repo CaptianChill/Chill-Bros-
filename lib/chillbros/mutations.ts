@@ -82,6 +82,26 @@ export async function revokeEstimateAction(invoiceId: string): Promise<ActionRes
   const guard = await requireManager();
   if (!guard.ok) return guard;
   const supabase = createServiceRoleClient();
+
+  const { data: current } = await supabase
+    .from("chillbros_invoices")
+    .select("id,job_id,status,payment_status,revoked_at,portal_token")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (!current || current.revoked_at || current.status === "void" || current.payment_status === "paid") {
+    return { ok: false, error: "Paid or already-revoked estimates cannot be revoked." };
+  }
+
+  let restoreStandaloneInventory = false;
+  if (current.job_id) {
+    const { data: helperJob } = await supabase
+      .from("chillbros_jobs")
+      .select("scheduled_window")
+      .eq("id", current.job_id)
+      .maybeSingle();
+    restoreStandaloneInventory = String(helperJob?.scheduled_window ?? "").startsWith("Standalone invoice ·");
+  }
+
   const revokedAt = new Date().toISOString();
   const { data, error } = await supabase
     .from("chillbros_invoices")
@@ -90,12 +110,25 @@ export async function revokeEstimateAction(invoiceId: string): Promise<ActionRes
     .is("revoked_at", null)
     .neq("status", "void")
     .neq("payment_status", "paid")
-    .select("id, portal_token")
+    .select("id, portal_token, job_id")
     .maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "Paid or already-revoked estimates cannot be revoked." };
-  revalidatePath("/manager");
-  revalidatePath("/technician");
-  revalidatePath(`/portal/${data.portal_token}`);
+
+  if (restoreStandaloneInventory && data.job_id) {
+    const { data: parts } = await supabase.from("chillbros_job_parts").select("id").eq("job_id", data.job_id);
+    for (const part of parts ?? []) {
+      await supabase.rpc("chillbros_set_job_part_quantity", { p_job_part_id: part.id, p_quantity: 0 });
+    }
+    await supabase.from("chillbros_workflow_events").insert({
+      job_id: data.job_id,
+      invoice_id: invoiceId,
+      actor_id: guard.profile.id,
+      stage: "inventory_restored",
+      message: "Standalone invoice revoked. Allocated inventory was returned to stock.",
+    });
+  }
+
+  for (const path of ["/manager", "/technician", "/invoices", "/inventory", "/reports", `/portal/${data.portal_token}`]) revalidatePath(path);
   return { ok: true, data: undefined };
 }
 
