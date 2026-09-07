@@ -70,7 +70,7 @@ export default async function CreatePage({ searchParams }: Props) {
   const store = await cookies();
   const tempPassword = readTempPassword(store.get("chillbros_creation_temp")?.value);
 
-  return <AppShell>
+  return <AppShell title="Owner Document Desk">
     <div className="mb-4 flex flex-wrap items-center gap-2">
       <StatusPill tone="emerald">Owner Document Desk</StatusPill>
       <StatusPill>{billing.length} recent billing docs</StatusPill>
