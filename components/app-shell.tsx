@@ -19,7 +19,10 @@ export async function AppShell({ children }: AppShellProps) {
   return <div className="min-h-screen bg-transparent text-foreground">
     <a href="#main-content" className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-xl bg-[#8ffafa] px-4 py-2 text-sm font-semibold text-black transition focus:translate-y-0">Skip to content</a>
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-3 pb-7 pt-2.5 sm:px-6 sm:pt-4 lg:px-8">
-      <header className="sticky z-40 mb-2.5 rounded-2xl border border-[#2d7dff]/35 bg-[#020407]/98 px-3 py-2.5 shadow-[0_0_14px_rgba(45,125,255,0.24)] backdrop-blur-xl sm:mb-3 sm:px-4 sm:py-3" style={{ top: "max(env(safe-area-inset-top), 8px)", WebkitTransform: "translateZ(0)" }}>
+      <header
+        className="sticky z-40 mb-2.5 rounded-2xl border border-[#2d7dff]/35 bg-[#020407] px-3 py-2.5 shadow-[0_0_14px_rgba(45,125,255,0.24)] sm:mb-3 sm:px-4 sm:py-3"
+        style={{ top: "max(env(safe-area-inset-top), 8px)" }}
+      >
         <div className="flex items-center gap-2.5 sm:gap-4">
           <LogoBadge variant="full" className="w-9 shrink-0 sm:w-11" />
           <div className="min-w-0 flex-1">
@@ -38,7 +41,7 @@ export async function AppShell({ children }: AppShellProps) {
         <PageTitle />
       </div>
 
-      <main id="main-content" className="min-w-0 flex-1">{children}</main>
+      <main id="main-content" className="relative z-20 isolate min-w-0 flex-1 pointer-events-auto">{children}</main>
     </div>
   </div>;
 }
