@@ -12,7 +12,7 @@ export type Job = { id: string; customerId: string; customerName: string; assign
 
 export type InvoiceStatus = "draft" | "awaiting_approval" | "approved" | "void";
 export type PaymentStatus = "unpaid" | "pending_manual_review" | "paid";
-export type PaymentMethod = "cash_app" | "venmo" | "zelle" | "apple_pay" | "card";
+export type PaymentMethod = "cash" | "check" | "ach" | "cash_app" | "venmo" | "zelle" | "apple_pay" | "card";
 export type AdjustmentType = "percent" | "dollar";
 export type PaymentTerms = "due_on_receipt" | "net_7" | "net_15" | "net_30" | "custom";
 export type InvoiceAdjustmentType = "credit" | "refund";
@@ -71,5 +71,5 @@ export type Receipt = { id: string; receiptNumber: string; portalToken: string; 
 export type WorkflowEvent = { id: string; jobId: string | null; invoiceId: string | null; stage: string; message: string; createdAt: string };
 export type EmailLogEntry = { id: string; subject: string; recipients: string; status: "queued" | "sent" | "failed"; createdAt: string };
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = { cash_app: "Cash App", venmo: "Venmo", zelle: "Zelle", apple_pay: "Apple Pay", card: "Credit / Debit Card" };
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = { cash: "Cash", check: "Check", ach: "ACH / Bank Transfer", cash_app: "Cash App", venmo: "Venmo", zelle: "Zelle", apple_pay: "Apple Pay", card: "Credit / Debit Card" };
 export const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = { due_on_receipt: "Due on receipt", net_7: "Net 7", net_15: "Net 15", net_30: "Net 30", custom: "Custom due date" };

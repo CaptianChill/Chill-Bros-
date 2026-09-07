@@ -2,21 +2,23 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { BadgeCheck, FileText, Printer, Wallet } from "lucide-react";
+import { BadgeCheck, CreditCard, FileText, Printer, Wallet } from "lucide-react";
 
 import { approveInvoiceV2Action, setInvoicePaymentMethodV2Action } from "@/lib/chillbros/estimate-actions-v2";
+import type { PaymentSettings } from "@/lib/chillbros/payment-settings";
 import { PAYMENT_METHOD_LABELS, type Invoice, type PaymentMethod } from "@/lib/chillbros/types";
 import { StatusPill } from "@/components/status-pill";
 
-const PAYMENT_METHODS = Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[];
+const PAYMENT_METHODS: PaymentMethod[] = ["cash_app", "venmo", "zelle", "apple_pay", "card"];
+const EMPTY_SETTINGS: PaymentSettings = { stripeEnabled: false, zelleContact: "", cashAppHandle: "", venmoHandle: "", checkPayableTo: "", manualAchInstructions: "", customerPaymentNote: "" };
 
-export function ClientPortalActions({ invoice }: { invoice: Invoice }) {
+export function ClientPortalActions({ invoice, paymentSettings = EMPTY_SETTINGS, stripeOnline = false }: { invoice: Invoice; paymentSettings?: PaymentSettings; stripeOnline?: boolean }) {
   const [signature, setSignature] = useState(invoice.signatureName ?? "");
   const [approved, setApproved] = useState(invoice.status === "approved");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(invoice.paymentMethod);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const status = invoice.paymentStatus === "paid" ? "Paid • receipt available" : approved ? "Approved • manager + dispatch updated" : "Awaiting signature approval";
+  const status = invoice.paymentStatus === "paid" ? "Paid • receipt available" : approved ? "Approved • ready for payment" : "Awaiting signature approval";
 
   const handleApprove = () => {
     if (signature.trim().length < 2) { setError("Type your name to sign."); return; }
@@ -34,9 +36,15 @@ export function ClientPortalActions({ invoice }: { invoice: Invoice }) {
     {error ? <p className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
     <label className="block space-y-2"><span className="text-sm text-zinc-300">Digital signature</span><input value={signature} onChange={(e) => setSignature(e.target.value)} placeholder="Type signer name" disabled={approved} className="w-full rounded-2xl border border-[#2d7dff]/30 bg-black px-4 py-3 text-white outline-none placeholder:text-zinc-500 disabled:opacity-60" /></label>
     <button type="button" onClick={handleApprove} disabled={pending || approved} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#2d7dff] bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] disabled:opacity-60"><BadgeCheck className="h-4 w-4" />{approved ? "Approved" : "Approve & sign estimate"}</button>
-    <div className="space-y-2"><p className="text-sm text-zinc-300">Preferred payment method</p><div className="grid gap-2 md:grid-cols-2">{PAYMENT_METHODS.map((method) => <button key={method} type="button" onClick={() => handlePaymentMethod(method)} disabled={pending || invoice.paymentStatus === "paid"} className={`rounded-2xl border px-4 py-3 text-left text-sm transition disabled:opacity-60 ${paymentMethod === method ? "border-[#2d7dff] bg-[#2d7dff]/10 text-[#d9fbff]" : "border-[#2d7dff]/20 bg-black/40 text-zinc-300"}`}><span className="inline-flex items-center gap-2"><Wallet className="h-4 w-4" />{PAYMENT_METHOD_LABELS[method]}</span></button>)}</div></div>
+
+    {approved && invoice.paymentStatus !== "paid" && stripeOnline ? <form action="/api/payments/stripe/checkout" method="post"><input type="hidden" name="token" value={invoice.portalToken} /><button type="submit" className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border border-emerald-400/50 bg-emerald-500/10 px-4 py-3 font-semibold text-emerald-100"><CreditCard className="h-5 w-5" />Pay securely by card, Apple Pay, or bank</button><p className="mt-2 text-xs text-zinc-500">Payment details are collected by Stripe. Chill Bros does not store full card or bank-account credentials.</p></form> : null}
+
+    <div className="space-y-2"><p className="text-sm text-zinc-300">Preferred manual payment method</p><div className="grid gap-2 md:grid-cols-2">{PAYMENT_METHODS.map((method) => <button key={method} type="button" onClick={() => handlePaymentMethod(method)} disabled={pending || invoice.paymentStatus === "paid"} className={`rounded-2xl border px-4 py-3 text-left text-sm transition disabled:opacity-60 ${paymentMethod === method ? "border-[#2d7dff] bg-[#2d7dff]/10 text-[#d9fbff]" : "border-[#2d7dff]/20 bg-black/40 text-zinc-300"}`}><span className="inline-flex items-center gap-2"><Wallet className="h-4 w-4" />{PAYMENT_METHOD_LABELS[method]}</span></button>)}</div></div>
+
+    {(paymentSettings.zelleContact || paymentSettings.cashAppHandle || paymentSettings.venmoHandle || paymentSettings.checkPayableTo || paymentSettings.manualAchInstructions) ? <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-sm"><p className="font-medium text-white">Chill Bros payment receiving information</p><div className="mt-3 space-y-2 text-zinc-300">{paymentSettings.zelleContact ? <p><span className="text-zinc-500">Zelle:</span> {paymentSettings.zelleContact}</p> : null}{paymentSettings.cashAppHandle ? <p><span className="text-zinc-500">Cash App:</span> {paymentSettings.cashAppHandle}</p> : null}{paymentSettings.venmoHandle ? <p><span className="text-zinc-500">Venmo:</span> {paymentSettings.venmoHandle}</p> : null}{paymentSettings.checkPayableTo ? <p><span className="text-zinc-500">Check payable to:</span> {paymentSettings.checkPayableTo}</p> : null}{paymentSettings.manualAchInstructions ? <p className="whitespace-pre-wrap"><span className="text-zinc-500">Bank transfer:</span> {paymentSettings.manualAchInstructions}</p> : null}</div>{paymentSettings.customerPaymentNote ? <p className="mt-3 border-t border-[#2d7dff]/10 pt-3 text-xs text-zinc-500">{paymentSettings.customerPaymentNote}</p> : null}</div> : null}
+
     <p className="text-sm text-zinc-400">Selected method: <span className="text-[#bafcfc]">{paymentMethod ? PAYMENT_METHOD_LABELS[paymentMethod] : "None yet"}</span></p>
     <div className="grid gap-2 sm:grid-cols-2"><Link href={`/portal/${invoice.portalToken}/document`} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/30 px-4 py-3 text-sm text-white"><FileText className="h-4 w-4" />Fullscreen document</Link><button type="button" onClick={() => window.print()} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/30 px-4 py-3 text-sm text-white"><Printer className="h-4 w-4" />Print / save</button></div>
-    <p className="text-xs leading-5 text-zinc-500">Payment preference is recorded for office follow-up. Manual payments can be marked paid by a manager after receipt.</p>
+    <p className="text-xs leading-5 text-zinc-500">Manual payments stay pending until a manager confirms receipt. Stripe payments reconcile automatically after Stripe confirms the payment.</p>
   </div>;
 }
