@@ -17,6 +17,30 @@ function go(message: string, type: "success" | "error", week?: string): never {
   redirect(`/schedule?${query.toString()}`);
 }
 
+function parseWindow(value: string | null) {
+  const match = String(value ?? "").match(/^(\d{4}-\d{2}-\d{2})\s+([0-2]\d:[0-5]\d)-([0-2]\d:[0-5]\d)\s+CT$/);
+  return match ? { date: match[1], start: match[2], end: match[3] } : null;
+}
+
+async function technicianConflict(assignedTechId: string, date: string, start: string, end: string, excludeJobId?: string) {
+  if (!assignedTechId) return null;
+  const supabase = createServiceRoleClient();
+  let query = supabase
+    .from("chillbros_jobs")
+    .select("id,scheduled_window")
+    .eq("assigned_tech_id", assignedTechId)
+    .in("status", ["scheduled", "in_progress"])
+    .is("archived_at", null);
+  if (excludeJobId) query = query.neq("id", excludeJobId);
+  const { data } = await query;
+  for (const row of data ?? []) {
+    const existing = parseWindow(row.scheduled_window);
+    if (!existing || existing.date !== date) continue;
+    if (start < existing.end && end > existing.start) return existing;
+  }
+  return null;
+}
+
 export async function createScheduledJobAction(formData: FormData): Promise<never> {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
@@ -24,10 +48,15 @@ export async function createScheduledJobAction(formData: FormData): Promise<neve
   const start = text(formData, "start");
   const end = text(formData, "end");
   const week = text(formData, "week");
+  const assignedTechId = text(formData, "assignedTechId");
   if (!validDate(date) || !validTime(start) || !validTime(end) || end <= start) go("Choose a valid date and time range.", "error", week);
+
+  const conflict = await technicianConflict(assignedTechId, date, start, end);
+  if (conflict) go(`That technician is already scheduled ${conflict.start}-${conflict.end} on ${date}. Choose another time or technician.`, "error", week);
+
   const result = await createJobAction({
     customerId: text(formData, "customerId"),
-    assignedTechId: text(formData, "assignedTechId") || null,
+    assignedTechId: assignedTechId || null,
     location: text(formData, "location"),
     scope: text(formData, "scope"),
     scheduledWindow: scheduleWindow(date, start, end),
@@ -52,7 +81,10 @@ export async function rescheduleJobAction(formData: FormData): Promise<never> {
   if (assignedTechId) {
     const { data: tech } = await supabase.from("chillbros_profiles").select("id").eq("id", assignedTechId).in("role", ["technician", "manager"]).eq("status", "active").maybeSingle();
     if (!tech) go("Choose an active technician.", "error", week);
+    const conflict = await technicianConflict(assignedTechId, date, start, end, jobId);
+    if (conflict) go(`That technician is already scheduled ${conflict.start}-${conflict.end} on ${date}. Choose another time or technician.`, "error", week);
   }
+
   const { data, error } = await supabase.from("chillbros_jobs").update({
     assigned_tech_id: assignedTechId || null,
     scheduled_window: scheduleWindow(date, start, end),
