@@ -110,9 +110,6 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const taxableAfterDiscount = subtotal > 0 ? Math.max(0, taxableSubtotal - discount * (taxableSubtotal / subtotal)) : 0;
   const taxAmount = Math.round(taxableAfterDiscount * taxRate) / 100;
 
-  // The legacy estimate RPC requires an active job. Standalone billing therefore creates a
-  // short-lived internal billing record as scheduled, publishes the document, then immediately
-  // closes the helper record. It never requires the manager to choose or manage an open job.
   const jobLocation = text(formData, "jobLocation") || text(formData, "customerAddress") || null;
   const scope = text(formData, "jobDescription") || `Standalone ${type}`;
   const now = new Date().toISOString();
@@ -174,19 +171,21 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const invoice = created as { estimate_id: string; estimate_number: string; estimate_token: string };
   const terms = PAYMENT_TERMS.has(text(formData,"paymentTerms")) ? text(formData,"paymentTerms") : "due_on_receipt";
   const method = PAYMENT_METHODS.has(text(formData,"paymentMethod")) ? text(formData,"paymentMethod") : null;
-  const isPaid = type === "invoice" && text(formData,"paymentStatus") === "paid";
-  if (isPaid && !method) fail("Choose a payment method when marking an invoice paid.", type);
+  const requestedPaid = type === "invoice" && text(formData,"paymentStatus") === "paid";
+  if (requestedPaid && !method) fail("Choose a payment method when marking an invoice paid.", type);
   const computedDueAt = type === "invoice" ? dueAt(terms, text(formData,"customDueDate")) : null;
 
+  // Direct invoices are issued immediately, but are not falsely marked customer-approved.
+  // The DB approval constraint requires a real customer signature for status=approved.
   const { error: issueError } = await supabase.from("chillbros_invoices").update({
-    status: type === "quote" ? "awaiting_approval" : "approved",
+    status: "awaiting_approval",
     issued_at: type === "invoice" ? now : null,
     due_at: computedDueAt,
     payment_terms: terms,
     payment_method: type === "invoice" ? method : null,
-    payment_status: isPaid ? "paid" : "unpaid",
-    paid_at: isPaid ? now : null,
-    paid_recorded_by: isPaid ? profile.id : null,
+    payment_status: "unpaid",
+    paid_at: null,
+    paid_recorded_by: null,
     taxable_subtotal: taxableSubtotal, tax_amount: taxAmount, updated_at: now,
   }).eq("id", invoice.estimate_id);
   if (issueError) {
@@ -200,23 +199,19 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
     job_id: job.id, invoice_id: invoice.estimate_id, actor_id: profile.id,
     stage: type === "quote" ? "estimate_created" : "invoice_issued",
     message: type === "invoice" && allocatedJobPartIds.length > 0
-      ? `Invoice created directly by owner/manager. ${allocatedJobPartIds.length} inventory item group(s) allocated and deducted from stock.`
-      : `${type === "quote" ? "Quote" : "Invoice"} created directly by owner/manager without requiring an open service call.`,
+      ? `Invoice issued directly by owner/manager. ${allocatedJobPartIds.length} inventory item group(s) allocated and deducted from stock.`
+      : `${type === "quote" ? "Quote" : "Invoice"} issued directly by owner/manager without requiring an open service call.`,
   });
   await supabase.from("chillbros_customer_service_history").insert({ customer_id: customerId, note: `${type === "quote" ? "Quote" : "Invoice"} ${number} created by owner.` });
 
-  if (isPaid) {
+  // Paid-now remains disabled for direct invoices until payment state no longer depends on
+  // customer approval. We retain the entered method and send the manager to the invoice card.
+  if (requestedPaid) {
     try {
-      const receipt = await createReceiptForPaidInvoice(invoice.estimate_id, profile.id);
-      await supabase.from("chillbros_receipts").update({
-        payment_reference: text(formData,"paymentReference").slice(0,120) || null,
-        payer_name: text(formData,"payerName").slice(0,160) || null,
-        card_last4: method === "card" ? text(formData,"cardLast4").slice(0,4) || null : null,
-        payment_notes: text(formData,"paymentNotes").slice(0,1000) || null,
-      }).eq("id", receipt.id);
-    } catch { /* invoice remains paid even if receipt generation needs retry */ }
+      await supabase.from("chillbros_workflow_events").insert({ job_id: job.id, invoice_id: invoice.estimate_id, actor_id: profile.id, stage: "payment_pending_review", message: "Paid-now was requested during direct invoice creation; invoice was issued unpaid because payment posting currently requires an approved invoice." });
+    } catch { /* invoice creation remains authoritative */ }
   }
 
   for (const path of ["/create","/invoices/new","/invoices","/inventory","/payments","/reports","/customers","/dispatch","/"]) revalidatePath(path);
-  redirect(`/invoices/new?type=${type}&success=${encodeURIComponent(`${number} created successfully.`)}&token=${encodeURIComponent(invoice.estimate_token)}&invoice=${encodeURIComponent(number)}`);
+  redirect(`/invoices?q=${encodeURIComponent(number)}`);
 }
