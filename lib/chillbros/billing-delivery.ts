@@ -69,25 +69,29 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
   const supabase = createServiceRoleClient();
   const { data: invoice } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,due_at,customer:chillbros_customers(name,email,phone)").eq("id", invoiceId).maybeSingle();
   if (!invoice) return { channel, recipient: null, status: "failed", error: "Invoice was not found." };
+
+  // Direct billing uses the safe awaiting_approval DB state until a real customer signature exists.
+  // INV-prefixed documents are still invoices and must be delivered/labeled as invoices, not estimates.
+  const effectiveType: BillingDeliveryType = invoice.invoice_number.startsWith("INV-") && deliveryType === "estimate" ? "invoice" : deliveryType;
   const customer = Array.isArray(invoice.customer) ? invoice.customer[0] : invoice.customer;
   const customerName = customer?.name ?? "Customer";
   const base = appBaseUrl();
   const documentUrl = `${base}/portal/${invoice.portal_token}`;
   const receiptUrl = `${documentUrl}/receipt`;
   const due = formatDue(invoice.due_at);
-  const label = deliveryType === "estimate" ? "estimate" : deliveryType === "receipt" ? "receipt" : "invoice";
-  const subject = deliveryType === "reminder" ? `Reminder · Chill Bros invoice ${invoice.invoice_number}` : `Chill Bros ${label} ${invoice.invoice_number}`;
-  const link = deliveryType === "receipt" ? receiptUrl : documentUrl;
+  const label = effectiveType === "estimate" ? "estimate" : effectiveType === "receipt" ? "receipt" : "invoice";
+  const subject = effectiveType === "reminder" ? `Reminder · Chill Bros invoice ${invoice.invoice_number}` : `Chill Bros ${label} ${invoice.invoice_number}`;
+  const link = effectiveType === "receipt" ? receiptUrl : documentUrl;
   const text = [
     `${customerName},`,
     "",
-    deliveryType === "estimate" ? "Your Chill Bros estimate is ready for review and approval." : null,
-    deliveryType === "invoice" ? "Your approved Chill Bros invoice is ready." : null,
-    deliveryType === "reminder" ? `This is a reminder that Chill Bros invoice ${invoice.invoice_number}${due ? ` is due ${due}` : " is still outstanding"}.` : null,
-    deliveryType === "receipt" ? `Payment for ${invoice.invoice_number} has been recorded. Your receipt is ready.` : null,
+    effectiveType === "estimate" ? "Your Chill Bros estimate is ready for review and approval." : null,
+    effectiveType === "invoice" ? "Your Chill Bros invoice is ready to view." : null,
+    effectiveType === "reminder" ? `This is a reminder that Chill Bros invoice ${invoice.invoice_number}${due ? ` is due ${due}` : " is still outstanding"}.` : null,
+    effectiveType === "receipt" ? `Payment for ${invoice.invoice_number} has been recorded. Your receipt is ready.` : null,
     "",
     `Secure link: ${link}`,
-    due && deliveryType !== "receipt" ? `Due: ${due}` : null,
+    due && effectiveType !== "receipt" ? `Due: ${due}` : null,
     "",
     "Chill Bros",
   ].filter(Boolean).join("\n");
@@ -102,7 +106,7 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
     } catch (error) {
       result = { channel, recipient, status: "failed", error: error instanceof Error ? error.message : "Email delivery failed." };
     }
-    await logDelivery(invoiceId, channel, deliveryType, recipient, result);
+    await logDelivery(invoiceId, channel, effectiveType, recipient, result);
     return result;
   }
 
@@ -115,6 +119,6 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
   } catch (error) {
     result = { channel, recipient, status: "failed", error: error instanceof Error ? error.message : "SMS delivery failed." };
   }
-  await logDelivery(invoiceId, channel, deliveryType, recipient, result);
+  await logDelivery(invoiceId, channel, effectiveType, recipient, result);
   return result;
 }
