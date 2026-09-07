@@ -7,7 +7,7 @@ import { ChevronDown, Menu } from "lucide-react";
 import type { NavItem } from "@/lib/chillbros/nav";
 
 const GROUPS = [
-  { label: "Operations", hrefs: ["/", "/office", "/dispatch", "/customers", "/scan-send", "/invoices", "/timesheet"] },
+  { label: "Operations", hrefs: ["/", "/office", "/dispatch", "/schedule", "/customers", "/scan-send", "/invoices", "/timesheet"] },
   { label: "Field", hrefs: ["/technician", "/equipment", "/training"] },
   { label: "Business", hrefs: ["/agreements", "/inventory", "/reports"] },
   { label: "Admin", hrefs: ["/manager", "/security", "/3d-studio"] },
