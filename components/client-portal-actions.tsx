@@ -9,9 +9,10 @@ import type { PaymentSettings } from "@/lib/chillbros/payment-settings";
 import { PAYMENT_METHOD_LABELS, type Invoice, type PaymentMethod } from "@/lib/chillbros/types";
 import { StatusPill } from "@/components/status-pill";
 
-const PAYMENT_METHODS = Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[];
+const PAYMENT_METHODS: PaymentMethod[] = ["cash_app", "venmo", "zelle", "apple_pay", "card"];
+const EMPTY_SETTINGS: PaymentSettings = { stripeEnabled: false, zelleContact: "", cashAppHandle: "", venmoHandle: "", checkPayableTo: "", manualAchInstructions: "", customerPaymentNote: "" };
 
-export function ClientPortalActions({ invoice, paymentSettings, stripeOnline }: { invoice: Invoice; paymentSettings: PaymentSettings; stripeOnline: boolean }) {
+export function ClientPortalActions({ invoice, paymentSettings = EMPTY_SETTINGS, stripeOnline = false }: { invoice: Invoice; paymentSettings?: PaymentSettings; stripeOnline?: boolean }) {
   const [signature, setSignature] = useState(invoice.signatureName ?? "");
   const [approved, setApproved] = useState(invoice.status === "approved");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(invoice.paymentMethod);
