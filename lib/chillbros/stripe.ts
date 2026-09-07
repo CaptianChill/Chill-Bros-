@@ -16,7 +16,7 @@ export async function createStripeCheckoutSession(input: {
   customerEmail?: string | null;
   successUrl: string;
   cancelUrl: string;
-}) {
+}): Promise<{ id: string; url: string; payment_intent: string | null }> {
   const body = new URLSearchParams();
   body.set("mode", "payment");
   body.append("payment_method_types[]", "card");
@@ -43,7 +43,7 @@ export async function createStripeCheckoutSession(input: {
   });
   const payload = await response.json() as { id?: string; url?: string; payment_intent?: string | null; error?: { message?: string } };
   if (!response.ok || !payload.id || !payload.url) throw new Error(payload.error?.message ?? "Stripe checkout session could not be created.");
-  return payload;
+  return { id: payload.id, url: payload.url, payment_intent: payload.payment_intent ?? null };
 }
 
 export function verifyStripeSignature(rawBody: string, signatureHeader: string | null) {
