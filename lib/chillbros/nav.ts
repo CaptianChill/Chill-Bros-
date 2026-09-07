@@ -13,6 +13,7 @@ export const navItems: NavItem[] = [
   { href: "/office", label: "Office Hub", shortLabel: "Office", roles: ["manager", "office"] },
   { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"] },
   { href: "/customers", label: "Customer Center", shortLabel: "Customers", roles: ["manager", "office"] },
+  { href: "/scan-send", label: "Scan & Send", shortLabel: "Scan", roles: ["manager", "technician", "office"] },
   { href: "/invoices/new", label: "Invoice", shortLabel: "Invoice", roles: ["manager"] },
   { href: "/invoices", label: "Invoices", shortLabel: "Invoices", roles: ["office"] },
   { href: "/payments", label: "Payment Center", shortLabel: "Payments", roles: ["manager"] },
