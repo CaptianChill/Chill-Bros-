@@ -58,6 +58,9 @@ export default async function CreatePage({ searchParams }: Props) {
 
   const params = await searchParams;
   const mode = MODES.has(params.mode as Mode) ? params.mode as Mode : "document";
+  if (mode === "estimate") redirect("/invoices/new?type=quote");
+  if (mode === "invoice") redirect("/invoices/new?type=invoice");
+
   const [customers, technicians, jobs, billing] = await Promise.all([
     getCustomers(),
     getActiveTechnicians(),
