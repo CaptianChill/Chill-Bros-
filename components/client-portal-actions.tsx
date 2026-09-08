@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { BadgeCheck, FileText, Printer, Wallet } from "lucide-react";
 
-import { approveInvoiceV2Action, setInvoicePaymentMethodV2Action } from "@/lib/chillbros/estimate-actions-v2";
+import { approveInvoiceV2Action } from "@/lib/chillbros/estimate-actions-v2";
+import { setCustomerPaymentMethodAction } from "@/lib/chillbros/customer-payment-actions";
 import type { PaymentSettings } from "@/lib/chillbros/payment-settings";
 import { PAYMENT_METHOD_LABELS, type Invoice, type PaymentMethod } from "@/lib/chillbros/types";
 import { StatusPill } from "@/components/status-pill";
@@ -37,7 +38,7 @@ export function ClientPortalActions({ invoice, paymentSettings = EMPTY_SETTINGS 
 
   const handlePaymentMethod = (method: PaymentMethod) => {
     setPaymentMethod(method); setError(null);
-    startTransition(async () => { const result = await setInvoicePaymentMethodV2Action(invoice.portalToken, method); if (!result.ok) setError(result.error); });
+    startTransition(async () => { const result = await setCustomerPaymentMethodAction(invoice.portalToken, method); if (!result.ok) setError(result.error); });
   };
 
   const paymentInstruction = paymentMethod === "zelle" && paymentSettings.zelleContact ? <>Send with Zelle to <strong className="text-white">{paymentSettings.zelleContact}</strong>.</>
