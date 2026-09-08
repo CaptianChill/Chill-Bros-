@@ -9,10 +9,10 @@ export type NavItem = {
 
 export const navItems: NavItem[] = [
   { href: "/", label: "Command Center", shortLabel: "Home", roles: ["manager"] },
+  { href: "/schedule", label: "Scheduling", shortLabel: "Schedule", roles: ["manager", "office"] },
   { href: "/create", label: "Creation Center", shortLabel: "Create", roles: ["manager"] },
   { href: "/office", label: "Office Hub", shortLabel: "Office", roles: ["manager", "office"] },
   { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"] },
-  { href: "/schedule", label: "Scheduling", shortLabel: "Schedule", roles: ["manager", "office"] },
   { href: "/customers", label: "Customer Center", shortLabel: "Customers", roles: ["manager", "office"] },
   { href: "/scan-send", label: "Scan & Send", shortLabel: "Scan", roles: ["manager", "technician", "office"] },
   { href: "/invoices/new", label: "New Quote / Invoice", shortLabel: "New Bill", roles: ["manager"] },
