@@ -30,7 +30,7 @@ export function OpenFormDrafts({ customerId }: { customerId: string }) {
           <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500"><Clock3 className="h-3.5 w-3.5" />Saved {new Date(draft.updatedAt).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} CT</p>
         </div>
         <div className="flex gap-2">
-          <Link href={withDraftParam(draft.path, draft.id)} className="rounded-lg border border-[#8ffafa]/35 bg-[#2d7dff]/10 px-3 py-2 text-xs font-semibold text-[#d9fbff]">Resume</Link>
+          <Link href={withDraftParam(draft.path, draft.id)} className="rounded-lg border border-[#8ffafa]/35 bg-[#2d7dff]/10 px-3 py-2 text-xs font-semibold text-[#d9fbff]">Edit / Continue</Link>
           <button type="button" onClick={() => { deleteFormDraft(draft.id); setDrafts((current) => current.filter((item) => item.id !== draft.id)); }} className="inline-flex items-center rounded-lg border border-rose-500/25 px-2.5 py-2 text-rose-200" aria-label={`Delete ${draft.label} draft`}><Trash2 className="h-3.5 w-3.5" /></button>
         </div>
       </div>
