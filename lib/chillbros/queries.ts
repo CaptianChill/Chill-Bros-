@@ -23,6 +23,8 @@ export async function getStaffAccounts(): Promise<StaffAccount[]> {
   return profiles.map((profile) => ({ id: profile.id, fullName: profile.full_name, email: profile.email, role: profile.role, status: profile.status, phone: profile.phone, lastClockEvent: profile.last_clock_event, assignedJobs: countByTech.get(profile.id) ?? 0 }));
 }
 
+function customerKey(name: string) { return String(name ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
+
 export async function getCustomers(): Promise<Customer[]> {
   const supabase = createServiceRoleClient();
   const { data: customers, error } = await supabase.from("chillbros_customers").select("id, name, address, phone, email").order("created_at", { ascending: false });
@@ -30,7 +32,18 @@ export async function getCustomers(): Promise<Customer[]> {
   const { data: history } = await supabase.from("chillbros_customer_service_history").select("customer_id, note, occurred_on").order("occurred_on", { ascending: false });
   const historyByCustomer = new Map<string, string[]>();
   for (const entry of history ?? []) { const list = historyByCustomer.get(entry.customer_id) ?? []; list.push(entry.note); historyByCustomer.set(entry.customer_id, list); }
-  return customers.map((customer) => ({ id: customer.id, name: customer.name, address: customer.address, phone: customer.phone, email: customer.email, history: historyByCustomer.get(customer.id) ?? [] }));
+  const mapped = customers.map((customer) => ({ id: customer.id, name: customer.name, address: customer.address, phone: customer.phone, email: customer.email, history: historyByCustomer.get(customer.id) ?? [] }));
+  const unique = new Map<string, Customer>();
+  for (const customer of mapped) {
+    const key = customerKey(customer.name) || customer.id;
+    const current = unique.get(key);
+    if (!current) { unique.set(key, customer); continue; }
+    current.address ||= customer.address;
+    current.phone ||= customer.phone;
+    current.email ||= customer.email;
+    current.history = Array.from(new Set([...current.history, ...customer.history]));
+  }
+  return Array.from(unique.values());
 }
 
 export async function getPartsCatalog(): Promise<PartsCatalogItem[]> {
