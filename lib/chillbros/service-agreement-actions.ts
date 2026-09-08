@@ -1,7 +1,7 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { AgreementCalculationMode, AgreementDiscountType, ServiceAgreementStatus } from "./service-agreement-queries";
@@ -40,12 +40,7 @@ async function requireOfficeOrManager() {
   return { ok: true as const, profile };
 }
 
-function generateAgreementNumber() {
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const suffix = randomBytes(2).toString("hex").toUpperCase();
-  return `PLAN-${date}-${suffix}`;
-}
+function generateAgreementNumber() { return simpleDocumentNumber("agreement"); }
 
 function refresh(customerId?: string, token?: string) {
   for (const path of ["/agreements", "/office", "/crm", "/manager"]) revalidatePath(path);
@@ -100,31 +95,7 @@ export async function createServiceAgreementAction(input: ServiceAgreementInput)
   const supabase = createServiceRoleClient();
   const agreementNumber = generateAgreementNumber();
   const c = valid.clean;
-  const { data, error } = await supabase.from("chillbros_service_agreements").insert({
-    customer_id: c.customerId,
-    agreement_number: agreementNumber,
-    title: c.title,
-    status: "proposed",
-    calculation_mode: input.calculationMode,
-    visits_per_month: c.visits,
-    hours_per_visit: c.hours,
-    hourly_rate: c.hourlyRate,
-    monthly_flat_rate: c.flatRate,
-    preferred_days: c.preferredDays,
-    preferred_time_window: clean(input.preferredTimeWindow, 300),
-    start_date: input.startDate || null,
-    end_date: input.endDate || null,
-    services_included: clean(input.servicesIncluded, 8000),
-    customer_preferences: clean(input.customerPreferences, 6000),
-    terms: clean(input.terms, 8000),
-    setup_fee: c.setupFee,
-    discount_type: input.discountType,
-    discount_value: c.discountValue,
-    discount_amount: c.discountAmount,
-    monthly_subtotal: c.monthlySubtotal,
-    monthly_total: c.monthlyTotal,
-    created_by: guard.profile.id,
-  }).select("id,agreement_number,portal_token").single();
+  const { data, error } = await supabase.from("chillbros_service_agreements").insert({ customer_id: c.customerId, agreement_number: agreementNumber, title: c.title, status: "proposed", calculation_mode: input.calculationMode, visits_per_month: c.visits, hours_per_visit: c.hours, hourly_rate: c.hourlyRate, monthly_flat_rate: c.flatRate, preferred_days: c.preferredDays, preferred_time_window: clean(input.preferredTimeWindow, 300), start_date: input.startDate || null, end_date: input.endDate || null, services_included: clean(input.servicesIncluded, 8000), customer_preferences: clean(input.customerPreferences, 6000), terms: clean(input.terms, 8000), setup_fee: c.setupFee, discount_type: input.discountType, discount_value: c.discountValue, discount_amount: c.discountAmount, monthly_subtotal: c.monthlySubtotal, monthly_total: c.monthlyTotal, created_by: guard.profile.id }).select("id,agreement_number,portal_token").single();
   if (error || !data) return { ok: false, error: error?.message ?? "Could not create the service agreement." };
   await supabase.from("chillbros_customer_service_history").insert({ customer_id: c.customerId, note: `Monthly service plan ${data.agreement_number} created for customer review.` });
   refresh(c.customerId, data.portal_token);
@@ -141,30 +112,7 @@ export async function updateServiceAgreementAction(input: ServiceAgreementInput 
   if (!existing) return { ok: false, error: "Service agreement not found." };
   const c = valid.clean;
   const signatureMustReset = ["accepted", "active"].includes(existing.status);
-  const updates: Record<string, unknown> = {
-    customer_id: c.customerId,
-    title: c.title,
-    status: signatureMustReset ? "proposed" : existing.status,
-    calculation_mode: input.calculationMode,
-    visits_per_month: c.visits,
-    hours_per_visit: c.hours,
-    hourly_rate: c.hourlyRate,
-    monthly_flat_rate: c.flatRate,
-    preferred_days: c.preferredDays,
-    preferred_time_window: clean(input.preferredTimeWindow, 300),
-    start_date: input.startDate || null,
-    end_date: input.endDate || null,
-    services_included: clean(input.servicesIncluded, 8000),
-    customer_preferences: clean(input.customerPreferences, 6000),
-    terms: clean(input.terms, 8000),
-    setup_fee: c.setupFee,
-    discount_type: input.discountType,
-    discount_value: c.discountValue,
-    discount_amount: c.discountAmount,
-    monthly_subtotal: c.monthlySubtotal,
-    monthly_total: c.monthlyTotal,
-    updated_at: new Date().toISOString(),
-  };
+  const updates: Record<string, unknown> = { customer_id: c.customerId, title: c.title, status: signatureMustReset ? "proposed" : existing.status, calculation_mode: input.calculationMode, visits_per_month: c.visits, hours_per_visit: c.hours, hourly_rate: c.hourlyRate, monthly_flat_rate: c.flatRate, preferred_days: c.preferredDays, preferred_time_window: clean(input.preferredTimeWindow, 300), start_date: input.startDate || null, end_date: input.endDate || null, services_included: clean(input.servicesIncluded, 8000), customer_preferences: clean(input.customerPreferences, 6000), terms: clean(input.terms, 8000), setup_fee: c.setupFee, discount_type: input.discountType, discount_value: c.discountValue, discount_amount: c.discountAmount, monthly_subtotal: c.monthlySubtotal, monthly_total: c.monthlyTotal, updated_at: new Date().toISOString() };
   if (signatureMustReset) { updates.signature_name = null; updates.signed_at = null; }
   const { error } = await supabase.from("chillbros_service_agreements").update(updates).eq("id", input.id);
   if (error) return { ok: false, error: error.message };

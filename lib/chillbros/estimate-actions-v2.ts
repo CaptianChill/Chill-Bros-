@@ -1,11 +1,11 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
 import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications";
 import { sendBillingDelivery } from "@/lib/chillbros/billing-delivery";
 import { createReceiptForPaidInvoice } from "@/lib/chillbros/billing-receipts";
+import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
@@ -16,11 +16,11 @@ export type EstimateDraftLine = { label: string; description?: string; quantity:
 export type EstimateAdjustments = { discountType: AdjustmentType | null; discountValue: number; downPaymentType: AdjustmentType | null; downPaymentValue: number; taxRate?: number };
 type EstimateRpcRow = { estimate_id: string; estimate_number: string; estimate_token: string };
 
-const PAYMENT_METHODS = new Set<PaymentMethod>(["cash_app", "venmo", "zelle", "apple_pay", "card"]);
+const PAYMENT_METHODS = new Set<PaymentMethod>(["cash", "check", "ach", "cash_app", "venmo", "zelle"]);
 const ADJUSTMENT_TYPES = new Set<AdjustmentType>(["percent", "dollar"]);
 
 function refresh(paths: string[]) { for (const path of paths) revalidatePath(path); }
-function estimateNumber() { const now = new Date(); return `EST-${now.toISOString().slice(0, 10).replace(/-/g, "")}-${now.toISOString().slice(11, 19).replace(/:/g, "")}-${randomBytes(2).toString("hex").toUpperCase()}`; }
+function estimateNumber() { return simpleDocumentNumber("estimate"); }
 
 function validateLines(lines: EstimateDraftLine[]) {
   if (!Array.isArray(lines) || lines.length < 1 || lines.length > 20) return { ok: false as const, error: "Add between 1 and 20 line items." };
@@ -96,7 +96,7 @@ export async function createEstimateV2Action(jobId: string, lines: EstimateDraft
 
   const row = data as unknown as EstimateRpcRow;
   await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: row.estimate_id, actor_id: allowed.profile.id, stage: "estimate_published", message: "Estimate published. Customer approval is the next step." });
-  try { await sendBillingDelivery(row.estimate_id, "estimate", "email"); } catch { /* estimate creation remains authoritative */ }
+  try { await sendBillingDelivery(row.estimate_id, "estimate", "email"); } catch {}
   refresh(["/technician", "/manager", "/dispatch", "/office", "/invoices", "/"]);
   return { ok: true, data: { estimateId: row.estimate_id, estimateNumber: row.estimate_number, portalToken: row.estimate_token } };
 }
@@ -164,8 +164,8 @@ export async function approveInvoiceV2Action(token: string, signatureName: strin
   await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.job_id, invoice_id: invoice.id, stage: "approved", message: `Customer approved estimate as ${name}. Invoice issued.` });
   const { data: customer } = await supabase.from("chillbros_customers").select("name").eq("id", invoice.customer_id).maybeSingle();
   await sendApprovalNotification({ subject: `Chill Bros approval · ${invoice.invoice_number}`, documentLabel: "Estimate / invoice", documentNumber: invoice.invoice_number, signedBy: name, customerName: customer?.name ?? null, relatedInvoiceId: invoice.id });
-  try { await archiveInvoicePdf(invoice.id, "approved"); } catch { /* approval remains authoritative */ }
-  try { await sendBillingDelivery(invoice.id, "invoice", "email"); } catch { /* customer can still use secure link */ }
+  try { await archiveInvoicePdf(invoice.id, "approved"); } catch {}
+  try { await sendBillingDelivery(invoice.id, "invoice", "email"); } catch {}
   refresh(["/manager", "/dispatch", "/technician", "/office", "/invoices", "/reports", "/", `/portal/${token}`, `/portal/${token}/document`]);
   return { ok: true, data: undefined };
 }
@@ -181,7 +181,7 @@ export async function setInvoicePaymentMethodV2Action(token: string, method: Pay
   const { data: updated, error } = await supabase.from("chillbros_invoices").update({ payment_method: method, payment_status: "pending_manual_review", updated_at: new Date().toISOString() }).eq("id", invoice.id).eq("status", "approved").is("revoked_at", null).neq("payment_status", "paid").select("id").maybeSingle();
   if (error || !updated) return { ok: false, error: error?.message ?? "This invoice changed before the payment method could be saved." };
   await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.job_id, invoice_id: invoice.id, stage: "payment_method_selected", message: `Customer selected ${method.replace(/_/g, " ")} for payment.` });
-  refresh(["/manager", "/dispatch", "/office", "/invoices", `/portal/${token}`]);
+  refresh(["/manager", "/dispatch", "/office", "/invoices", `/portal/${token}`, `/portal/${token}/document`]);
   return { ok: true, data: undefined };
 }
 
@@ -193,9 +193,9 @@ export async function markInvoicePaidV2Action(invoiceId: string): Promise<Result
   const { data, error } = await supabase.from("chillbros_invoices").update({ payment_status: "paid", paid_at: now, paid_recorded_by: profile.id, updated_at: now }).eq("id", invoiceId).eq("status", "approved").is("revoked_at", null).neq("payment_status", "paid").select("id,job_id,portal_token").maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "Only an approved active invoice can be marked paid." };
   await supabase.from("chillbros_workflow_events").insert({ job_id: data.job_id, invoice_id: invoiceId, actor_id: profile.id, stage: "paid", message: "Manager recorded full payment. Billing workflow complete." });
-  try { await createReceiptForPaidInvoice(invoiceId, profile.id); } catch { /* paid state remains authoritative */ }
-  try { await archiveInvoicePdf(invoiceId, "paid", profile.id); } catch { /* paid state remains authoritative */ }
-  try { await sendBillingDelivery(invoiceId, "receipt", "email"); } catch { /* receipt remains available in portal */ }
+  try { await createReceiptForPaidInvoice(invoiceId, profile.id); } catch {}
+  try { await archiveInvoicePdf(invoiceId, "paid", profile.id); } catch {}
+  try { await sendBillingDelivery(invoiceId, "receipt", "email"); } catch {}
   refresh(["/manager", "/dispatch", "/technician", "/office", "/invoices", "/reports", "/crm", "/", `/portal/${data.portal_token}`, `/portal/${data.portal_token}/receipt`]);
   return { ok: true, data: undefined };
 }

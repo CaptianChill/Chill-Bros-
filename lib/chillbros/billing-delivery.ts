@@ -15,6 +15,7 @@ function appBaseUrl() {
   if (vercel) return vercel.startsWith("http") ? vercel : `https://${vercel}`;
   return "https://chill-bros.vercel.app";
 }
+function esc(value: string) { return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] ?? char)); }
 
 function normalizePhone(input: string) {
   const raw = String(input || "").trim();
@@ -47,17 +48,8 @@ async function sendTwilioSms(to: string, body: string) {
 async function logDelivery(invoiceId: string, channel: BillingDeliveryChannel, deliveryType: BillingDeliveryType, recipient: string, result: DeliveryResult) {
   try {
     const supabase = createServiceRoleClient();
-    await supabase.from("chillbros_delivery_log").insert({
-      invoice_id: invoiceId,
-      channel,
-      delivery_type: deliveryType,
-      recipient,
-      status: result.status,
-      error: result.error?.slice(0, 1000) ?? null,
-    });
-  } catch {
-    // Delivery remains authoritative even if logging is temporarily unavailable.
-  }
+    await supabase.from("chillbros_delivery_log").insert({ invoice_id: invoiceId, channel, delivery_type: deliveryType, recipient, status: result.status, error: result.error?.slice(0, 1000) ?? null });
+  } catch {}
 }
 
 function formatDue(value: string | null) {
@@ -70,38 +62,30 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
   const { data: invoice } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,due_at,customer:chillbros_customers(name,email,phone)").eq("id", invoiceId).maybeSingle();
   if (!invoice) return { channel, recipient: null, status: "failed", error: "Invoice was not found." };
 
-  // Direct billing uses the safe awaiting_approval DB state until a real customer signature exists.
-  // INV-prefixed documents are still invoices and must be delivered/labeled as invoices, not estimates.
-  const effectiveType: BillingDeliveryType = invoice.invoice_number.startsWith("INV-") && deliveryType === "estimate" ? "invoice" : deliveryType;
+  const effectiveType: BillingDeliveryType = (invoice.invoice_number.startsWith("I-") || invoice.invoice_number.startsWith("INV-")) && deliveryType === "estimate" ? "invoice" : deliveryType;
   const customer = Array.isArray(invoice.customer) ? invoice.customer[0] : invoice.customer;
   const customerName = customer?.name ?? "Customer";
   const base = appBaseUrl();
-  const documentUrl = `${base}/portal/${invoice.portal_token}`;
-  const receiptUrl = `${documentUrl}/receipt`;
+  const portalUrl = `${base}/portal/${invoice.portal_token}`;
+  const documentUrl = `${portalUrl}/document`;
+  const receiptUrl = `${portalUrl}/receipt`;
   const due = formatDue(invoice.due_at);
   const label = effectiveType === "estimate" ? "estimate" : effectiveType === "receipt" ? "receipt" : "invoice";
   const subject = effectiveType === "reminder" ? `Reminder · Chill Bros invoice ${invoice.invoice_number}` : `Chill Bros ${label} ${invoice.invoice_number}`;
   const link = effectiveType === "receipt" ? receiptUrl : documentUrl;
-  const text = [
-    `${customerName},`,
-    "",
-    effectiveType === "estimate" ? "Your Chill Bros estimate is ready for review and approval." : null,
-    effectiveType === "invoice" ? "Your Chill Bros invoice is ready to view." : null,
-    effectiveType === "reminder" ? `This is a reminder that Chill Bros invoice ${invoice.invoice_number}${due ? ` is due ${due}` : " is still outstanding"}.` : null,
-    effectiveType === "receipt" ? `Payment for ${invoice.invoice_number} has been recorded. Your receipt is ready.` : null,
-    "",
-    `Secure link: ${link}`,
-    due && effectiveType !== "receipt" ? `Due: ${due}` : null,
-    "",
-    "Chill Bros",
-  ].filter(Boolean).join("\n");
+  const intro = effectiveType === "estimate" ? "Your Chill Bros estimate is ready for review and approval."
+    : effectiveType === "invoice" ? "Your Chill Bros invoice is ready to review and pay."
+    : effectiveType === "reminder" ? `This is a reminder that Chill Bros invoice ${invoice.invoice_number}${due ? ` is due ${due}` : " is still outstanding"}.`
+    : `Payment for ${invoice.invoice_number} has been recorded. Your receipt is ready.`;
+  const text = [customerName + ",", "", intro, "", `Open document: ${link}`, due && effectiveType !== "receipt" ? `Due: ${due}` : null, "", "Chill Bros"].filter(Boolean).join("\n");
+  const html = `<!doctype html><html><body style="margin:0;background:#05070a;font-family:Arial,sans-serif;color:#fff"><div style="max-width:640px;margin:0 auto;padding:28px"><div style="border:1px solid #2d7dff;border-radius:18px;padding:24px;background:#07111b"><div style="font-size:22px;font-weight:700;margin-bottom:16px">Chill Bros</div><p style="font-size:16px;line-height:1.6;color:#e5eef8">${esc(customerName)},</p><p style="font-size:16px;line-height:1.6;color:#e5eef8">${esc(intro)}</p>${due && effectiveType !== "receipt" ? `<p style="color:#b9c9d8">Due: ${esc(due)}</p>` : ""}<p style="margin:26px 0"><a href="${esc(link)}" style="display:inline-block;background:#1677ff;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:12px">Open ${esc(label)}</a></p><p style="font-size:12px;color:#91a4b5;word-break:break-all">${esc(link)}</p></div></div></body></html>`;
 
   if (channel === "email") {
     const recipient = String(customer?.email || "").trim();
     if (!recipient) return { channel, recipient: null, status: "skipped", error: "Customer has no email address." };
     let result: DeliveryResult;
     try {
-      const sent = await sendCompanyEmail(recipient, subject, text);
+      const sent = await sendCompanyEmail(recipient, subject, text, html);
       result = { channel, recipient, status: sent.status };
     } catch (error) {
       result = { channel, recipient, status: "failed", error: error instanceof Error ? error.message : "Email delivery failed." };
