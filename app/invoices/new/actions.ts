@@ -1,22 +1,24 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
-const PAYMENT_METHODS = new Set(["cash", "check", "ach", "cash_app", "venmo", "zelle", "apple_pay", "card"]);
+const PAYMENT_METHODS = new Set(["cash", "check", "ach", "cash_app", "venmo", "zelle"]);
 const PAYMENT_TERMS = new Set(["due_on_receipt", "net_7", "net_15", "net_30", "custom"]);
 type DocumentType = "quote" | "invoice";
 type DirectLine = { label: string; description: string; quantity: number; unit_price: number; taxable: boolean; inventoryPartId: string | null };
 
 function text(fd: FormData, key: string) { return String(fd.get(key) ?? "").trim(); }
 function money(fd: FormData, key: string) { const n = Number(text(fd, key) || 0); return Number.isFinite(n) ? n : 0; }
-function documentNumber(type: DocumentType) { const now = new Date(); const prefix = type === "quote" ? "QUO" : "INV"; return `${prefix}-${now.toISOString().slice(0,10).replace(/-/g,"")}-${now.toISOString().slice(11,19).replace(/:/g,"")}-${randomBytes(2).toString("hex").toUpperCase()}`; }
+function documentNumber(type: DocumentType) { return simpleDocumentNumber(type); }
 function dueAt(terms: string, custom: string) { if (terms === "custom" && custom) { const d = new Date(`${custom}T23:59:59`); return Number.isNaN(d.getTime()) ? null : d.toISOString(); } const days = terms === "net_7" ? 7 : terms === "net_15" ? 15 : terms === "net_30" ? 30 : 0; const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString(); }
 function fail(message: string, type: DocumentType): never { redirect(`/invoices/new?type=${type}&error=${encodeURIComponent(message)}`); }
+function norm(value: string | null | undefined) { return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " "); }
+function phoneKey(value: string | null | undefined) { return String(value ?? "").replace(/\D/g, ""); }
 
 export async function createDirectInvoiceAction(formData: FormData): Promise<never> {
   const profile = await getCurrentStaffProfile();
@@ -25,11 +27,17 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const supabase = createServiceRoleClient();
   let customerId = text(formData, "customerId");
   if (!customerId) {
-    const name = text(formData, "customerName"); const email = text(formData, "customerEmail").toLowerCase();
+    const name = text(formData, "customerName"); const email = text(formData, "customerEmail").toLowerCase(); const phone = text(formData, "customerPhone");
     if (!name) fail("Choose an existing customer or enter a new customer name.", type);
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail("Enter a valid customer email.", type);
-    const { data: customer, error } = await supabase.from("chillbros_customers").insert({ name: name.slice(0,200), phone: text(formData,"customerPhone").slice(0,50) || null, email: email || null, address: text(formData,"customerAddress").slice(0,500) || null, created_by: profile.id }).select("id").single();
-    if (error || !customer) fail(error?.message ?? "Could not create customer.", type); customerId = customer.id;
+    const { data: existingRows } = await supabase.from("chillbros_customers").select("id,name,email,phone").limit(1000);
+    const nameKey = norm(name), emailKey = norm(email), pKey = phoneKey(phone);
+    const existing = (existingRows ?? []).find((row) => (emailKey && norm(row.email) === emailKey) || (pKey.length >= 7 && phoneKey(row.phone) === pKey) || norm(row.name) === nameKey);
+    if (existing) customerId = existing.id;
+    else {
+      const { data: customer, error } = await supabase.from("chillbros_customers").insert({ name: name.slice(0,200), phone: phone.slice(0,50) || null, email: email || null, address: text(formData,"customerAddress").slice(0,500) || null, created_by: profile.id }).select("id").single();
+      if (error || !customer) fail(error?.message ?? "Could not create customer.", type); customerId = customer.id;
+    }
   } else { const { data: customer } = await supabase.from("chillbros_customers").select("id").eq("id", customerId).maybeSingle(); if (!customer) fail("Customer record not found.", type); }
 
   const [{ data: catalogRows }, { data: feeRows }] = await Promise.all([supabase.from("chillbros_parts_catalog").select("id,name,part_number,retail_price,stock"), supabase.from("chillbros_fee_settings").select("id,label,amount")]);
