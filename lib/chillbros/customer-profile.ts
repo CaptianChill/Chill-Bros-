@@ -21,6 +21,7 @@ export type CustomerProfileDocument = {
   id: string;
   invoiceNumber: string;
   portalToken: string;
+  jobId: string | null;
   status: "draft" | "awaiting_approval" | "approved" | "void";
   paymentStatus: "unpaid" | "pending_manual_review" | "paid";
   issuedAt: string | null;
@@ -43,7 +44,7 @@ export async function getCustomerProfile(customerId: string): Promise<CustomerPr
   const [{ data: history }, { data: jobs }, { data: documents }, equipment, agreements] = await Promise.all([
     supabase.from("chillbros_customer_service_history").select("note,occurred_on").eq("customer_id", customerId).order("occurred_on", { ascending: false }).limit(100),
     supabase.from("chillbros_jobs").select("id,status,location,scheduled_window,scope,work_performed,created_at,archived_at,tech:chillbros_profiles(full_name)").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(100),
-    supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,issued_at,updated_at").eq("customer_id", customerId).is("revoked_at", null).neq("status", "void").order("updated_at", { ascending: false }).limit(100),
+    supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,job_id,status,payment_status,issued_at,updated_at").eq("customer_id", customerId).is("revoked_at", null).neq("status", "void").order("updated_at", { ascending: false }).limit(100),
     getEquipmentByCustomer(customerId),
     getServiceAgreementsByCustomer(customerId),
   ]);
@@ -63,6 +64,7 @@ export async function getCustomerProfile(customerId: string): Promise<CustomerPr
       id: row.id,
       invoiceNumber: row.invoice_number,
       portalToken: row.portal_token,
+      jobId: row.job_id,
       status: row.status,
       paymentStatus: row.payment_status,
       issuedAt: row.issued_at,
