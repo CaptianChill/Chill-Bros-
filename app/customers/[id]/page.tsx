@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FilePenLine, FileText, Wrench } from "lucide-react";
+import { Archive, FilePenLine, FileText, Wrench } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -23,16 +23,17 @@ export default async function CustomerProfilePage({ params }: Props) {
   const activeJobs = data.jobs.filter((job) => !job.archivedAt && ["scheduled", "in_progress"].includes(job.status));
   const activePlans = data.agreements.filter((plan) => ["accepted", "active"].includes(plan.status));
   const openDocuments = data.documents.filter((document) => document.paymentStatus !== "paid" && document.status !== "void");
+  const archivedDocuments = data.documents.filter((document) => document.paymentStatus === "paid" || document.status === "void");
 
   return <AppShell
     title={data.customer.name}
-    description="Customer information, open work, saved forms, billing documents, service history, equipment, and monthly plans in one record."
+    description="Customer information, open work, saved forms, billing history, service history, equipment, and monthly plans in one record."
     highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Customer profile</p><StatusPill tone="emerald">{data.equipment.length} assets</StatusPill><StatusPill>{activeJobs.length} open calls</StatusPill><StatusPill tone={openDocuments.length ? "amber" : "emerald"}>{openDocuments.length} open documents</StatusPill><StatusPill>{activePlans.length} active plans</StatusPill></div>}
   >
     <div className="space-y-4">
       <SectionCard eyebrow="Customer record" title="Contact & service history" description="Edit the customer record here. All equipment, documents, calls, and plans remain tied to this customer ID."><CustomerEditor customer={data.customer} /></SectionCard>
 
-      <SectionCard eyebrow="Open / In Progress" title="Saved work for this customer" description="Anything unfinished stays easy to find here. Open a document, continue editing it, or resume a form saved on this device.">
+      <SectionCard eyebrow="Open / In Progress" title="Saved work for this customer" description="Anything unfinished stays easy to find here. Completed billing is kept out of the way below in the archive.">
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Open documents</p><Link href={`/invoices/new?type=invoice&customer=${encodeURIComponent(data.customer.id)}`} className="rounded-lg border border-[#2d7dff]/25 px-2.5 py-1.5 text-xs text-[#d9fbff]">+ New</Link></div>
@@ -47,6 +48,11 @@ export default async function CustomerProfilePage({ params }: Props) {
           <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Saved form drafts</p><OpenFormDrafts customerId={data.customer.id} /></div>
         </div>
       </SectionCard>
+
+      <details className="rounded-2xl border border-zinc-800 bg-black/35 p-4">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3"><div className="flex items-center gap-2"><Archive className="h-4 w-4 text-zinc-400"/><div><p className="font-semibold text-white">Past billing archive</p><p className="text-xs text-zinc-500">Paid and void invoices / quotes stay stored here, hidden until you need them.</p></div></div><span className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-400">{archivedDocuments.length}</span></summary>
+        <div className="mt-3 space-y-2">{archivedDocuments.length === 0 ? <p className="text-sm text-zinc-500">No archived billing yet.</p> : archivedDocuments.map((document) => <div key={document.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/55 p-3"><div><p className="text-sm font-medium text-white">{document.invoiceNumber}</p><p className="mt-1 text-xs text-zinc-500">{document.paymentStatus === "paid" ? "Paid" : "Void"}</p></div><div className="flex gap-2">{document.status !== "void" ? <Link href={`/portal/${document.portalToken}/document`} target="_blank" className="rounded-lg border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300">Document</Link> : null}<Link href={`/invoices?focus=${encodeURIComponent(document.id)}`} className="rounded-lg border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300">Record</Link></div></div>)}</div>
+      </details>
 
       <SectionCard eyebrow="Equipment" title="Customer asset registry" description="Add, tag, and maintain equipment directly under this customer record."><EquipmentAdmin customers={[data.customer]} equipment={data.equipment} canDelete={profile.role === "manager"} /></SectionCard>
 
