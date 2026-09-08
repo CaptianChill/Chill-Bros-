@@ -14,6 +14,7 @@ type ApprovalNotification = {
 
 function safeHeader(value: string) { return String(value).replace(/[\r\n]+/g, " ").trim(); }
 function companyEmail() { return String(process.env.COMPANY_MAIN_EMAIL || "chillbrostx@gmail.com").trim(); }
+function dotStuff(value: string) { return value.replace(/^\./gm, ".."); }
 
 function readResponse(socket: tls.TLSSocket) {
   return new Promise<string>((resolve, reject) => {
@@ -39,7 +40,7 @@ async function command(socket: tls.TLSSocket, text: string, expected: string[]) 
   return response;
 }
 
-export async function sendCompanyEmail(to: string, subject: string, text: string) {
+export async function sendCompanyEmail(to: string, subject: string, text: string, html?: string) {
   const user = String(process.env.GMAIL_SMTP_USER || "").trim();
   const password = String(process.env.GMAIL_SMTP_APP_PASSWORD || "").replace(/\s+/g, "");
   if (!user || !password) return { sent: false as const, status: "configuration_required" as const };
@@ -56,18 +57,45 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
     await command(socket, `MAIL FROM:<${safeHeader(user)}>`, ["250"]);
     await command(socket, `RCPT TO:<${safeHeader(to)}>`, ["250", "251"]);
     await command(socket, "DATA", ["354"]);
-    const body = [
+
+    const headers = [
       `From: Chill Bros <${safeHeader(user)}>`,
       `To: ${safeHeader(to)}`,
       `Subject: ${safeHeader(subject)}`,
       "MIME-Version: 1.0",
-      "Content-Type: text/plain; charset=UTF-8",
-      "Content-Transfer-Encoding: 8bit",
-      "",
-      text.replace(/^\./gm, ".."),
-      ".",
-      "",
-    ].join("\r\n");
+    ];
+    let body: string;
+    if (html) {
+      const boundary = `chillbros_${Date.now().toString(36)}`;
+      body = [
+        ...headers,
+        `Content-Type: multipart/alternative; boundary="${boundary}"`,
+        "",
+        `--${boundary}`,
+        "Content-Type: text/plain; charset=UTF-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        dotStuff(text),
+        `--${boundary}`,
+        "Content-Type: text/html; charset=UTF-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        dotStuff(html),
+        `--${boundary}--`,
+        ".",
+        "",
+      ].join("\r\n");
+    } else {
+      body = [
+        ...headers,
+        "Content-Type: text/plain; charset=UTF-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        dotStuff(text),
+        ".",
+        "",
+      ].join("\r\n");
+    }
     socket.write(body);
     const accepted = await readResponse(socket);
     if (!accepted.startsWith("250")) throw new Error("SMTP message was not accepted.");
