@@ -2,10 +2,12 @@ import Link from "next/link";
 import { FileDown } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { DocumentPaymentMethods } from "@/components/document-payment-methods";
 import { DocumentSignatureForm } from "@/components/document-signature-form";
 import { DocumentToolbar } from "@/components/document-toolbar";
 import { LogoBadge } from "@/components/logo-badge";
 import { getInvoiceV2ByToken, invoiceTotals } from "@/lib/chillbros/invoice-v2";
+import { getPaymentSettings } from "@/lib/chillbros/payment-settings";
 import { getJob } from "@/lib/chillbros/queries";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
 
@@ -16,7 +18,7 @@ const date = (value: string | null) => value ? new Date(value).toLocaleDateStrin
 
 export default async function DocumentPage({ params }: Props) {
   const { token } = await params;
-  const invoice = await getInvoiceV2ByToken(token);
+  const [invoice, paymentSettings] = await Promise.all([getInvoiceV2ByToken(token), getPaymentSettings()]);
   if (!invoice) notFound();
   const job = invoice.jobId ? await getJob(invoice.jobId) : null;
   const totals = invoiceTotals(invoice);
@@ -38,6 +40,8 @@ export default async function DocumentPage({ params }: Props) {
           <section className="ml-auto max-w-sm space-y-2 text-sm"><div className="flex justify-between"><span className="text-zinc-600">Subtotal</span><span>{money(totals.subtotal)}</span></div>{invoice.discountAmount > 0 ? <div className="flex justify-between text-emerald-700"><span>Discount{invoice.discountType === "percent" ? ` (${invoice.discountValue}%)` : ""}</span><span>−{money(invoice.discountAmount)}</span></div> : null}{invoice.taxAmount > 0 ? <div className="flex justify-between"><span className="text-zinc-600">Tax ({invoice.taxRate}%)</span><span>+{money(invoice.taxAmount)}</span></div> : null}{invoice.creditAmount > 0 ? <div className="flex justify-between text-emerald-700"><span>Credit applied</span><span>−{money(invoice.creditAmount)}</span></div> : null}<div className="flex justify-between border-t border-zinc-400 pt-2 text-lg font-bold"><span>Total</span><span>{money(totals.total)}</span></div>{invoice.downPaymentAmount > 0 ? <><div className="flex justify-between font-medium text-amber-700"><span>Down payment required{invoice.downPaymentType === "percent" ? ` (${invoice.downPaymentValue}%)` : ""}</span><span>{money(Math.min(invoice.downPaymentAmount, totals.total))}</span></div><div className="flex justify-between"><span className="text-zinc-600">Balance after down payment</span><span>{money(totals.balanceAfterDownPayment)}</span></div></> : null}{invoice.refundAmount > 0 ? <div className="flex justify-between text-amber-700"><span>Refunds recorded</span><span>{money(invoice.refundAmount)}</span></div> : null}{invoice.paymentStatus === "paid" ? <div className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-center font-bold text-emerald-800">PAYMENT RECORDED</div> : null}</section>
 
           <section className="grid gap-6 border-t border-zinc-200 pt-5 sm:grid-cols-[1.25fr_0.75fr]"><div><DocumentSignatureForm kind="estimate" token={token} initialSignature={invoice.signatureName} initialSignedAt={invoice.signedAt} alreadyApproved={invoice.status === "approved"} /></div><div className="sm:text-right"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Payment method</p><p className="mt-2 text-sm font-semibold">{invoice.paymentMethod ? invoice.paymentMethod.replace(/_/g, " ") : "Not selected"}</p>{invoice.status === "approved" ? <Link href={`/api/portal/${token}/pdf?stage=${invoice.paymentStatus === "paid" ? "paid" : "approved"}`} target="_blank" className="mt-4 inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-xs"><FileDown className="h-3.5 w-3.5" />Archived PDF</Link> : null}</div></section>
+
+          {invoice.status === "approved" ? <DocumentPaymentMethods token={token} initialMethod={invoice.paymentMethod} paymentStatus={invoice.paymentStatus} paymentSettings={paymentSettings} /> : <section className="rounded-xl border border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-700"><strong>Next step:</strong> Sign and approve the estimate above. Payment choices will appear directly on this document immediately after approval.</section>}
         </div>
       </article>
     </div>
