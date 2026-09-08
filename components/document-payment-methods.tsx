@@ -42,7 +42,7 @@ export function DocumentPaymentMethods({ token, initialMethod, paymentStatus, pa
     : selected === "venmo" && paymentSettings.venmoHandle ? <>Send Venmo payment to <strong>{paymentSettings.venmoHandle}</strong>.</>
     : selected === "check" && paymentSettings.checkPayableTo ? <>Make check payable to <strong>{paymentSettings.checkPayableTo}</strong>.</>
     : selected === "ach" && paymentSettings.manualAchInstructions ? <span className="whitespace-pre-wrap">{paymentSettings.manualAchInstructions}</span>
-    : selected === "cash" ? <>Coordinate cash payment directly with Chill Bros.</>
+    : selected === "cash" ? <>Coordinate cash payment directly with Chill Pros.</>
     : null;
 
   return <section className="rounded-2xl border-2 border-zinc-900 bg-white p-4 print:border-zinc-400">
