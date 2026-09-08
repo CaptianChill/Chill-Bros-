@@ -7,7 +7,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createDirectInvoiceAction } from "./actions";
 
 export const dynamic = "force-dynamic";
-type Props = { searchParams: Promise<{ type?: string; success?: string; error?: string; token?: string; invoice?: string }> };
+type Props = { searchParams: Promise<{ type?: string; success?: string; error?: string; token?: string; invoice?: string; customer?: string }> };
 
 const input = "min-h-12 w-full rounded-xl border border-[#2d7dff]/25 bg-black px-3 py-2.5 text-white placeholder:text-zinc-600";
 const label = "text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400";
@@ -20,6 +20,7 @@ export default async function NewInvoicePage({ searchParams }: Props) {
   const documentType = params.type === "quote" ? "quote" : "invoice";
   const isQuote = documentType === "quote";
   const [customers, parts, fees, priceBook] = await Promise.all([getCustomers(), getPartsCatalog(), getFeeSettings(), getPriceBookEntries()]);
+  const selectedCustomerId = customers.some((customer) => customer.id === params.customer) ? String(params.customer) : "";
 
   return <AppShell title={isQuote ? "New Quote" : "New Invoice"} description="Create billing documents immediately. No open job or scheduled service call is required.">
     <div className="mx-auto max-w-5xl space-y-4">
@@ -39,13 +40,13 @@ export default async function NewInvoicePage({ searchParams }: Props) {
         {params.token ? <div className="mt-3 flex flex-wrap gap-2"><Link target="_blank" href={`/portal/${params.token}/document`} className="rounded-xl border border-emerald-400/30 px-3 py-2">Open / Print</Link><Link target="_blank" href={`/portal/${params.token}`} className="rounded-xl border border-emerald-400/30 px-3 py-2">Customer view</Link></div> : null}
       </div> : null}
 
-      <form action={createDirectInvoiceAction} className="space-y-5">
+      <form action={createDirectInvoiceAction} className="space-y-5" data-draft-label={isQuote ? "New quote" : "New invoice"}>
         <input type="hidden" name="documentType" value={documentType} />
         <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4 sm:p-5">
           <h2 className="text-xl font-semibold text-white">1. Customer</h2>
           <p className="mt-1 text-sm text-zinc-400">Pick an existing customer or create one here. No job selection is required.</p>
           <div className="mt-4 space-y-3">
-            <label className={label}>Customer database<select name="customerId" defaultValue="" className={`${input} mt-1`}><option value="">+ New customer</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}{customer.phone ? ` · ${customer.phone}` : ""}</option>)}</select></label>
+            <label className={label}>Customer database<select name="customerId" defaultValue={selectedCustomerId} className={`${input} mt-1`}><option value="">+ New customer</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}{customer.phone ? ` · ${customer.phone}` : ""}</option>)}</select></label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className={label}>Customer / business name<input name="customerName" placeholder="Required only for a new customer" className={`${input} mt-1`} /></label>
               <label className={label}>Phone<input name="customerPhone" inputMode="tel" placeholder="Phone" className={`${input} mt-1`} /></label>
@@ -92,18 +93,17 @@ export default async function NewInvoicePage({ searchParams }: Props) {
 
         {!isQuote ? <section className="rounded-3xl border border-emerald-400/25 bg-emerald-500/[0.04] p-4 sm:p-5">
           <h2 className="text-xl font-semibold text-white">3. Payment</h2>
-          <p className="mt-1 text-sm text-zinc-400">Leave unpaid or record a completed payment immediately.</p>
+          <p className="mt-1 text-sm text-zinc-400">Leave unpaid or record a completed non-card payment immediately. Card checkout stays disabled until you intentionally configure it.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className={label}>Payment status<select name="paymentStatus" defaultValue="unpaid" className={`${input} mt-1`}><option value="unpaid">Unpaid</option><option value="paid">Paid now</option></select></label>
-            <label className={label}>Payment method<select name="paymentMethod" defaultValue="" className={`${input} mt-1`}><option value="">Choose method</option><option value="cash">Cash</option><option value="check">Check</option><option value="ach">ACH / bank transfer</option><option value="cash_app">Cash App</option><option value="venmo">Venmo</option><option value="zelle">Zelle</option><option value="apple_pay">Apple Pay</option><option value="card">Credit / debit card</option></select></label>
+            <label className={label}>Payment method<select name="paymentMethod" defaultValue="" className={`${input} mt-1`}><option value="">Choose method</option><option value="cash">Cash</option><option value="check">Check</option><option value="ach">ACH / bank transfer</option><option value="cash_app">Cash App</option><option value="venmo">Venmo</option><option value="zelle">Zelle</option></select></label>
             <label className={label}>Payment terms<select name="paymentTerms" defaultValue="due_on_receipt" className={`${input} mt-1`}><option value="due_on_receipt">Due on receipt</option><option value="net_7">Net 7</option><option value="net_15">Net 15</option><option value="net_30">Net 30</option><option value="custom">Custom due date</option></select></label>
             <label className={label}>Custom due date<input name="customDueDate" type="date" className={`${input} mt-1`} /></label>
             <label className={label}>Payer name<input name="payerName" placeholder="Name on payment" className={`${input} mt-1`} /></label>
             <label className={label}>Confirmation / check #<input name="paymentReference" placeholder="Transaction, check, confirmation" className={`${input} mt-1`} /></label>
-            <label className={label}>Card last 4 only<input name="cardLast4" inputMode="numeric" maxLength={4} placeholder="1234" className={`${input} mt-1`} /></label>
-            <label className={label}>Payment notes<input name="paymentNotes" placeholder="Optional internal payment note" className={`${input} mt-1`} /></label>
+            <label className={`${label} sm:col-span-2`}>Payment notes<input name="paymentNotes" placeholder="Optional internal payment note" className={`${input} mt-1`} /></label>
           </div>
-          <p className="mt-3 text-xs text-zinc-500">Full card numbers, CVVs, routing numbers, and bank credentials are never stored here.</p>
+          <p className="mt-3 text-xs text-zinc-500">Debit/credit cards and Apple Pay are intentionally hidden until online card processing is configured.</p>
         </section> : null}
 
         <button type="submit" className="min-h-14 w-full rounded-2xl border border-[#8ffafa]/60 bg-[#2d7dff]/20 px-5 py-3 text-lg font-semibold text-white shadow-[0_0_20px_rgba(45,125,255,0.18)]">Create {isQuote ? "Quote" : "Invoice"}</button>

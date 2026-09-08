@@ -5,6 +5,7 @@ import { navItems } from "@/lib/chillbros/nav";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { signOutAction } from "@/app/sign-in/actions";
 import { AppNavigation } from "@/components/app-navigation";
+import { FormDraftProtector } from "@/components/form-draft-protector";
 import { LogoBadge } from "@/components/logo-badge";
 import { PageSyncControls } from "@/components/page-sync-controls";
 import { PageTitle } from "@/components/page-title";
@@ -42,6 +43,7 @@ export async function AppShell({ children }: AppShellProps) {
       </div>
 
       <main id="main-content" className="relative z-20 isolate min-w-0 flex-1 pointer-events-auto">{children}</main>
+      <FormDraftProtector />
     </div>
   </div>;
 }
