@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Box, CheckCircle2, Eye, Layers3, MonitorSmartphone, Rotate3D, Sparkles } from "lucide-react";
+import { Box, CheckCircle2, Eye, ImagePlus, Layers3, MonitorSmartphone, Rotate3D, Sparkles } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -39,6 +39,12 @@ export default async function ThreeDStudioPage() {
         </div>
       }
     >
+      <SectionCard eyebrow="Project visualization" title="Photo → 3D Blueprint" description="Upload field photos, enter working dimensions, and build a saved isometric concept blueprint with field-verification status attached to every room.">
+        <Link href="/3d-studio/photo-blueprint" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#8ffafa]/55 bg-[#2d7dff]/14 px-4 py-3 text-sm font-semibold text-white shadow-[0_0_14px_rgba(45,125,255,0.2)] transition hover:bg-[#2d7dff]/24 sm:w-auto">
+          <ImagePlus className="h-4 w-4 text-[#8ffafa]" /> Open Photo → 3D Blueprint
+        </Link>
+      </SectionCard>
+
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
         <SectionCard eyebrow="Blender asset library" title="Production queue" description="Ready assets now have an actual Open 3D Model button. The cards themselves are status cards, so the action is explicit instead of pretending every glowing rectangle is a button.">
           <div className="grid gap-3">
