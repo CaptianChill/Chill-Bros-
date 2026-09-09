@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: chill-bros-blender-renderer
+    runtime: docker
+    dockerfilePath: ./blender-worker/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: BLENDER_RENDER_TOKEN
+        generateValue: true
