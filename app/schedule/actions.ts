@@ -151,7 +151,7 @@ export async function createScheduledJobAction(formData: FormData): Promise<neve
   });
 
   refreshScheduleViews();
-  go("Saved to calendar. The call is now in the schedule below.", "success", date);
+  go("Saved to calendar.", "success", date);
 }
 
 export async function createTeamMeetingAction(formData: FormData): Promise<never> {
@@ -227,4 +227,28 @@ export async function rescheduleJobAction(formData: FormData): Promise<never> {
 
   refreshScheduleViews();
   go("Schedule updated and saved.", "success", date);
+}
+
+export async function deleteCalendarItemAction(formData: FormData): Promise<never> {
+  const profile = await getCurrentStaffProfile();
+  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
+
+  const jobId = text(formData, "jobId");
+  const week = text(formData, "week");
+  if (!jobId) go("Schedule item not found.", "error", week);
+
+  const supabase = createServiceRoleClient();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("chillbros_jobs")
+    .update({ status: "cancelled", archived_at: now, updated_at: now })
+    .eq("id", jobId)
+    .is("archived_at", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) go(error?.message ?? "Could not remove that schedule item.", "error", week);
+
+  refreshScheduleViews();
+  go("Schedule item removed.", "success", week);
 }
