@@ -111,7 +111,7 @@ export async function POST(request: Request) {
     brief,
     environment: cleanText(incoming.environment, 200) || "clean studio",
     presentation: cleanText(incoming.presentation, 200) || "wide customer presentation",
-    samples: Math.min(128, Math.max(32, Number(incoming.samples) || 48)),
+    samples: Math.min(48, Math.max(32, Number(incoming.samples) || 48)),
     width: 1536,
     height: 1024,
   };
