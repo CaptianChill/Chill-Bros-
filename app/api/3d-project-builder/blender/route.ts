@@ -1,3 +1,4 @@
+import { getVercelOidcToken } from "@vercel/functions/oidc";
 import { NextResponse } from "next/server";
 
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -12,8 +13,10 @@ function workerBase() {
   return (process.env.BLENDER_RENDER_URL || DEFAULT_RENDER_WORKER_URL).trim().replace(/\/$/, "");
 }
 
-function workerAuthorization() {
-  return (process.env.BLENDER_RENDER_TOKEN || process.env.VERCEL_OIDC_TOKEN || "").trim();
+async function workerAuthorization() {
+  const configured = (process.env.BLENDER_RENDER_TOKEN || "").trim();
+  if (configured) return configured;
+  return (await getVercelOidcToken()).trim();
 }
 
 function cleanText(value: unknown, max = 4000) {
@@ -58,7 +61,13 @@ export async function POST(request: Request) {
   }
 
   const base = workerBase();
-  const authorization = workerAuthorization();
+  let authorization = "";
+  try {
+    authorization = await workerAuthorization();
+  } catch (error) {
+    console.error("Unable to obtain Blender worker identity", error);
+  }
+
   if (!base) {
     return NextResponse.json(
       {
@@ -72,7 +81,7 @@ export async function POST(request: Request) {
   if (!authorization) {
     return NextResponse.json(
       {
-        error: "The Blender worker connection has no server identity token.",
+        error: "The Blender worker connection could not obtain a server identity token.",
         engine: "blender-cycles",
       },
       { status: 503 },
