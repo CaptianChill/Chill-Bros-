@@ -10,11 +10,11 @@ type SectionCardProps = {
 
 export function SectionCard({ title, children, className = "" }: SectionCardProps) {
   return (
-    <section className={`neon-frame sign-surface rounded-2xl p-3 text-center backdrop-blur sm:p-3.5 ${className}`}>
+    <section className={`panel neon-frame sign-surface rounded-2xl p-3 text-center backdrop-blur sm:p-3.5 ${className}`}>
       <div className="mb-2 text-center">
-        <h2 className="text-lg font-semibold leading-tight text-white sm:text-xl">{title}</h2>
+        <h2 className="glo text-lg font-semibold leading-tight text-white sm:text-xl">{title}</h2>
       </div>
-      {children}
+      <div className="txt">{children}</div>
     </section>
   );
 }
