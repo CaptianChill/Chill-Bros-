@@ -10,7 +10,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="relative z-20 inline-flex min-h-7 min-w-0 touch-manipulation items-center justify-center rounded-md border border-rose-500/45 bg-rose-500/10 px-2 py-1 text-center text-[9px] font-semibold leading-none text-rose-100 transition hover:bg-rose-500/20 active:scale-[.98] disabled:cursor-wait disabled:opacity-50"
+      className="danger-box relative z-20 inline-flex min-h-7 min-w-0 touch-manipulation items-center justify-center px-2 py-1 text-center text-[9px] font-semibold leading-none text-white transition active:scale-[.98] disabled:cursor-wait disabled:opacity-50"
     >
       {pending ? "Deleting…" : "Delete"}
     </button>
