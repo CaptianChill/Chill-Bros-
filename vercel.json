@@ -1,4 +1,30 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "frontend": {
+      "root": ".",
+      "framework": "nextjs",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "blender_worker",
+          "format": "url",
+          "env": "BLENDER_RENDER_URL"
+        }
+      ]
+    },
+    "blender_worker": {
+      "root": "blender-worker/",
+      "runtime": "container",
+      "entrypoint": "Dockerfile.vercel"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": { "service": "frontend" }
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/invoice-reminders",
