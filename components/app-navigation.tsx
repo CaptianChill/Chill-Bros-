@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Box, ChevronDown, ExternalLink, Menu } from "lucide-react";
+import { Box, ChevronDown, ExternalLink, Images, Menu } from "lucide-react";
 
 import type { NavItem } from "@/lib/chillbros/nav";
 
@@ -29,13 +29,20 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
   return (
     <nav aria-label="Primary" className="mt-2 border-t border-[#2d7dff]/15 pt-2">
       {hasThreeDStudio ? (
-        <div className="mb-2 grid gap-2 sm:grid-cols-2">
+        <div className="mb-2 grid gap-2 sm:grid-cols-3">
           <Link
             href="/3d-studio"
             className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 font-brand text-xs uppercase tracking-[0.08em] transition ${isActive(pathname, "/3d-studio") ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#8ffafa]/45 bg-[#2d7dff]/12 text-white hover:border-[#8ffafa]/70 hover:bg-[#2d7dff]/20"}`}
           >
             <Box className="h-4 w-4 text-[#8ffafa]" />
             3D Studio
+          </Link>
+          <Link
+            href="/3d-project-builder"
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 font-brand text-xs uppercase tracking-[0.08em] transition ${isActive(pathname, "/3d-project-builder") ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#8ffafa]/45 bg-[#2d7dff]/12 text-white hover:border-[#8ffafa]/70 hover:bg-[#2d7dff]/20"}`}
+          >
+            <Images className="h-4 w-4 text-[#8ffafa]" />
+            3D Project Builder
           </Link>
           <a
             href={CHILL_PRO_MADE_URL}
