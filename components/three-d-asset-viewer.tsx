@@ -6,41 +6,58 @@ import { AlertTriangle, Rotate3D } from "lucide-react";
 
 export function ThreeDAssetViewer({ src, label }: { src: string; label: string }) {
   const host = useRef<HTMLDivElement>(null);
-  const [scriptReady, setScriptReady] = useState(false);
   const [modelReady, setModelReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const target = host.current;
-    if (!scriptReady || !target) return;
+    if (!target) return;
     let cancelled = false;
 
-    window.customElements.whenDefined("model-viewer").then(() => {
-      if (cancelled || !host.current) return;
-      const viewer = document.createElement("model-viewer");
-      viewer.setAttribute("src", src);
-      viewer.setAttribute("alt", label);
-      viewer.setAttribute("camera-controls", "");
-      viewer.setAttribute("auto-rotate", "");
-      viewer.setAttribute("shadow-intensity", "1");
-      viewer.setAttribute("environment-image", "neutral");
-      viewer.setAttribute("interaction-prompt", "auto");
-      viewer.setAttribute("touch-action", "pan-y");
-      viewer.setAttribute("loading", "eager");
-      viewer.setAttribute("camera-orbit", "45deg 65deg auto");
-      viewer.style.width = "100%";
-      viewer.style.height = "100%";
-      viewer.style.minHeight = "420px";
-      viewer.addEventListener("load", () => setModelReady(true));
-      viewer.addEventListener("error", () => setError("The 3D file exists, but the viewer could not load it on this device."));
-      host.current.replaceChildren(viewer);
-    }).catch(() => setError("The 3D viewer library did not load."));
+    setModelReady(false);
+    setError(null);
+
+    // Do not depend on next/script onLoad/onReady to start the viewer.
+    // During client-side navigation Next.js may reuse an already-loaded script,
+    // which can leave callback-driven state false even though <model-viewer>
+    // is already registered. Waiting on the custom element works for both a
+    // fresh page load and navigation from inside the Chill Bros app.
+    window.customElements
+      .whenDefined("model-viewer")
+      .then(() => {
+        if (cancelled || !host.current) return;
+
+        const viewer = document.createElement("model-viewer");
+        viewer.setAttribute("src", src);
+        viewer.setAttribute("alt", label);
+        viewer.setAttribute("camera-controls", "");
+        viewer.setAttribute("auto-rotate", "");
+        viewer.setAttribute("shadow-intensity", "1");
+        viewer.setAttribute("environment-image", "neutral");
+        viewer.setAttribute("interaction-prompt", "auto");
+        viewer.setAttribute("touch-action", "pan-y");
+        viewer.setAttribute("loading", "eager");
+        viewer.setAttribute("camera-orbit", "45deg 65deg auto");
+        viewer.style.width = "100%";
+        viewer.style.height = "100%";
+        viewer.style.minHeight = "420px";
+        viewer.addEventListener("load", () => {
+          if (!cancelled) setModelReady(true);
+        });
+        viewer.addEventListener("error", () => {
+          if (!cancelled) setError("The 3D file exists, but the viewer could not load it on this device.");
+        });
+        host.current.replaceChildren(viewer);
+      })
+      .catch(() => {
+        if (!cancelled) setError("The 3D viewer library did not load.");
+      });
 
     return () => {
       cancelled = true;
       target.replaceChildren();
     };
-  }, [label, scriptReady, src]);
+  }, [label, src]);
 
   return (
     <div className="relative min-h-[430px] overflow-hidden rounded-3xl border border-[#2d7dff]/45 bg-[#020407] shadow-[0_0_28px_rgba(45,125,255,0.2)]">
@@ -49,8 +66,6 @@ export function ThreeDAssetViewer({ src, label }: { src: string; label: string }
         type="module"
         src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js"
         strategy="afterInteractive"
-        onLoad={() => setScriptReady(true)}
-        onReady={() => setScriptReady(true)}
         onError={() => setError("The 3D viewer library could not be loaded.")}
       />
 
