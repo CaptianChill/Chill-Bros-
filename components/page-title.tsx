@@ -46,7 +46,7 @@ export function PageTitle() {
         />
       </div>
 
-      <h1 className="relative z-10 min-w-0 flex-1 text-center font-serif text-[1.35rem] font-black italic uppercase leading-tight tracking-[0.015em] text-[#071126] [-webkit-text-stroke:1px_#9ffcff] [text-shadow:0_0_2px_#ffffff,0_0_6px_#8ffcff,0_0_12px_#2d7dff,0_0_22px_#0057ff] sm:text-[1.8rem]">
+      <h1 className="glo relative z-10 min-w-0 flex-1 text-center font-serif text-[1.35rem] font-black italic uppercase leading-tight tracking-[0.015em] sm:text-[1.8rem]">
         {label}
       </h1>
 
