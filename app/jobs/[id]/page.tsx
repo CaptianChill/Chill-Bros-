@@ -47,7 +47,7 @@ export default async function JobWorkspacePage({ params }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href={profile.role === "technician" ? "/technician" : "/dispatch"} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#2d7dff]/25 bg-black/35 px-3 py-2 text-sm text-[#d9fbff]"><ArrowLeft className="h-4 w-4" />Back</Link>
-        <div className="flex flex-wrap items-center gap-2"><StatusPill tone={paid ? "emerald" : invoiceIssued ? "amber" : "blue"}>{stageLabel(stage)}</StatusPill><span className="text-xs text-zinc-500">Job {job.id.slice(0, 8).toUpperCase()}</span></div>
+        <div className="flex flex-wrap items-center gap-2"><StatusPill tone={paid ? "emerald" : invoiceIssued ? "amber" : "cyan"}>{stageLabel(stage)}</StatusPill><span className="text-xs text-zinc-500">Job {job.id.slice(0, 8).toUpperCase()}</span></div>
       </div>
 
       <section className="rounded-3xl border border-[#2d7dff]/30 bg-black/50 p-4 shadow-[0_0_28px_rgba(45,125,255,0.10)] sm:p-5">
