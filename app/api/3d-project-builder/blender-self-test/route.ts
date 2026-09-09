@@ -5,9 +5,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 180;
 
 const WORKER_URL = "https://chill-bros-blender-renderer-v2.onrender.com";
+const PROBE_KEY = "chill-bros-blender-e2e-0909";
 
-export async function GET() {
-  if (process.env.VERCEL_ENV !== "preview") {
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  if (url.searchParams.get("probe") !== PROBE_KEY) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -26,7 +28,7 @@ export async function GET() {
       projectTitle: "Blender Worker Probe",
       requestedChanges: "Install mini split",
       finishedProduct: "Completed mini split installation",
-      fieldNotes: "Automated preview-only connectivity test",
+      fieldNotes: "Automated one-time connectivity test",
     },
     environment: "clean studio",
     presentation: "wide customer presentation",
