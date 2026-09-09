@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { Camera, Cuboid, Play, Save, Share2, WandSparkles } from "lucide-react";
 import PhotoBlueprintClient from "@/app/3d-studio/photo-blueprint/photo-blueprint-client";
+import BlenderRenderClient from "./blender-render-client";
 import { ProjectBriefClient } from "./project-brief-client";
 import CompletedVisualClient from "./completed-visual-client";
 
 const steps = [
   { id: "photos", n: "1", title: "Photos & Info", subtitle: "Upload · Details · Scope", icon: Camera },
-  { id: "model", n: "2", title: "3D Model & Measurements", subtitle: "Build · Edit · Navigate", icon: Cuboid },
-  { id: "finished", n: "3", title: "Completed Visual (AI)", subtitle: "Before / After · Walkthrough", icon: WandSparkles },
+  { id: "model", n: "2", title: "3D Model & Blender", subtitle: "Measure · Build · Cycles Render", icon: Cuboid },
+  { id: "finished", n: "3", title: "Photo Finish (AI)", subtitle: "Optional Before / After", icon: WandSparkles },
 ] as const;
 
 type StepId = (typeof steps)[number]["id"];
@@ -30,7 +31,7 @@ export default function ProjectVisualizerClient() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8ffafa]">Chill Bros Project Visualizer</p>
-            <h2 className="mt-1 text-xl font-semibold text-white">Photos → measured model → customer-ready finished concept</h2>
+            <h2 className="mt-1 text-xl font-semibold text-white">Photos → measured model → Blender render → optional AI photo finish</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             <button onClick={saveAll} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#8ffafa]/35 bg-[#2d7dff]/12 px-3 text-xs font-semibold text-white"><Save className="h-4 w-4"/>Save project</button>
@@ -61,8 +62,8 @@ export default function ProjectVisualizerClient() {
           <ProjectBriefClient />
           <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Photo intake</p>
-            <h3 className="mt-1 text-lg font-semibold text-white">Add the real house photos first</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">Use the photo uploader in Step 2 to store the actual exterior and room photos with this project. Those same photos become the visual references for measurements, the concept model, and the finished AI render.</p>
+            <h3 className="mt-1 text-lg font-semibold text-white">Add the real house photos and scope first</h3>
+            <p className="mt-2 text-sm leading-6 text-zinc-400">The photos stay available for the optional before/after photo finish. The measured room data in Step 2 is what drives the Blender scene.</p>
             <button onClick={()=>setActive("model")} className="mt-3 rounded-xl border border-[#8ffafa]/35 bg-[#2d7dff]/12 px-4 py-2 text-sm font-semibold text-white">Add photos & measurements</button>
           </section>
         </div>
@@ -71,9 +72,10 @@ export default function ProjectVisualizerClient() {
       {active === "model" ? (
         <div className="space-y-4">
           <PhotoBlueprintClient />
+          <BlenderRenderClient />
           <div className="grid gap-3 sm:grid-cols-2">
             <Link href="/3d-project-builder/walkthrough" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#8ffafa]/45 bg-[#8ffafa]/10 px-4 font-semibold text-white"><Play className="h-4 w-4"/>Open movable walkthrough</Link>
-            <button onClick={()=>setActive("finished")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/35 bg-[#2d7dff]/12 px-4 font-semibold text-white"><WandSparkles className="h-4 w-4"/>Create finished visual</button>
+            <button onClick={()=>setActive("finished")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/35 bg-[#2d7dff]/12 px-4 font-semibold text-white"><WandSparkles className="h-4 w-4"/>Optional AI photo finish</button>
           </div>
         </div>
       ) : null}
