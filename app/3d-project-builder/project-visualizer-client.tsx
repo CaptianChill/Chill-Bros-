@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Camera, Cuboid, ImageSparkles, Play, Save, Share2 } from "lucide-react";
+import { Camera, Cuboid, Play, Save, Share2, WandSparkles } from "lucide-react";
 import PhotoBlueprintClient from "@/app/3d-studio/photo-blueprint/photo-blueprint-client";
 import { ProjectBriefClient } from "./project-brief-client";
 import CompletedVisualClient from "./completed-visual-client";
@@ -10,7 +10,7 @@ import CompletedVisualClient from "./completed-visual-client";
 const steps = [
   { id: "photos", n: "1", title: "Photos & Info", subtitle: "Upload · Details · Scope", icon: Camera },
   { id: "model", n: "2", title: "3D Model & Measurements", subtitle: "Build · Edit · Navigate", icon: Cuboid },
-  { id: "finished", n: "3", title: "Completed Visual (AI)", subtitle: "Before / After · Walkthrough", icon: ImageSparkles },
+  { id: "finished", n: "3", title: "Completed Visual (AI)", subtitle: "Before / After · Walkthrough", icon: WandSparkles },
 ] as const;
 
 type StepId = (typeof steps)[number]["id"];
@@ -73,7 +73,7 @@ export default function ProjectVisualizerClient() {
           <PhotoBlueprintClient />
           <div className="grid gap-3 sm:grid-cols-2">
             <Link href="/3d-project-builder/walkthrough" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#8ffafa]/45 bg-[#8ffafa]/10 px-4 font-semibold text-white"><Play className="h-4 w-4"/>Open movable walkthrough</Link>
-            <button onClick={()=>setActive("finished")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/35 bg-[#2d7dff]/12 px-4 font-semibold text-white"><ImageSparkles className="h-4 w-4"/>Create finished visual</button>
+            <button onClick={()=>setActive("finished")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/35 bg-[#2d7dff]/12 px-4 font-semibold text-white"><WandSparkles className="h-4 w-4"/>Create finished visual</button>
           </div>
         </div>
       ) : null}
