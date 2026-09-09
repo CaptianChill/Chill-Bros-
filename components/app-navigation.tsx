@@ -6,7 +6,7 @@ import { Box, ChevronDown, ExternalLink, Menu } from "lucide-react";
 
 import type { NavItem } from "@/lib/chillbros/nav";
 
-const CHILL_PRO_MADE_URL = "https://chill-pro-made-6nyhlz3sj-chill-pros.vercel.app";
+const CHILL_PRO_MADE_URL = "https://chill-pro-made.vercel.app";
 
 const GROUPS = [
   { label: "Operations", hrefs: ["/", "/office", "/dispatch", "/schedule", "/customers", "/scan-send", "/invoices", "/timesheet"] },
