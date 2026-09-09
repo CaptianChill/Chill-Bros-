@@ -6,8 +6,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+const DEFAULT_RENDER_WORKER_URL = "https://chill-bros-blender-renderer-v2.onrender.com";
+
 function workerBase() {
-  return (process.env.BLENDER_RENDER_URL || "").trim().replace(/\/$/, "");
+  return (process.env.BLENDER_RENDER_URL || DEFAULT_RENDER_WORKER_URL).trim().replace(/\/$/, "");
+}
+
+function workerAuthorization() {
+  return (process.env.BLENDER_RENDER_TOKEN || process.env.VERCEL_OIDC_TOKEN || "").trim();
 }
 
 function cleanText(value: unknown, max = 4000) {
@@ -27,19 +33,20 @@ export async function GET() {
 
   try {
     const response = await fetch(`${base}/health`, {
-      headers: process.env.BLENDER_RENDER_TOKEN
-        ? { Authorization: `Bearer ${process.env.BLENDER_RENDER_TOKEN}` }
-        : undefined,
       cache: "no-store",
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(65_000),
     });
+    const health = await response.json().catch(() => ({}));
     return NextResponse.json({
       configured: true,
-      online: response.ok,
+      online: response.ok && health?.ok !== false,
       engine: "blender-cycles",
       status: response.status,
+      version: typeof health?.version === "string" ? health.version : undefined,
+      authentication: health?.auth || "render-worker",
     });
-  } catch {
+  } catch (error) {
+    console.error("Blender worker health check failed", error);
     return NextResponse.json({ configured: true, online: false, engine: "blender-cycles" });
   }
 }
@@ -51,11 +58,21 @@ export async function POST(request: Request) {
   }
 
   const base = workerBase();
+  const authorization = workerAuthorization();
   if (!base) {
     return NextResponse.json(
       {
         error: "Blender render worker is not connected yet.",
         setupRequired: true,
+        engine: "blender-cycles",
+      },
+      { status: 503 },
+    );
+  }
+  if (!authorization) {
+    return NextResponse.json(
+      {
+        error: "The Blender worker connection has no server identity token.",
         engine: "blender-cycles",
       },
       { status: 503 },
@@ -94,7 +111,7 @@ export async function POST(request: Request) {
     brief,
     environment: cleanText(incoming.environment, 200) || "clean studio",
     presentation: cleanText(incoming.presentation, 200) || "wide customer presentation",
-    samples: Math.min(192, Math.max(32, Number(incoming.samples) || 96)),
+    samples: Math.min(48, Math.max(32, Number(incoming.samples) || 48)),
     width: 1536,
     height: 1024,
   };
@@ -107,9 +124,7 @@ export async function POST(request: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(process.env.BLENDER_RENDER_TOKEN
-          ? { Authorization: `Bearer ${process.env.BLENDER_RENDER_TOKEN}` }
-          : {}),
+        Authorization: `Bearer ${authorization}`,
       },
       body: JSON.stringify(payload),
       cache: "no-store",
