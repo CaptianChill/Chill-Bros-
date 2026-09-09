@@ -57,6 +57,7 @@
 }
 
 .panel.app-header { padding: 10px 12px; }
+.panel.portal-header { padding: 12px 16px; }
 @media (min-width: 640px) {
   .panel.app-header { padding: 12px 16px; }
 }
@@ -77,6 +78,12 @@
   border-radius: 10px;
   background: rgba(226, 75, 74, 0.05);
 }
+
+/* Inner elements never inherit a wide legacy halo. */
+.panel .box { box-shadow: none !important; }
+.panel .box.hot { box-shadow: 0 0 2px rgba(126, 200, 255, 0.55) !important; }
+.panel .danger-box { box-shadow: 0 0 2px rgba(226, 75, 74, 0.7) !important; }
+.panel [class*="shadow-"]:not(.panel) { box-shadow: none !important; }
 
 .glo { color:#fff; text-shadow:0 0 2px rgba(255,255,255,.75),0 0 7px rgba(126,200,255,.45),0 1px 3px rgba(0,0,0,.9); }
 .txt { color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.95); }
