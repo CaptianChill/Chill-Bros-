@@ -17,7 +17,7 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   zelleContact: "",
   cashAppHandle: "",
   venmoHandle: "",
-  checkPayableTo: "Chill Professional LLC",
+  checkPayableTo: "Chill Professionals LLC",
   manualAchInstructions: "",
   customerPaymentNote: "",
 };
@@ -25,7 +25,7 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
 export async function getPaymentSettings(): Promise<PaymentSettings> {
   const supabase = createServiceRoleClient();
   const { data } = await supabase.from("chillbros_payment_settings").select("stripe_enabled,zelle_contact,cash_app_handle,venmo_handle,check_payable_to,manual_ach_instructions,customer_payment_note").eq("id", "default").maybeSingle();
-  if (!data) return DEFAULT_PAYMENT_SETTINGS;
+  if (!data) return { ...DEFAULT_PAYMENT_SETTINGS, stripeEnabled: stripeConfigured() };
   return {
     stripeEnabled: Boolean(data.stripe_enabled),
     zelleContact: data.zelle_contact ?? "",

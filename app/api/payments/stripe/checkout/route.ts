@@ -19,8 +19,8 @@ export async function POST(request: Request) {
     portalUrl.searchParams.set("payment_error", "Online payment is not configured yet.");
     return NextResponse.redirect(portalUrl);
   }
-  if (invoice.status !== "approved" || invoice.paymentStatus === "paid") {
-    portalUrl.searchParams.set("payment_error", invoice.paymentStatus === "paid" ? "This invoice is already paid." : "Approve the invoice before paying online.");
+  if (invoice.status !== "approved" || !invoice.issuedAt || invoice.paymentStatus === "paid") {
+    portalUrl.searchParams.set("payment_error", invoice.paymentStatus === "paid" ? "This invoice is already paid." : !invoice.issuedAt ? "Payment is not due until the approved work is completed and the final invoice is issued." : "Approve the estimate before paying online.");
     return NextResponse.redirect(portalUrl);
   }
 

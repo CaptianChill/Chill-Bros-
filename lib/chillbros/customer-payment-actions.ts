@@ -14,14 +14,15 @@ export async function setCustomerPaymentMethodAction(token: string, method: Paym
   const supabase = createServiceRoleClient();
   const { data: invoice } = await supabase
     .from("chillbros_invoices")
-    .select("id,job_id,status,payment_status,revoked_at")
+    .select("id,job_id,status,payment_status,issued_at,revoked_at")
     .eq("portal_token", token)
     .is("revoked_at", null)
     .neq("status", "void")
     .maybeSingle();
 
   if (!invoice) return { ok: false, error: "This secure payment link is no longer active." };
-  if (invoice.status !== "approved") return { ok: false, error: "Please sign and approve the document before choosing payment." };
+  if (invoice.status !== "approved") return { ok: false, error: "Please sign and approve the estimate before choosing payment." };
+  if (!invoice.issued_at) return { ok: false, error: "Payment is not due until Chill Bros completes the work and issues the final invoice." };
 
   const { error } = await supabase
     .from("chillbros_invoices")
@@ -30,7 +31,8 @@ export async function setCustomerPaymentMethodAction(token: string, method: Paym
       payment_status: invoice.payment_status === "paid" ? "paid" : "pending_manual_review",
       updated_at: new Date().toISOString(),
     })
-    .eq("id", invoice.id);
+    .eq("id", invoice.id)
+    .not("issued_at", "is", null);
   if (error) return { ok: false, error: error.message };
 
   await supabase.from("chillbros_workflow_events").insert({
