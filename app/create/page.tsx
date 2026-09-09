@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { Box, ExternalLink, Images } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { CreationCenterServer, type CreationBillingSummary } from "@/components/creation-center-server";
@@ -10,6 +12,8 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
+
+const CHILL_PRO_MADE_URL = "https://chill-pro-made.vercel.app";
 
 type Mode = "customer" | "job" | "estimate" | "invoice" | "technician" | "document";
 type Props = { searchParams: Promise<{ mode?: string; job?: string; customer?: string; q?: string; success?: string; error?: string }> };
@@ -79,6 +83,28 @@ export default async function CreatePage({ searchParams }: Props) {
       <StatusPill>{billing.length} recent billing docs</StatusPill>
       <StatusPill>{activeJobs.length} active calls</StatusPill>
     </div>
+
+    <section className="mb-4 rounded-2xl border border-[#2d7dff]/25 bg-black/30 p-3 sm:p-4">
+      <div className="mb-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8ffafa]/70">Project creation</p>
+        <h2 className="mt-1 text-lg font-semibold text-white">3D & visual tools</h2>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <Link href="/3d-studio" className="flex min-h-12 items-center gap-3 rounded-xl border border-[#2d7dff]/20 bg-black/35 px-3 py-2.5 text-sm font-semibold text-white transition hover:border-[#8ffafa]/55 hover:bg-[#2d7dff]/10">
+          <Box className="h-4 w-4 shrink-0 text-[#8ffafa]" />
+          <span>3D Studio</span>
+        </Link>
+        <Link href="/3d-project-builder" className="flex min-h-12 items-center gap-3 rounded-xl border border-[#2d7dff]/20 bg-black/35 px-3 py-2.5 text-sm font-semibold text-white transition hover:border-[#8ffafa]/55 hover:bg-[#2d7dff]/10">
+          <Images className="h-4 w-4 shrink-0 text-[#8ffafa]" />
+          <span>3D Project Builder</span>
+        </Link>
+        <a href={CHILL_PRO_MADE_URL} target="_blank" rel="noreferrer" className="flex min-h-12 items-center gap-3 rounded-xl border border-[#8ffafa]/35 bg-[#8ffafa]/5 px-3 py-2.5 text-sm font-semibold text-white transition hover:border-[#8ffafa]/65 hover:bg-[#8ffafa]/10">
+          <ExternalLink className="h-4 w-4 shrink-0 text-[#8ffafa]" />
+          <span>Chill Pro Made 3D</span>
+        </a>
+      </div>
+    </section>
+
     <CreationCenterServer
       mode={mode}
       customers={customers}

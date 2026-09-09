@@ -2,63 +2,71 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Box, ChevronDown, ExternalLink, Images, Menu } from "lucide-react";
+import { CalendarDays, ChevronDown, Home, Menu, PlusSquare, Users } from "lucide-react";
 
 import type { NavItem } from "@/lib/chillbros/nav";
 
-const CHILL_PRO_MADE_URL = "https://chill-pro-made.vercel.app";
-
-const GROUPS = [
-  { label: "Operations", hrefs: ["/", "/office", "/dispatch", "/schedule", "/customers", "/scan-send", "/invoices", "/timesheet"] },
-  { label: "Field", hrefs: ["/technician", "/equipment", "/training"] },
-  { label: "Business", hrefs: ["/agreements", "/inventory", "/reports"] },
-  { label: "Admin", hrefs: ["/manager", "/security", "/3d-studio"] },
+const PRIMARY = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/schedule", label: "Schedule", icon: CalendarDays },
+  { href: "/create", label: "Create", icon: PlusSquare },
+  { href: "/customers", label: "Customers", icon: Users },
 ] as const;
 
+const GROUPS = [
+  { label: "Operations", hrefs: ["/office", "/dispatch", "/technician", "/timesheet", "/scan-send"] },
+  { label: "Billing", hrefs: ["/invoices", "/payments", "/settings/payments", "/payroll", "/agreements"] },
+  { label: "Assets & Training", hrefs: ["/equipment", "/inventory", "/training"] },
+  { label: "Management", hrefs: ["/reports", "/manager", "/security"] },
+] as const;
+
+const HIDDEN_FROM_MORE = new Set(["/3d-studio", "/invoices/new"]);
+
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+  if (href === "/") return pathname === "/";
+  if (href === "/create") {
+    return pathname === "/create" || pathname.startsWith("/3d-studio") || pathname.startsWith("/3d-project-builder") || pathname.startsWith("/invoices/new");
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function AppNavigation({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
-  const activeItem = items.find((item) => isActive(pathname, item.href));
-  const hasThreeDStudio = items.some((item) => item.href === "/3d-studio");
-  const knownHrefs = new Set(GROUPS.flatMap((group) => group.hrefs));
-  const ungrouped = items.filter((item) => !knownHrefs.has(item.href as (typeof GROUPS)[number]["hrefs"][number]));
+  const availableHrefs = new Set(items.map((item) => item.href));
+  const primaryItems = PRIMARY.filter((item) => availableHrefs.has(item.href));
+  const knownHrefs = new Set([
+    ...PRIMARY.map((item) => item.href),
+    ...GROUPS.flatMap((group) => group.hrefs),
+    ...HIDDEN_FROM_MORE,
+  ]);
+  const ungrouped = items.filter((item) => !knownHrefs.has(item.href));
 
   return (
     <nav aria-label="Primary" className="mt-2 border-t border-[#2d7dff]/15 pt-2">
-      {hasThreeDStudio ? (
-        <div className="mb-2 grid gap-2 sm:grid-cols-3">
-          <Link
-            href="/3d-studio"
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 font-brand text-xs uppercase tracking-[0.08em] transition ${isActive(pathname, "/3d-studio") ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#8ffafa]/45 bg-[#2d7dff]/12 text-white hover:border-[#8ffafa]/70 hover:bg-[#2d7dff]/20"}`}
-          >
-            <Box className="h-4 w-4 text-[#8ffafa]" />
-            3D Studio
-          </Link>
-          <Link
-            href="/3d-project-builder"
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 font-brand text-xs uppercase tracking-[0.08em] transition ${isActive(pathname, "/3d-project-builder") ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#8ffafa]/45 bg-[#2d7dff]/12 text-white hover:border-[#8ffafa]/70 hover:bg-[#2d7dff]/20"}`}
-          >
-            <Images className="h-4 w-4 text-[#8ffafa]" />
-            3D Project Builder
-          </Link>
-          <a
-            href={CHILL_PRO_MADE_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#8ffafa]/70 bg-[#8ffafa]/10 px-3 py-2.5 font-brand text-xs uppercase tracking-[0.08em] text-white shadow-[0_0_16px_rgba(143,250,250,0.18)] transition hover:bg-[#8ffafa]/20"
-          >
-            <ExternalLink className="h-4 w-4 text-[#8ffafa]" />
-            Chill Pro Made 3D
-          </a>
-        </div>
-      ) : null}
+      <div className="grid grid-cols-4 gap-1.5">
+        {primaryItems.map((item) => {
+          const active = isActive(pathname, item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              className={`flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.07em] transition sm:text-xs ${active ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#2d7dff]/20 bg-black/30 text-[#d9fbff] hover:border-[#8ffafa]/40 hover:bg-[#2d7dff]/10"}`}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0 text-[#8ffafa]" />
+              <span className="truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
 
-      <details className="group relative">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl border border-[#2d7dff]/25 bg-black/35 px-3 py-2 text-xs font-medium text-[#d9fbff] transition hover:border-[#8ffafa]/45 hover:bg-[#2d7dff]/10 [&::-webkit-details-marker]:hidden">
-          <span className="inline-flex min-w-0 items-center gap-2"><Menu className="h-4 w-4 shrink-0 text-[#8ffafa]" /><span className="truncate">{activeItem?.label ?? "Navigation"}</span></span>
+      <details className="group relative mt-1.5">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/30 px-3 py-2 text-[11px] font-medium text-[#d9fbff] transition hover:border-[#8ffafa]/40 hover:bg-[#2d7dff]/10 [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex min-w-0 items-center gap-2">
+            <Menu className="h-4 w-4 shrink-0 text-[#8ffafa]" />
+            <span className="truncate">More tools</span>
+          </span>
           <ChevronDown className="h-4 w-4 shrink-0 transition group-open:rotate-180" />
         </summary>
 
@@ -76,7 +84,16 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
                   <div className="grid gap-1.5">
                     {groupItems.map((item) => {
                       const active = isActive(pathname, item.href);
-                      return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={`flex min-h-11 items-center rounded-xl border px-3 py-2.5 font-brand text-xs uppercase tracking-[0.08em] transition ${active ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#2d7dff]/15 bg-black/35 text-[#d9fbff] hover:border-[#8ffafa]/35 hover:bg-[#2d7dff]/10"}`}>{item.label}</Link>;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          aria-current={active ? "page" : undefined}
+                          className={`flex min-h-10 items-center rounded-xl border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] transition ${active ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#2d7dff]/15 bg-black/35 text-[#d9fbff] hover:border-[#8ffafa]/35 hover:bg-[#2d7dff]/10"}`}
+                        >
+                          {item.label}
+                        </Link>
+                      );
                     })}
                   </div>
                 </section>
@@ -89,7 +106,16 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
                 <div className="grid gap-1.5">
                   {ungrouped.map((item) => {
                     const active = isActive(pathname, item.href);
-                    return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={`flex min-h-11 items-center rounded-xl border px-3 py-2.5 font-brand text-xs uppercase tracking-[0.08em] transition ${active ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#2d7dff]/15 bg-black/35 text-[#d9fbff] hover:border-[#8ffafa]/35 hover:bg-[#2d7dff]/10"}`}>{item.label}</Link>;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={`flex min-h-10 items-center rounded-xl border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] transition ${active ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#2d7dff]/15 bg-black/35 text-[#d9fbff] hover:border-[#8ffafa]/35 hover:bg-[#2d7dff]/10"}`}
+                      >
+                        {item.label}
+                      </Link>
+                    );
                   })}
                 </div>
               </section>
