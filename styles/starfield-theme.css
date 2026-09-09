@@ -56,6 +56,11 @@
   padding: 14px;
 }
 
+.panel.app-header { padding: 10px 12px; }
+@media (min-width: 640px) {
+  .panel.app-header { padding: 12px 16px; }
+}
+
 .box {
   border: 1px solid var(--saber-soft);
   border-radius: 10px;
@@ -77,7 +82,7 @@
 .txt { color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.95); }
 .sub { color:#cfe2fb; text-shadow:0 1px 3px rgba(0,0,0,.95); }
 
-/* Last-loaded compatibility overrides: unify legacy Chill Bros blues without touching assets. */
+/* Last-loaded compatibility overrides: legacy app blues collapse to the saber variable. */
 .theme-starfield [class*="text-[#8ffafa]"],
 .theme-starfield [class*="text-[#d9fbff]"],
 .theme-starfield [class*="text-[#9ffcff]"],
@@ -85,10 +90,18 @@
 .theme-starfield [class*="border-[#2d7dff]"],
 .theme-starfield [class*="border-[#8ffafa]"] { border-color: var(--saber-soft) !important; }
 .theme-starfield [class*="bg-[#2d7dff]"] { background-color: rgba(126,200,255,.08) !important; }
-.theme-starfield [class*="violet-"] { border-color: var(--saber-soft) !important; color: var(--saber) !important; }
+.theme-starfield [class*="violet-"] {
+  border-color: var(--saber-soft) !important;
+  color: var(--saber) !important;
+  background-color: rgba(126,200,255,.02) !important;
+}
 
-/* Images and logos are intentionally excluded from all theme effects. */
-.theme-starfield img { filter:none !important; opacity:1 !important; mix-blend-mode:normal !important; }
+/* Preserve every image asset exactly. */
+.theme-starfield img {
+  filter:none !important;
+  opacity:1 !important;
+  mix-blend-mode:normal !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .starfield-sky .st, .starfield-sky .cm { animation:none; }
