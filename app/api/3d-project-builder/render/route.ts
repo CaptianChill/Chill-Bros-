@@ -4,6 +4,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 180;
 
 const renderProfiles = {
   draft: { model: "gpt-image-2", quality: "medium" },
@@ -12,16 +13,37 @@ const renderProfiles = {
 } as const;
 
 type RenderProfile = keyof typeof renderProfiles;
+type ImageAttempt = { model: string; quality: string };
 
 function cleanOption(value: FormDataEntryValue | null, fallback: string) {
   const text = typeof value === "string" ? value.trim() : "";
   return text.slice(0, 160) || fallback;
 }
 
+async function requestImageEdit(apiKey: string, source: File, prompt: string, attempt: ImageAttempt) {
+  const outbound = new FormData();
+  outbound.append("model", attempt.model);
+  outbound.append("image", source, source.name || "source-property.png");
+  outbound.append("prompt", prompt);
+  outbound.append("size", "1536x1024");
+  outbound.append("quality", attempt.quality);
+
+  const response = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: outbound,
+    cache: "no-store",
+    signal: AbortSignal.timeout(150_000),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  return { response, payload };
+}
+
 export async function POST(request: Request) {
   try {
-    const profile = await getCurrentStaffProfile();
-    if (!profile || profile.role !== "manager") {
+    const staff = await getCurrentStaffProfile();
+    if (!staff || staff.role !== "manager") {
       return NextResponse.json({ error: "Manager access required." }, { status: 401 });
     }
 
@@ -70,45 +92,75 @@ export async function POST(request: Request) {
       "- The final image should look like a high-end professional construction completion photograph, not a concept sketch, game render, or obvious AI image.",
     ].join("\n");
 
-    const outbound = new FormData();
-    outbound.append("model", selectedProfile.model);
-    outbound.append("image", source, source.name || "source-property.png");
-    outbound.append("prompt", realismInstructions);
-    outbound.append("size", "1536x1024");
-    outbound.append("quality", selectedProfile.quality);
-
-    const response = await fetch("https://api.openai.com/v1/images/edits", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: outbound,
-      cache: "no-store",
-    });
-
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const message = payload?.error?.message || "The image generation request failed.";
-      return NextResponse.json({ error: message }, { status: response.status });
+    const attempts: ImageAttempt[] = [{ model: selectedProfile.model, quality: selectedProfile.quality }];
+    if (selectedProfile.model !== "gpt-image-2") {
+      attempts.push({ model: "gpt-image-2", quality: "high" });
     }
 
-    const first = payload?.data?.[0];
-    const base64 = first?.b64_json;
-    const url = first?.url;
+    let lastPayload: any = {};
+    let lastStatus = 500;
+    const attemptedModels: string[] = [];
 
-    if (!base64 && !url) {
-      return NextResponse.json({ error: "The image service returned no finished image." }, { status: 502 });
+    for (const attempt of attempts) {
+      attemptedModels.push(`${attempt.model}:${attempt.quality}`);
+      const { response, payload } = await requestImageEdit(apiKey, source, realismInstructions, attempt);
+      lastPayload = payload;
+      lastStatus = response.status;
+
+      if (!response.ok) {
+        const providerMessage = payload?.error?.message || "Image provider rejected the request.";
+        const providerCode = payload?.error?.code || payload?.error?.type || "unknown";
+        console.error("3D photo render provider failure", {
+          status: response.status,
+          model: attempt.model,
+          quality: attempt.quality,
+          code: providerCode,
+          message: providerMessage,
+        });
+
+        const retryableModelFailure = response.status === 400 || response.status === 403 || response.status === 404 || response.status === 422;
+        if (attempt !== attempts[attempts.length - 1] && retryableModelFailure) continue;
+        break;
+      }
+
+      const first = payload?.data?.[0];
+      const base64 = first?.b64_json;
+      const url = first?.url;
+      if (!base64 && !url) {
+        lastStatus = 502;
+        lastPayload = { error: { message: "The image provider returned no image data.", code: "empty_image" } };
+        continue;
+      }
+
+      return NextResponse.json({
+        image: base64 ? `data:image/png;base64,${base64}` : url,
+        revisedPrompt: first?.revised_prompt || null,
+        renderProfile,
+        model: attempt.model,
+        quality: attempt.quality,
+        environment,
+        presentation,
+        fallbackUsed: attempt.model !== selectedProfile.model,
+      });
     }
 
-    return NextResponse.json({
-      image: base64 ? `data:image/png;base64,${base64}` : url,
-      revisedPrompt: first?.revised_prompt || null,
-      renderProfile,
-      model: selectedProfile.model,
-      quality: selectedProfile.quality,
-      environment,
-      presentation,
-    });
+    const providerMessage = lastPayload?.error?.message || "The image provider did not return a usable render.";
+    const providerCode = lastPayload?.error?.code || lastPayload?.error?.type || "unknown";
+    return NextResponse.json(
+      {
+        error: providerMessage,
+        providerCode,
+        providerStatus: lastStatus,
+        attemptedModels,
+      },
+      { status: lastStatus >= 400 && lastStatus < 600 ? lastStatus : 502 },
+    );
   } catch (error) {
-    console.error("3D project render failed", error);
-    return NextResponse.json({ error: "Unable to generate the completed-project visual." }, { status: 500 });
+    console.error("3D project photo render failed", error);
+    const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    return NextResponse.json(
+      { error: timedOut ? "The image render timed out before the provider returned a result." : "Unable to generate the completed-project visual." },
+      { status: timedOut ? 504 : 500 },
+    );
   }
 }
