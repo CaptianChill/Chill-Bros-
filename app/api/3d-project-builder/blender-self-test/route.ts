@@ -1,3 +1,4 @@
+import { getVercelOidcToken } from "@vercel/functions/oidc";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -13,7 +14,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const authorization = (process.env.BLENDER_RENDER_TOKEN || process.env.VERCEL_OIDC_TOKEN || "").trim();
+  let authorization = (process.env.BLENDER_RENDER_TOKEN || "").trim();
+  try {
+    if (!authorization) authorization = (await getVercelOidcToken()).trim();
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, stage: "identity", error: error instanceof Error ? error.message : "Unable to obtain Vercel workload identity." },
+      { status: 503 },
+    );
+  }
+
   if (!authorization) {
     return NextResponse.json({ ok: false, stage: "identity", error: "No Vercel workload identity token available." }, { status: 503 });
   }
