@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "../styles/starfield-theme.css";
+
+import { StarfieldSky } from "@/components/starfield-sky";
 
 export const metadata: Metadata = {
   title: "Chill Bros Operational Command Center",
@@ -30,14 +33,19 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#020407",
+  themeColor: "#03060d",
   colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="h-full bg-background antialiased">
-      <body className="min-h-full bg-background font-sans text-foreground">{children}</body>
+      <body className="min-h-full bg-background font-sans text-foreground">
+        <div className="theme-starfield min-h-screen">
+          <StarfieldSky />
+          {children}
+        </div>
+      </body>
     </html>
   );
 }
