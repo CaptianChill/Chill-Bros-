@@ -42,7 +42,7 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
   const ungrouped = items.filter((item) => !knownHrefs.has(item.href));
 
   return (
-    <nav aria-label="Primary" className="mt-2 border-t border-[#2d7dff]/15 pt-2">
+    <nav aria-label="Primary" className="mt-2 border-t border-[var(--saber-soft)] pt-2">
       <div className="grid grid-cols-4 gap-1.5">
         {primaryItems.map((item) => {
           const active = isActive(pathname, item.href);
@@ -52,9 +52,9 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.07em] transition sm:text-xs ${active ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#2d7dff]/20 bg-black/30 text-[#d9fbff] hover:border-[#8ffafa]/40 hover:bg-[#2d7dff]/10"}`}
+              className={`box ${active ? "hot" : ""} flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.07em] text-white transition sm:text-xs`}
             >
-              <Icon className="h-3.5 w-3.5 shrink-0 text-[#8ffafa]" />
+              <Icon className="h-3.5 w-3.5 shrink-0 text-[var(--saber)]" />
               <span className="truncate">{item.label}</span>
             </Link>
           );
@@ -62,15 +62,15 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
       </div>
 
       <details className="group relative mt-1.5">
-        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/30 px-3 py-2 text-[11px] font-medium text-[#d9fbff] transition hover:border-[#8ffafa]/40 hover:bg-[#2d7dff]/10 [&::-webkit-details-marker]:hidden">
+        <summary className="box flex min-h-10 cursor-pointer list-none items-center justify-between rounded-xl px-3 py-2 text-[11px] font-medium text-white transition [&::-webkit-details-marker]:hidden">
           <span className="inline-flex min-w-0 items-center gap-2">
-            <Menu className="h-4 w-4 shrink-0 text-[#8ffafa]" />
+            <Menu className="h-4 w-4 shrink-0 text-[var(--saber)]" />
             <span className="truncate">More tools</span>
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 transition group-open:rotate-180" />
         </summary>
 
-        <div className="absolute left-0 right-0 z-50 mt-2 max-h-[72dvh] overflow-y-auto rounded-2xl border border-[#2d7dff]/35 bg-[#020407]/[0.99] p-2.5 shadow-[0_18px_60px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+        <div className="box absolute left-0 right-0 z-50 mt-2 max-h-[72dvh] overflow-y-auto rounded-2xl bg-[rgba(3,6,13,.96)] p-2.5 backdrop-blur-xl">
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             {GROUPS.map((group) => {
               const groupItems = group.hrefs
@@ -79,8 +79,8 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
               if (groupItems.length === 0) return null;
 
               return (
-                <section key={group.label} className="rounded-xl border border-[#2d7dff]/12 bg-black/20 p-2">
-                  <p className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8ffafa]/70">{group.label}</p>
+                <section key={group.label} className="box rounded-xl p-2">
+                  <p className="sub px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em]">{group.label}</p>
                   <div className="grid gap-1.5">
                     {groupItems.map((item) => {
                       const active = isActive(pathname, item.href);
@@ -89,7 +89,7 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
                           key={item.href}
                           href={item.href}
                           aria-current={active ? "page" : undefined}
-                          className={`flex min-h-10 items-center rounded-xl border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] transition ${active ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#2d7dff]/15 bg-black/35 text-[#d9fbff] hover:border-[#8ffafa]/35 hover:bg-[#2d7dff]/10"}`}
+                          className={`box ${active ? "hot" : ""} flex min-h-10 items-center justify-center rounded-xl px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.06em] text-white transition`}
                         >
                           {item.label}
                         </Link>
@@ -101,8 +101,8 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
             })}
 
             {ungrouped.length > 0 ? (
-              <section className="rounded-xl border border-[#2d7dff]/12 bg-black/20 p-2">
-                <p className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8ffafa]/70">Other</p>
+              <section className="box rounded-xl p-2">
+                <p className="sub px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em]">Other</p>
                 <div className="grid gap-1.5">
                   {ungrouped.map((item) => {
                     const active = isActive(pathname, item.href);
@@ -111,7 +111,7 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
                         key={item.href}
                         href={item.href}
                         aria-current={active ? "page" : undefined}
-                        className={`flex min-h-10 items-center rounded-xl border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] transition ${active ? "border-[#8ffafa]/70 bg-[#2d7dff]/20 text-white" : "border-[#2d7dff]/15 bg-black/35 text-[#d9fbff] hover:border-[#8ffafa]/35 hover:bg-[#2d7dff]/10"}`}
+                        className={`box ${active ? "hot" : ""} flex min-h-10 items-center justify-center rounded-xl px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.06em] text-white transition`}
                       >
                         {item.label}
                       </Link>
