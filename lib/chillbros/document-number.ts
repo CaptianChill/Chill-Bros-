@@ -1,12 +1,18 @@
 import "server-only";
 
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { randomInt } from "node:crypto";
 
 export type DocumentNumberKind = "estimate" | "quote" | "invoice" | "agreement";
 
-export async function simpleDocumentNumber(kind: DocumentNumberKind) {
-  const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.rpc("chillbros_next_document_number", { p_kind: kind });
-  if (error || !data) throw new Error(error?.message ?? "Could not generate document number.");
-  return String(data);
+const PREFIX: Record<DocumentNumberKind, string> = {
+  estimate: "E",
+  quote: "Q",
+  invoice: "I",
+  agreement: "A",
+};
+
+// This marker preserves the existing synchronous call sites. The database
+// replaces it atomically with E-001 / Q-001 / I-001 / A-001 on insert.
+export function simpleDocumentNumber(kind: DocumentNumberKind) {
+  return `${PREFIX[kind]}-PENDING-${randomInt(100000, 1000000)}`;
 }
