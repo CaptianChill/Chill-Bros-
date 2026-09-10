@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications";
 import { sendBillingDelivery } from "@/lib/chillbros/billing-delivery";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
+import { captureCompletedJobKnowledge } from "@/lib/chillbros/knowledge-cases";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { PaymentMethod, PaymentTerms } from "./types";
@@ -18,7 +19,7 @@ function text(formData: FormData, key: string) {
 }
 
 function refresh(jobId: string, token?: string | null) {
-  const paths = ["/", "/manager", "/dispatch", "/office", "/technician", "/schedule", "/invoices", `/jobs/${jobId}`];
+  const paths = ["/", "/manager", "/dispatch", "/office", "/technician", "/schedule", "/invoices", "/training", `/jobs/${jobId}`];
   if (token) paths.push(`/portal/${token}`, `/portal/${token}/document`);
   for (const path of paths) revalidatePath(path);
 }
@@ -76,7 +77,6 @@ export async function approveEstimateLifecycleAction(token: string, signatureNam
     .maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "Approval could not be recorded." };
 
-  // If the diagnostic visit was already closed, put the same permanent job back in the owner queue.
   if (invoice.job_id) {
     await supabase
       .from("chillbros_jobs")
@@ -215,6 +215,7 @@ export async function issueInvoiceForCompletedWorkAction(formData: FormData): Pr
     stage: "invoice_issued",
     message: "Work completed. Final invoice issued and payment is now due.",
   });
+  try { await captureCompletedJobKnowledge(jobId, invoiceId, allowed.profile.id); } catch (error) { console.error("[tech-assist] completed job capture failed", error); }
   try { await sendBillingDelivery(invoiceId, "invoice", "email"); } catch {}
   try { await sendBillingDelivery(invoiceId, "invoice", "sms"); } catch {}
   refresh(jobId, invoice.portal_token);
