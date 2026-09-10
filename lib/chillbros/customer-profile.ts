@@ -73,13 +73,15 @@ export async function getCustomerProfile(customerId: string): Promise<CustomerPr
     })),
     jobs: (jobs ?? []).map((row) => {
       const tech = Array.isArray(row.tech) ? row.tech[0] : row.tech;
+      const jobNumber = row.job_number ?? "JOB----";
+      const when = row.scheduled_window ?? new Date(row.created_at).toLocaleDateString("en-US");
       return {
         id: row.id,
-        jobNumber: row.job_number ?? "JOB----",
+        jobNumber,
         status: row.status,
         assignedTechName: tech?.full_name ?? null,
         location: row.location,
-        scheduledWindow: row.scheduled_window,
+        scheduledWindow: `${jobNumber} • ${when}`,
         scope: row.scope,
         workPerformed: row.work_performed,
         createdAt: row.created_at,
