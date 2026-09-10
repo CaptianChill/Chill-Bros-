@@ -110,6 +110,23 @@
   mix-blend-mode:normal !important;
 }
 
+/* Keep the star layer fixed to the full viewport. The earlier child rule makes
+   normal app content relative/z-indexed, so this more-specific late override
+   prevents the sky itself from being converted into a short relative element. */
+.theme-starfield > .starfield-sky {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@supports not (height: 100dvh) {
+  .theme-starfield > .starfield-sky { height: 100vh; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .starfield-sky .st, .starfield-sky .cm { animation:none; }
   .starfield-sky .cm { opacity:0; }
