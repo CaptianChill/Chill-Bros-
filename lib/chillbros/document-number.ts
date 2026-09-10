@@ -1,22 +1,12 @@
 import "server-only";
 
-import { randomInt } from "node:crypto";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export type DocumentNumberKind = "estimate" | "quote" | "invoice" | "agreement";
 
-const PREFIX: Record<DocumentNumberKind, string> = {
-  estimate: "E",
-  quote: "Q",
-  invoice: "I",
-  agreement: "A",
-};
-
-export function simpleDocumentNumber(kind: DocumentNumberKind) {
-  const date = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Chicago",
-    year: "2-digit",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date()).replace(/-/g, "");
-  return `${PREFIX[kind]}-${date}-${randomInt(1000, 10000)}`;
+export async function simpleDocumentNumber(kind: DocumentNumberKind) {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase.rpc("chillbros_next_document_number", { p_kind: kind });
+  if (error || !data) throw new Error(error?.message ?? "Could not generate document number.");
+  return String(data);
 }
