@@ -17,12 +17,12 @@ const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/manager", "Manager Hub"],
   [(p) => p === "/security", "Security"],
   [(p) => p === "/technician", "Field Workflow"],
-  [(p) => p === "/training", "Training Bible"],
-  [(p) => p.startsWith("/training/model/"), "Training Model"],
+  [(p) => p === "/training", "Tech Assist"],
+  [(p) => p.startsWith("/training/model/"), "Tech Training Model"],
   [(p) => p === "/timesheet", "Timesheets"],
   [(p) => p === "/inventory", "Inventory"],
-  [(p) => p === "/equipment", "Equipment"],
-  [(p) => p === "/3d-studio" || p.startsWith("/3d-studio/"), "3D Studio"],
+  [(p) => p === "/equipment", "Equipment Database"],
+  [(p) => p === "/3d-studio" || p.startsWith("/3d-studio/"), "Tech 3D Studio"],
   [(p) => p === "/reports", "Reports"],
 ];
 
