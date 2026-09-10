@@ -7,10 +7,10 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 type Result = { ok: true } | { ok: false; error: string };
 
-async function requireOfficeOrManager() {
+async function requireStaff() {
   const profile = await getCurrentStaffProfile();
   if (!profile) return { ok: false as const, error: "Not signed in." };
-  if (!["manager", "office"].includes(profile.role)) return { ok: false as const, error: "Office or manager access required." };
+  if (!["manager", "office", "technician"].includes(profile.role)) return { ok: false as const, error: "Staff access required." };
   return { ok: true as const, profile };
 }
 
@@ -44,6 +44,7 @@ function generatedAssetTag() {
 
 function refreshEquipment(customerId?: string) {
   revalidatePath("/equipment");
+  revalidatePath("/training");
   revalidatePath("/crm");
   revalidatePath("/technician");
   revalidatePath("/office");
@@ -51,7 +52,7 @@ function refreshEquipment(customerId?: string) {
 }
 
 export async function createEquipmentAction(input: EquipmentInput): Promise<Result> {
-  const guard = await requireOfficeOrManager();
+  const guard = await requireStaff();
   if (!guard.ok) return guard;
   if (!input.customerId || !input.equipmentType.trim()) return { ok: false, error: "Customer and equipment type are required." };
 
@@ -73,7 +74,7 @@ export async function createEquipmentAction(input: EquipmentInput): Promise<Resu
 }
 
 export async function updateEquipmentAction(input: EquipmentInput & { id: string }): Promise<Result> {
-  const guard = await requireOfficeOrManager();
+  const guard = await requireStaff();
   if (!guard.ok) return guard;
   if (!input.customerId || !input.equipmentType.trim()) return { ok: false, error: "Customer and equipment type are required." };
 
