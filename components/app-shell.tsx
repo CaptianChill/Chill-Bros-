@@ -6,6 +6,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { signOutAction } from "@/app/sign-in/actions";
 import { AppNavigation } from "@/components/app-navigation";
 import { FormDraftProtector } from "@/components/form-draft-protector";
+import { LiveOfficeRefresh } from "@/components/live-office-refresh";
 import { LogoBadge } from "@/components/logo-badge";
 import { PageSyncControls } from "@/components/page-sync-controls";
 import { PageTitle } from "@/components/page-title";
@@ -18,6 +19,7 @@ export async function AppShell({ children }: AppShellProps) {
   const roleLabel = profile?.role === "manager" ? "Manager" : profile?.role === "office" ? "Office / Dispatch" : "Technician";
 
   return <div className="min-h-screen bg-transparent text-foreground">
+    {profile ? <LiveOfficeRefresh intervalMs={10000} /> : null}
     <a href="#main-content" className="box fixed left-3 top-3 z-[100] -translate-y-24 rounded-xl bg-[var(--saber)] px-4 py-2 text-center text-sm font-semibold text-black transition focus:translate-y-0">Skip to content</a>
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-3 pb-7 pt-2.5 sm:px-6 sm:pt-4 lg:px-8">
       <header
