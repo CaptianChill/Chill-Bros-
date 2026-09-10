@@ -23,6 +23,69 @@ function refreshScheduleViews() {
   for (const path of ["/schedule", "/dispatch", "/office", "/technician", "/customers", "/"]) revalidatePath(path);
 }
 
+function appBaseUrl() {
+  const configured = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "").trim().replace(/\/$/, "");
+  if (configured) return configured;
+  const vercel = (process.env.VERCEL_URL || "").trim();
+  return vercel ? `https://${vercel}` : "https://chill-bros.vercel.app";
+}
+
+async function notifyAssignedTechnician(jobId: string, kind: "assigned" | "updated") {
+  const apiKey = (process.env.RESEND_API_KEY || "").trim();
+  const from = (process.env.NOTIFICATION_FROM_EMAIL || process.env.SCAN_FROM_EMAIL || "").trim();
+  if (!apiKey || !from) {
+    console.info("[schedule] technician email skipped: RESEND_API_KEY or sender email not configured");
+    return;
+  }
+
+  const supabase = createServiceRoleClient();
+  const { data: job, error } = await supabase
+    .from("chillbros_jobs")
+    .select("id,location,scope,scheduled_window,assigned_tech_id,customer:chillbros_customers(name),tech:chillbros_profiles(full_name,email)")
+    .eq("id", jobId)
+    .maybeSingle();
+
+  if (error || !job?.assigned_tech_id) return;
+  const tech = Array.isArray(job.tech) ? job.tech[0] : job.tech;
+  const customer = Array.isArray(job.customer) ? job.customer[0] : job.customer;
+  const email = String(tech?.email ?? "").trim();
+  if (!email) {
+    console.info(`[schedule] technician email skipped: no email on profile ${job.assigned_tech_id}`);
+    return;
+  }
+
+  const techName = String(tech?.full_name ?? "Technician");
+  const customerName = String(customer?.name ?? "Customer");
+  const subject = kind === "assigned" ? `New Chill Pros service call: ${customerName}` : `Chill Pros schedule updated: ${customerName}`;
+  const technicianUrl = `${appBaseUrl()}/technician?job=${encodeURIComponent(job.id)}`;
+  const lines = [
+    `Hi ${techName},`,
+    "",
+    kind === "assigned" ? "A new service call has been assigned to you." : "One of your assigned service calls has been updated.",
+    `Customer: ${customerName}`,
+    `Schedule: ${job.scheduled_window || "Not set"}`,
+    `Location: ${job.location || "Not set"}`,
+    job.scope ? `Scope: ${job.scope}` : "",
+    "",
+    `Open call: ${technicianUrl}`,
+  ].filter(Boolean).join("\n");
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from, to: [email], subject, text: lines }),
+      cache: "no-store",
+    });
+    if (!response.ok) console.error("[schedule] technician notification failed", response.status, await response.text());
+  } catch (notifyError) {
+    console.error("[schedule] technician notification error", notifyError);
+  }
+}
+
 async function technicianConflict(assignedTechId: string, date: string, start: string, end: string, excludeJobId?: string) {
   if (!assignedTechId) return null;
   const supabase = createServiceRoleClient();
@@ -150,6 +213,7 @@ export async function createScheduledJobAction(formData: FormData): Promise<neve
     note: `Calendar call saved • ${scheduledWindow}`,
   });
 
+  if (assignedTechId) await notifyAssignedTechnician(result.jobId, "assigned");
   refreshScheduleViews();
   go("Saved to calendar.", "success", date);
 }
@@ -225,6 +289,7 @@ export async function rescheduleJobAction(formData: FormData): Promise<never> {
     go("Schedule update did not persist. Please retry.", "error", date);
   }
 
+  if (assignedTechId) await notifyAssignedTechnician(jobId, "updated");
   refreshScheduleViews();
   go("Schedule updated and saved.", "success", date);
 }
