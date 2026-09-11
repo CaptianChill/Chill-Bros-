@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { LogIn } from "lucide-react";
 
@@ -32,6 +33,12 @@ export function SignInForm({ next }: { next: string }) {
           className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none"
         />
       </label>
+
+      <div className="flex justify-end">
+        <Link href="/forgot-password" className="text-xs font-medium text-[#bafcfc] hover:text-white">
+          Forgot password?
+        </Link>
+      </div>
 
       {state?.error ? <p className="text-sm text-[#ff9b9b]">{state.error}</p> : null}
 
