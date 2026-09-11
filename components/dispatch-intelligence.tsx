@@ -1,0 +1,9 @@
+import type { ActiveTechnician, DispatchJob } from "@/lib/chillbros/operations-queries";
+
+export function DispatchIntelligence({ jobs, technicians }: { jobs:DispatchJob[]; technicians:ActiveTechnician[] }) {
+  const active = jobs.filter(j=>!["paid","completed","cancelled"].includes(j.status));
+  const unassigned = active.filter(j=>!j.assignedTechId);
+  const workload = technicians.map(t=>({tech:t,count:active.filter(j=>j.assignedTechId===t.id).length})).sort((a,b)=>a.count-b.count || a.tech.fullName.localeCompare(b.tech.fullName));
+  const best = workload[0];
+  return <div className="grid gap-3 lg:grid-cols-[1fr_1fr]"><div className="rounded-2xl border border-[#8ffafa]/20 bg-black/45 p-4"><p className="text-xs uppercase tracking-[0.18em] text-[#8ffafa]">Recommended next assignment</p>{unassigned.length && best?<><p className="mt-2 text-lg font-semibold text-white">{best.tech.fullName}</p><p className="mt-1 text-sm text-zinc-400">Lowest active workload: {best.count} job{best.count===1?"":"s"}. Review skill and drive time before dispatching.</p><p className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-3 text-sm text-amber-100">{unassigned.length} unassigned call{unassigned.length===1?"":"s"} waiting.</p></>:<p className="mt-2 text-sm text-zinc-500">No unassigned work needs a recommendation.</p>}</div><div className="rounded-2xl border border-[#2d7dff]/20 bg-black/45 p-4"><p className="text-xs uppercase tracking-[0.18em] text-[#8ffafa]">Workload balance</p><div className="mt-3 space-y-2">{workload.map(({tech,count})=><div key={tech.id} className="flex items-center justify-between rounded-lg border border-[#2d7dff]/10 px-3 py-2"><span className="text-sm text-zinc-200">{tech.fullName}</span><span className="text-xs text-zinc-500">{count} active</span></div>)}</div></div></div>;
+}
