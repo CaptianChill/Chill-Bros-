@@ -28,6 +28,7 @@ export const navItems: NavItem[] = [
   { href: "/inventory", label: "Inventory", shortLabel: "Parts", roles: ["manager"] },
   { href: "/reports", label: "Reports", shortLabel: "Reports", roles: ["manager"] },
   { href: "/manager", label: "Manager Hub", shortLabel: "Manager", roles: ["manager"] },
+  { href: "/account/update-password", label: "Account Security", shortLabel: "Account", roles: ["manager", "technician", "office"] },
   { href: "/security", label: "Security", shortLabel: "Secure", roles: ["manager"] },
   { href: "/3d-studio", label: "3D Studio", shortLabel: "3D", roles: ["manager"] },
 ];
