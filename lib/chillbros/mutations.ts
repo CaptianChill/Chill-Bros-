@@ -2,9 +2,10 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { createAuthServerClient, getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import type { StaffRole } from "./types";
 
 type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
@@ -20,6 +21,13 @@ async function requireManager() {
 
 function generateTempPassword() {
   return randomBytes(9).toString("base64url");
+}
+
+async function passwordRecoveryOrigin() {
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "chill-bros.vercel.app";
+  const proto = requestHeaders.get("x-forwarded-proto") || "https";
+  return `${proto}://${host}`;
 }
 
 export async function addStaffAccountAction(input: { fullName: string; email: string; role: StaffRole }): Promise<ActionResult<{ tempPassword: string }>> {
@@ -43,8 +51,41 @@ export async function addStaffAccountAction(input: { fullName: string; email: st
     return { ok: false, error: profileError.message };
   }
 
+  // The temporary password remains available as an emergency fallback. Normal onboarding
+  // should use the recovery email so the employee chooses a password privately.
+  const origin = await passwordRecoveryOrigin();
+  const auth = await createAuthServerClient();
+  await auth.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/callback?next=/account/update-password`,
+  }).catch(() => undefined);
+
   revalidatePath("/manager");
   return { ok: true, data: { tempPassword } };
+}
+
+export async function sendStaffPasswordResetEmailAction(staffId: string): Promise<ActionResult<{ email: string }>> {
+  const guard = await requireManager();
+  if (!guard.ok) return guard;
+  if (!staffId) return { ok: false, error: "Employee account is required." };
+
+  const service = createServiceRoleClient();
+  const { data: member, error: readError } = await service
+    .from("chillbros_profiles")
+    .select("email,status")
+    .eq("id", staffId)
+    .maybeSingle();
+
+  if (readError || !member?.email) return { ok: false, error: "Employee account not found." };
+  if (member.status !== "active") return { ok: false, error: "Activate this employee before sending a password reset." };
+
+  const origin = await passwordRecoveryOrigin();
+  const auth = await createAuthServerClient();
+  const { error } = await auth.auth.resetPasswordForEmail(String(member.email).toLowerCase(), {
+    redirectTo: `${origin}/auth/callback?next=/account/update-password`,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true, data: { email: String(member.email) } };
 }
 
 export async function resetStaffPasswordAction(staffId: string): Promise<ActionResult<{ tempPassword: string }>> {
