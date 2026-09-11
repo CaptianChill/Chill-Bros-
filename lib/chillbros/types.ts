@@ -12,6 +12,7 @@ export type JobStatus =
   | "new"
   | "needs_scheduling"
   | "scheduled"
+  | "in_progress"
   | "dispatched"
   | "en_route"
   | "arrived"
@@ -32,6 +33,7 @@ export const JOB_ACTIVE_STATUSES: JobStatus[] = [
   "new",
   "needs_scheduling",
   "scheduled",
+  "in_progress",
   "dispatched",
   "en_route",
   "arrived",
@@ -52,6 +54,7 @@ export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   new: "New",
   needs_scheduling: "Needs Scheduling",
   scheduled: "Scheduled",
+  in_progress: "In Progress",
   dispatched: "Dispatched",
   en_route: "En Route",
   arrived: "Arrived",
