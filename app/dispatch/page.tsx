@@ -15,8 +15,17 @@ export default async function DispatchPage() {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
   const [customers, technicians, jobs] = await Promise.all([getCustomers(), getActiveTechnicians(), getDispatchJobs()]);
-  return <AppShell title="Create customers, dispatch jobs, assign technicians, and manage every active service call." description="Existing service-call fields autosave, technician/customer workflow state is visible here, and the board refreshes live while idle." highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Dispatch state</p><StatusPill tone="emerald">{jobs.filter((j) => !["completed", "cancelled"].includes(j.status)).length} open jobs</StatusPill><StatusPill>{technicians.length} active technicians</StatusPill><StatusPill>{customers.length} customers</StatusPill></div>}>
+  const openJobs = jobs.filter((j) => !["paid", "completed", "cancelled"].includes(j.status));
+  const unassigned = openJobs.filter((j) => !j.assignedTechId);
+
+  return <AppShell
+    title="Dispatch Command Center"
+    description="See what is unassigned, what each technician is carrying, and where every service call sits in the workflow without digging through oversized forms."
+    highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Live dispatch</p><StatusPill tone="emerald">{openJobs.length} open jobs</StatusPill><StatusPill tone={unassigned.length ? "amber" : "emerald"}>{unassigned.length} unassigned</StatusPill><StatusPill>{technicians.length} active technicians</StatusPill></div>}
+  >
     <LiveOfficeRefresh />
-    <SectionCard eyebrow="Office workflow" title="Customer intake + dispatch" description="Create the customer, assign the service call, then track technician → approval → invoice status from this board."><DispatchPanel customers={customers} technicians={technicians} jobs={jobs} /></SectionCard>
+    <SectionCard eyebrow="Operations" title="Dispatch board" description="Create calls fast, assign work, balance technician workload, and follow jobs from scheduling through billing.">
+      <DispatchPanel customers={customers} technicians={technicians} jobs={jobs} />
+    </SectionCard>
   </AppShell>;
 }
