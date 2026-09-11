@@ -23,6 +23,15 @@ function cleanText(value: unknown, max = 4000) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
+async function warmWorker(base: string) {
+  try {
+    const response = await fetch(`${base}/health`, { cache: "no-store", signal: AbortSignal.timeout(75_000) });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET() {
   const profile = await getCurrentStaffProfile();
   if (!profile || profile.role !== "manager") {
@@ -30,15 +39,10 @@ export async function GET() {
   }
 
   const base = workerBase();
-  if (!base) {
-    return NextResponse.json({ configured: false, engine: "blender-cycles" });
-  }
+  if (!base) return NextResponse.json({ configured: false, engine: "blender-cycles" });
 
   try {
-    const response = await fetch(`${base}/health`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(65_000),
-    });
+    const response = await fetch(`${base}/health`, { cache: "no-store", signal: AbortSignal.timeout(75_000) });
     const health = await response.json().catch(() => ({}));
     return NextResponse.json({
       configured: true,
@@ -62,31 +66,10 @@ export async function POST(request: Request) {
 
   const base = workerBase();
   let authorization = "";
-  try {
-    authorization = await workerAuthorization();
-  } catch (error) {
-    console.error("Unable to obtain Blender worker identity", error);
-  }
+  try { authorization = await workerAuthorization(); } catch (error) { console.error("Unable to obtain Blender worker identity", error); }
 
-  if (!base) {
-    return NextResponse.json(
-      {
-        error: "Blender render worker is not connected yet.",
-        setupRequired: true,
-        engine: "blender-cycles",
-      },
-      { status: 503 },
-    );
-  }
-  if (!authorization) {
-    return NextResponse.json(
-      {
-        error: "The Blender worker connection could not obtain a server identity token.",
-        engine: "blender-cycles",
-      },
-      { status: 503 },
-    );
-  }
+  if (!base) return NextResponse.json({ error: "Blender render worker is not connected yet.", setupRequired: true, engine: "blender-cycles" }, { status: 503 });
+  if (!authorization) return NextResponse.json({ error: "The Blender worker connection could not obtain a server identity token.", engine: "blender-cycles" }, { status: 503 });
 
   const incoming = await request.json().catch(() => null);
   if (!incoming || !Array.isArray(incoming.rooms) || incoming.rooms.length < 1) {
@@ -102,16 +85,14 @@ export async function POST(request: Request) {
     verified: Boolean(room?.verified),
   }));
 
-  const brief = incoming.brief && typeof incoming.brief === "object"
-    ? {
-        customer: cleanText(incoming.brief.customer, 300),
-        address: cleanText(incoming.brief.address, 500),
-        projectTitle: cleanText(incoming.brief.projectTitle, 300),
-        requestedChanges: cleanText(incoming.brief.requestedChanges, 3000),
-        finishedProduct: cleanText(incoming.brief.finishedProduct, 3000),
-        fieldNotes: cleanText(incoming.brief.fieldNotes, 3000),
-      }
-    : undefined;
+  const brief = incoming.brief && typeof incoming.brief === "object" ? {
+    customer: cleanText(incoming.brief.customer, 300),
+    address: cleanText(incoming.brief.address, 500),
+    projectTitle: cleanText(incoming.brief.projectTitle, 300),
+    requestedChanges: cleanText(incoming.brief.requestedChanges, 3000),
+    finishedProduct: cleanText(incoming.brief.finishedProduct, 3000),
+    fieldNotes: cleanText(incoming.brief.fieldNotes, 3000),
+  } : undefined;
 
   const payload = {
     projectName: cleanText(incoming.projectName, 300) || "Chill Bros Project",
@@ -120,10 +101,12 @@ export async function POST(request: Request) {
     brief,
     environment: cleanText(incoming.environment, 200) || "clean studio",
     presentation: cleanText(incoming.presentation, 200) || "wide customer presentation",
-    samples: Math.min(48, Math.max(32, Number(incoming.samples) || 48)),
-    width: 1536,
-    height: 1024,
+    samples: Math.min(32, Math.max(20, Number(incoming.samples) || 24)),
+    width: 1280,
+    height: 854,
   };
+
+  await warmWorker(base);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 255_000);
@@ -131,10 +114,7 @@ export async function POST(request: Request) {
   try {
     const response = await fetch(`${base}/render`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authorization}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${authorization}` },
       body: JSON.stringify(payload),
       cache: "no-store",
       signal: controller.signal,
@@ -143,39 +123,21 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
       console.error("Blender worker render failed", response.status, detail.slice(0, 2000));
-      return NextResponse.json(
-        {
-          error: "Blender render failed on the render worker.",
-          detail: detail.slice(0, 1200),
-          engine: "blender-cycles",
-        },
-        { status: 502 },
-      );
+      return NextResponse.json({ error: "Blender render failed on the render worker.", detail: detail.slice(0, 1200), engine: "blender-cycles" }, { status: 502 });
     }
 
     const bytes = await response.arrayBuffer();
-    if (!bytes.byteLength) {
-      return NextResponse.json({ error: "Blender returned an empty render." }, { status: 502 });
-    }
-    if (bytes.byteLength > 25 * 1024 * 1024) {
-      return NextResponse.json({ error: "Blender render was unexpectedly large." }, { status: 502 });
-    }
+    if (!bytes.byteLength) return NextResponse.json({ error: "Blender returned an empty render." }, { status: 502 });
+    if (bytes.byteLength > 25 * 1024 * 1024) return NextResponse.json({ error: "Blender render was unexpectedly large." }, { status: 502 });
 
     return new NextResponse(bytes, {
       status: 200,
-      headers: {
-        "Content-Type": response.headers.get("content-type") || "image/png",
-        "Cache-Control": "no-store",
-        "X-Chillbros-Render-Engine": "blender-cycles",
-      },
+      headers: { "Content-Type": response.headers.get("content-type") || "image/png", "Cache-Control": "no-store", "X-Chillbros-Render-Engine": "blender-cycles" },
     });
   } catch (error) {
     console.error("Blender render proxy failed", error);
     const timedOut = error instanceof Error && error.name === "AbortError";
-    return NextResponse.json(
-      { error: timedOut ? "Blender render timed out." : "Unable to reach the Blender render worker." },
-      { status: timedOut ? 504 : 502 },
-    );
+    return NextResponse.json({ error: timedOut ? "Blender render timed out." : "Unable to reach the Blender render worker." }, { status: timedOut ? 504 : 502 });
   } finally {
     clearTimeout(timeout);
   }
