@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_PATH_PREFIXES = ["/sign-in", "/portal", "/agreement", "/_next", "/favicon.ico", "/logo", "/manifest.webmanifest", "/api/portal", "/api/3d-project-builder/blender-self-test"];
+const PUBLIC_PATH_PREFIXES = ["/sign-in", "/forgot-password", "/auth/callback", "/portal", "/agreement", "/_next", "/favicon.ico", "/logo", "/manifest.webmanifest", "/api/portal", "/api/3d-project-builder/blender-self-test"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`) || pathname.startsWith(`${prefix}.`));
