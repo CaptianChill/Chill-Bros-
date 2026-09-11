@@ -8,6 +8,8 @@ import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS, type JobStatus } from "./types"
 type Result = { ok: true } | { ok: false; error: string };
 
 const TECHNICIAN_STATUSES: JobStatus[] = [
+  "scheduled",
+  "in_progress",
   "dispatched",
   "en_route",
   "arrived",
@@ -19,6 +21,7 @@ const TECHNICIAN_STATUSES: JobStatus[] = [
   "repairing",
   "work_complete",
   "ready_to_invoice",
+  "completed",
 ];
 
 const clean = (value: string | null | undefined, max: number) => {
