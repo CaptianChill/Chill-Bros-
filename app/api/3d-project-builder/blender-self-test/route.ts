@@ -31,9 +31,9 @@ export async function GET(request: Request) {
     brief: { projectTitle: "Blender Worker Probe", requestedChanges: "Install mini split", finishedProduct: "Completed mini split installation", fieldNotes: "Automated connectivity test" },
     environment: "clean studio",
     presentation: "wide customer presentation",
-    samples: 4,
-    width: 320,
-    height: 240,
+    samples: 16,
+    width: 640,
+    height: 480,
   };
 
   try {
