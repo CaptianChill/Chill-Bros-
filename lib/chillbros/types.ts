@@ -7,7 +7,68 @@ export type PartsCatalogItem = { id: string; name: string; partNumber: string; d
 export type PriceBookValueKind = "money" | "multiplier" | "formula" | "policy";
 export type PriceBookEntry = { code: string; category: string; categoryKey: string; title: string; marketPrice: string; currentValue: number; description: string; kind: PriceBookValueKind };
 export type FeeSetting = { id: string; label: string; amount: number };
-export type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
+
+export type JobStatus =
+  | "new"
+  | "needs_scheduling"
+  | "scheduled"
+  | "dispatched"
+  | "en_route"
+  | "arrived"
+  | "diagnosing"
+  | "awaiting_approval"
+  | "approved"
+  | "parts_required"
+  | "return_visit_needed"
+  | "repairing"
+  | "work_complete"
+  | "ready_to_invoice"
+  | "invoice_sent"
+  | "paid"
+  | "completed"
+  | "cancelled";
+
+export const JOB_ACTIVE_STATUSES: JobStatus[] = [
+  "new",
+  "needs_scheduling",
+  "scheduled",
+  "dispatched",
+  "en_route",
+  "arrived",
+  "diagnosing",
+  "awaiting_approval",
+  "approved",
+  "parts_required",
+  "return_visit_needed",
+  "repairing",
+  "work_complete",
+  "ready_to_invoice",
+  "invoice_sent",
+];
+
+export const JOB_TERMINAL_STATUSES: JobStatus[] = ["paid", "completed", "cancelled"];
+
+export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
+  new: "New",
+  needs_scheduling: "Needs Scheduling",
+  scheduled: "Scheduled",
+  dispatched: "Dispatched",
+  en_route: "En Route",
+  arrived: "Arrived",
+  diagnosing: "Diagnosing",
+  awaiting_approval: "Awaiting Approval",
+  approved: "Approved",
+  parts_required: "Parts Required",
+  return_visit_needed: "Return Visit Needed",
+  repairing: "Repairing",
+  work_complete: "Work Complete",
+  ready_to_invoice: "Ready to Invoice",
+  invoice_sent: "Invoice Sent",
+  paid: "Paid",
+  completed: "Closed",
+  cancelled: "Cancelled",
+};
+
 export type Job = { id: string; customerId: string; customerName: string; assignedTechId: string | null; assignedTechName: string | null; status: JobStatus; location: string | null; scope: string | null; workPerformed: string | null; laborHours: number; driveHours: number; scheduledWindow: string | null; parts: { id: string; name: string; partNumber: string; retailPrice: number; quantity: number }[]; beforePhotos: { id: string; storagePath: string; caption: string | null; url: string | null }[]; afterPhotos: { id: string; storagePath: string; caption: string | null; url: string | null }[] };
 
 export type InvoiceStatus = "draft" | "awaiting_approval" | "approved" | "void";
