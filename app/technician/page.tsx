@@ -15,6 +15,7 @@ import { getEquipmentByCustomer } from "@/lib/chillbros/equipment-queries";
 import { getInvoiceV2ByJobId, invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { getDispatchJobs } from "@/lib/chillbros/operations-queries";
 import { getFeeSettings, getJob, getPartsCatalog } from "@/lib/chillbros/queries";
+import { getAssignedFieldJobsForTechnician } from "@/lib/chillbros/technician-assignment";
 import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS } from "@/lib/chillbros/types";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
@@ -44,11 +45,11 @@ export default async function TechnicianPage({ searchParams }: Props) {
   if (!["technician", "manager"].includes(profile.role)) redirect("/dispatch");
   const isManager = profile.role === "manager";
 
-  const allJobs = await getDispatchJobs(250);
+  const allJobs = isManager
+    ? await getDispatchJobs(250)
+    : await getAssignedFieldJobsForTechnician({ id: profile.id, email: profile.email }, 250);
   const fieldJobs = allJobs.filter((job) =>
-    JOB_ACTIVE_STATUSES.includes(job.status) &&
-    FIELD_VISIBLE.has(job.status) &&
-    (isManager || job.assignedTechId === profile.id),
+    JOB_ACTIVE_STATUSES.includes(job.status) && FIELD_VISIBLE.has(job.status),
   );
 
   const params = await searchParams;
