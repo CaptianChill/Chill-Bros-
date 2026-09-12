@@ -3,6 +3,7 @@ export type NavItem={href:string;label:string;shortLabel:string;roles:StaffRole[
 export const navItems:NavItem[]=[
 {href:"/",label:"Command Center",shortLabel:"Home",roles:["manager"]},
 {href:"/manager/command",label:"Owner Command",shortLabel:"Owner",roles:["manager"]},
+{href:"/work-orders",label:"Open Work Orders",shortLabel:"Work Orders",roles:["manager"]},
 {href:"/schedule",label:"Scheduling",shortLabel:"Schedule",roles:["manager","office"]},
 {href:"/dispatch",label:"Dispatch",shortLabel:"Dispatch",roles:["manager","office"]},
 {href:"/create",label:"Creation Center",shortLabel:"Create",roles:["manager"]},
