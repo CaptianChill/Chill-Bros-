@@ -28,9 +28,39 @@ export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
 
 export async function getActiveTechnicians(): Promise<ActiveTechnician[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_profiles").select("id, full_name, role").in("role", ["technician", "manager"]).eq("status", "active").order("full_name", { ascending: true });
+  const { data, error } = await supabase.from("chillbros_profiles").select("id, full_name, email, role, status").in("role", ["technician", "manager"]).eq("status", "active").order("full_name", { ascending: true });
   if (error || !data) return [];
-  return data.map((row) => ({ id: row.id, fullName: row.full_name, role: row.role as "technician" | "manager" }));
+
+  // Only expose the profile that is actually backed by a Supabase Auth user when duplicates exist.
+  // This prevents dispatch from assigning work to an old/stale profile with the same employee name/email.
+  const authIdsByEmail = new Map<string, string>();
+  try {
+    let page = 1;
+    while (page <= 10) {
+      const { data: usersPage, error: authError } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+      if (authError) break;
+      for (const user of usersPage.users ?? []) {
+        const email = String(user.email ?? "").trim().toLowerCase();
+        if (email) authIdsByEmail.set(email, user.id);
+      }
+      if ((usersPage.users ?? []).length < 1000) break;
+      page += 1;
+    }
+  } catch {
+    // Fall back to profile-only de-duplication if auth admin lookup is unavailable.
+  }
+
+  const byIdentity = new Map<string, typeof data[number]>();
+  for (const row of data) {
+    const email = String(row.email ?? "").trim().toLowerCase();
+    const key = email || row.id;
+    const existing = byIdentity.get(key);
+    if (!existing) { byIdentity.set(key, row); continue; }
+    const authId = email ? authIdsByEmail.get(email) : null;
+    if (authId && row.id === authId) byIdentity.set(key, row);
+  }
+
+  return Array.from(byIdentity.values()).map((row) => ({ id: row.id, fullName: row.full_name, role: row.role as "technician" | "manager" }));
 }
 
 export async function getTimekeepingStaff(): Promise<TimekeepingStaff[]> {
