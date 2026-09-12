@@ -9,9 +9,10 @@ import { getCalendarJobs } from "@/lib/chillbros/schedule-queries";
 import { getCustomers } from "@/lib/chillbros/queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createScheduledJobAction, createTeamMeetingAction, rescheduleJobAction } from "./actions";
+import { createScheduleCustomerAction } from "./customer-actions";
 
 export const dynamic = "force-dynamic";
-type Props = { searchParams: Promise<{ week?: string; success?: string; error?: string }> };
+type Props = { searchParams: Promise<{ week?: string; success?: string; error?: string; customer?: string }> };
 const field = "box min-h-10 w-full rounded-lg bg-black px-3 py-2 text-center text-sm text-white";
 const TIMES = Array.from({ length: 27 }, (_, i) => { const total = 7 * 60 + i * 30; return `${String(Math.floor(total / 60)).padStart(2,"0")}:${String(total % 60).padStart(2,"0")}`; });
 function ctToday() { const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()); const map = Object.fromEntries(parts.map((p) => [p.type,p.value])); return `${map.year}-${map.month}-${map.day}`; }
@@ -37,6 +38,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   const defaultDate = days.includes(today) ? today : weekStart;
   const [rawCustomers,technicians,jobs] = await Promise.all([getCustomers(),getActiveTechnicians(),getCalendarJobs()]);
   const customers = uniqueCustomers(rawCustomers.filter((c)=>c.name!=="Chill Pros Team"));
+  const selectedCustomer = customers.some((customer)=>customer.id===params.customer) ? params.customer : "";
   const parsed = jobs.map((job)=>({job,slot:parseWindow(job.scheduledWindow)}));
   const scheduledThisWeek = parsed.filter((entry)=>entry.slot && days.includes(entry.slot.date));
   const previousWeek = shift(weekStart,-7), nextWeek = shift(weekStart,7);
@@ -52,13 +54,18 @@ export default async function SchedulePage({ searchParams }: Props) {
         {params.error ? <p className="danger-box txt mt-2 rounded-lg px-3 py-2 text-center text-xs">{params.error}</p> : null}
       </section>
 
-      <div className="grid grid-cols-2 gap-2">
-        <details className="panel group rounded-xl p-2 open:col-span-2 sm:p-3">
+      <div className="grid gap-2 sm:grid-cols-3">
+        <details className="panel group rounded-xl p-2 open:sm:col-span-3 sm:p-3">
           <summary className="glo cursor-pointer list-none text-center text-sm font-semibold">Schedule service call <span className="sub ml-1 text-[10px] font-normal sm:text-xs">tap to expand</span></summary>
-          <form action={createScheduledJobAction} className="mt-3 grid gap-2 sm:grid-cols-2" noValidate><input type="hidden" name="week" value={weekStart}/><select required name="customerId" defaultValue="" className={field}><option value="">Customer</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><select name="assignedTechId" defaultValue="" className={field}><option value="">Unassigned technician</option>{technicians.map(t=><option key={t.id} value={t.id}>{t.fullName}</option>)}</select><input required name="date" type="date" defaultValue={defaultDate} className={field}/><div className="grid grid-cols-2 gap-2"><select required name="start" defaultValue="09:00" className={field}>{TIMES.map(t=><option key={t} value={t}>{displayTime(t)}</option>)}</select><select required name="end" defaultValue="11:00" className={field}>{TIMES.map(t=><option key={t} value={t}>{displayTime(t)}</option>)}</select></div><input name="location" placeholder="Service location" className={field}/><input name="scope" placeholder="Complaint / scope" className={field}/><ScheduleSubmitButton label="Save Call" /></form>
+          <form action={createScheduledJobAction} className="mt-3 grid gap-2 sm:grid-cols-2" noValidate><input type="hidden" name="week" value={weekStart}/><select required name="customerId" defaultValue={selectedCustomer} className={field}><option value="">Customer</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><select name="assignedTechId" defaultValue="" className={field}><option value="">Unassigned technician</option>{technicians.map(t=><option key={t.id} value={t.id}>{t.fullName}</option>)}</select><input required name="date" type="date" defaultValue={defaultDate} className={field}/><div className="grid grid-cols-2 gap-2"><select required name="start" defaultValue="09:00" className={field}>{TIMES.map(t=><option key={t} value={t}>{displayTime(t)}</option>)}</select><select required name="end" defaultValue="11:00" className={field}>{TIMES.map(t=><option key={t} value={t}>{displayTime(t)}</option>)}</select></div><input name="location" placeholder="Service location" className={field}/><input name="scope" placeholder="Complaint / scope" className={field}/><ScheduleSubmitButton label="Save Call" /></form>
         </details>
 
-        <details className="panel group rounded-xl p-2 open:col-span-2 sm:p-3">
+        <details className="panel group rounded-xl p-2 open:sm:col-span-3 sm:p-3">
+          <summary className="glo cursor-pointer list-none text-center text-sm font-semibold">Add customer <span className="sub ml-1 text-[10px] font-normal sm:text-xs">new client</span></summary>
+          <form action={createScheduleCustomerAction} className="mt-3 grid gap-2 sm:grid-cols-2" noValidate><input type="hidden" name="week" value={weekStart}/><input required name="name" placeholder="Customer / business name" className={field}/><input name="phone" type="tel" placeholder="Phone" className={field}/><input name="email" type="email" placeholder="Email" className={field}/><input name="address" placeholder="Service / billing address" className={field}/><button type="submit" className="box hot min-h-11 rounded-lg px-4 py-2 text-center text-sm font-semibold text-white sm:col-span-2">Add Customer</button></form>
+        </details>
+
+        <details className="panel group rounded-xl p-2 open:sm:col-span-3 sm:p-3">
           <summary className="glo cursor-pointer list-none text-center text-sm font-semibold">Schedule team meeting <span className="sub ml-1 text-[10px] font-normal sm:text-xs">tap to expand</span></summary>
           <form action={createTeamMeetingAction} className="mt-3 grid gap-2 sm:grid-cols-2" noValidate><input type="hidden" name="week" value={weekStart}/><input required name="title" placeholder="Meeting title" className={`${field} sm:col-span-2`}/><input required name="date" type="date" defaultValue={defaultDate} className={field}/><div className="grid grid-cols-2 gap-2"><select required name="start" defaultValue="10:00" className={field}>{TIMES.map(t=><option key={t} value={t}>{displayTime(t)}</option>)}</select><select required name="end" defaultValue="10:30" className={field}>{TIMES.map(t=><option key={t} value={t}>{displayTime(t)}</option>)}</select></div><input name="location" placeholder="Office / phone / video" className={field}/><input name="attendees" placeholder="Whole team or names" className={field}/><ScheduleSubmitButton label="Save Meeting" /></form>
         </details>
