@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { reconcileTechnicianAssignmentsAndNotifications } from "./assignment-reconciliation";
 import type { JobStatus } from "./types";
 
 export type DispatchJob = { id: string; customerId: string; customerName: string; assignedTechId: string | null; assignedTechName: string | null; status: JobStatus; location: string | null; scope: string | null; workPerformed: string | null; scheduledWindow: string | null; createdAt: string; workflowStage: string };
@@ -27,12 +28,11 @@ export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
 }
 
 export async function getActiveTechnicians(): Promise<ActiveTechnician[]> {
+  await reconcileTechnicianAssignmentsAndNotifications();
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase.from("chillbros_profiles").select("id, full_name, email, role, status").in("role", ["technician", "manager"]).eq("status", "active").order("full_name", { ascending: true });
   if (error || !data) return [];
 
-  // Only expose the profile that is actually backed by a Supabase Auth user when duplicates exist.
-  // This prevents dispatch from assigning work to an old/stale profile with the same employee name/email.
   const authIdsByEmail = new Map<string, string>();
   try {
     let page = 1;
@@ -46,9 +46,7 @@ export async function getActiveTechnicians(): Promise<ActiveTechnician[]> {
       if ((usersPage.users ?? []).length < 1000) break;
       page += 1;
     }
-  } catch {
-    // Fall back to profile-only de-duplication if auth admin lookup is unavailable.
-  }
+  } catch {}
 
   const byIdentity = new Map<string, typeof data[number]>();
   for (const row of data) {
