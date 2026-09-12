@@ -14,7 +14,7 @@ import { createScheduleCustomerAction } from "./customer-actions";
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ week?: string; success?: string; error?: string; customer?: string }> };
 const field = "box min-h-10 w-full rounded-lg bg-black px-3 py-2 text-center text-sm text-white";
-const TIMES = Array.from({ length: 27 }, (_, i) => { const total = 7 * 60 + i * 30; return `${String(Math.floor(total / 60)).padStart(2,"0")}:${String(total % 60).padStart(2,"0")}`; });
+const TIMES = Array.from({ length: 48 }, (_, i) => { const total = i * 30; return `${String(Math.floor(total / 60)).padStart(2,"0")}:${String(total % 60).padStart(2,"0")}`; });
 function ctToday() { const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()); const map = Object.fromEntries(parts.map((p) => [p.type,p.value])); return `${map.year}-${map.month}-${map.day}`; }
 function validDate(value?: string) { return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value)); }
 function dateAt(value: string) { return new Date(`${value}T12:00:00Z`); }
