@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { sendTechnicianAssignmentEmail } from "@/lib/chillbros/assignment-notifications";
 import { JOB_ACTIVE_STATUSES, type JobStatus } from "@/lib/chillbros/types";
 
 function text(fd:FormData,key:string){return String(fd.get(key)??"").trim();}
@@ -18,7 +19,11 @@ export async function updateWorkOrderAssignmentAction(fd:FormData):Promise<never
   const {data,error}=await s.from("chillbros_jobs").update({assigned_tech_id:techId||null,updated_at:new Date().toISOString()}).eq("id",jobId).is("archived_at",null).select("id,assigned_tech_id").maybeSingle();
   if(error||!data||data.assigned_tech_id!==(techId||null)) done(error?.message??"Technician assignment did not persist.","error");
   await s.from("chillbros_workflow_events").insert({job_id:jobId,actor_id:p.id,stage:"manager_assignment_override",message:techId?"Manager reassigned technician from Open Work Orders.":"Manager removed technician assignment from Open Work Orders."});
-  refresh(jobId); done("Technician assignment saved.");
+  if(techId){
+    const result=await sendTechnicianAssignmentEmail(jobId,"assigned");
+    await s.from("chillbros_workflow_events").insert({job_id:jobId,actor_id:p.id,stage:result.sent?"technician_assignment_email_sent":"technician_assignment_email_failed",message:`Open Work Orders assignment notification ${result.status}.`});
+  }
+  refresh(jobId); done(techId?"Technician assignment saved and notification processed.":"Technician assignment removed.");
 }
 
 const allowed=new Set<JobStatus>([...JOB_ACTIVE_STATUSES,"cancelled","completed"]);
