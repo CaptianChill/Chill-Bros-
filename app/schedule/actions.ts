@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { sendTechnicianAssignmentEmail, verifyTechnicianAssignment } from "@/lib/chillbros/assignment-notifications";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
@@ -20,70 +21,20 @@ function parseWindow(value: string | null) {
   return match ? { date: match[1], start: match[2], end: match[3] } : null;
 }
 function refreshScheduleViews() {
-  for (const path of ["/schedule", "/dispatch", "/office", "/technician", "/customers", "/"]) revalidatePath(path);
+  for (const path of ["/schedule", "/dispatch", "/office", "/technician", "/customers", "/work-orders", "/"]) revalidatePath(path);
 }
 
-function appBaseUrl() {
-  const configured = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "").trim().replace(/\/$/, "");
-  if (configured) return configured;
-  const vercel = (process.env.VERCEL_URL || "").trim();
-  return vercel ? `https://${vercel}` : "https://chill-bros.vercel.app";
-}
-
-async function notifyAssignedTechnician(jobId: string, kind: "assigned" | "updated") {
-  const apiKey = (process.env.RESEND_API_KEY || "").trim();
-  const from = (process.env.NOTIFICATION_FROM_EMAIL || process.env.SCAN_FROM_EMAIL || "").trim();
-  if (!apiKey || !from) {
-    console.info("[schedule] technician email skipped: RESEND_API_KEY or sender email not configured");
-    return;
-  }
-
+async function notifyAssignedTechnician(jobId: string, kind: "assigned" | "updated", actorId: string) {
+  const result = await sendTechnicianAssignmentEmail(jobId, kind);
   const supabase = createServiceRoleClient();
-  const { data: job, error } = await supabase
-    .from("chillbros_jobs")
-    .select("id,location,scope,scheduled_window,assigned_tech_id,customer:chillbros_customers(name),tech:chillbros_profiles(full_name,email)")
-    .eq("id", jobId)
-    .maybeSingle();
-
-  if (error || !job?.assigned_tech_id) return;
-  const tech = Array.isArray(job.tech) ? job.tech[0] : job.tech;
-  const customer = Array.isArray(job.customer) ? job.customer[0] : job.customer;
-  const email = String(tech?.email ?? "").trim();
-  if (!email) {
-    console.info(`[schedule] technician email skipped: no email on profile ${job.assigned_tech_id}`);
-    return;
-  }
-
-  const techName = String(tech?.full_name ?? "Technician");
-  const customerName = String(customer?.name ?? "Customer");
-  const subject = kind === "assigned" ? `New Chill Pros service call: ${customerName}` : `Chill Pros schedule updated: ${customerName}`;
-  const technicianUrl = `${appBaseUrl()}/technician?job=${encodeURIComponent(job.id)}`;
-  const lines = [
-    `Hi ${techName},`,
-    "",
-    kind === "assigned" ? "A new service call has been assigned to you." : "One of your assigned service calls has been updated.",
-    `Customer: ${customerName}`,
-    `Schedule: ${job.scheduled_window || "Not set"}`,
-    `Location: ${job.location || "Not set"}`,
-    job.scope ? `Scope: ${job.scope}` : "",
-    "",
-    `Open call: ${technicianUrl}`,
-  ].filter(Boolean).join("\n");
-
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ from, to: [email], subject, text: lines }),
-      cache: "no-store",
-    });
-    if (!response.ok) console.error("[schedule] technician notification failed", response.status, await response.text());
-  } catch (notifyError) {
-    console.error("[schedule] technician notification error", notifyError);
-  }
+  await supabase.from("chillbros_workflow_events").insert({
+    job_id: jobId,
+    actor_id: actorId,
+    stage: result.sent ? "technician_assignment_email_sent" : "technician_assignment_email_failed",
+    message: `Schedule technician notification ${result.status}${result.recipient ? ` to ${result.recipient}` : ""}.`,
+  });
+  if (!result.sent) console.error(`[schedule-assignment] job=${jobId} notification=${result.status}`);
+  return result;
 }
 
 async function technicianConflict(assignedTechId: string, date: string, start: string, end: string, excludeJobId?: string) {
@@ -166,7 +117,7 @@ async function insertCalendarJob(input: {
       scheduled_window: input.scheduledWindow,
       updated_at: new Date().toISOString(),
     })
-    .select("id,scheduled_window,status")
+    .select("id,scheduled_window,status,assigned_tech_id")
     .single();
 
   if (error || !data) {
@@ -178,6 +129,9 @@ async function insertCalendarJob(input: {
     if (!(await verifySchedule(data.id, input.scheduledWindow))) {
       return { ok: false as const, error: "The calendar row was created but the date/time did not persist." };
     }
+  }
+  if ((input.assignedTechId || null) !== data.assigned_tech_id) {
+    return { ok: false as const, error: "The call saved but the technician assignment did not persist." };
   }
 
   return { ok: true as const, jobId: data.id };
@@ -213,9 +167,14 @@ export async function createScheduledJobAction(formData: FormData): Promise<neve
     note: `Calendar call saved • ${scheduledWindow}`,
   });
 
-  if (assignedTechId) await notifyAssignedTechnician(result.jobId, "assigned");
+  if (assignedTechId) {
+    const verified = await verifyTechnicianAssignment(result.jobId, assignedTechId);
+    if (!verified.ok) go(verified.error, "error", date);
+    const notification = await notifyAssignedTechnician(result.jobId, "assigned", profile.id);
+    if (!notification.sent) go(`Call assigned, but technician email failed: ${notification.status}.`, "error", date);
+  }
   refreshScheduleViews();
-  go("Saved to calendar.", "success", date);
+  go("Saved to calendar and technician assignment verified.", "success", date);
 }
 
 export async function createTeamMeetingAction(formData: FormData): Promise<never> {
@@ -281,17 +240,23 @@ export async function rescheduleJobAction(formData: FormData): Promise<never> {
     .update({ assigned_tech_id: assignedTechId || null, scheduled_window: scheduledWindow, status: "scheduled", updated_at: new Date().toISOString() })
     .eq("id", jobId)
     .is("archived_at", null)
-    .select("id,scheduled_window,status")
+    .select("id,scheduled_window,status,assigned_tech_id")
     .maybeSingle();
 
   if (error || !data) go(error?.message ?? "Schedule item not found.", "error", date);
   if ((data.scheduled_window !== scheduledWindow || data.status !== "scheduled") && !(await verifySchedule(jobId, scheduledWindow))) {
     go("Schedule update did not persist. Please retry.", "error", date);
   }
+  if (data.assigned_tech_id !== (assignedTechId || null)) go("Schedule saved, but technician assignment did not persist.", "error", date);
 
-  if (assignedTechId) await notifyAssignedTechnician(jobId, "updated");
+  if (assignedTechId) {
+    const verified = await verifyTechnicianAssignment(jobId, assignedTechId);
+    if (!verified.ok) go(verified.error, "error", date);
+    const notification = await notifyAssignedTechnician(jobId, "updated", profile.id);
+    if (!notification.sent) go(`Schedule updated, but technician email failed: ${notification.status}.`, "error", date);
+  }
   refreshScheduleViews();
-  go("Schedule updated and saved.", "success", date);
+  go("Schedule and technician assignment verified.", "success", date);
 }
 
 export async function deleteCalendarItemAction(formData: FormData): Promise<never> {
