@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 
+import { auth } from "@/lib/auth/server";
 import { checkLoginThrottle, recordLoginAttempt, safeInternalPath } from "@/lib/chillbros/security-guards";
-import { createAuthServerClient } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export async function signInAction(_prevState: { error: string } | null, formData: FormData): Promise<{ error: string } | null> {
@@ -20,18 +20,16 @@ export async function signInAction(_prevState: { error: string } | null, formDat
     return { error: "Too many sign-in attempts. Wait 15 minutes before trying again." };
   }
 
-  const supabase = await createAuthServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await auth.signIn.email({ email, password });
   if (error) {
     await recordLoginAttempt({ identityHash: throttle.identityHash, ipHash: throttle.ipHash, success: false }).catch(() => undefined);
     return { error: "Incorrect email or password." };
   }
 
-  await recordLoginAttempt({ identityHash: throttle.identityHash, ipHash: throttle.ipHash, success: true }).catch(() => undefined);
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    await supabase.auth.signOut();
+  const sessionResult = await auth.getSession();
+  const sessionUser = sessionResult?.data?.user ?? sessionResult?.user ?? null;
+  if (!sessionUser) {
+    await auth.signOut().catch(() => undefined);
     return { error: "Sign-in could not be verified." };
   }
 
@@ -39,19 +37,19 @@ export async function signInAction(_prevState: { error: string } | null, formDat
   const { data: profile } = await service
     .from("chillbros_profiles")
     .select("role,status")
-    .eq("id", user.id)
+    .ilike("email", email)
     .maybeSingle();
 
   if (!profile || profile.status !== "active") {
-    await supabase.auth.signOut();
+    await auth.signOut().catch(() => undefined);
     return { error: "This staff account is not active." };
   }
 
+  await recordLoginAttempt({ identityHash: throttle.identityHash, ipHash: throttle.ipHash, success: true }).catch(() => undefined);
   redirect(next);
 }
 
 export async function signOutAction(): Promise<void> {
-  const supabase = await createAuthServerClient();
-  await supabase.auth.signOut();
+  await auth.signOut().catch(() => undefined);
   redirect("/sign-in");
 }
