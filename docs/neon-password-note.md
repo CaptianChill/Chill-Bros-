@@ -1,0 +1,1 @@
+Password migration note: existing Supabase password hashes cannot be imported into Neon Managed Better Auth. Staff accounts must set a new password during cutover; business records and profile metadata remain migratable.
