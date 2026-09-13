@@ -1,0 +1,1 @@
+Cutover checklist: source export, Neon restore, row-count validation, auth account recreation, code client swap, Vercel env swap, preview verification, production verification, then remove Supabase.
