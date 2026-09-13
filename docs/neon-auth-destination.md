@@ -1,0 +1,1 @@
+Managed Better Auth and Neon Data API are provisioned for the Chill Bros Neon project. The production app origin is trusted. Do not remove Supabase runtime configuration until the production dataset has been restored and validated in Neon.
