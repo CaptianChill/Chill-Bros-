@@ -15,10 +15,6 @@ export type StaffProfile = {
   status: "active" | "inactive";
 };
 
-function operationalProfileEmail(email: string) {
-  return email.toLowerCase() === "chillprostx@gmail.com" ? "chillbrostx@gmail.com" : email;
-}
-
 /**
  * Legacy Supabase auth client retained only for the remaining migration-era
  * admin/recovery actions. New interactive staff sign-in uses Neon Auth.
@@ -49,8 +45,7 @@ export async function createAuthServerClient() {
 
 /**
  * Returns an active Chill Bros staff profile using the Neon Auth session.
- * The operational data layer is still read through the existing service client
- * during cutover, so profile authorization is matched by canonical email.
+ * Operational data still uses the existing service client during cutover.
  */
 export async function getCurrentStaffProfile(): Promise<StaffProfile | null> {
   const { data: session } = await neonAuth.getSession();
@@ -61,7 +56,7 @@ export async function getCurrentStaffProfile(): Promise<StaffProfile | null> {
   const { data, error } = await service
     .from("chillbros_profiles")
     .select("id, full_name, email, role, status")
-    .ilike("email", operationalProfileEmail(user.email))
+    .ilike("email", user.email)
     .maybeSingle();
 
   if (error || !data || data.status !== "active") return null;
