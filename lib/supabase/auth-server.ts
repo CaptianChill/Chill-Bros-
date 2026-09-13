@@ -3,6 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+import { auth as neonAuth } from "@/lib/auth/server";
 import { getSupabaseConfig } from "./config";
 import { createServiceRoleClient } from "./service-client";
 
@@ -15,9 +16,8 @@ export type StaffProfile = {
 };
 
 /**
- * Session-aware client bound to this request's cookies (anon key — respects
- * whatever the signed-in user's own session is). Used only for auth/session
- * operations, never for direct chillbros_* table access.
+ * Legacy Supabase auth client retained only for the remaining migration-era
+ * admin/recovery actions. New interactive staff sign-in uses Neon Auth.
  */
 export async function createAuthServerClient() {
   const config = getSupabaseConfig();
@@ -35,8 +35,8 @@ export async function createAuthServerClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Called from a Server Component render; middleware refreshes the
-          // session cookie instead, so this can be safely ignored here.
+          // Called from a Server Component render; auth middleware/server actions
+          // own session mutation instead.
         }
       },
     },
@@ -44,22 +44,22 @@ export async function createAuthServerClient() {
 }
 
 /**
- * Returns an active staff profile. Authentication is password/session based;
- * role and active-status authorization is still enforced server-side.
+ * Returns an active Chill Bros staff profile using the Neon Auth session.
+ * The operational data layer is still read through the existing service client
+ * during cutover, so profile authorization is matched by canonical email.
  */
 export async function getCurrentStaffProfile(): Promise<StaffProfile | null> {
-  const auth = await createAuthServerClient();
-  const {
-    data: { user },
-  } = await auth.auth.getUser();
-  if (!user) return null;
+  const { data: session } = await neonAuth.getSession();
+  const user = session?.user;
+  if (!user?.email) return null;
 
   const service = createServiceRoleClient();
   const { data, error } = await service
     .from("chillbros_profiles")
     .select("id, full_name, email, role, status")
-    .eq("id", user.id)
+    .ilike("email", user.email)
     .maybeSingle();
+
   if (error || !data || data.status !== "active") return null;
 
   return {
