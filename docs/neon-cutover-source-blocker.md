@@ -1,0 +1,1 @@
+Source export blocker: the currently connected Supabase account does not expose the Chill Bros Supabase project used by production. Do not attempt destructive cleanup until that source project is connected/exported and restored into Neon.
