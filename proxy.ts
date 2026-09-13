@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+
+import { auth } from "@/lib/auth/server";
 
 const PUBLIC_PATH_PREFIXES = [
   "/sign-in",
@@ -11,45 +12,44 @@ const PUBLIC_PATH_PREFIXES = [
   "/favicon.ico",
   "/logo",
   "/manifest.webmanifest",
+  "/api/auth",
   "/api/health",
   "/api/portal",
   "/api/3d-project-builder/blender-self-test",
 ];
 
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`) || pathname.startsWith(`${prefix}.`));
+  return PUBLIC_PATH_PREFIXES.some(
+    (prefix) =>
+      pathname === prefix ||
+      pathname.startsWith(`${prefix}/`) ||
+      pathname.startsWith(`${prefix}.`),
+  );
 }
 
+const neonAuthProxy = auth.middleware({ loginUrl: "/sign-in" });
+
 export async function proxy(request: NextRequest) {
-  const response = NextResponse.next({ request });
-  const url = (process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
-  const anonKey = (process.env.SUPABASE_ANON_KEY || "").trim();
+  const { pathname } = request.nextUrl;
 
-  if (!url || !anonKey) {
-    return new NextResponse("Chill Bros authentication configuration is unavailable.", { status: 503 });
+  if (isPublicPath(pathname)) {
+    return NextResponse.next();
   }
 
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() { return request.cookies.getAll(); },
-      setAll(cookiesToSet) {
-        for (const { name, value } of cookiesToSet) request.cookies.set(name, value);
-        for (const { name, value, options } of cookiesToSet) response.cookies.set(name, value, options);
-      },
-    },
-  });
-
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user && !isPublicPath(request.nextUrl.pathname)) {
-    const signInUrl = new URL("/sign-in", request.url);
-    signInUrl.searchParams.set("next", request.nextUrl.pathname);
-    return NextResponse.redirect(signInUrl);
-  }
-
-  return response;
+  // Neon Auth is the single source of truth for interactive sessions.
+  // This validates/refreshes Neon session cookies and redirects only when
+  // the Neon session is missing or invalid.
+  return neonAuthProxy(request);
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: [
+    {
+      source: "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+      missing: [
+        { type: "header", key: "next-action" },
+        { type: "header", key: "rsc" },
+      ],
+    },
+  ],
 };
