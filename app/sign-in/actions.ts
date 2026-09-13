@@ -26,9 +26,8 @@ export async function signInAction(_prevState: { error: string } | null, formDat
     return { error: "Incorrect email or password." };
   }
 
-  const sessionResult = await auth.getSession();
-  const sessionUser = sessionResult?.data?.user ?? sessionResult?.user ?? null;
-  if (!sessionUser) {
+  const { data: session } = await auth.getSession();
+  if (!session?.user) {
     await auth.signOut().catch(() => undefined);
     return { error: "Sign-in could not be verified." };
   }
