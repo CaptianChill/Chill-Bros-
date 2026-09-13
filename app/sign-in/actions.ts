@@ -6,10 +6,6 @@ import { auth } from "@/lib/auth/server";
 import { checkLoginThrottle, recordLoginAttempt, safeInternalPath } from "@/lib/chillbros/security-guards";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
-function operationalProfileEmail(email: string) {
-  return email === "chillprostx@gmail.com" ? "chillbrostx@gmail.com" : email;
-}
-
 export async function signInAction(_prevState: { error: string } | null, formData: FormData): Promise<{ error: string } | null> {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
@@ -40,7 +36,7 @@ export async function signInAction(_prevState: { error: string } | null, formDat
   const { data: profile } = await service
     .from("chillbros_profiles")
     .select("role,status")
-    .ilike("email", operationalProfileEmail(email))
+    .ilike("email", email)
     .maybeSingle();
 
   if (!profile || profile.status !== "active") {
