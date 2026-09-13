@@ -6,6 +6,8 @@ import { auth } from "@/lib/auth/server";
 import { checkLoginThrottle, recordLoginAttempt, safeInternalPath } from "@/lib/chillbros/security-guards";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
+const OWNER_EMAIL = "chillprostx@gmail.com";
+
 export async function signInAction(_prevState: { error: string } | null, formData: FormData): Promise<{ error: string } | null> {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
@@ -27,11 +29,20 @@ export async function signInAction(_prevState: { error: string } | null, formDat
   }
 
   const { data: session } = await auth.getSession();
-  if (!session?.user) {
+  if (!session?.user?.email) {
     await auth.signOut().catch(() => undefined);
     return { error: "Sign-in could not be verified." };
   }
 
+  // Owner cutover: Neon Auth is authoritative. Do not send the owner back
+  // through the legacy Supabase profile gate during the migration.
+  if (session.user.email.toLowerCase() === OWNER_EMAIL) {
+    await recordLoginAttempt({ identityHash: throttle.identityHash, ipHash: throttle.ipHash, success: true }).catch(() => undefined);
+    redirect(next);
+  }
+
+  // Temporary compatibility path for remaining staff until their operational
+  // profiles are moved off the legacy service client.
   const service = createServiceRoleClient();
   const { data: profile } = await service
     .from("chillbros_profiles")
