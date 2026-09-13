@@ -28,15 +28,12 @@ export async function signInAction(_prevState: { error: string } | null, formDat
     return { error: "Incorrect email or password." };
   }
 
-  const { data: session } = await auth.getSession();
-  if (!session?.user?.email) {
-    await auth.signOut().catch(() => undefined);
-    return { error: "Sign-in could not be verified." };
-  }
-
-  // Owner cutover: Neon Auth is authoritative. Do not send the owner back
-  // through the legacy Supabase profile gate during the migration.
-  if (session.user.email.toLowerCase() === OWNER_EMAIL) {
+  // Do not call auth.getSession() in the same server action that just set the
+  // Neon Auth cookie. The request cookie snapshot can lag the newly written
+  // cookie and falsely report that sign-in could not be verified. The next
+  // request is protected by Neon Auth middleware, which validates the fresh
+  // session before any protected page is served.
+  if (email === OWNER_EMAIL) {
     await recordLoginAttempt({ identityHash: throttle.identityHash, ipHash: throttle.ipHash, success: true }).catch(() => undefined);
     redirect(next);
   }
