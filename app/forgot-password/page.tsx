@@ -1,39 +1,50 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { LogoBadge } from "@/components/logo-badge";
-import { createAuthServerClient } from "@/lib/supabase/auth-server";
+import { auth } from "@/lib/auth/server";
 
 type ForgotPasswordPageProps = {
-  searchParams: Promise<{ sent?: string; error?: string }>;
+  searchParams: Promise<{ ready?: string; error?: string }>;
 };
 
-export default async function ForgotPasswordPage({ searchParams }: ForgotPasswordPageProps) {
-  const { sent, error } = await searchParams;
+const OWNER_EMAIL = "chillprostx@gmail.com";
 
-  async function requestPasswordReset(formData: FormData) {
+export default async function ForgotPasswordPage({ searchParams }: ForgotPasswordPageProps) {
+  const { ready, error } = await searchParams;
+
+  async function createOwnerPassword(formData: FormData) {
     "use server";
 
     const email = String(formData.get("email") || "").trim().toLowerCase();
-    if (!email || email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      redirect("/forgot-password?error=invalid");
-    }
+    const password = String(formData.get("password") || "");
+    const confirm = String(formData.get("confirm") || "");
 
-    const requestHeaders = await headers();
-    const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "chill-bros.vercel.app";
-    const proto = requestHeaders.get("x-forwarded-proto") || "https";
-    const origin = `${proto}://${host}`;
+    if (email !== OWNER_EMAIL) redirect("/forgot-password?error=owner");
+    if (password.length < 12 || password.length > 128) redirect("/forgot-password?error=password");
+    if (password !== confirm) redirect("/forgot-password?error=match");
 
-    const supabase = await createAuthServerClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/auth/callback?next=/account/update-password`,
+    const { error: signUpError } = await auth.signUp.email({
+      email,
+      password,
+      name: "Brae Morrison",
     });
 
-    // Keep the response generic so this page never reveals whether an email exists.
-    if (resetError) redirect("/forgot-password?error=send");
-    redirect("/forgot-password?sent=1");
+    if (signUpError) redirect("/forgot-password?error=exists");
+
+    redirect("/?ownerSetup=1");
   }
+
+  const errorMessage =
+    error === "owner"
+      ? "Use the Chill Bros owner email shown below."
+      : error === "password"
+        ? "Use a password between 12 and 128 characters."
+        : error === "match"
+          ? "The two passwords do not match."
+          : error === "exists"
+            ? "The owner account already has a password. Return to staff sign in and use it there."
+            : "Owner recovery could not be completed.";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-transparent px-4 text-foreground">
@@ -41,37 +52,64 @@ export default async function ForgotPasswordPage({ searchParams }: ForgotPasswor
         <div className="flex flex-col items-center gap-3 text-center">
           <LogoBadge variant="full" className="w-16" />
           <div>
-            <p className="sub text-sm uppercase tracking-[0.3em]">Account recovery</p>
-            <h1 className="glo mt-1 text-xl font-semibold">Reset staff password</h1>
+            <p className="sub text-sm uppercase tracking-[0.3em]">Owner recovery</p>
+            <h1 className="glo mt-1 text-xl font-semibold">Create owner password</h1>
           </div>
         </div>
 
-        {sent === "1" ? (
+        {ready === "1" ? (
           <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            If that email belongs to an active Chill Bros account, a password-reset link has been sent. Check the inbox and spam folder.
+            Owner access is ready. Create your password below.
           </p>
         ) : null}
 
         {error ? (
           <p className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-            {error === "invalid" ? "Enter a valid email address." : "The reset email could not be sent right now. Contact your manager for an emergency password reset."}
+            {errorMessage}
           </p>
         ) : null}
 
-        <form action={requestPasswordReset} className="space-y-4">
+        <form action={createOwnerPassword} className="space-y-4">
           <label className="block space-y-2">
-            <span className="text-sm text-zinc-300">Staff email</span>
+            <span className="text-sm text-zinc-300">Owner email</span>
             <input
               name="email"
               type="email"
               required
-              autoComplete="email"
-              placeholder="name@example.com"
-              className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+              defaultValue={OWNER_EMAIL}
+              readOnly
+              className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none"
             />
           </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm text-zinc-300">New password</span>
+            <input
+              name="password"
+              type="password"
+              required
+              minLength={12}
+              maxLength={128}
+              autoComplete="new-password"
+              className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none"
+            />
+          </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm text-zinc-300">Confirm password</span>
+            <input
+              name="confirm"
+              type="password"
+              required
+              minLength={12}
+              maxLength={128}
+              autoComplete="new-password"
+              className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none"
+            />
+          </label>
+
           <button type="submit" className="w-full rounded-2xl neon-tube bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] transition hover:bg-[#2d7dff]/20">
-            Email reset link
+            Create owner password & sign in
           </button>
         </form>
 
