@@ -1,0 +1,1 @@
+Neon destination provisioning complete. Production cutover is blocked only on source Supabase data extraction and production environment-variable replacement. No source data has been deleted.
