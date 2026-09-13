@@ -15,6 +15,10 @@ export type StaffProfile = {
   status: "active" | "inactive";
 };
 
+function operationalProfileEmail(email: string) {
+  return email.toLowerCase() === "chillprostx@gmail.com" ? "chillbrostx@gmail.com" : email;
+}
+
 /**
  * Legacy Supabase auth client retained only for the remaining migration-era
  * admin/recovery actions. New interactive staff sign-in uses Neon Auth.
@@ -57,7 +61,7 @@ export async function getCurrentStaffProfile(): Promise<StaffProfile | null> {
   const { data, error } = await service
     .from("chillbros_profiles")
     .select("id, full_name, email, role, status")
-    .ilike("email", user.email)
+    .ilike("email", operationalProfileEmail(user.email))
     .maybeSingle();
 
   if (error || !data || data.status !== "active") return null;
@@ -65,7 +69,7 @@ export async function getCurrentStaffProfile(): Promise<StaffProfile | null> {
   return {
     id: data.id,
     fullName: data.full_name,
-    email: data.email,
+    email: user.email,
     role: data.role,
     status: data.status,
   };
