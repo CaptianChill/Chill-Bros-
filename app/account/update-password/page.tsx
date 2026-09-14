@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LogoBadge } from "@/components/logo-badge";
-import { createAuthServerClient, getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { auth } from "@/lib/auth/server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 type UpdatePasswordPageProps = {
   searchParams: Promise<{ error?: string }>;
@@ -16,29 +17,33 @@ export default async function UpdatePasswordPage({ searchParams }: UpdatePasswor
   async function updatePassword(formData: FormData) {
     "use server";
 
+    const currentPassword = String(formData.get("currentPassword") || "");
     const password = String(formData.get("password") || "");
     const confirm = String(formData.get("confirm") || "");
-    if (password.length < 10) redirect("/account/update-password?error=length");
+    if (!currentPassword) redirect("/account/update-password?error=current");
+    if (password.length < 12 || password.length > 128) redirect("/account/update-password?error=length");
     if (password !== confirm) redirect("/account/update-password?error=match");
 
-    const supabase = await createAuthServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) redirect("/sign-in");
-
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const { error: updateError } = await auth.changePassword({
+      currentPassword,
+      newPassword: password,
+      revokeOtherSessions: true,
+    });
     if (updateError) redirect("/account/update-password?error=update");
 
-    await supabase.auth.signOut();
+    await auth.signOut().catch(() => undefined);
     redirect("/sign-in?password=updated");
   }
 
-  const errorMessage = error === "length"
-    ? "Use at least 10 characters for the new password."
-    : error === "match"
-      ? "The two passwords do not match."
-      : error
-        ? "The password could not be updated. Request a new reset link and try again."
-        : null;
+  const errorMessage = error === "current"
+    ? "Enter your current password."
+    : error === "length"
+      ? "Use a new password between 12 and 128 characters."
+      : error === "match"
+        ? "The two new passwords do not match."
+        : error
+          ? "The password could not be updated. Check your current password and try again."
+          : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-transparent px-4 text-foreground">
@@ -47,7 +52,7 @@ export default async function UpdatePasswordPage({ searchParams }: UpdatePasswor
           <LogoBadge variant="full" className="w-16" />
           <div>
             <p className="sub text-sm uppercase tracking-[0.3em]">Account security</p>
-            <h1 className="glo mt-1 text-xl font-semibold">Choose a new password</h1>
+            <h1 className="glo mt-1 text-xl font-semibold">Change password</h1>
             <p className="mt-2 text-xs text-zinc-400">{profile.email}</p>
           </div>
         </div>
@@ -56,12 +61,16 @@ export default async function UpdatePasswordPage({ searchParams }: UpdatePasswor
 
         <form action={updatePassword} className="space-y-4">
           <label className="block space-y-2">
+            <span className="text-sm text-zinc-300">Current password</span>
+            <input name="currentPassword" type="password" required autoComplete="current-password" className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none" />
+          </label>
+          <label className="block space-y-2">
             <span className="text-sm text-zinc-300">New password</span>
-            <input name="password" type="password" required minLength={10} autoComplete="new-password" className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none" />
+            <input name="password" type="password" required minLength={12} maxLength={128} autoComplete="new-password" className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none" />
           </label>
           <label className="block space-y-2">
             <span className="text-sm text-zinc-300">Confirm new password</span>
-            <input name="confirm" type="password" required minLength={10} autoComplete="new-password" className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none" />
+            <input name="confirm" type="password" required minLength={12} maxLength={128} autoComplete="new-password" className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none" />
           </label>
           <button type="submit" className="w-full rounded-2xl neon-tube bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] transition hover:bg-[#2d7dff]/20">
             Save new password
