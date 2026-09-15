@@ -71,7 +71,7 @@ export async function getOpenTimesheet(technicianId: string): Promise<OpenTimesh
 
 export async function getTimesheetHistory(limit = 100): Promise<TimesheetHistoryRow[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_timesheets").select("id, technician_id, job_id, location, clock_in_at, clock_out_at, labor_hours, drive_hours, tech:chillbros_profiles(full_name)").order("clock_in_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("chillbros_timesheets").select("id, technician_id, job_id, location, clock_in_at, clock_out_at, labor_hours, drive_hours, tech:chillbros_profiles!chillbros_timesheets_technician_id_fkey(full_name)").order("clock_in_at", { ascending: false }).limit(limit);
   if (error || !data) return [];
   return data.map((row) => { const tech = Array.isArray(row.tech) ? row.tech[0] : row.tech; return { id: row.id, technicianId: row.technician_id, technicianName: tech?.full_name ?? "Unknown technician", jobId: row.job_id, location: row.location, clockInAt: row.clock_in_at, clockOutAt: row.clock_out_at, laborHours: Number(row.labor_hours ?? 0), driveHours: Number(row.drive_hours ?? 0) }; });
 }
