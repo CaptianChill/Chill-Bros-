@@ -18,6 +18,8 @@ concurrency:
 jobs:
   audit-and-build:
     runs-on: ubuntu-latest
+    env:
+      NEON_AUTH_COOKIE_SECRET: ci-build-placeholder-not-used-at-runtime-20260915
     timeout-minutes: 12
     steps:
       - name: Checkout
