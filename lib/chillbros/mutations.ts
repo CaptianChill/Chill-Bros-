@@ -34,22 +34,6 @@ function generateTempPassword() {
 }
 
 type NeonAdminUser = { id: string; email?: string | null };
-type NeonAdminResult<T = unknown> = {
-  data?: T | null;
-  error?: { message?: string } | null;
-};
-type NeonAdminApi = {
-  createUser?: (input: { email: string; password: string; name: string; role: string }) => Promise<NeonAdminResult<{ user?: NeonAdminUser }>>;
-  listUsers?: (input: { query: { searchValue: string; searchField: "email"; limit: number } }) => Promise<NeonAdminResult<{ users?: NeonAdminUser[] }>>;
-  removeUser?: (input: { userId: string }) => Promise<NeonAdminResult>;
-  setRole?: (input: { userId: string; role: string }) => Promise<NeonAdminResult>;
-  setUserPassword?: (input: { userId: string; newPassword: string }) => Promise<NeonAdminResult>;
-};
-
-function neonAdmin(): NeonAdminApi | null {
-  const server = auth as unknown as { admin?: NeonAdminApi; api?: { admin?: NeonAdminApi } };
-  return server.admin ?? server.api?.admin ?? null;
-}
 
 function authErrorMessage(error: unknown, fallback: string) {
   if (error && typeof error === "object" && "message" in error) {
@@ -59,11 +43,10 @@ function authErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-async function findNeonUserByEmail(admin: NeonAdminApi, email: string): Promise<ActionResult<NeonAdminUser | null>> {
-  if (!admin.listUsers) return { ok: false, error: "Neon staff lookup is unavailable. Sign out, sign back in, and try again." };
+async function findNeonUserByEmail(email: string): Promise<ActionResult<NeonAdminUser | null>> {
   try {
-    const { data, error } = await admin.listUsers({
-      query: { searchValue: email, searchField: "email", limit: 20 },
+    const { data, error } = await auth.admin.listUsers({
+      query: { filterField: "email", filterValue: email, filterOperator: "eq", limit: 2 },
     });
     if (error) return { ok: false, error: authErrorMessage(error, "Could not check the Neon staff directory.") };
     const user = (data?.users ?? []).find((candidate) => candidate.email?.trim().toLowerCase() === email) ?? null;
@@ -86,19 +69,24 @@ export async function addStaffAccountAction(input: { fullName: string; email: st
   const service = createServiceRoleClient();
   const { data: existingProfiles, error: profileLookupError } = await service
     .from("chillbros_profiles")
-    .select("id")
+    .select("id,auth_user_id,status")
     .ilike("email", email)
-    .limit(1);
+    .limit(2);
   if (profileLookupError) return { ok: false, error: "Could not check existing employee accounts." };
-  if (existingProfiles?.length) return { ok: false, error: "An employee account already uses this email address." };
-
-  const admin = neonAdmin();
-  if (!admin?.createUser || !admin.setUserPassword) {
-    return { ok: false, error: "Neon staff administration is unavailable. Sign out, sign back in, and try again." };
+  if ((existingProfiles?.length ?? 0) > 1) return { ok: false, error: "Multiple employee profiles use this email. Correct the duplicate records before creating a login." };
+  const existingProfile = existingProfiles?.[0] ?? null;
+  if (existingProfile?.status !== undefined && existingProfile.status !== "active") {
+    return { ok: false, error: "This employee profile is inactive. Activate it before creating or resetting its login." };
   }
 
-  const lookup = await findNeonUserByEmail(admin, email);
+  const lookup = await findNeonUserByEmail(email);
   if (!lookup.ok) return lookup;
+  if (existingProfile?.auth_user_id && lookup.data?.id === existingProfile.auth_user_id) {
+    return { ok: false, error: "This employee already has a Neon login. Use Set / reset Neon password instead." };
+  }
+  if (existingProfile?.auth_user_id && lookup.data?.id !== existingProfile.auth_user_id) {
+    return { ok: false, error: "This employee profile is linked to a different Neon login. Correct the account link before continuing." };
+  }
 
   const tempPassword = generateTempPassword();
   let authUser = lookup.data;
@@ -106,11 +94,13 @@ export async function addStaffAccountAction(input: { fullName: string; email: st
 
   if (!authUser) {
     try {
-      const { data, error } = await admin.createUser({
+      const { data, error } = await auth.admin.createUser({
         email,
         password: tempPassword,
         name: fullName,
-        role: input.role === "manager" ? "admin" : "user",
+        // Application permissions live in chillbros_profiles. Neon Auth's
+        // admin role is reserved for the owner because it can manage users.
+        role: "user",
       });
       if (error || !data?.user?.id) {
         return { ok: false, error: authErrorMessage(error, "Could not create the Neon login.") };
@@ -122,38 +112,34 @@ export async function addStaffAccountAction(input: { fullName: string; email: st
     }
   }
 
-  const { error: profileError } = await service.from("chillbros_profiles").insert({
-    id: authUser.id,
-    auth_user_id: authUser.id,
-    full_name: fullName,
-    email,
-    role: input.role,
-    status: "active",
-  });
+  const profileWrite = existingProfile
+    ? service.from("chillbros_profiles").update({ auth_user_id: authUser.id }).eq("id", existingProfile.id)
+    : service.from("chillbros_profiles").insert({
+      id: authUser.id,
+      auth_user_id: authUser.id,
+      full_name: fullName,
+      email,
+      role: input.role,
+      status: "active",
+    });
+  const { error: profileError } = await profileWrite;
   if (profileError) {
-    if (createdHere && admin.removeUser) await admin.removeUser({ userId: authUser.id }).catch(() => undefined);
+    if (createdHere) await auth.admin.removeUser({ userId: authUser.id }).catch(() => undefined);
     return { ok: false, error: profileError.message };
   }
 
   if (!createdHere) {
     try {
-      const { error } = await admin.setUserPassword({ userId: authUser.id, newPassword: tempPassword });
+      const { error } = await auth.admin.setUserPassword({ userId: authUser.id, newPassword: tempPassword });
       if (error) {
-        await service.from("chillbros_profiles").delete().eq("id", authUser.id);
+        if (existingProfile) await service.from("chillbros_profiles").update({ auth_user_id: null }).eq("id", existingProfile.id);
+        else await service.from("chillbros_profiles").delete().eq("id", authUser.id);
         return { ok: false, error: authErrorMessage(error, "Could not set the Neon password.") };
       }
     } catch (error) {
-      await service.from("chillbros_profiles").delete().eq("id", authUser.id);
+      if (existingProfile) await service.from("chillbros_profiles").update({ auth_user_id: null }).eq("id", existingProfile.id);
+      else await service.from("chillbros_profiles").delete().eq("id", authUser.id);
       return { ok: false, error: authErrorMessage(error, "Could not set the Neon password.") };
-    }
-  }
-
-  if (input.role === "manager" && admin.setRole) {
-    const { error } = await admin.setRole({ userId: authUser.id, role: "admin" });
-    if (error) {
-      await service.from("chillbros_profiles").delete().eq("id", authUser.id);
-      if (createdHere && admin.removeUser) await admin.removeUser({ userId: authUser.id }).catch(() => undefined);
-      return { ok: false, error: authErrorMessage(error, "Manager access could not be enabled in Neon Auth.") };
     }
   }
 
@@ -177,24 +163,23 @@ export async function resetStaffPasswordAction(staffId: string): Promise<ActionR
   if (readError || !member?.email) return { ok: false, error: "Employee account not found." };
   if (member.status !== "active") return { ok: false, error: "Activate this employee before resetting the password." };
 
-  const admin = neonAdmin();
-  if (!admin?.setUserPassword) {
-    return { ok: false, error: "Neon password administration is unavailable. Sign out, sign back in, and try again." };
-  }
+  const lookup = await findNeonUserByEmail(String(member.email).trim().toLowerCase());
+  if (!lookup.ok) return lookup;
+  if (!lookup.data) return { ok: false, error: "This employee has no Neon login yet. Re-create the login from Staff Accounts." };
 
-  let authUserId = typeof member.auth_user_id === "string" ? member.auth_user_id : "";
-  if (!authUserId) {
-    const lookup = await findNeonUserByEmail(admin, String(member.email).trim().toLowerCase());
-    if (!lookup.ok) return lookup;
-    if (!lookup.data) return { ok: false, error: "This employee has no Neon login yet. Re-create the login from Staff Accounts." };
-    authUserId = lookup.data.id;
+  const linkedAuthUserId = typeof member.auth_user_id === "string" ? member.auth_user_id : "";
+  if (linkedAuthUserId && linkedAuthUserId !== lookup.data.id) {
+    return { ok: false, error: "This employee profile is linked to a different Neon login. Correct the account link before resetting its password." };
+  }
+  const authUserId = lookup.data.id;
+  if (!linkedAuthUserId) {
     const { error: linkError } = await service.from("chillbros_profiles").update({ auth_user_id: authUserId }).eq("id", staffId);
     if (linkError) return { ok: false, error: "The Neon login was found, but it could not be linked to this employee." };
   }
 
   const tempPassword = generateTempPassword();
   try {
-    const { error } = await admin.setUserPassword({ userId: authUserId, newPassword: tempPassword });
+    const { error } = await auth.admin.setUserPassword({ userId: authUserId, newPassword: tempPassword });
     if (error) return { ok: false, error: authErrorMessage(error, "Could not reset the Neon password.") };
   } catch (error) {
     return { ok: false, error: authErrorMessage(error, "Could not reset the Neon password.") };

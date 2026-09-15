@@ -7,9 +7,9 @@ import { useRouter } from "next/navigation";
 import { createEstimateV2Action, type EstimateAdjustments } from "@/lib/chillbros/estimate-actions-v2";
 import {
   deleteRemoteFormDraft,
-  readRemoteFormDrafts,
+  loadRemoteFormDrafts,
+  saveRemoteFormDraft,
   type FormDraft,
-  upsertRemoteFormDraft,
 } from "@/lib/chillbros/form-drafts";
 import type { AdjustmentType } from "@/lib/chillbros/types";
 
@@ -75,11 +75,20 @@ export function EstimateComposer({ jobId, suggestedItems, profileId }: { jobId: 
   const [draftStatus, setDraftStatus] = useState("Autosave on");
   const queuedDraft = useRef<FormDraft | null>(null);
   const activeSync = useRef<Promise<boolean> | null>(null);
+  const remoteWritable = useRef(false);
+  const dirty = useRef(false);
+  const publishing = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    remoteWritable.current = false;
+    queuedDraft.current = null;
+    dirty.current = false;
+    publishing.current = false;
+    setDraftLoaded(false);
     void (async () => {
       let localDraft: EstimateDraftPayload | null = null;
       try {
@@ -89,12 +98,15 @@ export function EstimateComposer({ jobId, suggestedItems, profileId }: { jobId: 
         // A malformed browser backup is ignored.
       }
 
-      const remote = (await readRemoteFormDrafts({ id: remoteDraftId }))[0];
+      const remoteResult = await loadRemoteFormDrafts({ id: remoteDraftId }, controller.signal);
+      remoteWritable.current = remoteResult.ok;
+      const remote = remoteResult.drafts[0];
       let remoteDraft: EstimateDraftPayload | null = null;
       const remoteField = remote?.fields.find((field) => field.name === "estimatePayload");
       if (remoteField) {
         try {
-          remoteDraft = parseEstimateDraft(JSON.parse(remoteField.value));
+          const parsed = parseEstimateDraft(JSON.parse(remoteField.value));
+          remoteDraft = parsed ? { ...parsed, updatedAt: remote.updatedAt } : null;
         } catch {
           remoteDraft = null;
         }
@@ -104,7 +116,7 @@ export function EstimateComposer({ jobId, suggestedItems, profileId }: { jobId: 
         ? remoteDraft
         : localDraft;
       if (!active) return;
-      if (saved) {
+      if (saved && !dirty.current) {
         setItems(saved.items);
         setNotes(saved.notes);
         setDiscountType(saved.discountType);
@@ -115,17 +127,35 @@ export function EstimateComposer({ jobId, suggestedItems, profileId }: { jobId: 
       }
       setDraftLoaded(true);
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [remoteDraftId, storageKey]);
 
   const flushRemoteDrafts = useCallback(function flush(): Promise<boolean> {
+    if (!remoteWritable.current) return Promise.resolve(false);
     if (activeSync.current) return activeSync.current;
     const running = (async () => {
       let synced = true;
       while (queuedDraft.current) {
         const nextDraft = queuedDraft.current;
         queuedDraft.current = null;
-        synced = (await upsertRemoteFormDraft(nextDraft)) && synced;
+        const saved = await saveRemoteFormDraft(nextDraft);
+        if (saved && !queuedDraft.current) {
+          const savedField = saved.fields.find((field) => field.name === "estimatePayload");
+          if (savedField) {
+            try {
+              const savedPayload = parseEstimateDraft(JSON.parse(savedField.value));
+              if (savedPayload) {
+                window.localStorage.setItem(storageKey, JSON.stringify({ ...savedPayload, updatedAt: saved.updatedAt }));
+              }
+            } catch {
+              // A newer in-memory edit remains authoritative.
+            }
+          }
+        }
+        synced = Boolean(saved) && synced;
       }
       return synced;
     })();
@@ -135,9 +165,9 @@ export function EstimateComposer({ jobId, suggestedItems, profileId }: { jobId: 
       if (queuedDraft.current) void flush();
     });
     return running;
-  }, []);
+  }, [storageKey]);
 
-  const saveDraft = useCallback(() => {
+  const saveDraft = useCallback((syncRemote = true) => {
     const updatedAt = new Date().toISOString();
     const payload: EstimateDraftPayload = {
       items,
@@ -169,21 +199,46 @@ export function EstimateComposer({ jobId, suggestedItems, profileId }: { jobId: 
       fields: [{ name: "estimatePayload", type: "json", value: JSON.stringify(payload), occurrence: 0 }],
     };
     setDraftStatus(savedLocally ? "Saved on device · syncing…" : "Syncing to Neon…");
-    void flushRemoteDrafts().then((synced) => {
-      setDraftStatus(synced ? "Synced to Neon" : savedLocally ? "Saved on device · offline" : "Draft save failed");
-    });
+    if (syncRemote) {
+      void flushRemoteDrafts().then((synced) => {
+        setDraftStatus(synced ? "Synced to Neon" : savedLocally ? "Saved on device · offline" : "Draft save failed");
+      });
+    }
   }, [discountType, discountValue, downPaymentType, downPaymentValue, flushRemoteDrafts, items, jobId, notes, remoteDraftId, storageKey, taxRate]);
 
   useEffect(() => {
+    if (!dirty.current || publishing.current) return;
+    saveDraft(false);
     if (!draftLoaded) return;
-    const timer = window.setTimeout(saveDraft, 600);
+    const timer = window.setTimeout(() => {
+      void flushRemoteDrafts().then((synced) => {
+        setDraftStatus(synced ? "Synced to Neon" : "Saved on device · offline");
+      });
+    }, 600);
     return () => window.clearTimeout(timer);
-  }, [draftLoaded, saveDraft]);
+  }, [draftLoaded, flushRemoteDrafts, saveDraft]);
 
   useEffect(() => {
-    const listener = () => saveDraft();
+    const listener = () => {
+      dirty.current = true;
+      saveDraft(true);
+    };
     window.addEventListener("chillbros-save", listener);
     return () => window.removeEventListener("chillbros-save", listener);
+  }, [saveDraft]);
+
+  useEffect(() => {
+    const pagehide = () => {
+      if (!dirty.current || publishing.current) return;
+      saveDraft(false);
+      const pendingDraft = queuedDraft.current;
+      if (remoteWritable.current && pendingDraft) {
+        const body = new Blob([JSON.stringify(pendingDraft)], { type: "application/json" });
+        navigator.sendBeacon("/api/form-drafts", body);
+      }
+    };
+    window.addEventListener("pagehide", pagehide);
+    return () => window.removeEventListener("pagehide", pagehide);
   }, [saveDraft]);
 
   const subtotal = useMemo(() => items.reduce((sum, item) => { const q = Number(item.quantity); const p = Number(item.unitPrice); return sum + (Number.isFinite(q) && Number.isFinite(p) ? q * p : 0); }, 0), [items]);
@@ -195,17 +250,32 @@ export function EstimateComposer({ jobId, suggestedItems, profileId }: { jobId: 
   const downPayment = useMemo(() => { const value = Math.max(0, Number(downPaymentValue || 0)); return downPaymentType === "percent" ? Math.min(total, total * Math.min(value, 100) / 100) : downPaymentType === "dollar" ? Math.min(value, total) : 0; }, [downPaymentType, downPaymentValue, total]);
   const balance = Math.max(0, total - downPayment);
 
-  const updateItem = (id: string, patch: Partial<Omit<DraftItem, "id">>) => setItems((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
-  const addItem = () => setItems((current) => current.length >= 20 ? current : [...current, makeDraftItem()]);
-  const removeItem = (id: string) => setItems((current) => current.length === 1 ? current : current.filter((item) => item.id !== id));
+  const updateItem = (id: string, patch: Partial<Omit<DraftItem, "id">>) => {
+    dirty.current = true;
+    setItems((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
+  };
+  const addItem = () => {
+    dirty.current = true;
+    setItems((current) => current.length >= 20 ? current : [...current, makeDraftItem()]);
+  };
+  const removeItem = (id: string) => {
+    dirty.current = true;
+    setItems((current) => current.length === 1 ? current : current.filter((item) => item.id !== id));
+  };
 
   const submit = () => {
     setError(null);
     const lineItems = items.map((item) => ({ label: item.label.trim(), description: item.description.trim(), quantity: Number(item.quantity), unitPrice: Number(item.unitPrice), taxable: item.taxable }));
     const adjustments: EstimateAdjustments = { discountType, discountValue: Number(discountValue || 0), downPaymentType, downPaymentValue: Number(downPaymentValue || 0), taxRate: Number(taxRate || 0) };
     startTransition(async () => {
+      dirty.current = true;
+      publishing.current = true;
+      saveDraft(false);
+      await flushRemoteDrafts();
       const result = await createEstimateV2Action(jobId, lineItems, notes, adjustments);
-      if (!result.ok) { setError(result.error); return; }
+      if (!result.ok) { publishing.current = false; setError(result.error); return; }
+      queuedDraft.current = null;
+      if (activeSync.current) await activeSync.current;
       try { window.localStorage.removeItem(storageKey); } catch { /* browser backup cleanup only */ }
       await deleteRemoteFormDraft(remoteDraftId);
       router.refresh();
@@ -222,14 +292,14 @@ export function EstimateComposer({ jobId, suggestedItems, profileId }: { jobId: 
     })}</div>
     <button type="button" onClick={addItem} disabled={items.length >= 20 || pending} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-4 py-2 text-sm text-[#d9fbff] disabled:opacity-40"><Plus className="h-4 w-4" />Add line item</button>
 
-    <details className="group rounded-2xl border border-[#2d7dff]/20 bg-black/35 p-3" open><summary className="flex cursor-pointer list-none items-center justify-between"><div><p className="font-medium text-white">Discount</p><p className="text-xs text-zinc-500">Percentage or fixed dollar amount</p></div><ChevronDown className="h-4 w-4 text-[#bafcfc] transition group-open:rotate-180" /></summary><div className="mt-3 grid gap-2 sm:grid-cols-[160px_1fr_auto]"><select value={discountType ?? ""} onChange={(e) => setDiscountType((e.target.value || null) as AdjustmentType | null)} className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white"><option value="">No discount</option><option value="percent">Percentage %</option><option value="dollar">Dollar $</option></select><input type="number" min="0" step="0.01" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} disabled={!discountType} className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white disabled:opacity-40" /><div className="rounded-xl border border-[#2d7dff]/15 px-3 py-2 text-sm text-emerald-200">− {money(discount)}</div></div></details>
+    <details className="group rounded-2xl border border-[#2d7dff]/20 bg-black/35 p-3" open><summary className="flex cursor-pointer list-none items-center justify-between"><div><p className="font-medium text-white">Discount</p><p className="text-xs text-zinc-500">Percentage or fixed dollar amount</p></div><ChevronDown className="h-4 w-4 text-[#bafcfc] transition group-open:rotate-180" /></summary><div className="mt-3 grid gap-2 sm:grid-cols-[160px_1fr_auto]"><select value={discountType ?? ""} onChange={(e) => { dirty.current = true; setDiscountType((e.target.value || null) as AdjustmentType | null); }} className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white"><option value="">No discount</option><option value="percent">Percentage %</option><option value="dollar">Dollar $</option></select><input type="number" min="0" step="0.01" value={discountValue} onChange={(e) => { dirty.current = true; setDiscountValue(e.target.value); }} disabled={!discountType} className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white disabled:opacity-40" /><div className="rounded-xl border border-[#2d7dff]/15 px-3 py-2 text-sm text-emerald-200">− {money(discount)}</div></div></details>
 
-    <details className="group rounded-2xl border border-[#2d7dff]/20 bg-black/35 p-3" open><summary className="flex cursor-pointer list-none items-center justify-between"><div><p className="font-medium text-white">Sales tax</p><p className="text-xs text-zinc-500">Only checked line items are taxed. Verify taxability for the job before publishing.</p></div><ChevronDown className="h-4 w-4 text-[#bafcfc] transition group-open:rotate-180" /></summary><div className="mt-3 grid gap-2 sm:grid-cols-[160px_1fr_auto]"><label className="text-xs text-zinc-400">Tax rate %<input type="number" min="0" max="25" step="0.001" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="mt-1 w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /></label><div className="rounded-xl border border-[#2d7dff]/15 px-3 py-2 text-sm text-zinc-300"><p className="text-xs text-zinc-500">Taxable subtotal</p><p>{money(taxableSubtotal)}</p></div><div className="rounded-xl border border-[#2d7dff]/15 px-3 py-2 text-sm text-[#bafcfc]">+ {money(tax)}</div></div></details>
+    <details className="group rounded-2xl border border-[#2d7dff]/20 bg-black/35 p-3" open><summary className="flex cursor-pointer list-none items-center justify-between"><div><p className="font-medium text-white">Sales tax</p><p className="text-xs text-zinc-500">Only checked line items are taxed. Verify taxability for the job before publishing.</p></div><ChevronDown className="h-4 w-4 text-[#bafcfc] transition group-open:rotate-180" /></summary><div className="mt-3 grid gap-2 sm:grid-cols-[160px_1fr_auto]"><label className="text-xs text-zinc-400">Tax rate %<input type="number" min="0" max="25" step="0.001" value={taxRate} onChange={(e) => { dirty.current = true; setTaxRate(e.target.value); }} className="mt-1 w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /></label><div className="rounded-xl border border-[#2d7dff]/15 px-3 py-2 text-sm text-zinc-300"><p className="text-xs text-zinc-500">Taxable subtotal</p><p>{money(taxableSubtotal)}</p></div><div className="rounded-xl border border-[#2d7dff]/15 px-3 py-2 text-sm text-[#bafcfc]">+ {money(tax)}</div></div></details>
 
-    <details className="group rounded-2xl border border-[#2d7dff]/20 bg-black/35 p-3" open><summary className="flex cursor-pointer list-none items-center justify-between"><div><p className="font-medium text-white">Down payment</p><p className="text-xs text-zinc-500">Required amount at approval</p></div><ChevronDown className="h-4 w-4 text-[#bafcfc] transition group-open:rotate-180" /></summary><div className="mt-3 grid gap-2 sm:grid-cols-[160px_1fr_auto]"><select value={downPaymentType ?? ""} onChange={(e) => setDownPaymentType((e.target.value || null) as AdjustmentType | null)} className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white"><option value="">No down payment</option><option value="percent">Percentage %</option><option value="dollar">Dollar $</option></select><input type="number" min="0" step="0.01" value={downPaymentValue} onChange={(e) => setDownPaymentValue(e.target.value)} disabled={!downPaymentType} className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white disabled:opacity-40" /><div className="rounded-xl border border-[#2d7dff]/15 px-3 py-2 text-sm text-amber-100">{money(downPayment)}</div></div></details>
+    <details className="group rounded-2xl border border-[#2d7dff]/20 bg-black/35 p-3" open><summary className="flex cursor-pointer list-none items-center justify-between"><div><p className="font-medium text-white">Down payment</p><p className="text-xs text-zinc-500">Required amount at approval</p></div><ChevronDown className="h-4 w-4 text-[#bafcfc] transition group-open:rotate-180" /></summary><div className="mt-3 grid gap-2 sm:grid-cols-[160px_1fr_auto]"><select value={downPaymentType ?? ""} onChange={(e) => { dirty.current = true; setDownPaymentType((e.target.value || null) as AdjustmentType | null); }} className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white"><option value="">No down payment</option><option value="percent">Percentage %</option><option value="dollar">Dollar $</option></select><input type="number" min="0" step="0.01" value={downPaymentValue} onChange={(e) => { dirty.current = true; setDownPaymentValue(e.target.value); }} disabled={!downPaymentType} className="rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white disabled:opacity-40" /><div className="rounded-xl border border-[#2d7dff]/15 px-3 py-2 text-sm text-amber-100">{money(downPayment)}</div></div></details>
 
     <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[#2d7dff]/20 bg-zinc-950/70 p-4 text-sm sm:grid-cols-5"><div><p className="text-zinc-500">Subtotal</p><p className="mt-1 text-white">{money(subtotal)}</p></div><div><p className="text-zinc-500">Discount</p><p className="mt-1 text-emerald-200">−{money(discount)}</p></div><div><p className="text-zinc-500">Tax</p><p className="mt-1 text-[#bafcfc]">+{money(tax)}</p></div><div><p className="text-zinc-500">Total</p><p className="mt-1 font-semibold text-[#bafcfc]">{money(total)}</p></div><div><p className="text-zinc-500">Balance after deposit</p><p className="mt-1 font-semibold text-white">{money(balance)}</p></div></div>
-    <label className="block space-y-2"><span className="text-sm text-zinc-300">Customer notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} rows={4} placeholder="Scope, exclusions, equipment notes, or approval details" className="w-full resize-y rounded-2xl border border-[#2d7dff]/20 bg-black/40 px-4 py-3 text-white" /><span className="text-xs text-zinc-500">{notes.length}/2000</span></label>
+    <label className="block space-y-2"><span className="text-sm text-zinc-300">Customer notes</span><textarea value={notes} onChange={(e) => { dirty.current = true; setNotes(e.target.value); }} maxLength={2000} rows={4} placeholder="Scope, exclusions, equipment notes, or approval details" className="w-full resize-y rounded-2xl border border-[#2d7dff]/20 bg-black/40 px-4 py-3 text-white" /><span className="text-xs text-zinc-500">{notes.length}/2000</span></label>
     <button type="button" onClick={submit} disabled={pending || subtotal <= 0} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#2d7dff] bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] disabled:opacity-50"><Send className="h-4 w-4" />{pending ? "Publishing estimate..." : "Publish secure estimate"}</button>
   </div>;
 }

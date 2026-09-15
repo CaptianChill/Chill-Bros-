@@ -39,7 +39,7 @@ export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts:
         return;
       }
       setRevealedPassword({ email: form.email, password: result.data.tempPassword });
-      setMessage(`Neon login created for ${form.email}. Give the employee the one-time password shown below.`);
+      setMessage(`Neon login created for ${form.email}. Give the employee the temporary password shown below.`);
       setForm({ name: "", email: "", role: "technician" });
     });
   };
@@ -86,7 +86,7 @@ export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts:
 
       {revealedPassword ? (
         <div className="rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-100">
-          <p className="font-medium">One-time temporary Neon password for {revealedPassword.email}</p>
+          <p className="font-medium">Temporary Neon password for {revealedPassword.email}</p>
           <p className="mt-1 font-mono text-lg text-white">{revealedPassword.password}</p>
           <p className="mt-2 text-xs text-zinc-300">Shown once. Share it securely; the employee can change it from Account Security after signing in.</p>
           <button type="button" onClick={() => setRevealedPassword(null)} className="mt-3 rounded-xl border border-amber-300/30 px-3 py-1.5 text-xs text-white transition hover:bg-amber-300/10">
@@ -130,7 +130,7 @@ export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts:
           </button>
         </div>
         <p className="mt-3 text-xs leading-5 text-zinc-400"><span className="font-medium text-[#bafcfc]">{ROLE_LABELS[form.role]}:</span> {ROLE_DESCRIPTIONS[form.role]}</p>
-        <p className="mt-2 text-xs leading-5 text-zinc-500">New employees are created in Neon Auth. Copy the one-time temporary password and share it securely.</p>
+        <p className="mt-2 text-xs leading-5 text-zinc-500">New employees are created in Neon Auth. Copy the temporary password, share it securely, and ask the employee to change it after signing in.</p>
       </div>
 
       <div className="space-y-3">

@@ -78,7 +78,9 @@ export function CreationCenterServer({
   tempPassword: TempPassword;
 }) {
   const activeJobs = jobs.filter((job) => JOB_ACTIVE_STATUSES.includes(job.status));
-  const selectedJob = activeJobs.find((job) => job.id === selectedJobId) ?? null;
+  const estimateJobs = activeJobs.filter((job) => job.status === "scheduled" || job.status === "in_progress");
+  const selectableJobs = mode === "estimate" ? estimateJobs : activeJobs;
+  const selectedJob = selectableJobs.find((job) => job.id === selectedJobId) ?? selectableJobs[0] ?? null;
   const selectedBilling = selectedJob ? billing.find((row) => row.jobId === selectedJob.id) ?? null : null;
   const needle = searchTerm.trim().toLowerCase();
   const visibleBilling = billing.filter((row) => !needle || `${row.customerName} ${row.invoiceNumber}`.toLowerCase().includes(needle));
@@ -99,7 +101,7 @@ export function CreationCenterServer({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <ModeAction href="/create?mode=estimate" icon={FilePlus2} title="New Estimate" helper="Build a quote" />
-        <ModeAction href="/create?mode=invoice" icon={ReceiptText} title="New / Open Invoice" helper="Open billing" />
+        <ModeAction href="/invoices/new?type=invoice" icon={ReceiptText} title="New Invoice" helper="Create billing" />
         <ModeAction href="/create?mode=document" icon={FilePenLine} title="Find / Edit" helper="Quotes and invoices" />
         <ModeAction href="/payments" icon={WalletCards} title="Record Payment" helper="Payment and receipt" />
       </div>
@@ -145,14 +147,14 @@ export function CreationCenterServer({
 
     {mode === "estimate" ? <section className="rounded-2xl border border-[#2d7dff]/30 bg-black/45 p-3 sm:p-4">
       <div className="mb-3 text-center"><h3 className="text-xl font-semibold text-white">New estimate</h3><p className="mt-1 text-xs text-zinc-400">Choose a service call, then build or edit the quote.</p></div>
-      <JobPicker mode="estimate" jobs={activeJobs} selectedJobId={selectedJob?.id ?? ""} />
-      <div className="mt-3">{!selectedJob ? <p className="text-sm text-zinc-400">No active call selected.</p> : selectedBilling ? <div className="grid grid-cols-3 gap-2"><a href={`/technician?job=${encodeURIComponent(selectedJob.id)}`} className={smallActionClass}>Edit Estimate</a><a href={`/portal/${selectedBilling.portalToken}`} target="_blank" rel="noreferrer" className={smallActionClass}>View</a><a href={`/portal/${selectedBilling.portalToken}/document`} target="_blank" rel="noreferrer" className={smallActionClass}>PDF</a></div> : <EstimateComposer jobId={selectedJob.id} profileId={profileId} suggestedItems={[]} />}</div>
+      <JobPicker mode="estimate" jobs={estimateJobs} selectedJobId={selectedJob?.id ?? ""} />
+      <div className="mt-3">{!selectedJob ? <p className="text-sm text-zinc-400">No scheduled or in-progress call selected.</p> : selectedBilling ? <div className="grid grid-cols-3 gap-2"><a href={`/technician?job=${encodeURIComponent(selectedJob.id)}`} className={smallActionClass}>Edit Estimate</a><a href={`/portal/${selectedBilling.portalToken}`} target="_blank" rel="noreferrer" className={smallActionClass}>View</a><a href={`/portal/${selectedBilling.portalToken}/document`} target="_blank" rel="noreferrer" className={smallActionClass}>PDF</a></div> : <EstimateComposer key={selectedJob.id} jobId={selectedJob.id} profileId={profileId} suggestedItems={[]} />}</div>
     </section> : null}
 
     {mode === "invoice" ? <section className="rounded-2xl border border-[#2d7dff]/30 bg-black/45 p-3 sm:p-4">
       <div className="mb-3 text-center"><h3 className="text-xl font-semibold text-white">New / open invoice</h3><p className="mt-1 text-xs text-zinc-400">Choose a call. Approved quotes become invoices.</p></div>
       <JobPicker mode="invoice" jobs={activeJobs} selectedJobId={selectedJob?.id ?? ""} />
-      <div className="mt-3">{!selectedJob ? <p className="text-sm text-zinc-400">No active call selected.</p> : selectedBilling ? <div className="space-y-2 rounded-xl border border-[#2d7dff]/20 bg-zinc-950/75 p-3 text-center"><p className="font-semibold text-white">{selectedBilling.status === "approved" ? "Invoice" : "Estimate"} {selectedBilling.invoiceNumber}</p><div className="grid grid-cols-4 gap-1.5"><a href={selectedBilling.status === "approved" ? "/invoices" : `/technician?job=${encodeURIComponent(selectedJob.id)}`} className={smallActionClass}>{selectedBilling.status === "approved" ? "Manage" : "Edit"}</a><a href={`/portal/${selectedBilling.portalToken}`} target="_blank" rel="noreferrer" className={smallActionClass}>View</a><a href={`/portal/${selectedBilling.portalToken}/document`} target="_blank" rel="noreferrer" className={smallActionClass}>PDF</a><a href="/payments" className={smallActionClass}>Pay</a></div></div> : <EstimateComposer jobId={selectedJob.id} profileId={profileId} suggestedItems={[]} />}</div>
+      <div className="mt-3">{!selectedJob ? <a href="/invoices/new?type=invoice" className={smallActionClass}>Create standalone invoice</a> : selectedBilling ? <div className="space-y-2 rounded-xl border border-[#2d7dff]/20 bg-zinc-950/75 p-3 text-center"><p className="font-semibold text-white">{selectedBilling.status === "approved" ? "Invoice" : "Estimate"} {selectedBilling.invoiceNumber}</p><div className="grid grid-cols-4 gap-1.5"><a href={selectedBilling.status === "approved" ? "/invoices" : `/technician?job=${encodeURIComponent(selectedJob.id)}`} className={smallActionClass}>{selectedBilling.status === "approved" ? "Manage" : "Edit"}</a><a href={`/portal/${selectedBilling.portalToken}`} target="_blank" rel="noreferrer" className={smallActionClass}>View</a><a href={`/portal/${selectedBilling.portalToken}/document`} target="_blank" rel="noreferrer" className={smallActionClass}>PDF</a><a href="/payments" className={smallActionClass}>Pay</a></div></div> : <a href={`/invoices/new?type=invoice&customer=${encodeURIComponent(selectedJob.customerId)}`} className={smallActionClass}>Create invoice for {selectedJob.customerName}</a>}</div>
     </section> : null}
 
     <section className="rounded-2xl border border-[#2d7dff]/20 bg-black/30 p-3 sm:p-4">

@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
+  deleteFormDraft,
+  deleteRemoteFormDraft,
+  loadRemoteFormDrafts,
   mergeFormDrafts,
   readFormDrafts,
-  readRemoteFormDrafts,
+  saveRemoteFormDraft,
   type FormDraft,
   type FormDraftField,
   upsertFormDraft,
-  upsertRemoteFormDraft,
 } from "@/lib/chillbros/form-drafts";
 
 function cleanPath() {
@@ -22,7 +25,7 @@ function cleanPath() {
 function draftableControls(form: HTMLFormElement) {
   return Array.from(form.elements).filter((control): control is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement => {
     if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement || control instanceof HTMLSelectElement)) return false;
-    if (!control.name || control.name.startsWith("$ACTION")) return false;
+    if (!control.name || control.name.startsWith("$ACTION") || control.name === "draftId") return false;
     if (control instanceof HTMLInputElement && ["password", "file", "submit", "button", "reset", "image"].includes(control.type)) return false;
     return true;
   });
@@ -82,32 +85,66 @@ function restore(form: HTMLFormElement, draft: FormDraft) {
 }
 
 export function FormDraftProtector({ profileId }: { profileId: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const serializedSearchParams = searchParams.toString();
+
   useEffect(() => {
+    const currentUrl = new URL(window.location.href);
+    const pendingSubmitKey = `chillbros-submitted-draft:${profileId}`;
+    if (currentUrl.searchParams.has("success")) {
+      const submittedDraftId = window.sessionStorage.getItem(pendingSubmitKey);
+      if (submittedDraftId) {
+        window.sessionStorage.removeItem(pendingSubmitKey);
+        deleteFormDraft(profileId, submittedDraftId);
+        void deleteRemoteFormDraft(submittedDraftId);
+      }
+    }
+
     const forms = Array.from(document.querySelectorAll<HTMLFormElement>("main form")).filter(isDraftable);
     if (!forms.length) return;
 
     const path = cleanPath();
-    const requestedDraftId = new URL(window.location.href).searchParams.get("draft");
+    const requestedDraftId = currentUrl.searchParams.get("draft");
     const localRequestedDraft = requestedDraftId ? readFormDrafts(profileId).find((draft) => draft.id === requestedDraftId) : null;
+    let remoteWritable = !requestedDraftId;
     const requestedDraft = requestedDraftId
-      ? readRemoteFormDrafts({ id: requestedDraftId }).then((remote) => mergeFormDrafts(localRequestedDraft ? [localRequestedDraft] : [], remote)[0] ?? null)
+      ? loadRemoteFormDrafts({ id: requestedDraftId }).then((remote) => {
+        remoteWritable = remote.ok;
+        return mergeFormDrafts(localRequestedDraft ? [localRequestedDraft] : [], remote.drafts)[0] ?? null;
+      })
       : Promise.resolve<FormDraft | null>(null);
     const cleanups: Array<() => void> = [];
     let disposed = false;
 
     forms.forEach((form, formIndex) => {
-      let saveButton: HTMLButtonElement;
       let queuedDraft: FormDraft | null = null;
       let activeSync: Promise<boolean> | null = null;
+      let dirty = false;
+      let submitting = false;
+      const draftPrefix = form.dataset.draftKey || form.id || `form:${path}:${formIndex}`;
+      const draftId = requestedDraftId && (requestedDraftId === draftPrefix || requestedDraftId.startsWith(`${draftPrefix}:`))
+        ? requestedDraftId
+        : `${draftPrefix}:${crypto.randomUUID()}`;
+
+      const draftIdInput = document.createElement("input");
+      draftIdInput.type = "hidden";
+      draftIdInput.name = "draftId";
+      draftIdInput.value = draftId;
+      form.appendChild(draftIdInput);
 
       const flushRemote = () => {
+        if (!remoteWritable) return Promise.resolve(false);
         if (activeSync) return activeSync;
         activeSync = (async () => {
           let synced = true;
           while (queuedDraft) {
             const nextDraft = queuedDraft;
             queuedDraft = null;
-            synced = (await upsertRemoteFormDraft(nextDraft)) && synced;
+            const saved = await saveRemoteFormDraft(nextDraft);
+            if (saved) upsertFormDraft(profileId, saved);
+            synced = Boolean(saved) && synced;
           }
           return synced;
         })().finally(() => {
@@ -117,10 +154,10 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
         return activeSync;
       };
 
-      const save = async (explicit = false) => {
+      const snapshot = () => {
         const customerId = inferCustomerId(form);
         const draft: FormDraft = {
-          id: form.dataset.draftKey || form.id || `form:${path}:${formIndex}`,
+          id: draftId,
           path,
           label: inferLabel(form),
           customerId,
@@ -128,12 +165,17 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
           updatedAt: new Date().toISOString(),
           fields: serialize(form),
         };
-        upsertFormDraft(profileId, draft);
+        const savedLocally = upsertFormDraft(profileId, draft);
         queuedDraft = draft;
+        return { draft, savedLocally };
+      };
+
+      const save = async (explicit = false) => {
+        const { savedLocally } = snapshot();
         if (explicit && saveButton) saveButton.textContent = "Saving…";
         const savedToNeon = await flushRemote();
         if (explicit && saveButton && !disposed) {
-          saveButton.textContent = savedToNeon ? "Saved ✓" : "Saved on device";
+          saveButton.textContent = savedToNeon ? "Saved ✓" : savedLocally ? "Saved on device" : "Draft save failed";
           window.setTimeout(() => {
             if (!disposed) saveButton.textContent = "Save Draft";
           }, 1800);
@@ -157,11 +199,11 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
         void (async () => {
           await save(false);
           if (window.history.length > 1) window.history.back();
-          else window.location.assign("/customers");
+          else router.push("/customers");
         })();
       });
 
-      saveButton = document.createElement("button");
+      const saveButton = document.createElement("button");
       saveButton.type = "button";
       saveButton.textContent = "Save Draft";
       saveButton.className = "min-h-10 rounded-xl border border-[#8ffafa]/45 bg-[#2d7dff]/10 px-4 py-2 text-xs font-semibold text-[#d9fbff] transition hover:bg-[#2d7dff]/20";
@@ -172,15 +214,43 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
 
       let timer: number | undefined;
       const autosave = () => {
+        dirty = true;
+        snapshot();
         window.clearTimeout(timer);
-        timer = window.setTimeout(() => { void save(false); }, 1200);
+        timer = window.setTimeout(() => { void flushRemote(); }, 1200);
       };
+      const submit = (event: SubmitEvent) => {
+        if (submitting) return;
+        event.preventDefault();
+        submitting = true;
+        dirty = true;
+        window.clearTimeout(timer);
+        const { draft } = snapshot();
+        window.sessionStorage.setItem(pendingSubmitKey, draft.id);
+        const submitter = event.submitter instanceof HTMLElement ? event.submitter : undefined;
+        void flushRemote().finally(() => {
+          if (submitter) form.requestSubmit(submitter);
+          else form.requestSubmit();
+        });
+      };
+      const pagehide = () => {
+        if (!dirty || submitting) return;
+        const { draft } = snapshot();
+        if (remoteWritable) {
+          const body = new Blob([JSON.stringify(draft)], { type: "application/json" });
+          navigator.sendBeacon("/api/form-drafts", body);
+        }
+      };
+      const saveFromHeader = () => { void save(true); };
       form.addEventListener("input", autosave);
       form.addEventListener("change", autosave);
+      form.addEventListener("submit", submit);
+      window.addEventListener("pagehide", pagehide);
+      window.addEventListener("chillbros-save", saveFromHeader);
 
       if (requestedDraftId) {
         void requestedDraft.then((draft) => {
-          if (!disposed && draft && draft.id === (form.dataset.draftKey || form.id || `form:${path}:${formIndex}`) && draft.path === path) {
+          if (!disposed && draft && draft.id === draftId && draft.path === path) {
             window.setTimeout(() => {
               if (!disposed) restore(form, draft);
             }, 0);
@@ -192,6 +262,10 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
         window.clearTimeout(timer);
         form.removeEventListener("input", autosave);
         form.removeEventListener("change", autosave);
+        form.removeEventListener("submit", submit);
+        window.removeEventListener("pagehide", pagehide);
+        window.removeEventListener("chillbros-save", saveFromHeader);
+        draftIdInput.remove();
         bar.remove();
       });
     });
@@ -200,7 +274,7 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
       disposed = true;
       cleanups.forEach((cleanup) => cleanup());
     };
-  }, [profileId]);
+  }, [pathname, profileId, router, serializedSearchParams]);
 
   return null;
 }

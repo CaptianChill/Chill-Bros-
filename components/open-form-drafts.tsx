@@ -7,9 +7,9 @@ import { Clock3, FilePenLine, Trash2 } from "lucide-react";
 import {
   deleteFormDraft,
   deleteRemoteFormDraft,
+  loadRemoteFormDrafts,
   mergeFormDrafts,
   readFormDrafts,
-  readRemoteFormDrafts,
   type FormDraft,
   withDraftParam,
 } from "@/lib/chillbros/form-drafts";
@@ -19,11 +19,16 @@ export function OpenFormDrafts({ customerId, profileId }: { customerId?: string;
 
   useEffect(() => {
     let active = true;
+    let requestVersion = 0;
+    let controller: AbortController | null = null;
     const refresh = () => {
+      const version = ++requestVersion;
+      controller?.abort();
+      controller = new AbortController();
       const local = readFormDrafts(profileId).filter((draft) => !customerId || draft.customerId === customerId);
       setDrafts((current) => mergeFormDrafts(local, current));
-      void readRemoteFormDrafts(customerId ? { customerId } : {}).then((remote) => {
-        if (active) setDrafts(mergeFormDrafts(local, remote));
+      void loadRemoteFormDrafts(customerId ? { customerId } : {}, controller.signal).then((remote) => {
+        if (active && version === requestVersion && remote.ok) setDrafts(mergeFormDrafts(local, remote.drafts));
       });
     };
     refresh();
@@ -31,6 +36,7 @@ export function OpenFormDrafts({ customerId, profileId }: { customerId?: string;
     window.addEventListener("chillbros:drafts-changed", refresh);
     return () => {
       active = false;
+      controller?.abort();
       window.removeEventListener("storage", refresh);
       window.removeEventListener("chillbros:drafts-changed", refresh);
     };

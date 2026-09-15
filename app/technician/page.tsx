@@ -101,7 +101,7 @@ export default async function TechnicianPage({ searchParams }: Props) {
           {isManager && invoice.status === "approved" ? <div className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-3 text-sm text-amber-100"><p className="font-medium">Customer-approved pricing</p><p className="mt-1 text-xs leading-5 text-zinc-400">Approved pricing remains locked from silent rewrites. Use Invoice Center for audited corrections.</p><Link href="/invoices" className="mt-2 inline-flex rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]">Open Invoice Center</Link></div> : null}
           <ClientPortalActions invoice={invoice} />
           <div className="grid gap-2 sm:grid-cols-2"><Link href={`/portal/${invoice.portalToken}`} target="_blank" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-sm text-[#d9fbff]"><ExternalLink className="h-4 w-4" />Open customer view</Link><Link href={`/portal/${invoice.portalToken}/document`} target="_blank" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-sm text-[#d9fbff]"><FileText className="h-4 w-4" />Fullscreen document</Link></div>
-        </div> : <EstimateComposer jobId={job.id} profileId={profile.id} suggestedItems={suggestedItems} />}
+        </div> : <EstimateComposer key={job.id} jobId={job.id} profileId={profile.id} suggestedItems={suggestedItems} />}
       </SectionCard>
     </div>}
   </AppShell>;
