@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarClock, UsersRound, Wrench } from "lucide-react";
+import { Banknote, CalendarDays, Route, UsersRound } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { LiveOfficeRefresh } from "@/components/live-office-refresh";
@@ -106,13 +106,13 @@ export default async function OfficePage() {
 
   return (
     <AppShell
-      title="Dispatch / Office Staff Command Center"
-      description="Run customer intake, scheduling, dispatch, CRM, equipment records, and customer document delivery from one role-specific workspace."
+      title="Office"
+      description="Keep service calls moving from intake to schedule, dispatch, customer record, and billing."
       highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Office status</p><StatusPill tone="emerald">{openJobs.length} open calls</StatusPill><StatusPill>{unassignedJobs.length} unassigned</StatusPill><StatusPill>{awaitingApproval} awaiting approval</StatusPill></div>}
     >
       <LiveOfficeRefresh />
       <div className="space-y-4">
-        <SectionCard eyebrow="Today" title="Office operating pulse" description="Live production counts for the items the office should keep moving.">
+        <SectionCard eyebrow="Today" title="Office operating pulse" description="Only the work that needs to move today stays visible.">
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
             {[["Open calls", openJobs.length], ["In progress", inProgressJobs.length], ["Unassigned", unassignedJobs.length], ["Awaiting approval", awaitingApproval], ["Approved / unpaid", approvedUnpaid]].map(([label, value]) => (
               <div key={String(label)} className="rounded-xl border border-[#2d7dff]/20 bg-black/40 p-2.5 text-center">
@@ -124,17 +124,17 @@ export default async function OfficePage() {
         </SectionCard>
 
         <div className="grid gap-4 xl:grid-cols-[0.72fr_1.28fr]">
-          <SectionCard eyebrow="Quick access" title="Office tools" description="Role-approved workspaces only.">
+          <SectionCard eyebrow="Revenue path" title="Move the service call" description="One small set of screens covers intake through customer billing.">
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-              <Link href="/dispatch" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[#8ffafa]" />Dispatch board</span><span className="text-xs text-zinc-500">{openJobs.length} open</span></Link>
-              <Link href="/crm" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><UsersRound className="h-4 w-4 text-[#8ffafa]" />Customer CRM</span><span className="text-xs text-zinc-500">{customers.length}</span></Link>
-              <Link href="/equipment" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><Wrench className="h-4 w-4 text-[#8ffafa]" />Equipment registry</span><span className="text-xs text-zinc-500">Assets</span></Link>
-              <Link href="/timesheet" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[#8ffafa]" />My timesheet</span><span className="text-xs text-zinc-500">Clock</span></Link>
+              <Link href="/schedule" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4 text-[#8ffafa]" />Schedule</span><span className="text-xs text-zinc-500">Book call</span></Link>
+              <Link href="/dispatch" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><Route className="h-4 w-4 text-[#8ffafa]" />Dispatch</span><span className="text-xs text-zinc-500">{openJobs.length} open</span></Link>
+              <Link href="/customers" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><UsersRound className="h-4 w-4 text-[#8ffafa]" />Customers</span><span className="text-xs text-zinc-500">{customers.length}</span></Link>
+              <Link href="/invoices" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><Banknote className="h-4 w-4 text-[#8ffafa]" />Quotes & invoices</span><span className="text-xs text-zinc-500">Bill work</span></Link>
             </div>
             <div className="mt-3 rounded-xl border border-[#2d7dff]/15 bg-zinc-950/70 p-3 text-sm text-zinc-400"><span className="font-medium text-white">{technicians.length}</span> active technician{technicians.length === 1 ? "" : "s"} available.</div>
           </SectionCard>
 
-          <SectionCard eyebrow="Customer documents" title="Estimate / invoice handoff queue" description="Five newest items stay visible. Older active documents remain one tap away.">
+          <SectionCard eyebrow="Customer documents" title="Estimate / invoice handoff queue" description="Five newest items stay visible. Older active documents remain in Billing.">
             {invoices.length === 0 ? (
               <p className="text-sm text-zinc-400">No active estimates or invoices.</p>
             ) : (
