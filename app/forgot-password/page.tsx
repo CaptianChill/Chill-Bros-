@@ -1,50 +1,43 @@
+"use client";
+
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { FormEvent, useState } from "react";
 
 import { LogoBadge } from "@/components/logo-badge";
-import { auth } from "@/lib/auth/server";
 
-type ForgotPasswordPageProps = {
-  searchParams: Promise<{ ready?: string; error?: string }>;
-};
+export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [pending, setPending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-const OWNER_EMAIL = "chillprostx@gmail.com";
+  async function requestReset(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
 
-export default async function ForgotPasswordPage({ searchParams }: ForgotPasswordPageProps) {
-  const { ready, error } = await searchParams;
+    try {
+      const response = await fetch("/api/auth/request-password-reset", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          redirectTo: `${window.location.origin}/reset-password`,
+        }),
+      });
 
-  async function createOwnerPassword(formData: FormData) {
-    "use server";
+      if (!response.ok) {
+        setError("The reset email could not be sent. Try again in a moment.");
+        return;
+      }
 
-    const email = String(formData.get("email") || "").trim().toLowerCase();
-    const password = String(formData.get("password") || "");
-    const confirm = String(formData.get("confirm") || "");
-
-    if (email !== OWNER_EMAIL) redirect("/forgot-password?error=owner");
-    if (password.length < 12 || password.length > 128) redirect("/forgot-password?error=password");
-    if (password !== confirm) redirect("/forgot-password?error=match");
-
-    const { error: signUpError } = await auth.signUp.email({
-      email,
-      password,
-      name: "Brae Morrison",
-    });
-
-    if (signUpError) redirect("/forgot-password?error=exists");
-
-    redirect("/?ownerSetup=1");
+      setSent(true);
+    } catch {
+      setError("The reset email could not be sent. Check your connection and try again.");
+    } finally {
+      setPending(false);
+    }
   }
-
-  const errorMessage =
-    error === "owner"
-      ? "Use the Chill Bros owner email shown below."
-      : error === "password"
-        ? "Use a password between 12 and 128 characters."
-        : error === "match"
-          ? "The two passwords do not match."
-          : error === "exists"
-            ? "The owner account already has a password. Return to staff sign in and use it there."
-            : "Owner recovery could not be completed.";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-transparent px-4 text-foreground">
@@ -52,66 +45,42 @@ export default async function ForgotPasswordPage({ searchParams }: ForgotPasswor
         <div className="flex flex-col items-center gap-3 text-center">
           <LogoBadge variant="full" className="w-16" />
           <div>
-            <p className="sub text-sm uppercase tracking-[0.3em]">Owner recovery</p>
-            <h1 className="glo mt-1 text-xl font-semibold">Create owner password</h1>
+            <p className="sub text-sm uppercase tracking-[0.3em]">Account recovery</p>
+            <h1 className="glo mt-1 text-xl font-semibold">Reset your password</h1>
           </div>
         </div>
 
-        {ready === "1" ? (
-          <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            Owner access is ready. Create your password below.
-          </p>
-        ) : null}
+        {sent ? (
+          <div className="space-y-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-4 text-sm leading-6 text-emerald-100">
+            <p className="font-semibold">Check your email.</p>
+            <p>If that address belongs to a Chill Bros account, Neon Auth sent a secure password-reset link. Check spam or junk if it does not appear in your inbox.</p>
+          </div>
+        ) : (
+          <form onSubmit={requestReset} className="space-y-4">
+            <label className="block space-y-2">
+              <span className="text-sm text-zinc-300">Account email</span>
+              <input
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@company.com"
+                className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+              />
+            </label>
 
-        {error ? (
-          <p className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-            {errorMessage}
-          </p>
-        ) : null}
+            {error ? <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p> : null}
 
-        <form action={createOwnerPassword} className="space-y-4">
-          <label className="block space-y-2">
-            <span className="text-sm text-zinc-300">Owner email</span>
-            <input
-              name="email"
-              type="email"
-              required
-              defaultValue={OWNER_EMAIL}
-              readOnly
-              className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none"
-            />
-          </label>
-
-          <label className="block space-y-2">
-            <span className="text-sm text-zinc-300">New password</span>
-            <input
-              name="password"
-              type="password"
-              required
-              minLength={12}
-              maxLength={128}
-              autoComplete="new-password"
-              className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none"
-            />
-          </label>
-
-          <label className="block space-y-2">
-            <span className="text-sm text-zinc-300">Confirm password</span>
-            <input
-              name="confirm"
-              type="password"
-              required
-              minLength={12}
-              maxLength={128}
-              autoComplete="new-password"
-              className="w-full rounded-2xl border neon-tube bg-black px-4 py-3 text-sm text-white outline-none"
-            />
-          </label>
-
-          <button type="submit" className="w-full rounded-2xl neon-tube bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] transition hover:bg-[#2d7dff]/20">
-            Create owner password & sign in
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={pending}
+              className="w-full rounded-2xl neon-tube bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] transition hover:bg-[#2d7dff]/20 disabled:opacity-60"
+            >
+              {pending ? "Sending reset email…" : "Email reset link"}
+            </button>
+          </form>
+        )}
 
         <Link href="/sign-in" className="block text-center text-sm text-[#bafcfc] hover:text-white">
           Back to staff sign in
