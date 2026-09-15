@@ -1,14 +1,54 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ChevronDown, Plus, Send, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { createEstimateV2Action, type EstimateAdjustments } from "@/lib/chillbros/estimate-actions-v2";
+import {
+  deleteRemoteFormDraft,
+  readRemoteFormDrafts,
+  type FormDraft,
+  upsertRemoteFormDraft,
+} from "@/lib/chillbros/form-drafts";
 import type { AdjustmentType } from "@/lib/chillbros/types";
 
 type SuggestedItem = { label: string; description?: string; quantity?: number; unitPrice?: number; amount?: number; taxable?: boolean };
 type DraftItem = { id: string; label: string; description: string; quantity: string; unitPrice: string; taxable: boolean };
+type EstimateDraftPayload = {
+  items: DraftItem[];
+  notes: string;
+  discountType: AdjustmentType | null;
+  discountValue: string;
+  downPaymentType: AdjustmentType | null;
+  downPaymentValue: string;
+  taxRate: string;
+  updatedAt: string;
+};
+
+function parseEstimateDraft(input: unknown): EstimateDraftPayload | null {
+  if (!input || typeof input !== "object") return null;
+  const value = input as Partial<EstimateDraftPayload>;
+  if (!Array.isArray(value.items) || !value.items.length || typeof value.updatedAt !== "string") return null;
+  return {
+    items: value.items.slice(0, 20).map((item) => ({
+      id: typeof item.id === "string" && item.id ? item.id : crypto.randomUUID(),
+      label: typeof item.label === "string" ? item.label.slice(0, 200) : "",
+      description: typeof item.description === "string" ? item.description.slice(0, 1000) : "",
+      quantity: typeof item.quantity === "string" ? item.quantity : "1",
+      unitPrice: typeof item.unitPrice === "string" ? item.unitPrice : "",
+      taxable: Boolean(item.taxable),
+    })),
+    notes: typeof value.notes === "string" ? value.notes.slice(0, 2000) : "",
+    discountType: value.discountType === "percent" || value.discountType === "dollar" ? value.discountType : null,
+    discountValue: typeof value.discountValue === "string" ? value.discountValue : "0",
+    downPaymentType: value.downPaymentType === "percent" || value.downPaymentType === "dollar" ? value.downPaymentType : null,
+    downPaymentValue: typeof value.downPaymentValue === "string" ? value.downPaymentValue : "0",
+    taxRate: typeof value.taxRate === "string" ? value.taxRate : "8.25",
+    updatedAt: value.updatedAt,
+  };
+}
+
 
 function makeDraftItem(item?: SuggestedItem): DraftItem {
   const unitPrice = item?.unitPrice ?? item?.amount ?? 0;
@@ -17,9 +57,10 @@ function makeDraftItem(item?: SuggestedItem): DraftItem {
 
 function money(value: number) { return value.toLocaleString("en-US", { style: "currency", currency: "USD" }); }
 
-export function EstimateComposer({ jobId, suggestedItems }: { jobId: string; suggestedItems: SuggestedItem[] }) {
+export function EstimateComposer({ jobId, suggestedItems, profileId }: { jobId: string; suggestedItems: SuggestedItem[]; profileId: string }) {
   const router = useRouter();
-  const storageKey = `chillbros-estimate-draft-${jobId}`;
+  const storageKey = `chillbros-estimate-draft-v2-${profileId}-${jobId}`;
+  const remoteDraftId = `estimate:${jobId}`;
   const [items, setItems] = useState<DraftItem[]>(() => {
     const valid = suggestedItems.filter((item) => item.label.trim() && (item.unitPrice ?? item.amount ?? 0) >= 0).slice(0, 20);
     return valid.length > 0 ? valid.map((item) => makeDraftItem(item)) : [makeDraftItem()];
@@ -31,45 +72,111 @@ export function EstimateComposer({ jobId, suggestedItems }: { jobId: string; sug
   const [downPaymentValue, setDownPaymentValue] = useState("0");
   const [taxRate, setTaxRate] = useState("8.25");
   const [draftLoaded, setDraftLoaded] = useState(false);
-  const [draftSaved, setDraftSaved] = useState(false);
+  const [draftStatus, setDraftStatus] = useState("Autosave on");
+  const queuedDraft = useRef<FormDraft | null>(null);
+  const activeSync = useRef<Promise<boolean> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    let active = true;
+    void (async () => {
+      let localDraft: EstimateDraftPayload | null = null;
       try {
         const raw = window.localStorage.getItem(storageKey);
-        if (raw) {
-          const saved = JSON.parse(raw) as { items?: DraftItem[]; notes?: string; discountType?: AdjustmentType | null; discountValue?: string; downPaymentType?: AdjustmentType | null; downPaymentValue?: string; taxRate?: string };
-          if (Array.isArray(saved.items) && saved.items.length) setItems(saved.items.slice(0, 20).map((item) => ({ ...item, taxable: Boolean(item.taxable) })));
-          if (typeof saved.notes === "string") setNotes(saved.notes);
-          setDiscountType(saved.discountType ?? null);
-          setDiscountValue(saved.discountValue ?? "0");
-          setDownPaymentType(saved.downPaymentType ?? null);
-          setDownPaymentValue(saved.downPaymentValue ?? "0");
-          if (typeof saved.taxRate === "string") setTaxRate(saved.taxRate);
-        }
+        if (raw) localDraft = parseEstimateDraft(JSON.parse(raw));
       } catch {
-        // A malformed local-only draft is ignored; server data is untouched.
+        // A malformed browser backup is ignored.
+      }
+
+      const remote = (await readRemoteFormDrafts({ id: remoteDraftId }))[0];
+      let remoteDraft: EstimateDraftPayload | null = null;
+      const remoteField = remote?.fields.find((field) => field.name === "estimatePayload");
+      if (remoteField) {
+        try {
+          remoteDraft = parseEstimateDraft(JSON.parse(remoteField.value));
+        } catch {
+          remoteDraft = null;
+        }
+      }
+
+      const saved = remoteDraft && (!localDraft || remoteDraft.updatedAt >= localDraft.updatedAt)
+        ? remoteDraft
+        : localDraft;
+      if (!active) return;
+      if (saved) {
+        setItems(saved.items);
+        setNotes(saved.notes);
+        setDiscountType(saved.discountType);
+        setDiscountValue(saved.discountValue);
+        setDownPaymentType(saved.downPaymentType);
+        setDownPaymentValue(saved.downPaymentValue);
+        setTaxRate(saved.taxRate);
       }
       setDraftLoaded(true);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [storageKey]);
+    })();
+    return () => { active = false; };
+  }, [remoteDraftId, storageKey]);
+
+  const flushRemoteDrafts = useCallback(function flush(): Promise<boolean> {
+    if (activeSync.current) return activeSync.current;
+    const running = (async () => {
+      let synced = true;
+      while (queuedDraft.current) {
+        const nextDraft = queuedDraft.current;
+        queuedDraft.current = null;
+        synced = (await upsertRemoteFormDraft(nextDraft)) && synced;
+      }
+      return synced;
+    })();
+    activeSync.current = running;
+    void running.finally(() => {
+      activeSync.current = null;
+      if (queuedDraft.current) void flush();
+    });
+    return running;
+  }, []);
 
   const saveDraft = useCallback(() => {
+    const updatedAt = new Date().toISOString();
+    const payload: EstimateDraftPayload = {
+      items,
+      notes,
+      discountType,
+      discountValue,
+      downPaymentType,
+      downPaymentValue,
+      taxRate,
+      updatedAt,
+    };
+    let savedLocally = true;
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify({ items, notes, discountType, discountValue, downPaymentType, downPaymentValue, taxRate }));
-      setDraftSaved(true);
-      window.setTimeout(() => setDraftSaved(false), 1200);
+      window.localStorage.setItem(storageKey, JSON.stringify(payload));
     } catch {
-      // Local storage can be unavailable in private/restricted browser modes.
+      savedLocally = false;
     }
-  }, [discountType, discountValue, downPaymentType, downPaymentValue, items, notes, storageKey, taxRate]);
+
+    const url = new URL(window.location.href);
+    for (const key of ["draft", "success", "error"]) url.searchParams.delete(key);
+    const query = url.searchParams.toString();
+    queuedDraft.current = {
+      id: remoteDraftId,
+      path: `${url.pathname}${query ? `?${query}` : ""}`,
+      label: `Estimate draft · ${jobId.slice(0, 8)}`,
+      customerId: null,
+      formIndex: 0,
+      updatedAt,
+      fields: [{ name: "estimatePayload", type: "json", value: JSON.stringify(payload), occurrence: 0 }],
+    };
+    setDraftStatus(savedLocally ? "Saved on device · syncing…" : "Syncing to Neon…");
+    void flushRemoteDrafts().then((synced) => {
+      setDraftStatus(synced ? "Synced to Neon" : savedLocally ? "Saved on device · offline" : "Draft save failed");
+    });
+  }, [discountType, discountValue, downPaymentType, downPaymentValue, flushRemoteDrafts, items, jobId, notes, remoteDraftId, storageKey, taxRate]);
 
   useEffect(() => {
     if (!draftLoaded) return;
-    const timer = window.setTimeout(saveDraft, 450);
+    const timer = window.setTimeout(saveDraft, 600);
     return () => window.clearTimeout(timer);
   }, [draftLoaded, saveDraft]);
 
@@ -99,13 +206,14 @@ export function EstimateComposer({ jobId, suggestedItems }: { jobId: string; sug
     startTransition(async () => {
       const result = await createEstimateV2Action(jobId, lineItems, notes, adjustments);
       if (!result.ok) { setError(result.error); return; }
-      try { window.localStorage.removeItem(storageKey); } catch { /* local draft cleanup only */ }
+      try { window.localStorage.removeItem(storageKey); } catch { /* browser backup cleanup only */ }
+      await deleteRemoteFormDraft(remoteDraftId);
       router.refresh();
     });
   };
 
   return <div className="space-y-4">
-    <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-medium text-white">Build customer estimate</p><p className="mt-1 text-sm text-zinc-400">Draft fields save automatically on this device.</p></div><div className="text-right"><p className="text-xs text-zinc-500">Estimated total</p><p className="text-xl font-semibold text-[#bafcfc]">{money(total)}</p><p className="text-[10px] text-emerald-300">{draftSaved ? "Draft saved" : "Autosave on"}</p></div></div></div>
+    <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-medium text-white">Build customer estimate</p><p className="mt-1 text-sm text-zinc-400">Draft fields sync to Neon and keep an offline browser copy.</p></div><div className="text-right"><p className="text-xs text-zinc-500">Estimated total</p><p className="text-xl font-semibold text-[#bafcfc]">{money(total)}</p><p className="text-[10px] text-emerald-300">{draftStatus}</p></div></div></div>
     {error ? <p className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
 
     <div className="space-y-3">{items.map((item, index) => {

@@ -44,7 +44,7 @@ export async function createStaffFromCenter(formData: FormData): Promise<never> 
   const role = text(formData, "role") as StaffRole;
   const email = text(formData, "email");
   const result = await addStaffAccountAction({
-    fullName: text(formData, "name"),
+    fullName: text(formData, "fullName") || text(formData, "name"),
     email,
     role,
   });

@@ -62,7 +62,7 @@ export async function createJobAction(input: { customerId: string; assignedTechI
   const { data, error } = await supabase.from("chillbros_jobs").insert({ customer_id: input.customerId, assigned_tech_id: input.assignedTechId || null, status: "scheduled", location: cleanText(input.location, 500), scope: cleanText(input.scope, 4000), scheduled_window: cleanText(input.scheduledWindow, 200) }).select("id").single();
   if (error || !data) return { ok: false, error: error?.message ?? "Could not create job." };
   await supabase.from("chillbros_customer_service_history").insert({ customer_id: input.customerId, note: `Job created${input.scheduledWindow ? ` • ${String(input.scheduledWindow).slice(0, 150)}` : ""}` });
-  for (const path of ["/dispatch", "/technician", "/crm", "/office", "/"]) revalidatePath(path);
+  for (const path of ["/dispatch", "/technician", "/work-orders", "/schedule", "/manager", "/manager/command", "/create", "/crm", "/office", "/"]) revalidatePath(path);
   return { ok: true, data: { jobId: data.id } };
 }
 
