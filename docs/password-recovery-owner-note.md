@@ -1,1 +1,0 @@
-Owner recovery uses the same Neon Auth reset-link flow as staff recovery. Do not create or distribute plaintext owner passwords. The owner requests a reset email, chooses a new password from the short-lived reset link, then signs in normally.
