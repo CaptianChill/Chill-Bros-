@@ -45,7 +45,7 @@ export async function AppShell({ children }: AppShellProps) {
       </div>
 
       <main id="main-content" className="relative z-20 isolate min-w-0 flex-1 text-center pointer-events-auto [&_a]:text-center [&_article]:text-center [&_button]:text-center [&_div]:text-center [&_input]:text-center [&_section]:text-center [&_select]:text-center [&_summary]:text-center [&_textarea]:text-center">{children}</main>
-      <FormDraftProtector />
+      {profile ? <FormDraftProtector profileId={profile.id} /> : null}
     </div>
   </div>;
 }

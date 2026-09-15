@@ -2,10 +2,9 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
-
+import { auth } from "@/lib/auth/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { createAuthServerClient, getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import type { StaffRole } from "./types";
 
 type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
@@ -19,19 +18,46 @@ async function requireManager() {
   return { ok: true as const, profile };
 }
 
+const OWNER_EMAIL = "chillprostx@gmail.com";
+
+async function requireCredentialAdministrator() {
+  const guard = await requireManager();
+  if (!guard.ok) return guard;
+  if (guard.profile.email.trim().toLowerCase() !== OWNER_EMAIL) {
+    return { ok: false as const, error: "Owner access is required to create or reset staff logins." };
+  }
+  return guard;
+}
+
 function generateTempPassword() {
   return randomBytes(9).toString("base64url");
 }
 
-async function passwordRecoveryOrigin() {
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "chill-bros.vercel.app";
-  const proto = requestHeaders.get("x-forwarded-proto") || "https";
-  return `${proto}://${host}`;
+type NeonAdminUser = { id: string; email?: string | null };
+
+function authErrorMessage(error: unknown, fallback: string) {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return fallback;
+}
+
+async function findNeonUserByEmail(email: string): Promise<ActionResult<NeonAdminUser | null>> {
+  try {
+    const { data, error } = await auth.admin.listUsers({
+      query: { filterField: "email", filterValue: email, filterOperator: "eq", limit: 2 },
+    });
+    if (error) return { ok: false, error: authErrorMessage(error, "Could not check the Neon staff directory.") };
+    const user = (data?.users ?? []).find((candidate) => candidate.email?.trim().toLowerCase() === email) ?? null;
+    return { ok: true, data: user };
+  } catch (error) {
+    return { ok: false, error: authErrorMessage(error, "Could not check the Neon staff directory.") };
+  }
 }
 
 export async function addStaffAccountAction(input: { fullName: string; email: string; role: StaffRole }): Promise<ActionResult<{ tempPassword: string }>> {
-  const guard = await requireManager();
+  const guard = await requireCredentialAdministrator();
   if (!guard.ok) return guard;
 
   const fullName = String(input.fullName ?? "").trim();
@@ -40,63 +66,125 @@ export async function addStaffAccountAction(input: { fullName: string; email: st
   if (!email || email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "Enter a valid email address." };
   if (!STAFF_ROLES.has(input.role)) return { ok: false, error: "Choose a valid staff role." };
 
-  const supabase = createServiceRoleClient();
-  const tempPassword = generateTempPassword();
-  const { data: created, error: createError } = await supabase.auth.admin.createUser({ email, password: tempPassword, email_confirm: true });
-  if (createError || !created.user) return { ok: false, error: createError?.message ?? "Could not create the account." };
+  const service = createServiceRoleClient();
+  const { data: existingProfiles, error: profileLookupError } = await service
+    .from("chillbros_profiles")
+    .select("id,auth_user_id,status")
+    .ilike("email", email)
+    .limit(2);
+  if (profileLookupError) return { ok: false, error: "Could not check existing employee accounts." };
+  if ((existingProfiles?.length ?? 0) > 1) return { ok: false, error: "Multiple employee profiles use this email. Correct the duplicate records before creating a login." };
+  const existingProfile = existingProfiles?.[0] ?? null;
+  if (existingProfile?.status !== undefined && existingProfile.status !== "active") {
+    return { ok: false, error: "This employee profile is inactive. Activate it before creating or resetting its login." };
+  }
 
-  const { error: profileError } = await supabase.from("chillbros_profiles").insert({ id: created.user.id, full_name: fullName, email, role: input.role, status: "active" });
+  const lookup = await findNeonUserByEmail(email);
+  if (!lookup.ok) return lookup;
+  if (existingProfile?.auth_user_id && lookup.data?.id === existingProfile.auth_user_id) {
+    return { ok: false, error: "This employee already has a Neon login. Use Set / reset Neon password instead." };
+  }
+  if (existingProfile?.auth_user_id && lookup.data?.id !== existingProfile.auth_user_id) {
+    return { ok: false, error: "This employee profile is linked to a different Neon login. Correct the account link before continuing." };
+  }
+
+  const tempPassword = generateTempPassword();
+  let authUser = lookup.data;
+  let createdHere = false;
+
+  if (!authUser) {
+    try {
+      const { data, error } = await auth.admin.createUser({
+        email,
+        password: tempPassword,
+        name: fullName,
+        // Application permissions live in chillbros_profiles. Neon Auth's
+        // admin role is reserved for the owner because it can manage users.
+        role: "user",
+      });
+      if (error || !data?.user?.id) {
+        return { ok: false, error: authErrorMessage(error, "Could not create the Neon login.") };
+      }
+      authUser = data.user;
+      createdHere = true;
+    } catch (error) {
+      return { ok: false, error: authErrorMessage(error, "Could not create the Neon login.") };
+    }
+  }
+
+  const profileWrite = existingProfile
+    ? service.from("chillbros_profiles").update({ auth_user_id: authUser.id }).eq("id", existingProfile.id)
+    : service.from("chillbros_profiles").insert({
+      id: authUser.id,
+      auth_user_id: authUser.id,
+      full_name: fullName,
+      email,
+      role: input.role,
+      status: "active",
+    });
+  const { error: profileError } = await profileWrite;
   if (profileError) {
-    await supabase.auth.admin.deleteUser(created.user.id);
+    if (createdHere) await auth.admin.removeUser({ userId: authUser.id }).catch(() => undefined);
     return { ok: false, error: profileError.message };
   }
 
-  // The temporary password remains available as an emergency fallback. Normal onboarding
-  // should use the recovery email so the employee chooses a password privately.
-  const origin = await passwordRecoveryOrigin();
-  const auth = await createAuthServerClient();
-  await auth.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=/account/update-password`,
-  }).catch(() => undefined);
+  if (!createdHere) {
+    try {
+      const { error } = await auth.admin.setUserPassword({ userId: authUser.id, newPassword: tempPassword });
+      if (error) {
+        if (existingProfile) await service.from("chillbros_profiles").update({ auth_user_id: null }).eq("id", existingProfile.id);
+        else await service.from("chillbros_profiles").delete().eq("id", authUser.id);
+        return { ok: false, error: authErrorMessage(error, "Could not set the Neon password.") };
+      }
+    } catch (error) {
+      if (existingProfile) await service.from("chillbros_profiles").update({ auth_user_id: null }).eq("id", existingProfile.id);
+      else await service.from("chillbros_profiles").delete().eq("id", authUser.id);
+      return { ok: false, error: authErrorMessage(error, "Could not set the Neon password.") };
+    }
+  }
 
   revalidatePath("/manager");
+  revalidatePath("/create");
   return { ok: true, data: { tempPassword } };
 }
 
-export async function sendStaffPasswordResetEmailAction(staffId: string): Promise<ActionResult<{ email: string }>> {
-  const guard = await requireManager();
+export async function resetStaffPasswordAction(staffId: string): Promise<ActionResult<{ tempPassword: string }>> {
+  const guard = await requireCredentialAdministrator();
   if (!guard.ok) return guard;
   if (!staffId) return { ok: false, error: "Employee account is required." };
 
   const service = createServiceRoleClient();
   const { data: member, error: readError } = await service
     .from("chillbros_profiles")
-    .select("email,status")
+    .select("auth_user_id,email,status")
     .eq("id", staffId)
     .maybeSingle();
 
   if (readError || !member?.email) return { ok: false, error: "Employee account not found." };
-  if (member.status !== "active") return { ok: false, error: "Activate this employee before sending a password reset." };
+  if (member.status !== "active") return { ok: false, error: "Activate this employee before resetting the password." };
 
-  const origin = await passwordRecoveryOrigin();
-  const auth = await createAuthServerClient();
-  const { error } = await auth.auth.resetPasswordForEmail(String(member.email).toLowerCase(), {
-    redirectTo: `${origin}/auth/callback?next=/account/update-password`,
-  });
-  if (error) return { ok: false, error: error.message };
+  const lookup = await findNeonUserByEmail(String(member.email).trim().toLowerCase());
+  if (!lookup.ok) return lookup;
+  if (!lookup.data) return { ok: false, error: "This employee has no Neon login yet. Re-create the login from Staff Accounts." };
 
-  return { ok: true, data: { email: String(member.email) } };
-}
+  const linkedAuthUserId = typeof member.auth_user_id === "string" ? member.auth_user_id : "";
+  if (linkedAuthUserId && linkedAuthUserId !== lookup.data.id) {
+    return { ok: false, error: "This employee profile is linked to a different Neon login. Correct the account link before resetting its password." };
+  }
+  const authUserId = lookup.data.id;
+  if (!linkedAuthUserId) {
+    const { error: linkError } = await service.from("chillbros_profiles").update({ auth_user_id: authUserId }).eq("id", staffId);
+    if (linkError) return { ok: false, error: "The Neon login was found, but it could not be linked to this employee." };
+  }
 
-export async function resetStaffPasswordAction(staffId: string): Promise<ActionResult<{ tempPassword: string }>> {
-  const guard = await requireManager();
-  if (!guard.ok) return guard;
-  if (!staffId) return { ok: false, error: "Employee account is required." };
-
-  const supabase = createServiceRoleClient();
   const tempPassword = generateTempPassword();
-  const { error } = await supabase.auth.admin.updateUserById(staffId, { password: tempPassword });
-  if (error) return { ok: false, error: error.message };
+  try {
+    const { error } = await auth.admin.setUserPassword({ userId: authUserId, newPassword: tempPassword });
+    if (error) return { ok: false, error: authErrorMessage(error, "Could not reset the Neon password.") };
+  } catch (error) {
+    return { ok: false, error: authErrorMessage(error, "Could not reset the Neon password.") };
+  }
+
   revalidatePath("/manager");
   return { ok: true, data: { tempPassword } };
 }

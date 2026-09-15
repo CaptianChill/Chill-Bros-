@@ -22,7 +22,7 @@ export async function signInAction(_prevState: { error: string } | null, formDat
     return { error: "Too many sign-in attempts. Wait 15 minutes before trying again." };
   }
 
-  const { error } = await auth.signIn.email({ email, password });
+  const { data: signedIn, error } = await auth.signIn.email({ email, password });
   if (error) {
     await recordLoginAttempt({ identityHash: throttle.identityHash, ipHash: throttle.ipHash, success: false }).catch(() => undefined);
     return { error: "Incorrect email or password." };
@@ -38,13 +38,17 @@ export async function signInAction(_prevState: { error: string } | null, formDat
     redirect(next);
   }
 
-  // Temporary compatibility path for remaining staff until their operational
-  // profiles are moved off the legacy service client.
+  const authUserId = signedIn?.user?.id;
+  if (!authUserId) {
+    await auth.signOut().catch(() => undefined);
+    return { error: "This staff login could not be verified." };
+  }
+
   const service = createServiceRoleClient();
   const { data: profile } = await service
     .from("chillbros_profiles")
     .select("role,status")
-    .ilike("email", email)
+    .eq("auth_user_id", authUserId)
     .maybeSingle();
 
   if (!profile || profile.status !== "active") {

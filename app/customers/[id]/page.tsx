@@ -45,7 +45,7 @@ export default async function CustomerProfilePage({ params }: Props) {
               </div>;
             })}
           </div>
-          <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Saved form drafts</p><OpenFormDrafts customerId={data.customer.id} /></div>
+          <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Saved form drafts</p><OpenFormDrafts customerId={data.customer.id} profileId={profile.id} /></div>
         </div>
       </SectionCard>
 

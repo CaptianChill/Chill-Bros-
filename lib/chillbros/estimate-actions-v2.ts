@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 
+import { auth } from "@/lib/auth/server";
 import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications";
 import { sendBillingDelivery } from "@/lib/chillbros/billing-delivery";
 import { createReceiptForPaidInvoice } from "@/lib/chillbros/billing-receipts";
 import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient, createUserScopedDataClient } from "@/lib/supabase/service-client";
 import type { AdjustmentType, PaymentMethod, PaymentTerms } from "./types";
 
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
@@ -35,6 +36,7 @@ function validateLines(lines: EstimateDraftLine[]) {
     const taxable = Boolean(row.taxable);
     if (!label || label.length > 200 || description.length > 1000 || !Number.isFinite(quantity) || quantity <= 0 || quantity > 1000 || !Number.isFinite(unitPrice) || unitPrice < 0 || unitPrice > 100000) return { ok: false as const, error: "Check line item name, description, quantity, and unit price." };
     const amount = Math.round(quantity * unitPrice * 100) / 100;
+    if (amount > 100000) return { ok: false as const, error: "Each line item total must be $100,000 or less." };
     subtotal += amount;
     if (taxable) taxableSubtotal += amount;
     clean.push({ label, description, quantity, unitPrice, taxable });
@@ -83,9 +85,21 @@ export async function createEstimateV2Action(jobId: string, lines: EstimateDraft
   const calc = calcAdjustments(checked.subtotal, checked.taxableSubtotal, adjustments);
   if (!calc.ok) return calc;
 
-  const supabase = createServiceRoleClient();
+  const authWithToken = auth as unknown as {
+    token?: () => Promise<{ data?: unknown; error?: unknown }>;
+  };
+  const tokenResult = authWithToken.token ? await authWithToken.token() : null;
+  const tokenData = tokenResult?.data;
+  const accessToken = typeof tokenData === "string"
+    ? tokenData
+    : tokenData && typeof tokenData === "object" && "token" in tokenData && typeof (tokenData as { token?: unknown }).token === "string"
+      ? (tokenData as { token: string }).token
+      : "";
+  if (!accessToken || tokenResult?.error) return { ok: false, error: "Your Neon session expired. Sign in and try again." };
+
+  const userData = createUserScopedDataClient(accessToken);
   const number = estimateNumber();
-  const { data, error } = await supabase.rpc("chillbros_create_estimate_v2", {
+  const { data, error } = await userData.rpc("chillbros_create_estimate_v2", {
     p_job_id: jobId,
     p_invoice_number: number,
     p_notes: cleanNotes || null,
@@ -95,6 +109,7 @@ export async function createEstimateV2Action(jobId: string, lines: EstimateDraft
   if (error || !data) return { ok: false, error: error?.code === "23505" ? "This job already has an active estimate." : error?.message ?? "Could not create estimate." };
 
   const row = data as unknown as EstimateRpcRow;
+  const supabase = createServiceRoleClient();
   await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: row.estimate_id, actor_id: allowed.profile.id, stage: "estimate_published", message: "Estimate published. Customer approval is the next step." });
   try { await sendBillingDelivery(row.estimate_id, "estimate", "email"); } catch {}
   refresh(["/technician", "/manager", "/dispatch", "/office", "/invoices", "/"]);

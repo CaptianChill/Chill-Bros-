@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { KeyRound, Mail, UserPlus } from "lucide-react";
+import { KeyRound, UserPlus } from "lucide-react";
 
 import type { StaffAccount, StaffRole } from "@/lib/chillbros/types";
-import { addStaffAccountAction, resetStaffPasswordAction, sendStaffPasswordResetEmailAction, toggleStaffStatusAction } from "@/lib/chillbros/mutations";
+import { addStaffAccountAction, resetStaffPasswordAction, toggleStaffStatusAction } from "@/lib/chillbros/mutations";
 import { StatusPill } from "@/components/status-pill";
 
 const ROLE_LABELS: Record<StaffRole, string> = {
@@ -19,7 +19,7 @@ const ROLE_DESCRIPTIONS: Record<StaffRole, string> = {
   office: "Customer intake, scheduling, dispatch, CRM, equipment records, customer documents, workflow monitoring, and personal timesheet.",
 };
 
-export function ManagerUserPanel({ accounts }: { accounts: StaffAccount[] }) {
+export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts: StaffAccount[]; canManageCredentials: boolean }) {
   const [form, setForm] = useState<{ name: string; email: string; role: StaffRole }>({ name: "", email: "", role: "technician" });
   const [revealedPassword, setRevealedPassword] = useState<{ email: string; password: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,21 +39,8 @@ export function ManagerUserPanel({ accounts }: { accounts: StaffAccount[] }) {
         return;
       }
       setRevealedPassword({ email: form.email, password: result.data.tempPassword });
-      setMessage(`Account created for ${form.email}. A password-setup email was also requested.`);
+      setMessage(`Neon login created for ${form.email}. Give the employee the temporary password shown below.`);
       setForm({ name: "", email: "", role: "technician" });
-    });
-  };
-
-  const sendResetEmail = (id: string, email: string) => {
-    setError(null);
-    setMessage(null);
-    startTransition(async () => {
-      const result = await sendStaffPasswordResetEmailAction(id);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      setMessage(`Password reset email sent to ${email}.`);
     });
   };
 
@@ -67,7 +54,7 @@ export function ManagerUserPanel({ accounts }: { accounts: StaffAccount[] }) {
         return;
       }
       setRevealedPassword({ email, password: result.data.tempPassword });
-      setMessage(`Emergency temporary password created for ${email}.`);
+      setMessage(`New temporary Neon password created for ${email}.`);
     });
   };
 
@@ -84,23 +71,24 @@ export function ManagerUserPanel({ accounts }: { accounts: StaffAccount[] }) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#2d7dff]/30 bg-black/40 p-4">
         <div>
-          <p className="text-sm text-zinc-400">Active credentialed team members</p>
+          <p className="text-sm text-zinc-400">Active staff accounts</p>
           <p className="text-3xl font-semibold text-white">{activeCount}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <StatusPill tone="emerald">Email password recovery</StatusPill>
+          <StatusPill tone="emerald">Owner-controlled Neon passwords</StatusPill>
           <StatusPill>Role-based permissions</StatusPill>
         </div>
       </div>
 
       {error ? <p className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
       {message ? <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{message}</p> : null}
+      {!canManageCredentials ? <p className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">Only the owner account can create or reset staff login credentials. You can still activate or deactivate staff below.</p> : null}
 
       {revealedPassword ? (
         <div className="rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-100">
-          <p className="font-medium">Emergency temporary password for {revealedPassword.email}</p>
+          <p className="font-medium">Temporary Neon password for {revealedPassword.email}</p>
           <p className="mt-1 font-mono text-lg text-white">{revealedPassword.password}</p>
-          <p className="mt-2 text-xs text-zinc-300">Shown once. Email reset is the preferred method; use this only when the employee cannot access email.</p>
+          <p className="mt-2 text-xs text-zinc-300">Shown once. Share it securely; the employee can change it from Account Security after signing in.</p>
           <button type="button" onClick={() => setRevealedPassword(null)} className="mt-3 rounded-xl border border-amber-300/30 px-3 py-1.5 text-xs text-white transition hover:bg-amber-300/10">
             Dismiss
           </button>
@@ -134,7 +122,7 @@ export function ManagerUserPanel({ accounts }: { accounts: StaffAccount[] }) {
           <button
             type="button"
             onClick={addStaff}
-            disabled={pending}
+            disabled={pending || !canManageCredentials}
             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2d7dff] bg-[#2d7dff]/10 px-4 py-3 text-sm font-medium text-[#d9fbff] transition hover:bg-[#2d7dff]/20 disabled:opacity-60"
           >
             <UserPlus className="h-4 w-4" />
@@ -142,7 +130,7 @@ export function ManagerUserPanel({ accounts }: { accounts: StaffAccount[] }) {
           </button>
         </div>
         <p className="mt-3 text-xs leading-5 text-zinc-400"><span className="font-medium text-[#bafcfc]">{ROLE_LABELS[form.role]}:</span> {ROLE_DESCRIPTIONS[form.role]}</p>
-        <p className="mt-2 text-xs leading-5 text-zinc-500">New employees receive a secure password-setup email when possible. A one-time temporary password is also shown as an emergency fallback.</p>
+        <p className="mt-2 text-xs leading-5 text-zinc-500">New employees are created in Neon Auth. Copy the temporary password, share it securely, and ask the employee to change it after signing in.</p>
       </div>
 
       <div className="space-y-3">
@@ -160,27 +148,18 @@ export function ManagerUserPanel({ accounts }: { accounts: StaffAccount[] }) {
             </div>
             <div className="space-y-2 rounded-2xl border border-[#2d7dff]/20 bg-zinc-950/80 p-4 text-sm text-zinc-300">
               <p className="font-medium text-white">Password access</p>
-              <p className="text-zinc-400">Preferred: send a secure reset link so the employee chooses their own password.</p>
+              <p className="text-zinc-400">Set a temporary Neon password when an employee is new or locked out.</p>
               <p className="text-xs text-zinc-500">Passwords are never displayed after they are set.</p>
             </div>
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => sendResetEmail(member.id, member.email)}
-                disabled={pending || member.status !== "active"}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-400/35 bg-emerald-400/5 px-4 py-3 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/10 disabled:opacity-40"
-              >
-                <Mail className="h-4 w-4" />
-                Email reset link
-              </button>
-              <button
-                type="button"
                 onClick={() => resetPassword(member.id, member.email)}
-                disabled={pending}
+                disabled={pending || member.status !== "active" || !canManageCredentials}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/30 px-4 py-3 text-sm text-[#d9fbff] transition hover:bg-[#2d7dff]/10 disabled:opacity-60"
               >
                 <KeyRound className="h-4 w-4" />
-                Emergency temp password
+                Set / reset Neon password
               </button>
               <button
                 type="button"

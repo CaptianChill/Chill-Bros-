@@ -40,7 +40,7 @@ export default async function NewInvoicePage({ searchParams }: Props) {
         {params.token ? <div className="mt-3 flex flex-wrap gap-2"><Link target="_blank" href={`/portal/${params.token}/document`} className="rounded-xl border border-emerald-400/30 px-3 py-2">Open / Print</Link><Link target="_blank" href={`/portal/${params.token}`} className="rounded-xl border border-emerald-400/30 px-3 py-2">Customer view</Link></div> : null}
       </div> : null}
 
-      <form action={createDirectInvoiceAction} className="space-y-5" data-draft-label={isQuote ? "New quote" : "New invoice"}>
+      <form action={createDirectInvoiceAction} className="space-y-5" data-draft-key={`billing:${documentType}:${selectedCustomerId || "new"}`} data-draft-label={isQuote ? "New quote" : "New invoice"}>
         <input type="hidden" name="documentType" value={documentType} />
         <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4 sm:p-5">
           <h2 className="text-xl font-semibold text-white">1. Customer</h2>

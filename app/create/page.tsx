@@ -5,9 +5,11 @@ import { Box, ExternalLink, Images } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { CreationCenterServer, type CreationBillingSummary } from "@/components/creation-center-server";
+import { OpenFormDrafts } from "@/components/open-form-drafts";
 import { StatusPill } from "@/components/status-pill";
 import { getActiveTechnicians, getDispatchJobs } from "@/lib/chillbros/operations-queries";
 import { getCustomers } from "@/lib/chillbros/queries";
+import { JOB_ACTIVE_STATUSES } from "@/lib/chillbros/types";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
@@ -62,16 +64,13 @@ export default async function CreatePage({ searchParams }: Props) {
 
   const params = await searchParams;
   const mode = MODES.has(params.mode as Mode) ? params.mode as Mode : "document";
-  if (mode === "estimate") redirect("/invoices/new?type=quote");
-  if (mode === "invoice") redirect("/invoices/new?type=invoice");
-
   const [customers, technicians, jobs, billing] = await Promise.all([
     getCustomers(),
     getActiveTechnicians(),
     getDispatchJobs(100),
     getBillingSummary(),
   ]);
-  const activeJobs = jobs.filter((job) => ["scheduled", "in_progress"].includes(job.status));
+  const activeJobs = jobs.filter((job) => JOB_ACTIVE_STATUSES.includes(job.status));
   const selectedJobId = activeJobs.some((job) => job.id === params.job) ? params.job! : activeJobs[0]?.id ?? "";
   const selectedCustomerId = customers.some((customer) => customer.id === params.customer) ? params.customer! : customers[0]?.id ?? "";
   const store = await cookies();
@@ -105,8 +104,14 @@ export default async function CreatePage({ searchParams }: Props) {
       </div>
     </section>
 
+    <details className="mb-4 rounded-2xl border border-[#2d7dff]/20 bg-black/30 p-3 text-left">
+      <summary className="cursor-pointer text-sm font-semibold text-[#d9fbff]">Resume a saved draft</summary>
+      <div className="mt-3"><OpenFormDrafts profileId={profile.id} /></div>
+    </details>
+
     <CreationCenterServer
       mode={mode}
+      profileId={profile.id}
       customers={customers}
       technicians={technicians}
       jobs={jobs}

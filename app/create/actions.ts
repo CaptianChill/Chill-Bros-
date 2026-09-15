@@ -18,17 +18,19 @@ function go(mode: string, params: Record<string, string | undefined> = {}): neve
 }
 
 export async function createCustomerFromCenter(formData: FormData): Promise<never> {
+  const draft = text(formData, "draftId");
   const result = await createCustomerAction({
     name: text(formData, "name"),
     phone: text(formData, "phone"),
     email: text(formData, "email"),
     address: text(formData, "address"),
   });
-  if (!result.ok) go("customer", { error: result.error });
+  if (!result.ok) go("customer", { error: result.error, draft });
   go("job", { customer: result.data.customerId, success: "Customer created. Create the service call below." });
 }
 
 export async function createJobFromCenter(formData: FormData): Promise<never> {
+  const draft = text(formData, "draftId");
   const result = await createJobAction({
     customerId: text(formData, "customerId"),
     assignedTechId: text(formData, "assignedTechId") || null,
@@ -36,19 +38,20 @@ export async function createJobFromCenter(formData: FormData): Promise<never> {
     scheduledWindow: text(formData, "scheduledWindow"),
     scope: text(formData, "scope"),
   });
-  if (!result.ok) go("job", { error: result.error, customer: text(formData, "customerId") });
+  if (!result.ok) go("job", { error: result.error, customer: text(formData, "customerId"), draft });
   go("estimate", { job: result.data.jobId, success: "Service call created. Build the estimate now or return to it later." });
 }
 
 export async function createStaffFromCenter(formData: FormData): Promise<never> {
+  const draft = text(formData, "draftId");
   const role = text(formData, "role") as StaffRole;
   const email = text(formData, "email");
   const result = await addStaffAccountAction({
-    fullName: text(formData, "name"),
+    fullName: text(formData, "fullName") || text(formData, "name"),
     email,
     role,
   });
-  if (!result.ok) go("technician", { error: result.error });
+  if (!result.ok) go("technician", { error: result.error, draft });
 
   const store = await cookies();
   store.set("chillbros_creation_temp", JSON.stringify({ email, password: result.data.tempPassword }), {

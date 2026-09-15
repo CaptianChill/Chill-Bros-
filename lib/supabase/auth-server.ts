@@ -53,7 +53,7 @@ export async function createAuthServerClient() {
 export async function getCurrentStaffProfile(): Promise<StaffProfile | null> {
   const { data: session } = await neonAuth.getSession();
   const user = session?.user;
-  if (!user?.email) return null;
+  if (!user?.id || !user.email) return null;
 
   if (user.email.toLowerCase() === OWNER_EMAIL) {
     return {
@@ -65,13 +65,13 @@ export async function getCurrentStaffProfile(): Promise<StaffProfile | null> {
     };
   }
 
-  // Temporary compatibility path for non-owner staff until the operational
-  // data layer is fully cut over to Neon.
+  // Resolve authorization through the explicit Neon Auth foreign key. Email
+  // remains display data and is never used as the account-authorization key.
   const service = createServiceRoleClient();
   const { data, error } = await service
     .from("chillbros_profiles")
     .select("id, full_name, email, role, status")
-    .ilike("email", user.email)
+    .eq("auth_user_id", user.id)
     .maybeSingle();
 
   if (error || !data || data.status !== "active") return null;
