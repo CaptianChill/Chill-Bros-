@@ -26,7 +26,7 @@ for (const path of sourceFiles) {
 }
 
 const technicianQueue = readFileSync("lib/chillbros/technician-assignment.ts", "utf8");
-if (!technicianQueue.includes('.eq("assigned_tech_id",profile.id)')) {
+if (!/\.eq\(\s*["']assigned_tech_id["']\s*,\s*profile\.id\s*\)/.test(technicianQueue)) {
   violations.push("technician assignment must use the canonical staff profile id");
 }
 for (const forbidden of ["candidateIds", "aliases=", "normalize(profile.email)"]) {
