@@ -1,7 +1,6 @@
 import "server-only";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { reconcileTechnicianAssignmentsAndNotifications } from "./assignment-reconciliation";
 import type { JobStatus } from "./types";
 
 export type DispatchJob = { id: string; customerId: string; customerName: string; assignedTechId: string | null; assignedTechName: string | null; status: JobStatus; location: string | null; scope: string | null; workPerformed: string | null; scheduledWindow: string | null; createdAt: string; workflowStage: string };
@@ -28,34 +27,15 @@ export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
 }
 
 export async function getActiveTechnicians(): Promise<ActiveTechnician[]> {
-  await reconcileTechnicianAssignmentsAndNotifications();
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_profiles").select("id, full_name, email, role, status").in("role", ["technician", "manager"]).eq("status", "active").order("full_name", { ascending: true });
+  const { data, error } = await supabase.from("chillbros_profiles").select("id, auth_user_id, full_name, email, role, status").in("role", ["technician", "manager"]).eq("status", "active").order("full_name", { ascending: true });
   if (error || !data) return [];
-
-  const authIdsByEmail = new Map<string, string>();
-  try {
-    let page = 1;
-    while (page <= 10) {
-      const { data: usersPage, error: authError } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
-      if (authError) break;
-      for (const user of usersPage.users ?? []) {
-        const email = String(user.email ?? "").trim().toLowerCase();
-        if (email) authIdsByEmail.set(email, user.id);
-      }
-      if ((usersPage.users ?? []).length < 1000) break;
-      page += 1;
-    }
-  } catch {}
 
   const byIdentity = new Map<string, typeof data[number]>();
   for (const row of data) {
     const email = String(row.email ?? "").trim().toLowerCase();
-    const key = email || row.id;
-    const existing = byIdentity.get(key);
-    if (!existing) { byIdentity.set(key, row); continue; }
-    const authId = email ? authIdsByEmail.get(email) : null;
-    if (authId && row.id === authId) byIdentity.set(key, row);
+    const key = row.auth_user_id || email || row.id;
+    if (!byIdentity.has(key)) byIdentity.set(key, row);
   }
 
   return Array.from(byIdentity.values()).map((row) => ({ id: row.id, fullName: row.full_name, role: row.role as "technician" | "manager" }));
