@@ -25,7 +25,7 @@ export async function getAssignedFieldJobsForTechnician(profile: { id:string; em
 
   const ids=Array.from(candidateIds);
   const {data,error}=await supabase.from("chillbros_jobs")
-    .select("id,customer_id,assigned_tech_id,status,location,scope,work_performed,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles(full_name)")
+    .select("id,customer_id,assigned_tech_id,status,location,scope,work_performed,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)")
     .in("assigned_tech_id",ids)
     .in("status",FIELD_VISIBLE as unknown as string[])
     .is("archived_at",null)
