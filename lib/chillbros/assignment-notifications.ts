@@ -4,33 +4,6 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 function appBaseUrl(){const x=String(process.env.NEXT_PUBLIC_APP_URL||process.env.VERCEL_PROJECT_PRODUCTION_URL||"https://chill-bros.vercel.app").replace(/\/$/,"");return x.startsWith("http")?x:`https://${x}`;}
 
-async function resolveCanonicalTechnicianEmail(supabase:any, assignedId:string, fullName:string, profileEmail:string){
-  const candidates=new Map<string,{id:string;email:string;full_name:string}>();
-  const {data:profiles}=await supabase.from("chillbros_profiles").select("id,email,full_name,role,status").in("role",["technician","manager"]);
-  for(const row of profiles??[]){
-    const sameId=row.id===assignedId;
-    const sameEmail=profileEmail&&String(row.email??"").trim().toLowerCase()===profileEmail.toLowerCase();
-    const sameName=fullName&&String(row.full_name??"").trim().toLowerCase()===fullName.toLowerCase();
-    if(sameId||sameEmail||sameName)candidates.set(row.id,{id:row.id,email:String(row.email??"").trim(),full_name:String(row.full_name??"").trim()});
-  }
-  try{
-    let page=1;
-    while(page<=10){
-      const {data,error}=await supabase.auth.admin.listUsers({page,perPage:1000});
-      if(error)break;
-      for(const user of data.users??[]){
-        const candidate=candidates.get(user.id);
-        if(candidate){const authEmail=String(user.email??"").trim();if(authEmail)return {email:authEmail,profileId:user.id,source:"auth-backed-profile" as const};}
-      }
-      if((data.users??[]).length<1000)break;
-      page+=1;
-    }
-  }catch{}
-  if(profileEmail)return {email:profileEmail,profileId:assignedId,source:"assigned-profile" as const};
-  const fallback=Array.from(candidates.values()).find(x=>x.email);
-  return fallback?{email:fallback.email,profileId:fallback.id,source:"matching-profile" as const}:null;
-}
-
 export async function sendTechnicianAssignmentEmail(jobId:string, kind:"assigned"|"updated"="assigned"){
   const supabase=createServiceRoleClient();
 
@@ -54,30 +27,35 @@ export async function sendTechnicianAssignmentEmail(jobId:string, kind:"assigned
   }
 
   const [{data:tech,error:techError},{data:customer,error:customerError}]=await Promise.all([
-    supabase.from("chillbros_profiles").select("id,full_name,email,status").eq("id",job.assigned_tech_id).maybeSingle(),
+    supabase.from("chillbros_profiles").select("id,auth_user_id,full_name,email,status").eq("id",job.assigned_tech_id).maybeSingle(),
     supabase.from("chillbros_customers").select("id,name").eq("id",job.customer_id).maybeSingle(),
   ]);
 
   if(techError) console.error(`[assignment-email] job=${jobId} tech_lookup_failed`,techError);
   if(customerError) console.error(`[assignment-email] job=${jobId} customer_lookup_failed`,customerError);
 
-  const techName=String(tech?.full_name??"Technician");
-  const profileEmail=String(tech?.email??"").trim();
-  const resolved=await resolveCanonicalTechnicianEmail(supabase,job.assigned_tech_id,techName,profileEmail);
-  if(!resolved){
+  if(!tech||tech.status!=="active"){
+    console.error(`[assignment-email] job=${jobId} technician_profile_inactive assigned=${job.assigned_tech_id}`);
+    return {sent:false as const,status:"technician_profile_inactive",recipient:null};
+  }
+  if(!tech.auth_user_id){
+    console.error(`[assignment-email] job=${jobId} technician_auth_link_missing assigned=${job.assigned_tech_id}`);
+    return {sent:false as const,status:"technician_auth_link_missing",recipient:null};
+  }
+  const techName=String(tech.full_name||"Technician");
+  const email=String(tech.email||"").trim();
+  if(!email){
     console.error(`[assignment-email] job=${jobId} technician_email_missing assigned=${job.assigned_tech_id}`);
     return {sent:false as const,status:"technician_email_missing",recipient:null};
   }
-
-  const email=resolved.email;
   const customerName=String(customer?.name??"Customer");
   const subject=kind==="assigned"?`New Chill Bros service call: ${customerName}`:`Chill Bros schedule updated: ${customerName}`;
   const text=[`Hi ${techName},`,"",kind==="assigned"?"A new service call has been assigned to you.":"One of your assigned service calls has been updated.",`Customer: ${customerName}`,`Schedule: ${job.scheduled_window||"Not set"}`,`Location: ${job.location||"Not set"}`,job.scope?`Scope: ${job.scope}`:"","",`Open call: ${appBaseUrl()}/technician?job=${encodeURIComponent(job.id)}`].filter(Boolean).join("\n");
   let status="failed";
   try{const result=await sendCompanyEmail(email,subject,text);status=result.status;}catch(e){status=`failed: ${e instanceof Error?e.message.slice(0,160):"unknown"}`;}
-  console.info(`[assignment-email] job=${jobId} assigned=${job.assigned_tech_id} recipient=${email} source=${resolved.source} status=${status}`);
+  console.info(`[assignment-email] job=${jobId} assigned=${job.assigned_tech_id} recipient=${email} source=canonical-profile status=${status}`);
   try{await supabase.from("chillbros_email_log").insert({subject,recipients:email,status});}catch{}
-  return {sent:status==="sent",status,recipient:email,profileId:resolved.profileId};
+  return {sent:status==="sent",status,recipient:email,profileId:job.assigned_tech_id};
 }
 
 export async function verifyTechnicianAssignment(jobId:string,technicianId:string){
