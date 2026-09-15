@@ -33,5 +33,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Identity and relationship contracts
+        run: npm run test:contracts
+
       - name: Production build
         run: npm run build
