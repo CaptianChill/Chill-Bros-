@@ -1,31 +1,24 @@
 import type { StaffRole } from "./types";
-export type NavItem={href:string;label:string;shortLabel:string;roles:StaffRole[]};
-export const navItems:NavItem[]=[
-{href:"/",label:"Command Center",shortLabel:"Home",roles:["manager"]},
-{href:"/manager/command",label:"Owner Command",shortLabel:"Owner",roles:["manager"]},
-{href:"/work-orders",label:"Open Work Orders",shortLabel:"Work Orders",roles:["manager"]},
-{href:"/schedule",label:"Scheduling",shortLabel:"Schedule",roles:["manager","office"]},
-{href:"/dispatch",label:"Dispatch",shortLabel:"Dispatch",roles:["manager","office"]},
-{href:"/create",label:"Creation Center",shortLabel:"Create",roles:["manager"]},
-{href:"/tech-assist",label:"Tech Assist",shortLabel:"Tech",roles:["manager","technician","office"]},
-{href:"/training",label:"Knowledge Library",shortLabel:"Library",roles:["manager","technician","office"]},
-{href:"/office",label:"Office Hub",shortLabel:"Office",roles:["manager","office"]},
-{href:"/customers",label:"Customer Center",shortLabel:"Customers",roles:["manager","office"]},
-{href:"/technician",label:"Field Workflow",shortLabel:"Field",roles:["manager","technician"]},
-{href:"/equipment",label:"Equipment",shortLabel:"Assets",roles:["manager","office","technician"]},
-{href:"/inventory",label:"Inventory",shortLabel:"Parts",roles:["manager"]},
-{href:"/inventory/intelligence",label:"Parts Intelligence",shortLabel:"Parts AI",roles:["manager"]},
-{href:"/invoices",label:"Invoice Center",shortLabel:"Invoices",roles:["manager","office"]},
-{href:"/payments",label:"Payment Center",shortLabel:"Payments",roles:["manager"]},
-{href:"/agreements",label:"Monthly Plans",shortLabel:"Plans",roles:["manager","office"]},
-{href:"/reports",label:"Reports",shortLabel:"Reports",roles:["manager"]},
-{href:"/timesheet",label:"Timesheets",shortLabel:"Time",roles:["manager","technician","office"]},
-{href:"/scan-send",label:"Scan & Send",shortLabel:"Scan",roles:["manager","technician","office"]},
-{href:"/manager",label:"Manager Hub",shortLabel:"Manager",roles:["manager"]},
-{href:"/account/update-password",label:"Account Security",shortLabel:"Account",roles:["manager","technician","office"]},
-{href:"/security",label:"Security",shortLabel:"Secure",roles:["manager"]},
-{href:"/settings/payments",label:"Payments & Payouts",shortLabel:"Pay Setup",roles:["manager"]},
-{href:"/payroll",label:"Payroll & Paystubs",shortLabel:"Payroll",roles:["manager"]},
-{href:"/invoices/new",label:"New Quote / Invoice",shortLabel:"New Bill",roles:["manager"]},
-{href:"/3d-studio",label:"3D Studio",shortLabel:"3D",roles:["manager"]},
+
+export type NavItem = {
+  href: string;
+  label: string;
+  shortLabel: string;
+  roles: StaffRole[];
+};
+
+// Production navigation is intentionally small. The app still contains legacy,
+// experimental, reporting, AI/3D, payroll, inventory, and admin routes, but they
+// are not part of the day-to-day operating surface until the core service-call
+// workflow is stable end to end.
+export const navItems: NavItem[] = [
+  { href: "/", label: "Home", shortLabel: "Home", roles: ["manager"] },
+  { href: "/office", label: "Office", shortLabel: "Office", roles: ["office"] },
+  { href: "/schedule", label: "Schedule", shortLabel: "Schedule", roles: ["manager", "office"] },
+  { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"] },
+  { href: "/customers", label: "Customers", shortLabel: "Customers", roles: ["manager", "office"] },
+  { href: "/technician", label: "Field Jobs", shortLabel: "Field", roles: ["manager", "technician"] },
+  { href: "/invoices", label: "Quotes & Invoices", shortLabel: "Billing", roles: ["manager", "office"] },
+  { href: "/payments", label: "Payments", shortLabel: "Payments", roles: ["manager"] },
+  { href: "/timesheet", label: "My Time", shortLabel: "Time", roles: ["technician"] },
 ];
