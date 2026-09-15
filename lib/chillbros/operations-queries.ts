@@ -1,7 +1,6 @@
 import "server-only";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { reconcileTechnicianAssignmentsAndNotifications } from "./assignment-reconciliation";
 import type { JobStatus } from "./types";
 
 export type DispatchJob = { id: string; customerId: string; customerName: string; assignedTechId: string | null; assignedTechName: string | null; status: JobStatus; location: string | null; scope: string | null; workPerformed: string | null; scheduledWindow: string | null; createdAt: string; workflowStage: string };
@@ -14,7 +13,7 @@ export type StaffCallRow = { id: string; technicianId: string; technicianName: s
 
 export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_jobs").select("id, customer_id, assigned_tech_id, status, location, scope, work_performed, scheduled_window, created_at, customer:chillbros_customers(name), tech:chillbros_profiles(full_name)").is("archived_at", null).order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("chillbros_jobs").select("id, customer_id, assigned_tech_id, status, location, scope, work_performed, scheduled_window, created_at, customer:chillbros_customers(name), tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)").is("archived_at", null).order("created_at", { ascending: false }).limit(limit);
   if (error || !data) return [];
   const ids = data.map((row) => row.id);
   const [{ data: invoices }, { data: events }] = ids.length ? await Promise.all([
@@ -28,34 +27,15 @@ export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
 }
 
 export async function getActiveTechnicians(): Promise<ActiveTechnician[]> {
-  await reconcileTechnicianAssignmentsAndNotifications();
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_profiles").select("id, full_name, email, role, status").in("role", ["technician", "manager"]).eq("status", "active").order("full_name", { ascending: true });
+  const { data, error } = await supabase.from("chillbros_profiles").select("id, auth_user_id, full_name, email, role, status").in("role", ["technician", "manager"]).eq("status", "active").order("full_name", { ascending: true });
   if (error || !data) return [];
-
-  const authIdsByEmail = new Map<string, string>();
-  try {
-    let page = 1;
-    while (page <= 10) {
-      const { data: usersPage, error: authError } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
-      if (authError) break;
-      for (const user of usersPage.users ?? []) {
-        const email = String(user.email ?? "").trim().toLowerCase();
-        if (email) authIdsByEmail.set(email, user.id);
-      }
-      if ((usersPage.users ?? []).length < 1000) break;
-      page += 1;
-    }
-  } catch {}
 
   const byIdentity = new Map<string, typeof data[number]>();
   for (const row of data) {
     const email = String(row.email ?? "").trim().toLowerCase();
-    const key = email || row.id;
-    const existing = byIdentity.get(key);
-    if (!existing) { byIdentity.set(key, row); continue; }
-    const authId = email ? authIdsByEmail.get(email) : null;
-    if (authId && row.id === authId) byIdentity.set(key, row);
+    const key = row.auth_user_id || email || row.id;
+    if (!byIdentity.has(key)) byIdentity.set(key, row);
   }
 
   return Array.from(byIdentity.values()).map((row) => ({ id: row.id, fullName: row.full_name, role: row.role as "technician" | "manager" }));
@@ -91,14 +71,14 @@ export async function getOpenTimesheet(technicianId: string): Promise<OpenTimesh
 
 export async function getTimesheetHistory(limit = 100): Promise<TimesheetHistoryRow[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_timesheets").select("id, technician_id, job_id, location, clock_in_at, clock_out_at, labor_hours, drive_hours, tech:chillbros_profiles(full_name)").order("clock_in_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("chillbros_timesheets").select("id, technician_id, job_id, location, clock_in_at, clock_out_at, labor_hours, drive_hours, tech:chillbros_profiles!chillbros_timesheets_technician_id_fkey(full_name)").order("clock_in_at", { ascending: false }).limit(limit);
   if (error || !data) return [];
   return data.map((row) => { const tech = Array.isArray(row.tech) ? row.tech[0] : row.tech; return { id: row.id, technicianId: row.technician_id, technicianName: tech?.full_name ?? "Unknown technician", jobId: row.job_id, location: row.location, clockInAt: row.clock_in_at, clockOutAt: row.clock_out_at, laborHours: Number(row.labor_hours ?? 0), driveHours: Number(row.drive_hours ?? 0) }; });
 }
 
 export async function getManagerStaffCalls(limit = 200): Promise<StaffCallRow[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_jobs").select("id,assigned_tech_id,status,location,scope,work_performed,labor_hours,drive_hours,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles(full_name)").order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("chillbros_jobs").select("id,assigned_tech_id,status,location,scope,work_performed,labor_hours,drive_hours,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)").order("created_at", { ascending: false }).limit(limit);
   if (error || !data) return [];
   return data.filter((row) => Boolean(row.assigned_tech_id)).map((row) => {
     const customer = Array.isArray(row.customer) ? row.customer[0] : row.customer;

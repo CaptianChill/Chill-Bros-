@@ -1,44 +1,64 @@
 import "server-only";
+
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { JOB_ACTIVE_STATUSES } from "./types";
+import { JOB_ACTIVE_STATUSES, type JobStatus } from "./types";
 import type { DispatchJob } from "./operations-queries";
 
-const FIELD_VISIBLE = ["scheduled","in_progress","dispatched","en_route","arrived","diagnosing","awaiting_approval","approved","parts_required","return_visit_needed","repairing","work_complete","ready_to_invoice"] as const;
-const normalize = (value:string) => String(value||"").trim().toLowerCase().replace(/\s+/g," ");
+const FIELD_VISIBLE = ["scheduled", "in_progress", "dispatched", "en_route", "arrived", "diagnosing", "awaiting_approval", "approved", "parts_required", "return_visit_needed", "repairing", "work_complete", "ready_to_invoice"] as const;
 
-export async function getAssignedFieldJobsForTechnician(profile: { id:string; email:string; fullName?:string }, limit=250): Promise<DispatchJob[]> {
-  const supabase=createServiceRoleClient();
-  const email=normalize(profile.email);
-  const fullName=normalize(profile.fullName||"");
-  const candidateIds=new Set<string>([profile.id]);
+type NamedRelation = { name: string | null };
+type TechnicianRelation = { full_name: string | null };
+type TechnicianJobRecord = {
+  id: string;
+  customer_id: string;
+  assigned_tech_id: string | null;
+  status: JobStatus;
+  location: string | null;
+  scope: string | null;
+  work_performed: string | null;
+  scheduled_window: string | null;
+  created_at: string;
+  customer: NamedRelation | NamedRelation[] | null;
+  tech: TechnicianRelation | TechnicianRelation[] | null;
+};
 
-  const {data:profiles}=await supabase
-    .from("chillbros_profiles")
-    .select("id,email,full_name,role,status")
-    .in("role",["technician","manager"]);
+function first<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
 
-  for(const row of profiles??[]){
-    const rowEmail=normalize(row.email??"");
-    const rowName=normalize(row.full_name??"");
-    if((email && rowEmail===email) || (fullName && rowName===fullName)) candidateIds.add(row.id);
-  }
-
-  const ids=Array.from(candidateIds);
-  const {data,error}=await supabase.from("chillbros_jobs")
-    .select("id,customer_id,assigned_tech_id,status,location,scope,work_performed,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles(full_name)")
-    .in("assigned_tech_id",ids)
-    .in("status",FIELD_VISIBLE as unknown as string[])
-    .is("archived_at",null)
-    .order("created_at",{ascending:false})
+export async function getAssignedFieldJobsForTechnician(profile: { id: string }, limit = 250): Promise<DispatchJob[]> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("chillbros_jobs")
+    .select("id,customer_id,assigned_tech_id,status,location,scope,work_performed,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)")
+    .eq("assigned_tech_id", profile.id)
+    .in("status", FIELD_VISIBLE as unknown as string[])
+    .is("archived_at", null)
+    .order("created_at", { ascending: false })
     .limit(limit);
-  if(error||!data){
-    console.error(`[technician-queue] lookup failed profile=${profile.id} aliases=${ids.length}`, error);
+
+  if (error || !data) {
+    console.error(`[technician-queue] lookup failed profile=${profile.id}`, error);
     return [];
   }
-  console.info(`[technician-queue] profile=${profile.id} aliases=${ids.length} jobs=${data.length}`);
-  return data.filter((row:any)=>JOB_ACTIVE_STATUSES.includes(row.status)).map((row:any)=>{
-    const customer=Array.isArray(row.customer)?row.customer[0]:row.customer;
-    const tech=Array.isArray(row.tech)?row.tech[0]:row.tech;
-    return {id:row.id,customerId:row.customer_id,customerName:customer?.name??"Unknown customer",assignedTechId:row.assigned_tech_id,assignedTechName:tech?.full_name??null,status:row.status,location:row.location,scope:row.scope,workPerformed:row.work_performed,scheduledWindow:row.scheduled_window,createdAt:row.created_at,workflowStage:row.status};
-  });
+
+  const jobs = data as unknown as TechnicianJobRecord[];
+  console.info(`[technician-queue] profile=${profile.id} jobs=${jobs.length}`);
+
+  return jobs
+    .filter((record) => JOB_ACTIVE_STATUSES.includes(record.status))
+    .map((record) => ({
+      id: record.id,
+      customerId: record.customer_id,
+      customerName: first(record.customer)?.name ?? "Unknown customer",
+      assignedTechId: record.assigned_tech_id,
+      assignedTechName: first(record.tech)?.full_name ?? null,
+      status: record.status,
+      location: record.location,
+      scope: record.scope,
+      workPerformed: record.work_performed,
+      scheduledWindow: record.scheduled_window,
+      createdAt: record.created_at,
+      workflowStage: record.status,
+    }));
 }

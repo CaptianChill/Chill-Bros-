@@ -47,7 +47,7 @@ export default async function TechnicianPage({ searchParams }: Props) {
 
   const allJobs = isManager
     ? await getDispatchJobs(250)
-    : await getAssignedFieldJobsForTechnician({ id: profile.id, email: profile.email, fullName: profile.fullName }, 250);
+    : await getAssignedFieldJobsForTechnician({ id: profile.id }, 250);
   const fieldJobs = allJobs.filter((job) =>
     JOB_ACTIVE_STATUSES.includes(job.status) && FIELD_VISIBLE.has(job.status),
   );

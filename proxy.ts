@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth/server";
 const PUBLIC_PATH_PREFIXES = [
   "/sign-in",
   "/forgot-password",
-  "/auth/callback",
   "/portal",
   "/agreement",
   "/_next",

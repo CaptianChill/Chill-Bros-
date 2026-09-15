@@ -5,6 +5,8 @@ import { LogoBadge } from "@/components/logo-badge";
 import { auth } from "@/lib/auth/server";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
+export const dynamic = "force-dynamic";
+
 type UpdatePasswordPageProps = {
   searchParams: Promise<{ error?: string }>;
 };

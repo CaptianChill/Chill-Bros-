@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:contracts": "node scripts/check-identity-contracts.mjs",
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run test:contracts && next build",
     "start": "next start",
     "lint": "eslint"
   },

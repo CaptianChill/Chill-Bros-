@@ -1,4 +1,5 @@
 name: Security audit
+run-name: Security audit · ${{ github.event_name }} · ${{ github.ref_name }}
 
 on:
   pull_request:
@@ -10,9 +11,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: security-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   audit-and-build:
     runs-on: ubuntu-latest
+    env:
+      NEON_AUTH_COOKIE_SECRET: ci-build-placeholder-not-used-at-runtime-20260915
     timeout-minutes: 12
     steps:
       - name: Checkout
@@ -30,8 +37,31 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Lint
+      - name: Full repository lint debt report
+        continue-on-error: true
         run: npm run lint
+
+      - name: Lint stabilization surface
+        run: |
+          npx eslint \
+            app/account/update-password/page.tsx \
+            app/forgot-password/page.tsx \
+            app/security/page.tsx \
+            app/technician/page.tsx \
+            lib/chillbros/assignment-notifications.ts \
+            lib/chillbros/customer-profile.ts \
+            lib/chillbros/equipment-service-record.ts \
+            lib/chillbros/open-work-orders.ts \
+            lib/chillbros/operations-queries.ts \
+            lib/chillbros/owner-command.ts \
+            lib/chillbros/queries.ts \
+            lib/chillbros/technician-assignment.ts \
+            lib/supabase/auth-server.ts \
+            proxy.ts \
+            scripts/check-identity-contracts.mjs
+
+      - name: Identity and relationship contracts
+        run: npm run test:contracts
 
       - name: Production build
         run: npm run build

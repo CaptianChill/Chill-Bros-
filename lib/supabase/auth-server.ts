@@ -1,10 +1,7 @@
 import "server-only";
 
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
 
 import { auth as neonAuth } from "@/lib/auth/server";
-import { getSupabaseConfig } from "./config";
 import { createServiceRoleClient } from "./service-client";
 
 export type StaffProfile = {
@@ -17,33 +14,6 @@ export type StaffProfile = {
 
 const OWNER_EMAIL = "chillprostx@gmail.com";
 const OWNER_PROFILE_ID = "8c81f12a-ad86-4ceb-bca1-3924be1cbfec";
-
-/**
- * Legacy Supabase auth client retained only for remaining migration-era
- * admin/recovery actions. Interactive sign-in uses Neon Auth.
- */
-export async function createAuthServerClient() {
-  const config = getSupabaseConfig();
-  if (!config) throw new Error("Supabase server credentials are not configured.");
-  const cookieStore = await cookies();
-
-  return createServerClient(config.url, config.anonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        try {
-          for (const { name, value, options } of cookiesToSet) {
-            cookieStore.set(name, value, options);
-          }
-        } catch {
-          // Server Actions / Neon middleware own interactive session mutation.
-        }
-      },
-    },
-  });
-}
 
 /**
  * Returns an active Chill Bros staff profile using the Neon Auth session.
