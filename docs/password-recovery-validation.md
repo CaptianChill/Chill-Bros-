@@ -1,0 +1,1 @@
+Validation target: Neon Auth shared email provider sends the reset email, the reset token returns to `/reset-password`, and the user selects a new password without account creation or plaintext password handling.
