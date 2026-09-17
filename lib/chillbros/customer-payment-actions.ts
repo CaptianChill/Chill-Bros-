@@ -7,7 +7,7 @@ import type { PaymentMethod } from "./types";
 
 type Result = { ok: true } | { ok: false; error: string };
 
-const CUSTOMER_PAYMENT_METHODS = new Set<PaymentMethod>(["cash", "check", "ach", "cash_app", "venmo", "zelle"]);
+const CUSTOMER_PAYMENT_METHODS = new Set<PaymentMethod>(["cash", "check"]);
 
 export async function setCustomerPaymentMethodAction(token: string, method: PaymentMethod): Promise<Result> {
   if (!CUSTOMER_PAYMENT_METHODS.has(method)) return { ok: false, error: "Choose an available payment method." };
@@ -24,16 +24,23 @@ export async function setCustomerPaymentMethodAction(token: string, method: Paym
   if (invoice.status !== "approved") return { ok: false, error: "Please sign and approve the estimate before choosing payment." };
   if (!invoice.issued_at) return { ok: false, error: "Payment is not due until Chill Bros completes the work and issues the final invoice." };
 
-  const { error } = await supabase
+  if (invoice.payment_status === "paid") return { ok: false, error: "Payment is already recorded." };
+
+  const { data: updated, error } = await supabase
     .from("chillbros_invoices")
     .update({
       payment_method: method,
-      payment_status: invoice.payment_status === "paid" ? "paid" : "pending_manual_review",
+      payment_status: "pending_manual_review",
       updated_at: new Date().toISOString(),
     })
     .eq("id", invoice.id)
-    .not("issued_at", "is", null);
-  if (error) return { ok: false, error: error.message };
+    .not("issued_at", "is", null)
+    .eq("status", "approved")
+    .is("revoked_at", null)
+    .neq("payment_status", "paid")
+    .select("id")
+    .maybeSingle();
+  if (error || !updated) return { ok: false, error: error?.message ?? "The invoice changed. Refresh before choosing payment." };
 
   await supabase.from("chillbros_workflow_events").insert({
     job_id: invoice.job_id,
