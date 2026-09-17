@@ -8,7 +8,6 @@ import { MediaAccordion } from "@/components/media-accordion";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { getInvoiceV2ByToken, invoiceTotals } from "@/lib/chillbros/invoice-v2";
-import { getPaymentSettings, stripeConfigured } from "@/lib/chillbros/payment-settings";
 import { getJob } from "@/lib/chillbros/queries";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
 
@@ -19,11 +18,10 @@ const date = (value: string | null) => value ? new Date(value).toLocaleDateStrin
 
 export default async function PortalPage({ params, searchParams }: PortalPageProps) {
   const [{ token }, query] = await Promise.all([params, searchParams]);
-  const [invoice, paymentSettings] = await Promise.all([getInvoiceV2ByToken(token), getPaymentSettings()]);
+  const invoice = await getInvoiceV2ByToken(token);
   if (!invoice) notFound();
   const job = invoice.jobId ? await getJob(invoice.jobId) : null;
   const totals = invoiceTotals(invoice);
-  const stripeOnline = paymentSettings.stripeEnabled && stripeConfigured();
   const invoiceIssued = Boolean(invoice.issuedAt);
   const paid = invoice.paymentStatus === "paid";
   const documentLabel = invoiceIssued || paid ? "Invoice" : "Estimate";
@@ -60,9 +58,9 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
           </div>
         </SectionCard>
 
-        <SectionCard eyebrow={invoiceIssued ? "Payment" : "Approval"} title={invoiceIssued ? "Pay securely" : invoice.status === "approved" ? "Approved · next step is the work" : "Review and approve"} description={invoiceIssued ? "One clear secure payment action, with manual methods available only as secondary options." : "Approval authorizes the work. Final payment does not open until Chill Bros completes the job and issues the invoice."}>
+        <SectionCard eyebrow={invoiceIssued ? "Payment" : "Approval"} title={invoiceIssued ? "Pay securely" : invoice.status === "approved" ? "Approved · next step is the work" : "Review and approve"} description={invoiceIssued ? "Pay through Square using the invoice total shown here." : "Approval authorizes the work. Final payment does not open until Chill Bros completes the job and issues the invoice."}>
           <div className="mb-4 grid gap-2 sm:grid-cols-2"><div className="rounded-xl border border-[#2d7dff]/15 bg-black/40 p-3"><p className="text-xs text-zinc-500">{invoiceIssued ? "Invoice total" : "Estimate total"}</p><p className="mt-1 text-xl font-semibold text-[#bafcfc]">{money(totals.total)}</p></div><div className="rounded-xl border border-[#2d7dff]/15 bg-black/40 p-3"><p className="text-xs text-zinc-500">Status</p><p className="mt-1 text-sm font-semibold text-white">{statusLabel}</p></div></div>
-          <ClientPortalActions invoice={invoice} paymentSettings={paymentSettings} stripeOnline={stripeOnline} amountDue={totals.total} />
+          <ClientPortalActions invoice={invoice} amountDue={totals.total} />
         </SectionCard>
       </div>
     </div>
