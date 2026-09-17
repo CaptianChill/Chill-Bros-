@@ -19,6 +19,7 @@ async function requireManager() {
 }
 
 const OWNER_EMAIL = "chillprostx@gmail.com";
+const OWNER_PROFILE_ID = "8c81f12a-ad86-4ceb-bca1-3924be1cbfec";
 
 async function requireCredentialAdministrator() {
   const guard = await requireManager();
@@ -56,7 +57,7 @@ async function findNeonUserByEmail(email: string): Promise<ActionResult<NeonAdmi
   }
 }
 
-export async function addStaffAccountAction(input: { fullName: string; email: string; role: StaffRole }): Promise<ActionResult<{ tempPassword: string }>> {
+export async function addStaffAccountAction(input: { fullName: string; email: string; role: StaffRole; password?: string }): Promise<ActionResult<{ tempPassword: string }>> {
   const guard = await requireCredentialAdministrator();
   if (!guard.ok) return guard;
 
@@ -64,6 +65,7 @@ export async function addStaffAccountAction(input: { fullName: string; email: st
   const email = String(input.email ?? "").trim().toLowerCase();
   if (!fullName || fullName.length > 200) return { ok: false, error: "Enter a valid employee name." };
   if (!email || email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "Enter a valid email address." };
+  if (email === OWNER_EMAIL) return { ok: false, error: "Your owner account is protected. Use Account Security to change its password." };
   if (!STAFF_ROLES.has(input.role)) return { ok: false, error: "Choose a valid staff role." };
 
   const service = createServiceRoleClient();
@@ -75,6 +77,7 @@ export async function addStaffAccountAction(input: { fullName: string; email: st
   if (profileLookupError) return { ok: false, error: "Could not check existing employee accounts." };
   if ((existingProfiles?.length ?? 0) > 1) return { ok: false, error: "Multiple employee profiles use this email. Correct the duplicate records before creating a login." };
   const existingProfile = existingProfiles?.[0] ?? null;
+  if (existingProfile?.id === OWNER_PROFILE_ID || existingProfile?.id === guard.profile.id) return { ok: false, error: "Your owner account is protected." };
   if (existingProfile?.status !== undefined && existingProfile.status !== "active") {
     return { ok: false, error: "This employee profile is inactive. Activate it before creating or resetting its login." };
   }
@@ -88,7 +91,8 @@ export async function addStaffAccountAction(input: { fullName: string; email: st
     return { ok: false, error: "This employee profile is linked to a different Neon login. Correct the account link before continuing." };
   }
 
-  const tempPassword = generateTempPassword();
+  const tempPassword = input.password || generateTempPassword();
+  if (tempPassword.length < 12 || tempPassword.length > 128) return { ok: false, error: "Use a password between 12 and 128 characters." };
   let authUser = lookup.data;
   let createdHere = false;
 
@@ -143,29 +147,34 @@ export async function addStaffAccountAction(input: { fullName: string; email: st
     }
   }
 
+  revalidatePath("/owner");
   revalidatePath("/manager");
   revalidatePath("/create");
   return { ok: true, data: { tempPassword } };
 }
 
-export async function resetStaffPasswordAction(staffId: string): Promise<ActionResult<{ tempPassword: string }>> {
+export async function resetStaffPasswordAction(staffId: string, password?: string): Promise<ActionResult<{ tempPassword: string }>> {
   const guard = await requireCredentialAdministrator();
   if (!guard.ok) return guard;
   if (!staffId) return { ok: false, error: "Employee account is required." };
+  if (staffId === OWNER_PROFILE_ID || staffId === guard.profile.id) return { ok: false, error: "Your owner account is protected. Use Account Security to change its password." };
 
   const service = createServiceRoleClient();
   const { data: member, error: readError } = await service
     .from("chillbros_profiles")
-    .select("auth_user_id,email,status")
+    .select("auth_user_id,email,status,full_name,role")
     .eq("id", staffId)
     .maybeSingle();
 
-  if (readError || !member?.email) return { ok: false, error: "Employee account not found." };
+  if (readError) return { ok: false, error: `Could not load this employee: ${readError.message}` };
+  if (!member?.email) return { ok: false, error: "This employee record no longer exists. Refresh the staff list." };
+  if (member.email.trim().toLowerCase() === OWNER_EMAIL) return { ok: false, error: "Change your owner password from Account Security." };
   if (member.status !== "active") return { ok: false, error: "Activate this employee before resetting the password." };
 
   const lookup = await findNeonUserByEmail(String(member.email).trim().toLowerCase());
   if (!lookup.ok) return lookup;
-  if (!lookup.data) return { ok: false, error: "This employee has no Neon login yet. Re-create the login from Staff Accounts." };
+  if (!lookup.data && !member.auth_user_id) return addStaffAccountAction({ fullName: member.full_name, email: member.email, role: member.role, password });
+  if (!lookup.data) return { ok: false, error: "The saved login link is stale. Delete this employee account and add it again." };
 
   const linkedAuthUserId = typeof member.auth_user_id === "string" ? member.auth_user_id : "";
   if (linkedAuthUserId && linkedAuthUserId !== lookup.data.id) {
@@ -177,7 +186,8 @@ export async function resetStaffPasswordAction(staffId: string): Promise<ActionR
     if (linkError) return { ok: false, error: "The Neon login was found, but it could not be linked to this employee." };
   }
 
-  const tempPassword = generateTempPassword();
+  const tempPassword = password || generateTempPassword();
+  if (tempPassword.length < 12 || tempPassword.length > 128) return { ok: false, error: "Use a password between 12 and 128 characters." };
   try {
     const { error } = await auth.admin.setUserPassword({ userId: authUserId, newPassword: tempPassword });
     if (error) return { ok: false, error: authErrorMessage(error, "Could not reset the Neon password.") };
@@ -185,6 +195,7 @@ export async function resetStaffPasswordAction(staffId: string): Promise<ActionR
     return { ok: false, error: authErrorMessage(error, "Could not reset the Neon password.") };
   }
 
+  revalidatePath("/owner");
   revalidatePath("/manager");
   return { ok: true, data: { tempPassword } };
 }
@@ -195,14 +206,17 @@ export async function toggleStaffStatusAction(staffId: string): Promise<ActionRe
   if (!staffId) return { ok: false, error: "Employee account is required." };
 
   const supabase = createServiceRoleClient();
-  const { data: profile, error: readError } = await supabase.from("chillbros_profiles").select("status").eq("id", staffId).maybeSingle();
+  const { data: profile, error: readError } = await supabase.from("chillbros_profiles").select("status,email").eq("id", staffId).maybeSingle();
   if (readError || !profile) return { ok: false, error: "Account not found." };
 
+  if (profile.email?.trim().toLowerCase() === OWNER_EMAIL || staffId === "8c81f12a-ad86-4ceb-bca1-3924be1cbfec") return { ok: false, error: "The owner account cannot be deactivated." };
+  if (String(profile.email).endsWith("@removed.invalid")) return { ok: false, error: "This employee was deleted. Add a new account instead." };
   const nextStatus = profile.status === "active" ? "inactive" : "active";
   if (staffId === guard.profile.id && nextStatus === "inactive") return { ok: false, error: "You cannot deactivate the manager account you are currently using." };
 
   const { error } = await supabase.from("chillbros_profiles").update({ status: nextStatus }).eq("id", staffId);
   if (error) return { ok: false, error: error.message };
+  revalidatePath("/owner");
   revalidatePath("/manager");
   return { ok: true, data: undefined };
 }

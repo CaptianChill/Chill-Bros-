@@ -1,178 +1,79 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { KeyRound, UserPlus } from "lucide-react";
-
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { StaffAccount, StaffRole } from "@/lib/chillbros/types";
 import { addStaffAccountAction, resetStaffPasswordAction, toggleStaffStatusAction } from "@/lib/chillbros/mutations";
-import { StatusPill } from "@/components/status-pill";
+import { deleteStaffAccountAction, removeAllEmployeesAction } from "@/lib/chillbros/staff-delete-actions";
 
-const ROLE_LABELS: Record<StaffRole, string> = {
-  manager: "Manager / Owner",
-  technician: "Technician",
-  office: "Office / Dispatch",
-};
-
-const ROLE_DESCRIPTIONS: Record<StaffRole, string> = {
-  manager: "Full owner access, staff administration, reports, pricing, payments, and operational controls.",
-  technician: "Assigned field calls, service notes, photos, parts used, estimates, and personal timesheet.",
-  office: "Customer intake, scheduling, dispatch, CRM, equipment records, customer documents, workflow monitoring, and personal timesheet.",
-};
+const OWNER_EMAIL = "chillprostx@gmail.com";
+const OWNER_ID = "8c81f12a-ad86-4ceb-bca1-3924be1cbfec";
+const field = "min-h-12 w-full rounded-xl border border-[#2d7dff]/30 bg-black px-3 py-2 text-white";
+const button = "min-h-12 rounded-xl border border-[#2d7dff]/40 px-4 py-2 text-white disabled:opacity-50";
+const isOwner = (member: StaffAccount) => member.id === OWNER_ID || member.email.trim().toLowerCase() === OWNER_EMAIL;
 
 export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts: StaffAccount[]; canManageCredentials: boolean }) {
-  const [form, setForm] = useState<{ name: string; email: string; role: StaffRole }>({ name: "", email: "", role: "technician" });
-  const [revealedPassword, setRevealedPassword] = useState<{ email: string; password: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [password, setPassword] = useState<{ email: string; value: string } | null>(null);
+  const [resetId, setResetId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmAll, setConfirmAll] = useState(false);
+  const employees = accounts.filter(member => !isOwner(member));
 
-  const activeCount = useMemo(() => accounts.filter((member) => member.status === "active").length, [accounts]);
-
-  const addStaff = () => {
-    if (!form.name.trim() || !form.email.trim()) return;
-    setError(null);
-    setMessage(null);
+  function run(task: () => Promise<void>) {
+    setError(""); setMessage(""); setPassword(null);
     startTransition(async () => {
-      const result = await addStaffAccountAction({ fullName: form.name, email: form.email, role: form.role });
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      setRevealedPassword({ email: form.email, password: result.data.tempPassword });
-      setMessage(`Neon login created for ${form.email}. Give the employee the temporary password shown below.`);
-      setForm({ name: "", email: "", role: "technician" });
+      try { await task(); router.refresh(); }
+      catch (error) { setError(error instanceof Error ? error.message : "Could not save. Please try again."); }
     });
-  };
+  }
 
-  const resetPassword = (id: string, email: string) => {
-    setError(null);
-    setMessage(null);
-    startTransition(async () => {
-      const result = await resetStaffPasswordAction(id);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      setRevealedPassword({ email, password: result.data.tempPassword });
-      setMessage(`New temporary Neon password created for ${email}.`);
-    });
-  };
+  return <div className="space-y-5">
+    <p className="text-sm text-zinc-300">{employees.length} employees. Your owner account is protected. Deleted employees lose login access; past job, invoice, and time records are kept.</p>
+    {error ? <p role="alert" className="rounded-xl bg-rose-500/10 p-4 text-rose-200">{error}</p> : null}
+    {message ? <p role="status" className="rounded-xl bg-emerald-500/10 p-4 text-emerald-200">{message}</p> : null}
+    {password ? <div className="space-y-2 rounded-xl border border-amber-400/40 p-4"><p>Login for {password.email}</p><p className="break-all font-mono text-lg">{password.value}</p><p className="text-sm">Share this securely. The employee can change it after signing in.</p><button className={button} onClick={() => setPassword(null)}>Hide password</button></div> : null}
 
-  const toggleStatus = (id: string) => {
-    setError(null);
-    setMessage(null);
-    startTransition(async () => {
-      const result = await toggleStaffStatusAction(id);
-      if (!result.ok) setError(result.error);
-    });
-  };
+    {canManageCredentials ? <form data-no-draft className="space-y-3 rounded-2xl border border-[#2d7dff]/30 p-4" onSubmit={event => {
+      event.preventDefault(); const form = event.currentTarget; const fd = new FormData(form);
+      run(async () => {
+        const email = String(fd.get("email") ?? "");
+        const result = await addStaffAccountAction({ fullName: String(fd.get("name") ?? ""), email, role: String(fd.get("role")) as StaffRole, password: String(fd.get("password") ?? "") });
+        if (!result.ok) { setError(result.error); return; }
+        setPassword({ email, value: result.data.tempPassword }); setMessage("Employee added. Share their email and password so they can sign in."); form.reset();
+      });
+    }}>
+      <h3 className="text-lg font-semibold">Add employee</h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label>Name<input required name="name" maxLength={200} className={field} /></label>
+        <label>Email<input required name="email" type="email" autoComplete="off" className={field} /></label>
+        <label>Role<select name="role" defaultValue="technician" className={field}><option value="technician">Technician</option><option value="office">Office / Dispatch</option><option value="manager">Manager</option></select></label>
+        <label>Password (optional)<input name="password" type="password" autoComplete="new-password" minLength={12} maxLength={128} placeholder="Leave blank to generate one" className={field} /></label>
+      </div>
+      <button disabled={pending} className={button}>Add employee</button>
+    </form> : <p>Only the owner can add employees, change passwords, or delete accounts.</p>}
 
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#2d7dff]/30 bg-black/40 p-4">
-        <div>
-          <p className="text-sm text-zinc-400">Active staff accounts</p>
-          <p className="text-3xl font-semibold text-white">{activeCount}</p>
-        </div>
+    {accounts.map(member => <section key={member.id} className="space-y-3 rounded-2xl border border-[#2d7dff]/30 p-4">
+      <h3 className="font-semibold">{member.fullName} · {isOwner(member) ? "Owner (protected)" : member.role}</h3>
+      <p className="text-sm">{member.email} · {member.status}</p>
+      {isOwner(member) ? <Link className="underline" href="/account/update-password">Change my owner password</Link> : <>
         <div className="flex flex-wrap gap-2">
-          <StatusPill tone="emerald">Owner-controlled Neon passwords</StatusPill>
-          <StatusPill>Role-based permissions</StatusPill>
+          {canManageCredentials ? <button disabled={pending || member.status !== "active"} className={button} onClick={() => { setResetId(member.id); setNewPassword(""); setPassword(null); }}>Change password</button> : null}
+          <button disabled={pending} className={button} onClick={() => run(async () => { const result = await toggleStaffStatusAction(member.id); if (!result.ok) setError(result.error); else setMessage(member.status === "active" ? "Employee deactivated." : "Employee activated."); })}>{member.status === "active" ? "Deactivate" : "Activate"}</button>
+          {canManageCredentials ? <button disabled={pending} className={button} onClick={() => setConfirmDelete(member.id)}>Delete employee</button> : null}
         </div>
-      </div>
-
-      {error ? <p className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
-      {message ? <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{message}</p> : null}
-      {!canManageCredentials ? <p className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">Only the owner account can create or reset staff login credentials. You can still activate or deactivate staff below.</p> : null}
-
-      {revealedPassword ? (
-        <div className="rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-100">
-          <p className="font-medium">Temporary Neon password for {revealedPassword.email}</p>
-          <p className="mt-1 font-mono text-lg text-white">{revealedPassword.password}</p>
-          <p className="mt-2 text-xs text-zinc-300">Shown once. Share it securely; the employee can change it from Account Security after signing in.</p>
-          <button type="button" onClick={() => setRevealedPassword(null)} className="mt-3 rounded-xl border border-amber-300/30 px-3 py-1.5 text-xs text-white transition hover:bg-amber-300/10">
-            Dismiss
-          </button>
-        </div>
-      ) : null}
-
-      <div className="rounded-2xl border border-[#2d7dff]/30 bg-black/40 p-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
-          <input
-            value={form.name}
-            onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-            placeholder="Full name"
-            className="rounded-2xl border border-[#2d7dff]/30 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
-          />
-          <input
-            value={form.email}
-            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-            placeholder="Email login"
-            type="email"
-            className="rounded-2xl border border-[#2d7dff]/30 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
-          />
-          <select
-            value={form.role}
-            onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as StaffRole }))}
-            className="rounded-2xl border border-[#2d7dff]/30 bg-black px-4 py-3 text-sm text-white outline-none"
-          >
-            <option value="technician">Technician</option>
-            <option value="office">Office / Dispatch</option>
-            <option value="manager">Manager</option>
-          </select>
-          <button
-            type="button"
-            onClick={addStaff}
-            disabled={pending || !canManageCredentials}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2d7dff] bg-[#2d7dff]/10 px-4 py-3 text-sm font-medium text-[#d9fbff] transition hover:bg-[#2d7dff]/20 disabled:opacity-60"
-          >
-            <UserPlus className="h-4 w-4" />
-            Add employee
-          </button>
-        </div>
-        <p className="mt-3 text-xs leading-5 text-zinc-400"><span className="font-medium text-[#bafcfc]">{ROLE_LABELS[form.role]}:</span> {ROLE_DESCRIPTIONS[form.role]}</p>
-        <p className="mt-2 text-xs leading-5 text-zinc-500">New employees are created in Neon Auth. Copy the temporary password, share it securely, and ask the employee to change it after signing in.</p>
-      </div>
-
-      <div className="space-y-3">
-        {accounts.map((member) => (
-          <div key={member.id} className="grid gap-4 rounded-2xl border border-[#2d7dff]/30 bg-black/40 p-4 lg:grid-cols-[1.2fr_0.8fr_auto]">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-lg font-medium text-white">{member.fullName}</h3>
-                <StatusPill tone={member.status === "active" ? "emerald" : "amber"}>{member.status === "active" ? "Active" : "Inactive"}</StatusPill>
-                <StatusPill>{ROLE_LABELS[member.role]}</StatusPill>
-              </div>
-              <p className="mt-1 text-sm text-zinc-400">{member.email}</p>
-              <p className="mt-3 text-sm leading-6 text-zinc-300">{ROLE_DESCRIPTIONS[member.role]}</p>
-              <p className="mt-2 text-xs text-zinc-500">{member.assignedJobs} assigned jobs • {member.lastClockEvent ?? "No clock events yet"}</p>
-            </div>
-            <div className="space-y-2 rounded-2xl border border-[#2d7dff]/20 bg-zinc-950/80 p-4 text-sm text-zinc-300">
-              <p className="font-medium text-white">Password access</p>
-              <p className="text-zinc-400">Set a temporary Neon password when an employee is new or locked out.</p>
-              <p className="text-xs text-zinc-500">Passwords are never displayed after they are set.</p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => resetPassword(member.id, member.email)}
-                disabled={pending || member.status !== "active" || !canManageCredentials}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/30 px-4 py-3 text-sm text-[#d9fbff] transition hover:bg-[#2d7dff]/10 disabled:opacity-60"
-              >
-                <KeyRound className="h-4 w-4" />
-                Set / reset Neon password
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleStatus(member.id)}
-                disabled={pending}
-                className="rounded-2xl border border-[#2d7dff]/30 px-4 py-3 text-sm text-white transition hover:bg-[#2d7dff]/10 disabled:opacity-60"
-              >
-                {member.status === "active" ? "Deactivate" : "Activate"}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+        {resetId === member.id ? <form data-no-draft className="space-y-2" onSubmit={event => { event.preventDefault(); run(async () => { const result = await resetStaffPasswordAction(member.id, newPassword); if (!result.ok) { setError(result.error); return; } setPassword({ email: member.email, value: result.data.tempPassword }); setNewPassword(""); setResetId(null); setMessage("Password saved. Share the new login details with the employee."); }); }}>
+          <label>New password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} value={newPassword} onChange={event => setNewPassword(event.target.value)} placeholder="Leave blank to generate one" className={field} /></label>
+          <button disabled={pending} className={button}>Save new password</button><button type="button" className={button} onClick={() => { setResetId(null); setNewPassword(""); }}>Cancel</button>
+        </form> : null}
+        {confirmDelete === member.id ? <div className="space-y-2"><p>Delete {member.fullName}&apos;s login and remove them from the staff list?</p><button disabled={pending} className={button} onClick={() => run(async () => { const result = await deleteStaffAccountAction(member.id); if (!result.ok) { setError(result.error); return; } setConfirmDelete(null); setMessage("Employee deleted. Their previous work records are preserved."); })}>Confirm delete</button><button className={button} onClick={() => setConfirmDelete(null)}>Cancel</button></div> : null}
+      </>}
+    </section>)}
+    {canManageCredentials && employees.length > 0 ? <section className="space-y-3 rounded-xl border border-rose-400/30 p-4"><h3 className="font-semibold">Start with a fresh employee list</h3><p className="text-sm">Remove all {employees.length} employees and their logins. Keep your owner account and business history.</p>{confirmAll ? <><button disabled={pending} className={button} onClick={() => run(async () => { const result = await removeAllEmployeesAction(); if (!result.ok) { setError(result.error); return; } setConfirmAll(false); setMessage(`Removed ${result.removed} employees. Your owner account is unchanged. Add your new employees above.`); })}>Confirm remove all employees</button><button className={button} onClick={() => setConfirmAll(false)}>Cancel</button></> : <button disabled={pending} className={button} onClick={() => setConfirmAll(true)}>Remove all employees except owner</button>}</section> : null}
+  </div>;
 }
