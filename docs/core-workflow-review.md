@@ -42,7 +42,9 @@ Calls can move from scheduling through field work, office close-out, office invo
 
 ## Preview checklist
 
-Preview URL: pending branch publication and Vercel deployment.
+Preview URL: https://chill-bros-git-fix-core-workflow-chill-pros.vercel.app
+
+Pull request: https://github.com/CaptianChill/Chill-Bros-/pull/91 (draft). Vercel reports the deployment Ready. An unauthenticated preview request redirects to Vercel sign-in, so the authenticated workflow and email-delivery checklist remains blocked on preview access.
 
 Test delivery recipient supplied by the owner: `brae.morrison93@gmail.com`. The Settings test always uses the signed-in owner's email; use the supplied address for the test customer. Use a test customer and technician on the branch preview. These checks have **not** been run against production and must not be represented as completed from local regression tests.
 
