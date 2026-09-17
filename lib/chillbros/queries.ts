@@ -16,11 +16,12 @@ import type {
 export async function getStaffAccounts(): Promise<StaffAccount[]> {
   const supabase = createServiceRoleClient();
   const { data: profiles, error } = await supabase.from("chillbros_profiles").select("id, full_name, email, role, status, phone, last_clock_event").order("created_at", { ascending: true });
-  if (error || !profiles) return [];
+  if (error) throw new Error(`Could not load staff accounts: ${error.message}`);
+  if (!profiles) return [];
   const { data: jobCounts } = await supabase.from("chillbros_jobs").select("assigned_tech_id").in("status", ["scheduled", "in_progress"]);
   const countByTech = new Map<string, number>();
   for (const job of jobCounts ?? []) { if (!job.assigned_tech_id) continue; countByTech.set(job.assigned_tech_id, (countByTech.get(job.assigned_tech_id) ?? 0) + 1); }
-  return profiles.map((profile) => ({ id: profile.id, fullName: profile.full_name, email: profile.email, role: profile.role, status: profile.status, phone: profile.phone, lastClockEvent: profile.last_clock_event, assignedJobs: countByTech.get(profile.id) ?? 0 }));
+  return profiles.filter(profile => !String(profile.email).endsWith("@removed.invalid")).map((profile) => ({ id: profile.id, fullName: profile.full_name, email: profile.email, role: profile.role, status: profile.status, phone: profile.phone, lastClockEvent: profile.last_clock_event, assignedJobs: countByTech.get(profile.id) ?? 0 }));
 }
 
 function customerKey(name: string) { return String(name ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
