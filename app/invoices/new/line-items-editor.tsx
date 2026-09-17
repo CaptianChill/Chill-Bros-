@@ -4,7 +4,7 @@ import { useState } from "react";
 
 const input = "min-h-12 w-full rounded-xl border border-[#2d7dff]/25 bg-black px-3 py-2.5 text-white placeholder:text-zinc-600";
 const label = "text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400";
-const MAX_LINE_ITEMS = 25;
+const MAX_LINE_ITEMS = 8;
 
 type PartOption = {
   id: string;
