@@ -53,11 +53,12 @@ export async function replaceEstimateLinesForManagerAction(invoiceId: string, li
   const supabase = createServiceRoleClient();
   const { data: invoice } = await supabase
     .from("chillbros_invoices")
-    .select("id,job_id,portal_token,status,revoked_at")
+    .select("id,job_id,portal_token,status,payment_status,revoked_at")
     .eq("id", invoiceId)
     .maybeSingle();
   if (!invoice || invoice.revoked_at || invoice.status === "void") return { ok: false, error: "Estimate is not active." };
-  if (invoice.status === "approved") return { ok: false, error: "This invoice is already customer-approved. Use the manager billing controls for an audited credit/refund instead of rewriting signed pricing." };
+  if (invoice.payment_status === "paid") return { ok: false, error: "Paid invoices are locked. Use a credit/refund." };
+  if (invoice.status === "approved") return { ok: false, error: "Reopen the unpaid invoice before editing its prices. Paid invoices require credits/refunds." };
   if (!["draft", "awaiting_approval"].includes(invoice.status)) return { ok: false, error: "This estimate is not editable." };
 
   const { error } = await supabase.rpc("chillbros_manager_replace_estimate_lines", {

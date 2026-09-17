@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { JOB_ACTIVE_STATUSES } from "@/lib/chillbros/types";
 
 import { sendTechnicianAssignmentEmail, verifyTechnicianAssignment } from "@/lib/chillbros/assignment-notifications";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -11,9 +12,10 @@ function text(fd: FormData, key: string) { return String(fd.get(key) ?? "").trim
 function scheduleWindow(date: string, start: string, end: string) { return `${date} ${start}-${end} CT`; }
 function validDate(value: string) { return /^\d{4}-\d{2}-\d{2}$/.test(value); }
 function validTime(value: string) { return /^([01]\d|2[0-3]):[0-5]\d$/.test(value); }
-function go(message: string, type: "success" | "error", week?: string): never {
+function go(message: string, type: "success" | "error", week?: string, warning?: string): never {
   const query = new URLSearchParams({ [type]: message, t: Date.now().toString() });
   if (week) query.set("week", week);
+  if (warning) query.set("warning", warning);
   redirect(`/schedule?${query.toString()}`);
 }
 function parseWindow(value: string | null) {
@@ -25,7 +27,9 @@ function refreshScheduleViews() {
 }
 
 async function notifyAssignedTechnician(jobId: string, kind: "assigned" | "updated", actorId: string) {
-  const result = await sendTechnicianAssignmentEmail(jobId, kind);
+  let result;
+  try { result = await sendTechnicianAssignmentEmail(jobId, kind); }
+  catch (error) { result = { sent: false, status: error instanceof Error ? error.message : "Technician notification failed.", recipient: null }; }
   const supabase = createServiceRoleClient();
   await supabase.from("chillbros_workflow_events").insert({
     job_id: jobId,
@@ -45,10 +49,11 @@ async function technicianConflict(assignedTechId: string, date: string, start: s
     .select("id,scheduled_window")
     .eq("assigned_tech_id", assignedTechId)
     .is("archived_at", null)
+    .in("status", JOB_ACTIVE_STATUSES)
     .not("scheduled_window", "is", null);
   if (excludeJobId) query = query.neq("id", excludeJobId);
   const { data, error } = await query;
-  if (error) console.error("[schedule] conflict lookup failed", error);
+  if (error) return { date, start, end, error: `Could not check technician availability: ${error.message}` };
   for (const row of data ?? []) {
     const existing = parseWindow(row.scheduled_window);
     if (!existing || existing.date !== date) continue;
@@ -65,19 +70,11 @@ async function verifySchedule(jobId: string, expected: string) {
     .eq("id", jobId)
     .maybeSingle();
   if (error) console.error("[schedule] verify read failed", error);
-  if (data?.scheduled_window === expected && data.status === "scheduled") return true;
-
-  const { data: repaired, error: repairError } = await supabase
-    .from("chillbros_jobs")
-    .update({ scheduled_window: expected, status: "scheduled", updated_at: new Date().toISOString() })
-    .eq("id", jobId)
-    .select("scheduled_window,status")
-    .maybeSingle();
-  if (repairError) console.error("[schedule] verify repair failed", repairError);
-  return repaired?.scheduled_window === expected && repaired.status === "scheduled";
+  return !error && data?.scheduled_window === expected;
 }
 
 async function insertCalendarJob(input: {
+  submissionId?: string;
   customerId: string;
   assignedTechId?: string | null;
   location?: string;
@@ -109,6 +106,7 @@ async function insertCalendarJob(input: {
   const { data, error } = await supabase
     .from("chillbros_jobs")
     .insert({
+      ...(input.submissionId ? { id: input.submissionId } : {}),
       customer_id: customerId,
       assigned_tech_id: input.assignedTechId || null,
       status: "scheduled",
@@ -121,6 +119,10 @@ async function insertCalendarJob(input: {
     .single();
 
   if (error || !data) {
+    if (error?.code === "23505" && input.submissionId) {
+      const { data: existing } = await supabase.from("chillbros_jobs").select("id,customer_id,assigned_tech_id,scheduled_window").eq("id", input.submissionId).is("archived_at", null).maybeSingle();
+      if (existing?.customer_id === customerId && existing.assigned_tech_id === (input.assignedTechId || null) && existing.scheduled_window === input.scheduledWindow) return { ok: true as const, jobId: existing.id, alreadySaved: true };
+    }
     console.error("[schedule] direct insert failed", error);
     return { ok: false as const, error: error?.message ?? "Could not save this calendar item." };
   }
@@ -146,13 +148,25 @@ export async function createScheduledJobAction(formData: FormData): Promise<neve
   const end = text(formData, "end");
   const week = text(formData, "week");
   const assignedTechId = text(formData, "assignedTechId");
+  const submissionId = text(formData, "submissionId");
+  if (submissionId && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(submissionId)) go("Invalid submission. Refresh and try again.", "error", week);
 
   if (!validDate(date) || !validTime(start) || !validTime(end) || end <= start) go("Choose a valid date and time range.", "error", week);
-  const conflict = await technicianConflict(assignedTechId, date, start, end);
-  if (conflict) go(`That technician is already scheduled ${conflict.start}-${conflict.end} on ${date}.`, "error", date);
-
+  const supabase = createServiceRoleClient();
   const scheduledWindow = scheduleWindow(date, start, end);
+  let duplicateQuery = supabase.from("chillbros_jobs").select("id")
+    .eq("customer_id", text(formData, "customerId"))
+    .eq("scheduled_window", scheduledWindow).is("archived_at", null)
+    .gte("created_at", new Date(Date.now() - 120_000).toISOString());
+  duplicateQuery = assignedTechId ? duplicateQuery.eq("assigned_tech_id", assignedTechId) : duplicateQuery.is("assigned_tech_id", null);
+  const { data: duplicate, error: duplicateError } = await duplicateQuery.limit(1).maybeSingle();
+  if (duplicateError) go(duplicateError.message, "error", date);
+  if (duplicate) go("Already saved", "success", date);
+  const conflict = await technicianConflict(assignedTechId, date, start, end);
+  if (conflict) go("error" in conflict ? conflict.error : `That technician is already scheduled ${conflict.start}-${conflict.end} on ${date}.`, "error", date);
+
   const result = await insertCalendarJob({
+    submissionId,
     customerId: text(formData, "customerId"),
     assignedTechId: assignedTechId || null,
     location: text(formData, "location"),
@@ -160,8 +174,8 @@ export async function createScheduledJobAction(formData: FormData): Promise<neve
     scheduledWindow,
   });
   if (!result.ok) go(result.error, "error", date);
+  if (result.alreadySaved) go("Already saved", "success", date);
 
-  const supabase = createServiceRoleClient();
   await supabase.from("chillbros_customer_service_history").insert({
     customer_id: text(formData, "customerId"),
     note: `Calendar call saved • ${scheduledWindow}`,
@@ -169,9 +183,9 @@ export async function createScheduledJobAction(formData: FormData): Promise<neve
 
   if (assignedTechId) {
     const verified = await verifyTechnicianAssignment(result.jobId, assignedTechId);
-    if (!verified.ok) go(verified.error, "error", date);
+    if (!verified.ok) { refreshScheduleViews(); go("Call saved.", "success", date, verified.error); }
     const notification = await notifyAssignedTechnician(result.jobId, "assigned", profile.id);
-    if (!notification.sent) go(`Call assigned, but technician email failed: ${notification.status}.`, "error", date);
+    if (!notification.sent) { refreshScheduleViews(); go("Call saved.", "success", date, `Call saved. Technician email not sent: ${notification.status}`); }
   }
   refreshScheduleViews();
   go("Saved to calendar and technician assignment verified.", "success", date);
@@ -218,7 +232,7 @@ export async function rescheduleJobAction(formData: FormData): Promise<never> {
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
 
   const jobId = text(formData, "jobId");
-  const assignedTechId = text(formData, "assignedTechId");
+  let assignedTechId = text(formData, "assignedTechId");
   const date = text(formData, "date");
   const start = text(formData, "start");
   const end = text(formData, "end");
@@ -227,33 +241,41 @@ export async function rescheduleJobAction(formData: FormData): Promise<never> {
   if (!jobId || !validDate(date) || !validTime(start) || !validTime(end) || end <= start) go("Choose a valid job, date, and time range.", "error", week);
 
   const supabase = createServiceRoleClient();
+  const { data: current, error: readError } = await supabase.from("chillbros_jobs")
+    .select("status,assigned_tech_id,updated_at").eq("id", jobId).is("archived_at", null).maybeSingle();
+  if (readError || !current) go(readError?.message ?? "Call not found.", "error", date);
+  if (["completed", "paid", "cancelled"].includes(current.status)) go(`Cannot reschedule a call with current status "${current.status}".`, "error", date);
+  assignedTechId = assignedTechId || current.assigned_tech_id || "";
+  const status = ["new", "needs_scheduling"].includes(current.status) ? "scheduled" : current.status;
   if (assignedTechId) {
     const { data: tech } = await supabase.from("chillbros_profiles").select("id").eq("id", assignedTechId).in("role", ["technician", "manager"]).eq("status", "active").maybeSingle();
     if (!tech) go("Choose an active technician.", "error", date);
     const conflict = await technicianConflict(assignedTechId, date, start, end, jobId);
-    if (conflict) go(`That technician is already scheduled ${conflict.start}-${conflict.end} on ${date}.`, "error", date);
+    if (conflict) go("error" in conflict ? conflict.error : `That technician is already scheduled ${conflict.start}-${conflict.end} on ${date}.`, "error", date);
   }
 
   const scheduledWindow = scheduleWindow(date, start, end);
   const { data, error } = await supabase
     .from("chillbros_jobs")
-    .update({ assigned_tech_id: assignedTechId || null, scheduled_window: scheduledWindow, status: "scheduled", updated_at: new Date().toISOString() })
+    .update({ assigned_tech_id: assignedTechId || null, scheduled_window: scheduledWindow, status, updated_at: new Date().toISOString() })
     .eq("id", jobId)
+    .eq("status", current.status)
+    .eq("updated_at", current.updated_at)
     .is("archived_at", null)
     .select("id,scheduled_window,status,assigned_tech_id")
     .maybeSingle();
 
   if (error || !data) go(error?.message ?? "Schedule item not found.", "error", date);
-  if ((data.scheduled_window !== scheduledWindow || data.status !== "scheduled") && !(await verifySchedule(jobId, scheduledWindow))) {
+  if (data.scheduled_window !== scheduledWindow && !(await verifySchedule(jobId, scheduledWindow))) {
     go("Schedule update did not persist. Please retry.", "error", date);
   }
   if (data.assigned_tech_id !== (assignedTechId || null)) go("Schedule saved, but technician assignment did not persist.", "error", date);
 
   if (assignedTechId) {
     const verified = await verifyTechnicianAssignment(jobId, assignedTechId);
-    if (!verified.ok) go(verified.error, "error", date);
+    if (!verified.ok) { refreshScheduleViews(); go("Call saved.", "success", date, verified.error); }
     const notification = await notifyAssignedTechnician(jobId, "updated", profile.id);
-    if (!notification.sent) go(`Schedule updated, but technician email failed: ${notification.status}.`, "error", date);
+    if (!notification.sent) { refreshScheduleViews(); go("Call saved.", "success", date, `Call saved. Technician email not sent: ${notification.status}`); }
   }
   refreshScheduleViews();
   go("Schedule and technician assignment verified.", "success", date);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { CheckCircle2, ChevronDown, Navigation, PackagePlus, Save, Trash2, Wrench } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -8,39 +8,22 @@ import { updateTechnicianJobV2Action } from "@/lib/chillbros/job-workflow-v2";
 import { addJobPartAtomicAction, removeJobPartAtomicAction, setJobPartQuantityAtomicAction } from "@/lib/chillbros/job-parts";
 import { JOB_STATUS_LABELS, type Job, type JobStatus, type PartsCatalogItem } from "@/lib/chillbros/types";
 
-const FIELD_STATUSES: JobStatus[] = [
-  "scheduled",
-  "in_progress",
-  "dispatched",
-  "en_route",
-  "arrived",
-  "diagnosing",
-  "awaiting_approval",
-  "approved",
-  "parts_required",
-  "return_visit_needed",
-  "repairing",
-  "work_complete",
-  "ready_to_invoice",
-];
+const FIELD_STATUSES: JobStatus[] = ["en_route", "arrived", "work_complete"];
 
 const NEXT_ACTION: Partial<Record<JobStatus, { status: JobStatus; label: string; icon: "nav" | "wrench" | "done" }>> = {
-  scheduled: { status: "en_route", label: "Start driving", icon: "nav" },
-  in_progress: { status: "diagnosing", label: "Start diagnosis", icon: "wrench" },
-  dispatched: { status: "en_route", label: "Start driving", icon: "nav" },
-  en_route: { status: "arrived", label: "Arrived", icon: "nav" },
-  arrived: { status: "diagnosing", label: "Start diagnosis", icon: "wrench" },
-  diagnosing: { status: "awaiting_approval", label: "Send for approval", icon: "wrench" },
-  approved: { status: "repairing", label: "Start repair", icon: "wrench" },
-  repairing: { status: "work_complete", label: "Work complete", icon: "done" },
-  work_complete: { status: "ready_to_invoice", label: "Ready to invoice", icon: "done" },
+  new: { status: "en_route", label: "On my way", icon: "nav" },
+  needs_scheduling: { status: "en_route", label: "On my way", icon: "nav" },
+  scheduled: { status: "en_route", label: "On my way", icon: "nav" },
+  dispatched: { status: "en_route", label: "On my way", icon: "nav" },
+  en_route: { status: "arrived", label: "On site", icon: "nav" },
+  ...Object.fromEntries(["in_progress", "arrived", "diagnosing", "awaiting_approval", "approved", "parts_required", "return_visit_needed", "repairing"].map(status => [status, { status: "work_complete", label: "Work done", icon: "done" }])),
 };
 
 export function TechnicianJobEditor({ job, partsCatalog }: { job: Job; partsCatalog: PartsCatalogItem[] }) {
   const router = useRouter();
   const mounted = useRef(false);
   const [pending, startTransition] = useTransition();
-  const initialStatus = FIELD_STATUSES.includes(job.status) ? job.status : "scheduled";
+  const initialStatus = job.status;
   const [status, setStatus] = useState<JobStatus>(initialStatus);
   const [workPerformed, setWorkPerformed] = useState(job.workPerformed ?? "");
   const [laborHours, setLaborHours] = useState(String(job.laborHours ?? 0));
@@ -58,7 +41,8 @@ export function TechnicianJobEditor({ job, partsCatalog }: { job: Job; partsCata
     setError(null);
     setMessage(null);
     startTransition(async () => {
-      const result = await fn();
+      let result;
+      try { result = await fn(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Save failed."); return; }
       if (!result.ok) {
         setError(result.error ?? "Action failed.");
         return;
@@ -68,31 +52,37 @@ export function TechnicianJobEditor({ job, partsCatalog }: { job: Job; partsCata
     });
   };
 
-  const saveTicket = (showMessage = false, nextStatus: JobStatus = status) => run(
-    () => updateTechnicianJobV2Action({ jobId: job.id, status: nextStatus, workPerformed, laborHours: Number(laborHours || 0), driveHours: Number(driveHours || 0) }),
-    showMessage ? `Job updated: ${JOB_STATUS_LABELS[nextStatus]}.` : "Autosaved.",
+  const saveTicket = (showMessage = false) => run(
+    () => updateTechnicianJobV2Action({ jobId: job.id, workPerformed, laborHours: Number(laborHours || 0), driveHours: Number(driveHours || 0) }),
+    showMessage ? "Service notes saved." : "Autosaved.",
     true,
   );
 
   const changeStage = (nextStatus: JobStatus) => {
-    setStatus(nextStatus);
-    saveTicket(true, nextStatus);
+    run(async () => {
+      const result = await updateTechnicianJobV2Action({ jobId: job.id, status: nextStatus, workPerformed, laborHours: Number(laborHours || 0), driveHours: Number(driveHours || 0) });
+      if (result.ok) setStatus(nextStatus);
+      return result;
+    }, "Job updated: " + JOB_STATUS_LABELS[nextStatus] + ".");
   };
+
+  const autosaveTicket = useEffectEvent(() => saveTicket(false));
+  const saveFromHeader = useEffectEvent(() => saveTicket(true));
 
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
       return;
     }
-    const timer = window.setTimeout(() => saveTicket(false), 900);
+    const timer = window.setTimeout(() => autosaveTicket(), 900);
     return () => window.clearTimeout(timer);
   }, [workPerformed, laborHours, driveHours]);
 
   useEffect(() => {
-    const listener = () => saveTicket(true);
+    const listener = () => saveFromHeader();
     window.addEventListener("chillbros-save", listener);
     return () => window.removeEventListener("chillbros-save", listener);
-  }, [status, workPerformed, laborHours, driveHours]);
+  }, []);
 
   const ActionIcon = nextAction?.icon === "nav" ? Navigation : nextAction?.icon === "done" ? CheckCircle2 : Wrench;
 
@@ -110,12 +100,7 @@ export function TechnicianJobEditor({ job, partsCatalog }: { job: Job; partsCata
       </div>
       <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-zinc-900"><div className="h-full rounded-full bg-[#2d7dff] transition-all" style={{ width: `${Math.max(8, ((stageIndex + 1) / FIELD_STATUSES.length) * 100)}%` }} /></div>
       {nextAction ? <button onClick={() => changeStage(nextAction.status)} disabled={pending} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#2d7dff] bg-[#2d7dff]/15 px-4 py-3 text-sm font-semibold text-[#e9ffff] disabled:opacity-50"><ActionIcon className="h-4 w-4" />{nextAction.label}</button> : null}
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <button onClick={() => changeStage("parts_required")} disabled={pending} className="rounded-xl border border-amber-400/25 px-3 py-2 text-xs text-amber-100 disabled:opacity-40">Parts required</button>
-        <button onClick={() => changeStage("return_visit_needed")} disabled={pending} className="rounded-xl border border-violet-400/25 px-3 py-2 text-xs text-violet-100 disabled:opacity-40">Return visit</button>
-        <button onClick={() => changeStage("ready_to_invoice")} disabled={pending} className="rounded-xl border border-emerald-400/25 px-3 py-2 text-xs text-emerald-100 disabled:opacity-40">Ready to invoice</button>
-      </div>
-      <details className="mt-3"><summary className="cursor-pointer text-xs text-zinc-500">Manual stage override</summary><select value={status} onChange={(e) => changeStage(e.target.value as JobStatus)} className="mt-2 w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-sm text-white">{FIELD_STATUSES.map((s) => <option key={s} value={s}>{JOB_STATUS_LABELS[s]}</option>)}</select></details>
+      <details className="mt-3"><summary className="cursor-pointer text-xs text-zinc-500">Manual stage override</summary><select value={status} onChange={(e) => changeStage(e.target.value as JobStatus)} className="mt-2 w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-sm text-white">{!FIELD_STATUSES.includes(status) ? <option value={status} disabled>{JOB_STATUS_LABELS[status]}</option> : null}{FIELD_STATUSES.map((s) => <option key={s} value={s}>{JOB_STATUS_LABELS[s]}</option>)}</select></details>
     </div>
 
     <div className="grid gap-3 sm:grid-cols-2">

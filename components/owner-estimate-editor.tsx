@@ -53,6 +53,7 @@ export function OwnerEstimateEditor({ invoice }: { invoice: DetailedInvoice }) {
     setError(null);
     setMessage(null);
     startTransition(async () => {
+      try {
       const result = await replaceEstimateLinesForManagerAction(invoice.id, lines.map((line) => ({
         label: line.label.trim(),
         description: line.description.trim(),
@@ -66,13 +67,14 @@ export function OwnerEstimateEditor({ invoice }: { invoice: DetailedInvoice }) {
       }
       setMessage("Owner revision saved. Customer view and invoice totals updated.");
       router.refresh();
+      } catch (cause) { setError(cause instanceof Error ? cause.message : "Price changes could not be saved."); }
     });
   };
 
   return <details className="rounded-2xl border border-[#8ffafa]/35 bg-[#08131a]/70 p-4" open>
     <summary className="cursor-pointer list-none">
       <div className="flex items-start justify-between gap-3">
-        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Owner override</p><p className="mt-1 font-medium text-white">Edit quote line items</p><p className="mt-1 text-xs text-zinc-400">Available until the customer approves the quote.</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Owner override</p><p className="mt-1 font-medium text-white">Edit prices</p><p className="mt-1 text-xs text-zinc-400">Save corrections, then Finalize & email from the invoice controls.</p></div>
         <p className="text-lg font-semibold text-[#bafcfc]">{money(subtotal)}</p>
       </div>
     </summary>

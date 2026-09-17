@@ -13,7 +13,7 @@ type ApprovalNotification = {
 };
 
 function safeHeader(value: string) { return String(value).replace(/[\r\n]+/g, " ").trim(); }
-function companyEmail() { return String(process.env.COMPANY_MAIN_EMAIL || "chillbrostx@gmail.com").trim(); }
+function companyEmail() { return String(process.env.COMPANY_MAIN_EMAIL || "chillprostx@gmail.com").trim(); }
 function dotStuff(value: string) { return value.replace(/^\./gm, ".."); }
 
 function readResponse(socket: tls.TLSSocket) {
@@ -43,7 +43,7 @@ async function command(socket: tls.TLSSocket, text: string, expected: string[]) 
 export async function sendCompanyEmail(to: string, subject: string, text: string, html?: string) {
   const user = String(process.env.GMAIL_SMTP_USER || "").trim();
   const password = String(process.env.GMAIL_SMTP_APP_PASSWORD || "").replace(/\s+/g, "");
-  if (!user || !password) return { sent: false as const, status: "configuration_required" as const };
+  if (!user || !password) return { sent: false as const, status: "configuration_required" as const, error: "Missing environment variable(s): " + [!user && "GMAIL_SMTP_USER", !password && "GMAIL_SMTP_APP_PASSWORD"].filter(Boolean).join(", ") };
 
   const socket = tls.connect({ host: "smtp.gmail.com", port: 465, servername: "smtp.gmail.com", timeout: 12000 });
   try {
@@ -123,16 +123,15 @@ export async function sendApprovalNotification(input: ApprovalNotification) {
   let status = "failed";
   try {
     const result = await sendCompanyEmail(to, subject, text);
-    status = result.status;
+    status = result.sent ? result.status : result.error;
   } catch (error) {
     status = `failed: ${error instanceof Error ? error.message.slice(0, 160) : "unknown SMTP error"}`;
   }
 
   try {
     const supabase = createServiceRoleClient();
-    await supabase.from("chillbros_email_log").insert({ subject, recipients: to, related_invoice_id: input.relatedInvoiceId ?? null, status });
-  } catch {
-    // Approval itself remains authoritative even if notification logging is unavailable.
-  }
+    const { error } = await supabase.from("chillbros_email_log").insert({ subject, recipients: to, related_invoice_id: input.relatedInvoiceId ?? null, status: status === "sent" ? "sent" : "failed" });
+    if (error) console.error("[approval-email] log insert failed", error);
+  } catch (error) { console.error("[approval-email] log insert failed", error); }
   return { sent: status === "sent", status, recipient: to };
 }

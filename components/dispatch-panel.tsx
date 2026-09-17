@@ -16,7 +16,8 @@ const CLOSED_STATUSES: JobStatus[] = ["paid", "completed", "cancelled"];
 function stageGroup(job: DispatchJob) {
   const stage = `${job.status} ${job.workflowStage}`.toLowerCase();
   if (!job.assignedTechId) return "unassigned";
-  if (stage.includes("paid") || stage.includes("complete") || stage.includes("cancel")) return "closed";
+  if (CLOSED_STATUSES.includes(job.status)) return "closed";
+  if (job.status === "work_complete" || job.status === "ready_to_invoice") return "billing";
   if (stage.includes("invoice") || stage.includes("billing") || stage.includes("payment")) return "billing";
   if (stage.includes("approval") || stage.includes("parts") || stage.includes("return")) return "waiting";
   if (stage.includes("progress") || stage.includes("route") || stage.includes("arriv") || stage.includes("diagnos") || stage.includes("repair")) return "field";
@@ -42,7 +43,8 @@ export function DispatchPanel({ customers, technicians, jobs }: { customers: Cus
     setError(null);
     setMessage(null);
     startTransition(async () => {
-      const result = await fn();
+      let result;
+      try { result = await fn(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Call update failed."); return; }
       if (!result.ok) return setError(result.error ?? "Action failed.");
       after?.();
       setMessage(success);
@@ -141,7 +143,7 @@ function Metric({ label, value }: { label: string; value: number }) {
 
 function JobCard({ job, technicians, pending, onSave, onClose, onCancel, onArchive, compact = false }: { job: DispatchJob; technicians: ActiveTechnician[]; pending: boolean; onSave: (job: DispatchJob, tech: string, status: JobStatus, schedule: string) => void; onClose: (id: string) => void; onCancel: (id: string) => void; onArchive: (id: string) => void; compact?: boolean }) {
   const [assignedTechId, setAssignedTechId] = useState(job.assignedTechId ?? "");
-  const [status, setStatus] = useState<JobStatus>(EDITABLE_STATUSES.includes(job.status) ? job.status : "scheduled");
+  const [status, setStatus] = useState<JobStatus>(job.status);
   const [scheduledWindow, setScheduledWindow] = useState(job.scheduledWindow ?? "");
 
   return <details className="rounded-xl border border-[#2d7dff]/15 bg-black/55 p-3">
@@ -150,8 +152,8 @@ function JobCard({ job, technicians, pending, onSave, onClose, onCancel, onArchi
     </summary>
     <div className="mt-3 space-y-2 border-t border-zinc-800 pt-3">
       <select value={assignedTechId} onChange={(e) => setAssignedTechId(e.target.value)} className="w-full rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-sm text-white"><option value="">Unassigned</option>{technicians.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}</select>
-      <div className="grid grid-cols-2 gap-2"><select value={status} onChange={(e) => setStatus(e.target.value as JobStatus)} className="rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-sm text-white">{EDITABLE_STATUSES.map((s) => <option key={s} value={s}>{JOB_STATUS_LABELS[s]}</option>)}</select><input value={scheduledWindow} onChange={(e) => setScheduledWindow(e.target.value)} placeholder="Schedule" className="rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-sm text-white" /></div>
-      <div className="grid grid-cols-2 gap-2"><button onClick={() => onSave(job, assignedTechId, status, scheduledWindow)} disabled={pending} className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#2d7dff]/30 px-2 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Save className="h-3.5 w-3.5" />Save</button><button onClick={() => onClose(job.id)} disabled={pending} className="inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-500/25 px-2 py-2 text-xs text-emerald-200 disabled:opacity-40"><CheckCircle2 className="h-3.5 w-3.5" />Complete</button><button onClick={() => onCancel(job.id)} disabled={pending} className="inline-flex items-center justify-center gap-1 rounded-lg border border-amber-500/25 px-2 py-2 text-xs text-amber-200 disabled:opacity-40"><XCircle className="h-3.5 w-3.5" />Cancel</button><button onClick={() => onArchive(job.id)} disabled={pending || status !== "scheduled"} className="inline-flex items-center justify-center gap-1 rounded-lg border border-rose-500/20 px-2 py-2 text-xs text-rose-300 disabled:opacity-30"><Archive className="h-3.5 w-3.5" />Delete</button></div>
+      <div className="grid grid-cols-2 gap-2"><select value={status} onChange={(e) => setStatus(e.target.value as JobStatus)} className="rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-sm text-white">{!EDITABLE_STATUSES.includes(status) ? <option value={status}>{JOB_STATUS_LABELS[status]}</option> : null}{EDITABLE_STATUSES.map((s) => <option key={s} value={s}>{JOB_STATUS_LABELS[s]}</option>)}</select><input value={scheduledWindow} onChange={(e) => setScheduledWindow(e.target.value)} placeholder="Schedule" className="rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-sm text-white" /></div>
+      <div className="grid grid-cols-2 gap-2"><button onClick={() => onSave(job, assignedTechId, status, scheduledWindow)} disabled={pending} className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#2d7dff]/30 px-2 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Save className="h-3.5 w-3.5" />Save</button><button onClick={() => onClose(job.id)} disabled={pending} className="inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-500/25 px-2 py-2 text-xs text-emerald-200 disabled:opacity-40"><CheckCircle2 className="h-3.5 w-3.5" />Close call</button><button onClick={() => onCancel(job.id)} disabled={pending} className="inline-flex items-center justify-center gap-1 rounded-lg border border-amber-500/25 px-2 py-2 text-xs text-amber-200 disabled:opacity-40"><XCircle className="h-3.5 w-3.5" />Cancel</button><button onClick={() => onArchive(job.id)} disabled={pending || status !== "scheduled"} className="inline-flex items-center justify-center gap-1 rounded-lg border border-rose-500/20 px-2 py-2 text-xs text-rose-300 disabled:opacity-30"><Archive className="h-3.5 w-3.5" />Delete</button></div>
     </div>
   </details>;
 }

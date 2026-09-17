@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 
 import { auth } from "@/lib/auth/server";
 import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications";
-import { sendBillingDelivery } from "@/lib/chillbros/billing-delivery";
+import { sendBillingDeliveryRecorded } from "@/lib/chillbros/billing-delivery";
 import { createReceiptForPaidInvoice } from "@/lib/chillbros/billing-receipts";
 import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient, createUserScopedDataClient } from "@/lib/supabase/service-client";
+import { approvalDueAt } from "@/lib/chillbros/billing-terms";
 import type { AdjustmentType, PaymentMethod, PaymentTerms } from "./types";
 
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
@@ -111,7 +112,7 @@ export async function createEstimateV2Action(jobId: string, lines: EstimateDraft
   const row = data as unknown as EstimateRpcRow;
   const supabase = createServiceRoleClient();
   await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: row.estimate_id, actor_id: allowed.profile.id, stage: "estimate_published", message: "Estimate published. Customer approval is the next step." });
-  try { await sendBillingDelivery(row.estimate_id, "estimate", "email"); } catch {}
+  await sendBillingDeliveryRecorded(row.estimate_id, "estimate", "email");
   refresh(["/technician", "/manager", "/dispatch", "/office", "/invoices", "/"]);
   return { ok: true, data: { estimateId: row.estimate_id, estimateNumber: row.estimate_number, portalToken: row.estimate_token } };
 }
@@ -154,14 +155,6 @@ async function activeInvoiceByToken(token: string) {
   return data ?? null;
 }
 
-function approvalDueAt(terms: PaymentTerms, currentDueAt: string | null, now: Date) {
-  if (terms === "custom" && currentDueAt) return currentDueAt;
-  const days = terms === "net_7" ? 7 : terms === "net_15" ? 15 : terms === "net_30" ? 30 : 0;
-  const due = new Date(now);
-  due.setUTCDate(due.getUTCDate() + days);
-  return due.toISOString();
-}
-
 export async function approveInvoiceV2Action(token: string, signatureName: string): Promise<Result> {
   const name = String(signatureName ?? "").trim();
   if (name.length < 2 || name.length > 200) return { ok: false, error: "Type a valid name between 2 and 200 characters to approve." };
@@ -179,8 +172,8 @@ export async function approveInvoiceV2Action(token: string, signatureName: strin
   await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.job_id, invoice_id: invoice.id, stage: "approved", message: `Customer approved estimate as ${name}. Invoice issued.` });
   const { data: customer } = await supabase.from("chillbros_customers").select("name").eq("id", invoice.customer_id).maybeSingle();
   await sendApprovalNotification({ subject: `Chill Bros approval · ${invoice.invoice_number}`, documentLabel: "Estimate / invoice", documentNumber: invoice.invoice_number, signedBy: name, customerName: customer?.name ?? null, relatedInvoiceId: invoice.id });
-  try { await archiveInvoicePdf(invoice.id, "approved"); } catch {}
-  try { await sendBillingDelivery(invoice.id, "invoice", "email"); } catch {}
+  try { await archiveInvoicePdf(invoice.id, "approved"); } catch (error) { console.error("[billing] document creation failed", error); }
+  await sendBillingDeliveryRecorded(invoice.id, "invoice", "email");
   refresh(["/manager", "/dispatch", "/technician", "/office", "/invoices", "/reports", "/", `/portal/${token}`, `/portal/${token}/document`]);
   return { ok: true, data: undefined };
 }
@@ -200,7 +193,7 @@ export async function setInvoicePaymentMethodV2Action(token: string, method: Pay
   return { ok: true, data: undefined };
 }
 
-export async function markInvoicePaidV2Action(invoiceId: string): Promise<Result> {
+export async function markInvoicePaidV2Action(invoiceId: string): Promise<Result<{ status: string; recipient: string | null }> | { ok: false; error: string; status: string }> {
   const profile = await getCurrentStaffProfile();
   if (!profile || profile.role !== "manager") return { ok: false, error: "Manager access required." };
   const supabase = createServiceRoleClient();
@@ -208,9 +201,12 @@ export async function markInvoicePaidV2Action(invoiceId: string): Promise<Result
   const { data, error } = await supabase.from("chillbros_invoices").update({ payment_status: "paid", paid_at: now, paid_recorded_by: profile.id, updated_at: now }).eq("id", invoiceId).eq("status", "approved").is("revoked_at", null).neq("payment_status", "paid").select("id,job_id,portal_token").maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "Only an approved active invoice can be marked paid." };
   await supabase.from("chillbros_workflow_events").insert({ job_id: data.job_id, invoice_id: invoiceId, actor_id: profile.id, stage: "paid", message: "Manager recorded full payment. Billing workflow complete." });
-  try { await createReceiptForPaidInvoice(invoiceId, profile.id); } catch {}
-  try { await archiveInvoicePdf(invoiceId, "paid", profile.id); } catch {}
-  try { await sendBillingDelivery(invoiceId, "receipt", "email"); } catch {}
+  const documentErrors: string[] = [];
+  try { await createReceiptForPaidInvoice(invoiceId, profile.id); } catch (error) { documentErrors.push(error instanceof Error ? error.message : "Receipt creation failed."); }
+  try { await archiveInvoicePdf(invoiceId, "paid", profile.id); } catch (error) { documentErrors.push(error instanceof Error ? error.message : "Receipt archive failed."); }
+  const delivery = await sendBillingDeliveryRecorded(invoiceId, "receipt", "email");
   refresh(["/manager", "/dispatch", "/technician", "/office", "/invoices", "/reports", "/crm", "/", `/portal/${data.portal_token}`, `/portal/${data.portal_token}/receipt`]);
-  return { ok: true, data: undefined };
+  if (delivery.status !== "sent") return { ok: false, status: delivery.status, error: `Payment recorded. Receipt email not sent: ${delivery.error ?? delivery.status}${documentErrors.length ? `. ${documentErrors.join("; ")}` : ""}` };
+  if (documentErrors.length) return { ok: false, error: `Payment recorded and receipt emailed to ${delivery.recipient}. ${documentErrors.join("; ")}` };
+  return { ok: true, data: { status: delivery.status, recipient: delivery.recipient } };
 }

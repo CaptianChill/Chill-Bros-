@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Archive, Mail, MessageSquareText, RefreshCw, ReceiptText, Send, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { ensureInvoiceArchiveAction, recordInvoiceAdjustmentAction, sendInvoiceCommunicationAction, updateInvoiceBillingSettingsAction } from "@/lib/chillbros/billing-actions";
+import { finalizeInvoiceAction, reopenInvoiceAction, saveCustomerEmailAndSendAction, ensureInvoiceArchiveAction, recordInvoiceAdjustmentAction, sendInvoiceCommunicationAction, updateInvoiceBillingSettingsAction } from "@/lib/chillbros/billing-actions";
 import { markInvoicePaidV2Action } from "@/lib/chillbros/estimate-actions-v2";
 import { revokeEstimateAction } from "@/lib/chillbros/mutations";
 import type { InvoiceAdjustmentType, InvoiceStatus, PaymentStatus, PaymentTerms } from "@/lib/chillbros/types";
@@ -21,6 +22,7 @@ type Props = {
   hasApprovedArchive: boolean;
   hasPaidArchive: boolean;
   canManage: boolean;
+  missingEmail?: boolean;
 };
 
 function inputDate(value: string | null) { return value ? new Date(value).toISOString().slice(0, 10) : ""; }
@@ -38,20 +40,35 @@ export function InvoiceAdminControls(props: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [needsEmail, setNeedsEmail] = useState(Boolean(props.missingEmail));
+  const [email, setEmail] = useState("");
   const taxLocked = props.status === "approved";
 
-  const run = async (task: () => Promise<{ ok: boolean; error?: string }>, success: string) => {
+  const run = async (task: () => Promise<{ ok: boolean; error?: string; status?: string; data?: { recipient?: string | null; status?: string } }>, success: string, keepVisible = false) => {
     if (pending) return;
     setMessage(null);
     setError(null);
     setPending(true);
     try {
       const result = await task();
-      if (!result.ok) {
-        setError(result.error ?? "Action failed.");
+      if (keepVisible) {
+        const query = new URLSearchParams({ focus: props.invoiceId });
+        if (result.ok) query.set("success", result.data?.recipient ? success + " Receipt sent to " + result.data.recipient + "." : success);
+        else query.set("error", result.error ?? "Action failed.");
+        if (result.status === "skipped") query.set("missingEmail", props.invoiceId);
+        router.replace("/invoices?" + query.toString());
+        router.refresh();
         return;
       }
-      setMessage(success);
+      if (!result.ok) {
+        setError(result.error ?? "Action failed.");
+        if (result.status === "skipped") setNeedsEmail(true);
+        router.refresh();
+        return;
+      }
+      setMessage(result.data?.recipient ? `${success} Sent to ${result.data.recipient}.` : success);
+      setNeedsEmail(false);
+      if (props.missingEmail) router.replace("/invoices?focus=" + props.invoiceId);
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Action failed. Please try again.");
@@ -62,7 +79,7 @@ export function InvoiceAdminControls(props: Props) {
 
   const send = (channel: "email" | "sms", reminder = false) => run(async () => {
     const result = await sendInvoiceCommunicationAction(props.invoiceId, channel, reminder);
-    return result.ok ? { ok: true } : { ok: false, error: result.error };
+    return result;
   }, reminder ? `Reminder sent by ${channel}.` : `${channel === "email" ? "Email" : "Text"} sent.`);
 
   return <div className="space-y-3">
@@ -70,8 +87,18 @@ export function InvoiceAdminControls(props: Props) {
     {message ? <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">{message}</p> : null}
     {error ? <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</p> : null}
 
+    {needsEmail || props.missingEmail ? <form data-no-draft onSubmit={(event) => { event.preventDefault(); void run(() => saveCustomerEmailAndSendAction(props.invoiceId, email), "Email saved."); }} className="flex flex-wrap gap-2">
+      <label className="text-xs text-zinc-400">Customer email<input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="ml-2 rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white" /></label>
+      <button type="submit" disabled={pending} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Save email & send</button>
+    </form> : null}
     <div className="flex flex-wrap gap-2">
-      <button type="button" disabled={pending} onClick={() => void send("email")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Mail className="h-3.5 w-3.5" />{pending ? "Sending…" : "Send email"}</button>
+      {["draft", "awaiting_approval"].includes(props.status) && props.paymentStatus !== "paid" ? <>
+        {props.canManage ? <Link href={"/invoices?focus=" + props.invoiceId + "&edit=1"} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]">Edit prices</Link> : null}
+        <button type="button" disabled={pending} onClick={() => void run(() => finalizeInvoiceAction(props.invoiceId), "Invoice finalized.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Finalize & email</button>
+      </> : null}
+      {props.canManage && props.status === "approved" && props.paymentStatus === "unpaid" ? <button type="button" disabled={pending} onClick={() => void run(() => reopenInvoiceAction(props.invoiceId), "Invoice reopened. Select Edit prices to correct it, then Finalize & email.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Reopen to edit</button> : null}
+      {props.canManage && props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void run(() => markInvoicePaidV2Action(props.invoiceId), "Payment recorded.", true)} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-xs text-emerald-100 disabled:opacity-40">Mark paid</button> : null}
+      <button type="button" disabled={pending} onClick={() => void send("email")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Mail className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Email receipt" : props.status === "approved" ? "Email invoice" : "Email for customer approval"}</button>
       <button type="button" disabled={pending} onClick={() => void send("sms")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><MessageSquareText className="h-3.5 w-3.5" />Send text</button>
       {props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void send("email", true)} className="inline-flex items-center gap-2 rounded-xl border border-amber-400/25 px-3 py-2 text-xs text-amber-100 disabled:opacity-40"><Send className="h-3.5 w-3.5" />Email reminder</button> : null}
       {props.status === "approved" && !props.hasApprovedArchive ? <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await ensureInvoiceArchiveAction(props.invoiceId, "approved"); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Approved PDF archive created.")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Archive className="h-3.5 w-3.5" />Build approved PDF</button> : null}
@@ -88,7 +115,7 @@ export function InvoiceAdminControls(props: Props) {
           <label className="mt-5 inline-flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" checked={taxExempt} onChange={(e) => setTaxExempt(e.target.checked)} disabled={taxLocked || pending} className="h-4 w-4" />Customer tax exempt</label>
         </div>
         <label className="block text-xs text-zinc-400">Tax-exempt note<input value={taxExemptNote} onChange={(e) => setTaxExemptNote(e.target.value)} maxLength={500} disabled={taxLocked || pending || !taxExempt} placeholder="Certificate / exemption note" className="mt-1 w-full rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white disabled:opacity-45" /></label>
-        {taxLocked ? <p className="text-xs text-amber-100">Tax is locked because the customer already approved this invoice. Use a credit/refund adjustment rather than altering the signed pricing.</p> : null}
+        {taxLocked ? <p className="text-xs text-amber-100">Finalized prices are locked. Reopen an unpaid invoice to edit; paid invoices require a credit/refund.</p> : null}
         <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await updateInvoiceBillingSettingsAction(props.invoiceId, { taxRate: Number(taxRate || 0), paymentTerms, dueDate: dueDate || null, taxExempt, taxExemptNote }); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Billing settings saved.")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/35 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><ShieldCheck className="h-3.5 w-3.5" />Save billing settings</button>
 
         <div className="border-t border-[#2d7dff]/15 pt-4">
@@ -97,7 +124,6 @@ export function InvoiceAdminControls(props: Props) {
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-[#2d7dff]/15 pt-4">
-          {props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await markInvoicePaidV2Action(props.invoiceId); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Full payment recorded and receipt created.")} className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 px-3 py-2 text-xs text-emerald-100 disabled:opacity-40"><ReceiptText className="h-3.5 w-3.5" />Mark full invoice paid</button> : null}
           {props.status !== "void" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await revokeEstimateAction(props.invoiceId); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Invoice voided with audit trail.")} className="inline-flex items-center gap-2 rounded-xl border border-rose-500/30 px-3 py-2 text-xs text-rose-200 disabled:opacity-40"><RefreshCw className="h-3.5 w-3.5" />Void invoice</button> : null}
         </div>
       </div>

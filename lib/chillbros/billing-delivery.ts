@@ -6,9 +6,37 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 export type BillingDeliveryType = "estimate" | "invoice" | "reminder" | "receipt";
 export type BillingDeliveryChannel = "email" | "sms";
 
-type DeliveryResult = { channel: BillingDeliveryChannel; recipient: string | null; status: "sent" | "failed" | "configuration_required" | "skipped"; error?: string };
+export type DeliveryResult = { channel: BillingDeliveryChannel; recipient: string | null; status: "sent" | "failed" | "configuration_required" | "skipped"; error?: string };
+
+async function logBillingEmail(invoiceId: string, subject: string, recipient: string, result: DeliveryResult) {
+  try {
+    const { error } = await createServiceRoleClient().from("chillbros_email_log").insert({
+      related_invoice_id: invoiceId, subject, recipients: recipient || "(missing recipient)", status: result.status === "sent" ? "sent" : "failed",
+    });
+    if (error) console.error("[billing-email] log insert failed", error);
+  } catch (error) { console.error("[billing-email] log insert failed", error); }
+}
+
+/** Delivery failures must not undo saved work, but remain visible in its audit trail. */
+export async function sendBillingDeliveryRecorded(invoiceId: string, type: BillingDeliveryType, channel: BillingDeliveryChannel): Promise<DeliveryResult> {
+  let result: DeliveryResult;
+  try { result = await sendBillingDelivery(invoiceId, type, channel); }
+  catch (error) { result = { channel, recipient: null, status: "failed", error: error instanceof Error ? error.message : "Delivery failed." }; }
+  try {
+    const supabase = createServiceRoleClient();
+    const { data: invoice, error: readError } = await supabase.from("chillbros_invoices").select("job_id").eq("id", invoiceId).maybeSingle();
+    if (readError) console.error("[billing-delivery] invoice lookup failed", readError);
+    const { error } = await supabase.from("chillbros_workflow_events").insert({
+      job_id: invoice?.job_id ?? null, invoice_id: invoiceId, stage: `invoice_${channel}_${result.status}`,
+      message: `${type} ${channel} ${result.status}${result.recipient ? ` to ${result.recipient}` : ""}${result.error ? `: ${result.error}` : ""}`.slice(0, 1000),
+    });
+    if (error) console.error("[billing-delivery] workflow log failed", error);
+  } catch (error) { console.error("[billing-delivery] workflow log failed", error); }
+  return result;
+}
 
 function appBaseUrl() {
+  if (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   const explicit = String(process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
   if (explicit) return explicit;
   const vercel = String(process.env.VERCEL_PROJECT_PRODUCTION_URL || "").trim().replace(/\/$/, "");
@@ -48,8 +76,9 @@ async function sendTwilioSms(to: string, body: string) {
 async function logDelivery(invoiceId: string, channel: BillingDeliveryChannel, deliveryType: BillingDeliveryType, recipient: string, result: DeliveryResult) {
   try {
     const supabase = createServiceRoleClient();
-    await supabase.from("chillbros_delivery_log").insert({ invoice_id: invoiceId, channel, delivery_type: deliveryType, recipient, status: result.status, error: result.error?.slice(0, 1000) ?? null });
-  } catch {}
+    const { error } = await supabase.from("chillbros_delivery_log").insert({ invoice_id: invoiceId, channel, delivery_type: deliveryType, recipient: recipient || "(missing recipient)", status: result.status, error: result.error?.slice(0, 1000) ?? null });
+    if (error) console.error("[billing-delivery] log insert failed", error);
+  } catch (error) { console.error("[billing-delivery] log insert failed", error); }
 }
 
 function formatDue(value: string | null) {
@@ -82,15 +111,21 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
 
   if (channel === "email") {
     const recipient = String(customer?.email || "").trim();
-    if (!recipient) return { channel, recipient: null, status: "skipped", error: "Customer has no email address." };
+    if (!recipient) {
+      const result: DeliveryResult = { channel, recipient: null, status: "skipped", error: "Customer has no email address." };
+      await logDelivery(invoiceId, channel, effectiveType, "", result);
+      await logBillingEmail(invoiceId, subject, "", result);
+      return result;
+    }
     let result: DeliveryResult;
     try {
       const sent = await sendCompanyEmail(recipient, subject, text, html);
-      result = { channel, recipient, status: sent.status };
+      result = { channel, recipient, status: sent.status, error: "error" in sent ? sent.error : undefined };
     } catch (error) {
       result = { channel, recipient, status: "failed", error: error instanceof Error ? error.message : "Email delivery failed." };
     }
     await logDelivery(invoiceId, channel, effectiveType, recipient, result);
+    await logBillingEmail(invoiceId, subject, recipient, result);
     return result;
   }
 

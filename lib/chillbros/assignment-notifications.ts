@@ -2,9 +2,9 @@ import "server-only";
 import { sendCompanyEmail } from "./approval-notifications";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
-function appBaseUrl(){const x=String(process.env.NEXT_PUBLIC_APP_URL||process.env.VERCEL_PROJECT_PRODUCTION_URL||"https://chill-bros.vercel.app").replace(/\/$/,"");return x.startsWith("http")?x:`https://${x}`;}
+function appBaseUrl(){if(process.env.VERCEL_ENV==="preview"&&process.env.VERCEL_URL)return `https://${process.env.VERCEL_URL}`;const x=String(process.env.NEXT_PUBLIC_APP_URL||process.env.VERCEL_PROJECT_PRODUCTION_URL||"https://chill-bros.vercel.app").replace(/\/$/,"");return x.startsWith("http")?x:`https://${x}`;}
 
-async function resolveCanonicalTechnicianEmail(supabase:any, assignedId:string, fullName:string, profileEmail:string){
+async function resolveCanonicalTechnicianEmail(supabase:ReturnType<typeof createServiceRoleClient>, assignedId:string, fullName:string, profileEmail:string){
   const candidates=new Map<string,{id:string;email:string;full_name:string}>();
   const {data:profiles}=await supabase.from("chillbros_profiles").select("id,email,full_name,role,status").in("role",["technician","manager"]);
   for(const row of profiles??[]){
@@ -25,7 +25,7 @@ async function resolveCanonicalTechnicianEmail(supabase:any, assignedId:string, 
       if((data.users??[]).length<1000)break;
       page+=1;
     }
-  }catch{}
+  }catch(error){console.error("[assignment-email] auth lookup failed",error);}
   if(profileEmail)return {email:profileEmail,profileId:assignedId,source:"assigned-profile" as const};
   const fallback=Array.from(candidates.values()).find(x=>x.email);
   return fallback?{email:fallback.email,profileId:fallback.id,source:"matching-profile" as const}:null;
@@ -74,9 +74,9 @@ export async function sendTechnicianAssignmentEmail(jobId:string, kind:"assigned
   const subject=kind==="assigned"?`New Chill Bros service call: ${customerName}`:`Chill Bros schedule updated: ${customerName}`;
   const text=[`Hi ${techName},`,"",kind==="assigned"?"A new service call has been assigned to you.":"One of your assigned service calls has been updated.",`Customer: ${customerName}`,`Schedule: ${job.scheduled_window||"Not set"}`,`Location: ${job.location||"Not set"}`,job.scope?`Scope: ${job.scope}`:"","",`Open call: ${appBaseUrl()}/technician?job=${encodeURIComponent(job.id)}`].filter(Boolean).join("\n");
   let status="failed";
-  try{const result=await sendCompanyEmail(email,subject,text);status=result.status;}catch(e){status=`failed: ${e instanceof Error?e.message.slice(0,160):"unknown"}`;}
+  try{const result=await sendCompanyEmail(email,subject,text);status=result.sent?result.status:result.error;}catch(e){status=`failed: ${e instanceof Error?e.message.slice(0,160):"unknown"}`;}
   console.info(`[assignment-email] job=${jobId} assigned=${job.assigned_tech_id} recipient=${email} source=${resolved.source} status=${status}`);
-  try{await supabase.from("chillbros_email_log").insert({subject,recipients:email,status});}catch{}
+  try{const {error}=await supabase.from("chillbros_email_log").insert({subject,recipients:email,status:status==="sent"?"sent":"failed"});if(error)console.error("[assignment-email] log insert failed",error);}catch(error){console.error("[assignment-email] log insert failed",error);}
   return {sent:status==="sent",status,recipient:email,profileId:resolved.profileId};
 }
 

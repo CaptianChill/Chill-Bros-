@@ -5,7 +5,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 type Result = { ok: true } | { ok: false; error: string };
-const ACTIVE_STATUSES = ["scheduled", "in_progress"] as const;
+import { JOB_ACTIVE_STATUSES as ACTIVE_STATUSES } from "@/lib/chillbros/types";
 
 async function requireOfficeOrManager() {
   const profile = await getCurrentStaffProfile();
@@ -27,7 +27,7 @@ export async function closeCallAction(jobId: string): Promise<Result> {
   const { data: job, error: readError } = await supabase.from("chillbros_jobs").select("id,customer_id,status,archived_at").eq("id", jobId).maybeSingle();
   if (readError || !job || job.archived_at) return { ok: false, error: "Call is unavailable." };
   if (job.status === "completed") return { ok: true };
-  if (!ACTIVE_STATUSES.includes(job.status as (typeof ACTIVE_STATUSES)[number])) return { ok: false, error: "Cancelled calls cannot be changed to completed. Create a new call if work resumes." };
+  if (!ACTIVE_STATUSES.includes(job.status as (typeof ACTIVE_STATUSES)[number])) return { ok: false, error: `Cannot close a call with current status "${job.status}".` };
 
   const { data: updated, error } = await supabase
     .from("chillbros_jobs")
@@ -56,7 +56,7 @@ export async function cancelCallAction(jobId: string): Promise<Result> {
   const { data: job, error: readError } = await supabase.from("chillbros_jobs").select("id,customer_id,status,archived_at").eq("id", jobId).maybeSingle();
   if (readError || !job || job.archived_at) return { ok: false, error: "Call is unavailable." };
   if (job.status === "cancelled") return { ok: true };
-  if (!ACTIVE_STATUSES.includes(job.status as (typeof ACTIVE_STATUSES)[number])) return { ok: false, error: "Completed calls are locked and cannot be cancelled." };
+  if (!ACTIVE_STATUSES.includes(job.status as (typeof ACTIVE_STATUSES)[number])) return { ok: false, error: `Cannot cancel a call with current status "${job.status}".` };
 
   const { data: updated, error } = await supabase
     .from("chillbros_jobs")
