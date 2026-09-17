@@ -75,10 +75,10 @@ export default async function NewInvoicePage({ searchParams }: Props) {
 
         {!isQuote ? <section className="rounded-3xl border border-emerald-400/25 bg-emerald-500/[0.04] p-4 sm:p-5">
           <h2 className="text-xl font-semibold text-white">3. Payment</h2>
-          <p className="mt-1 text-sm text-zinc-400">Leave unpaid or record a completed non-card payment immediately. Card checkout stays disabled until you intentionally configure it.</p>
+          <p className="mt-1 text-sm text-zinc-400">Leave unpaid for the customer to pay through Square, or record a payment you have already confirmed.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className={label}>Payment status<select name="paymentStatus" defaultValue="unpaid" className={`${input} mt-1`}><option value="unpaid">Unpaid</option><option value="paid">Paid now</option></select></label>
-            <label className={label}>Payment method<select name="paymentMethod" defaultValue="" className={`${input} mt-1`}><option value="">Choose method</option><option value="cash">Cash</option><option value="check">Check</option><option value="ach">ACH / bank transfer</option><option value="cash_app">Cash App</option><option value="venmo">Venmo</option><option value="zelle">Zelle</option></select></label>
+            <label className={label}>Payment method<select name="paymentMethod" defaultValue="" className={`${input} mt-1`}><option value="">Choose method</option><option value="card">Card (including Square)</option><option value="cash">Cash</option><option value="check">Check</option><option value="ach">ACH / bank transfer</option><option value="cash_app">Cash App</option><option value="venmo">Venmo</option><option value="zelle">Zelle</option></select></label>
             <label className={label}>Payment terms<select name="paymentTerms" defaultValue="due_on_receipt" className={`${input} mt-1`}><option value="due_on_receipt">Due on receipt</option><option value="net_7">Net 7</option><option value="net_15">Net 15</option><option value="net_30">Net 30</option><option value="custom">Custom due date</option></select></label>
             <label className={label}>Custom due date<input name="customDueDate" type="date" className={`${input} mt-1`} /></label>
             <label className={label}>Payer name<input name="payerName" placeholder="Name on payment" className={`${input} mt-1`} /></label>
