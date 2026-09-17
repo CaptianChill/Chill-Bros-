@@ -5,10 +5,17 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { auth as neonAuth } from "@/lib/auth/server";
 import { getSupabaseConfig } from "./config";
 
+type NeonTokenResult = {
+  data?: unknown;
+  error?: unknown;
+};
+
 async function currentNeonAccessToken(): Promise<string | null> {
   try {
-    const result = await neonAuth.token();
-    if (result?.error || !result?.data) return null;
+    // @neondatabase/auth's generated server proxy currently types token() too
+    // narrowly, even though the runtime endpoint returns { data: { token } }.
+    const result = (await neonAuth.token()) as unknown as NeonTokenResult;
+    if (result.error || !result.data) return null;
 
     if (typeof result.data === "string") {
       const token = result.data.trim();
