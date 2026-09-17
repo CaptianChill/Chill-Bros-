@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { getCustomers, getFeeSettings, getPartsCatalog, getPriceBookEntries } from "@/lib/chillbros/queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createDirectInvoiceAction } from "./actions";
+import { LineItemsEditor } from "./line-items-editor";
 
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ type?: string; success?: string; error?: string; token?: string; invoice?: string; customer?: string }> };
@@ -63,27 +64,8 @@ export default async function NewInvoicePage({ searchParams }: Props) {
 
         <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4 sm:p-5">
           <h2 className="text-xl font-semibold text-white">2. Items</h2>
-          <p className="mt-1 text-sm text-zinc-400">Use inventory, service fees, or the master price book from the drop-down. Manual items still work when needed.</p>
-          <div className="mt-4 space-y-3">
-            {Array.from({ length: 8 }, (_, i) => <div key={i} className="rounded-2xl border border-[#2d7dff]/15 bg-zinc-950/65 p-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Line {i + 1}</div>
-              <label className={label}>Inventory / Price Book<select name={`itemPreset${i}`} defaultValue="" className={`${input} mt-1`}>
-                <option value="">Manual line item</option>
-                {parts.length ? <optgroup label="Inventory parts">{parts.map((part) => <option key={part.id} value={`part:${part.id}`}>{part.name}{part.partNumber ? ` · ${part.partNumber}` : ""} · ${part.stock} in stock · ${part.retailPrice.toLocaleString("en-US", { style: "currency", currency: "USD" })}</option>)}</optgroup> : null}
-                {fees.length ? <optgroup label="Service fees">{fees.map((fee) => <option key={fee.id} value={`fee:${fee.id}`}>{fee.label} · {fee.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}</option>)}</optgroup> : null}
-                {priceBook.length ? <optgroup label="Master price book">{priceBook.map((entry) => <option key={entry.code} value={`pb:${entry.code}`}>{entry.category} · {entry.title} · {entry.currentValue.toLocaleString("en-US", { style: "currency", currency: "USD" })}</option>)}</optgroup> : null}
-              </select></label>
-              <div className="mt-2 grid gap-2 sm:grid-cols-[1.5fr_90px_130px]">
-                <input name={`itemLabel${i}`} placeholder="Manual item name if no preset is selected" className={input} />
-                <input name={`itemQty${i}`} type="number" min="0" step="0.01" defaultValue={i === 0 ? "1" : ""} placeholder="Qty" className={input} />
-                <input name={`itemPrice${i}`} type="number" min="0" step="0.01" placeholder="Manual price" className={input} />
-              </div>
-              <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-                <input name={`itemDescription${i}`} placeholder="Optional description / override" className={input} />
-                <label className="flex min-h-12 items-center gap-2 rounded-xl border border-[#2d7dff]/20 px-3 text-sm text-zinc-300"><input name={`itemTaxable${i}`} type="checkbox" /> Taxable</label>
-              </div>
-            </div>)}
-          </div>
+          <p className="mt-1 text-sm text-zinc-400">Start with one line item. Add more only when you need them.</p>
+          <LineItemsEditor parts={parts} fees={fees} priceBook={priceBook} />
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className={label}>Discount $<input name="discount" type="number" min="0" step="0.01" defaultValue="0" className={`${input} mt-1`} /></label>
             <label className={label}>Sales tax %<input name="taxRate" type="number" min="0" max="25" step="0.001" defaultValue="8.25" className={`${input} mt-1`} /></label>
