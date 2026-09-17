@@ -7,22 +7,7 @@ import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS, type JobStatus } from "./types"
 
 type Result = { ok: true } | { ok: false; error: string };
 
-const TECHNICIAN_STATUSES: JobStatus[] = [
-  "scheduled",
-  "in_progress",
-  "dispatched",
-  "en_route",
-  "arrived",
-  "diagnosing",
-  "awaiting_approval",
-  "approved",
-  "parts_required",
-  "return_visit_needed",
-  "repairing",
-  "work_complete",
-  "ready_to_invoice",
-  "completed",
-];
+const TECHNICIAN_STATUSES: JobStatus[] = ["en_route", "arrived", "work_complete"];
 
 const clean = (value: string | null | undefined, max: number) => {
   const s = String(value ?? "").trim();
@@ -35,14 +20,13 @@ function refreshJobs() {
 
 export async function updateTechnicianJobV2Action(input: {
   jobId: string;
-  status: JobStatus;
+  status?: JobStatus;
   workPerformed?: string;
   laborHours?: number;
   driveHours?: number;
 }): Promise<Result> {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["technician", "manager"].includes(profile.role)) return { ok: false, error: "Technician or manager access required." };
-  if (!TECHNICIAN_STATUSES.includes(input.status)) return { ok: false, error: "That status is controlled by dispatch, billing, or management." };
 
   const labor = Number(input.laborHours ?? 0);
   const drive = Number(input.driveHours ?? 0);
@@ -61,30 +45,32 @@ export async function updateTechnicianJobV2Action(input: {
   if (!job) return { ok: false, error: profile.role === "manager" ? "Job not found." : "This job is not assigned to you." };
   if (!JOB_ACTIVE_STATUSES.includes(job.status as JobStatus)) return { ok: false, error: "This job is closed and locked from field edits." };
 
+  const nextStatus = input.status ?? job.status as JobStatus;
+  if (nextStatus !== job.status && !TECHNICIAN_STATUSES.includes(nextStatus)) return { ok: false, error: "Choose On my way, On site, or Work done." };
   const work = clean(input.workPerformed, 6000);
   let updateQuery = supabase
     .from("chillbros_jobs")
-    .update({ status: input.status, work_performed: work, labor_hours: labor, drive_hours: drive, updated_at: new Date().toISOString() })
+    .update({ status: nextStatus, work_performed: work, labor_hours: labor, drive_hours: drive, updated_at: new Date().toISOString() })
     .eq("id", input.jobId)
-    .in("status", JOB_ACTIVE_STATUSES);
+    .eq("status", job.status);
   if (profile.role === "technician") updateQuery = updateQuery.eq("assigned_tech_id", profile.id);
 
   const { data: updated, error } = await updateQuery.select("id").maybeSingle();
   if (error) return { ok: false, error: error.message };
   if (!updated) return { ok: false, error: "This job changed while you were editing. Refresh before continuing." };
 
-  const statusChanged = job.status !== input.status;
+  const statusChanged = job.status !== nextStatus;
   const notesChanged = (job.work_performed ?? "") !== (work ?? "");
   if (statusChanged || notesChanged || Number(job.labor_hours) !== labor || Number(job.drive_hours) !== drive) {
     const actorLabel = profile.role === "manager" ? "Manager/owner" : "Technician";
     const message = statusChanged
-      ? `${actorLabel} changed job status to ${JOB_STATUS_LABELS[input.status]}.`
+      ? `${actorLabel} changed job status to ${JOB_STATUS_LABELS[nextStatus]}.`
       : `${actorLabel} service notes/time autosaved.`;
 
     await supabase.from("chillbros_workflow_events").insert({
       job_id: input.jobId,
       actor_id: profile.id,
-      stage: `tech_${input.status}`,
+      stage: `tech_${nextStatus}`,
       message,
     });
 

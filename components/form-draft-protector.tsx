@@ -32,7 +32,7 @@ function draftableControls(form: HTMLFormElement) {
 }
 
 function isDraftable(form: HTMLFormElement) {
-  if (form.dataset.noDraft === "true") return false;
+  if (form.hasAttribute("data-no-draft")) return false;
   if (!form.dataset.draftKey) return false;
   if (form.method.toLowerCase() === "get") return false;
   const action = form.getAttribute("action") || "";
@@ -220,7 +220,7 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
         timer = window.setTimeout(() => { void flushRemote(); }, 1200);
       };
       const submit = (event: SubmitEvent) => {
-        if (submitting) return;
+        if (submitting || form.hasAttribute("data-no-draft")) return;
         event.preventDefault();
         submitting = true;
         dirty = true;
@@ -228,7 +228,7 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
         const { draft } = snapshot();
         window.sessionStorage.setItem(pendingSubmitKey, draft.id);
         const submitter = event.submitter instanceof HTMLElement ? event.submitter : undefined;
-        void flushRemote().finally(() => {
+        void Promise.race([flushRemote(), new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), 2000))]).catch((error) => { console.error("Draft sync failed", error); }).finally(() => {
           if (submitter) form.requestSubmit(submitter);
           else form.requestSubmit();
         });

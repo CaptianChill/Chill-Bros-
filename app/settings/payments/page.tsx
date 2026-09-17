@@ -5,7 +5,7 @@ import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { getPaymentSettings, stripeConfigured } from "@/lib/chillbros/payment-settings";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { savePaymentSettingsAction } from "./actions";
+import { savePaymentSettingsAction, sendTestEmailAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ success?: string; error?: string }> };
@@ -21,6 +21,10 @@ export default async function PaymentSettingsPage({ searchParams }: Props) {
     <div className="space-y-5">
       {params.success ? <p className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{params.success}</p> : null}
       {params.error ? <p className="rounded-2xl border border-rose-500/35 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{params.error}</p> : null}
+      <form data-no-draft action={sendTestEmailAction}>
+        <button type="submit" className="min-h-12 rounded-2xl border border-[#8ffafa]/50 bg-[#2d7dff]/15 px-5 py-3 font-semibold text-[#d9fbff]">Send test email</button>
+        <p className="mt-2 text-sm text-zinc-400">Sends to your signed-in email: {profile.email}</p>
+      </form>
 
       <SectionCard eyebrow="Online payments" title="Stripe connection" description="Your bank account and routing number belong in Stripe, not in the Chill Bros database. Stripe handles cards, Apple Pay, and ACH payouts securely.">
         <div className="space-y-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-sm text-zinc-300">

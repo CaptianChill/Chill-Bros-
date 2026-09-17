@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { JOB_ACTIVE_STATUSES } from "./types";
 
 import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications";
-import { sendBillingDelivery } from "@/lib/chillbros/billing-delivery";
+import { sendBillingDeliveryRecorded } from "@/lib/chillbros/billing-delivery";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { captureCompletedJobKnowledge } from "@/lib/chillbros/knowledge-cases";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -101,124 +103,86 @@ export async function approveEstimateLifecycleAction(token: string, signatureNam
     customerName: customer?.name ?? null,
     relatedInvoiceId: invoice.id,
   });
-  try { await archiveInvoicePdf(invoice.id, "approved"); } catch {}
+  try { await archiveInvoicePdf(invoice.id, "approved"); } catch (error) { console.error("[billing] archive failed", error); }
   if (invoice.job_id) refresh(invoice.job_id, token);
   return { ok: true, data: undefined };
 }
 
-export async function startApprovedWorkAction(formData: FormData): Promise<void> {
+function jobMessage(jobId: string, type: "success" | "error", message: string, invoiceId?: string): never {
+  const query = new URLSearchParams({ [type]: message });
+  if (invoiceId) query.set("invoice", invoiceId);
+  redirect(jobId ? `/jobs/${encodeURIComponent(jobId)}?${query}` : `/dispatch?${query}`);
+}
+
+export async function startApprovedWorkAction(formData: FormData): Promise<never> {
   const jobId = text(formData, "jobId");
   const invoiceId = text(formData, "invoiceId");
-  if (!jobId || !invoiceId) return;
+  if (!jobId || !invoiceId) jobMessage(jobId, "error", "Choose a job and invoice.");
   const allowed = await requireJobActor(jobId);
-  if (!allowed.ok) return;
-
+  if (!allowed.ok) jobMessage(jobId, "error", allowed.error);
   const supabase = createServiceRoleClient();
-  const { data: invoice } = await supabase
-    .from("chillbros_invoices")
-    .select("id,job_id,status,issued_at,portal_token")
-    .eq("id", invoiceId)
-    .eq("job_id", jobId)
-    .is("revoked_at", null)
-    .maybeSingle();
-  if (!invoice || invoice.status !== "approved" || invoice.issued_at) return;
-
-  const now = new Date().toISOString();
-  await supabase.from("chillbros_jobs").update({ status: "in_progress", updated_at: now }).eq("id", jobId).neq("status", "cancelled");
-  await supabase.from("chillbros_workflow_events").insert({
-    job_id: jobId,
-    invoice_id: invoiceId,
-    actor_id: allowed.profile.id,
-    stage: "approved_work_now",
-    message: "Approved work started on the current visit.",
-  });
+  const { data: invoice, error: readError } = await supabase.from("chillbros_invoices").select("status,portal_token")
+    .eq("id", invoiceId).eq("job_id", jobId).is("revoked_at", null).maybeSingle();
+  if (readError) jobMessage(jobId, "error", readError.message);
+  if (!invoice || invoice.status !== "approved") jobMessage(jobId, "error", "Finalize the invoice first", invoiceId);
+  const { data: updated, error } = await supabase.from("chillbros_jobs").update({ status: "in_progress", updated_at: new Date().toISOString() })
+    .eq("id", jobId).in("status", JOB_ACTIVE_STATUSES).is("archived_at", null).select("id").maybeSingle();
+  if (error || !updated) jobMessage(jobId, "error", error?.message ?? "The call is closed or unavailable.");
+  const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: invoiceId, actor_id: allowed.profile.id, stage: "approved_work_now", message: "Approved work started on the current visit." });
   refresh(jobId, invoice.portal_token);
+  jobMessage(jobId, eventError ? "error" : "success", eventError ? `Work started, but history could not be saved: ${eventError.message}` : "Work started.");
 }
 
-export async function scheduleReturnVisitAction(formData: FormData): Promise<void> {
-  const jobId = text(formData, "jobId");
-  const invoiceId = text(formData, "invoiceId");
-  const date = text(formData, "date");
-  const start = text(formData, "start");
-  const end = text(formData, "end");
+export async function scheduleReturnVisitAction(formData: FormData): Promise<never> {
+  const jobId = text(formData, "jobId"), invoiceId = text(formData, "invoiceId");
+  const date = text(formData, "date"), start = text(formData, "start"), end = text(formData, "end");
   const technicianId = text(formData, "technicianId");
-  if (!jobId || !invoiceId || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(end) || start >= end) return;
-
+  if (!jobId || !invoiceId || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(end) || start >= end) jobMessage(jobId, "error", "Choose a valid job, invoice, date, and time range.");
   const allowed = await requireJobActor(jobId, true);
-  if (!allowed.ok || allowed.profile.role === "technician") return;
-
+  if (!allowed.ok) jobMessage(jobId, "error", allowed.error);
+  if (allowed.profile.role === "technician") jobMessage(jobId, "error", "Office or manager access required.");
   const supabase = createServiceRoleClient();
-  const { data: invoice } = await supabase
-    .from("chillbros_invoices")
-    .select("id,job_id,status,issued_at,portal_token")
-    .eq("id", invoiceId)
-    .eq("job_id", jobId)
-    .is("revoked_at", null)
-    .maybeSingle();
-  if (!invoice || invoice.status !== "approved" || invoice.issued_at) return;
-
+  const { data: invoice, error: readError } = await supabase.from("chillbros_invoices").select("status,portal_token").eq("id", invoiceId).eq("job_id", jobId).is("revoked_at", null).maybeSingle();
+  if (readError) jobMessage(jobId, "error", readError.message);
+  if (!invoice || invoice.status !== "approved") jobMessage(jobId, "error", "Finalize the invoice first", invoiceId);
   if (technicianId) {
-    const { data: technician } = await supabase.from("chillbros_profiles").select("id").eq("id", technicianId).in("role", ["technician", "manager"]).eq("status", "active").maybeSingle();
-    if (!technician) return;
+    const { data: technician, error } = await supabase.from("chillbros_profiles").select("id").eq("id", technicianId).in("role", ["technician", "manager"]).eq("status", "active").maybeSingle();
+    if (error || !technician) jobMessage(jobId, "error", error?.message ?? "Choose an active technician.");
   }
-
-  const scheduledWindow = `${date} ${start}-${end} CT`;
-  const update: Record<string, string | null> = { status: "scheduled", scheduled_window: scheduledWindow, updated_at: new Date().toISOString() };
+  const { data: job, error: jobError } = await supabase.from("chillbros_jobs").select("status").eq("id", jobId).is("archived_at", null).maybeSingle();
+  if (jobError || !job || !JOB_ACTIVE_STATUSES.includes(job.status)) jobMessage(jobId, "error", jobError?.message ?? "The call is closed or unavailable.");
+  const update: Record<string, string> = { status: ["new", "needs_scheduling"].includes(job.status) ? "scheduled" : job.status, scheduled_window: `${date} ${start}-${end} CT`, updated_at: new Date().toISOString() };
   if (technicianId) update.assigned_tech_id = technicianId;
-  await supabase.from("chillbros_jobs").update(update).eq("id", jobId).neq("status", "cancelled");
-  await supabase.from("chillbros_workflow_events").insert({
-    job_id: jobId,
-    invoice_id: invoiceId,
-    actor_id: allowed.profile.id,
-    stage: "return_scheduled",
-    message: `Return visit scheduled for ${date} ${start}-${end} CT on the same job.`,
-  });
+  const { data: updated, error } = await supabase.from("chillbros_jobs").update(update).eq("id", jobId).eq("status", job.status).select("id").maybeSingle();
+  if (error || !updated) jobMessage(jobId, "error", error?.message ?? "Call changed. Refresh before rescheduling.");
+  const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: invoiceId, actor_id: allowed.profile.id, stage: "return_scheduled", message: `Return visit scheduled for ${date} ${start}-${end} CT on the same job.` });
   refresh(jobId, invoice.portal_token);
+  jobMessage(jobId, eventError ? "error" : "success", eventError ? `Return visit saved, but history could not be saved: ${eventError.message}` : "Return visit saved.");
 }
 
-export async function issueInvoiceForCompletedWorkAction(formData: FormData): Promise<void> {
-  const jobId = text(formData, "jobId");
-  const invoiceId = text(formData, "invoiceId");
-  if (!jobId || !invoiceId) return;
+export async function issueInvoiceForCompletedWorkAction(formData: FormData): Promise<never> {
+  const jobId = text(formData, "jobId"), invoiceId = text(formData, "invoiceId");
+  if (!jobId || !invoiceId) jobMessage(jobId, "error", "Choose a job and invoice.");
   const allowed = await requireJobActor(jobId, true);
-  if (!allowed.ok) return;
-
+  if (!allowed.ok) jobMessage(jobId, "error", allowed.error);
   const supabase = createServiceRoleClient();
-  const { data: invoice } = await supabase
-    .from("chillbros_invoices")
-    .select("id,job_id,status,payment_status,payment_terms,due_at,issued_at,portal_token")
-    .eq("id", invoiceId)
-    .eq("job_id", jobId)
-    .is("revoked_at", null)
-    .maybeSingle();
-  if (!invoice || invoice.status !== "approved" || invoice.payment_status === "paid") return;
-  if (invoice.issued_at) { refresh(jobId, invoice.portal_token); return; }
-
-  const nowDate = new Date();
-  const now = nowDate.toISOString();
-  const dueAt = dueAtFor((invoice.payment_terms ?? "due_on_receipt") as PaymentTerms, invoice.due_at, nowDate);
-  const { data: issued } = await supabase
-    .from("chillbros_invoices")
-    .update({ issued_at: now, due_at: dueAt, updated_at: now })
-    .eq("id", invoiceId)
-    .eq("status", "approved")
-    .is("issued_at", null)
-    .select("id")
-    .maybeSingle();
-  if (!issued) return;
-
-  await supabase.from("chillbros_jobs").update({ status: "completed", updated_at: now }).eq("id", jobId).neq("status", "cancelled");
-  await supabase.from("chillbros_workflow_events").insert({
-    job_id: jobId,
-    invoice_id: invoiceId,
-    actor_id: allowed.profile.id,
-    stage: "invoice_issued",
-    message: "Work completed. Final invoice issued and payment is now due.",
-  });
+  const { data: invoice, error: readError } = await supabase.from("chillbros_invoices").select("status,payment_status,payment_terms,due_at,issued_at,portal_token").eq("id", invoiceId).eq("job_id", jobId).is("revoked_at", null).maybeSingle();
+  if (readError) jobMessage(jobId, "error", readError.message);
+  if (!invoice || invoice.status !== "approved") jobMessage(jobId, "error", "Finalize the invoice first", invoiceId);
+  if (invoice.payment_status === "paid") jobMessage(jobId, "error", "This invoice is already paid.", invoiceId);
+  if (invoice.issued_at) jobMessage(jobId, "success", "Invoice already issued. Open it to email again.", invoiceId);
+  const now = new Date();
+  const { data: issued, error } = await supabase.from("chillbros_invoices").update({ issued_at: now.toISOString(), due_at: dueAtFor(invoice.payment_terms ?? "due_on_receipt", invoice.due_at, now), updated_at: now.toISOString() })
+    .eq("id", invoiceId).eq("status", "approved").is("revoked_at", null).neq("payment_status", "paid").is("issued_at", null).select("id").maybeSingle();
+  if (error || !issued) jobMessage(jobId, "error", error?.message ?? "Invoice changed. Refresh before issuing.");
+  const { error: closeError } = await supabase.from("chillbros_jobs").update({ status: "completed", updated_at: now.toISOString() }).eq("id", jobId).in("status", JOB_ACTIVE_STATUSES);
+  const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: invoiceId, actor_id: allowed.profile.id, stage: "invoice_issued", message: "Work completed. Final invoice issued and payment is now due." });
   try { await captureCompletedJobKnowledge(jobId, invoiceId, allowed.profile.id); } catch (error) { console.error("[tech-assist] completed job capture failed", error); }
-  try { await sendBillingDelivery(invoiceId, "invoice", "email"); } catch {}
-  try { await sendBillingDelivery(invoiceId, "invoice", "sms"); } catch {}
+  const delivery = await sendBillingDeliveryRecorded(invoiceId, "invoice", "email");
+  await sendBillingDeliveryRecorded(invoiceId, "invoice", "sms");
   refresh(jobId, invoice.portal_token);
+  const failure = [closeError?.message, eventError?.message, delivery.status !== "sent" ? delivery.error ?? delivery.status : null].filter(Boolean).join("; ");
+  jobMessage(jobId, failure ? "error" : "success", failure ? `Invoice issued. ${failure}` : `Invoice emailed to ${delivery.recipient}.`, invoiceId);
 }
 
 export async function setIssuedInvoicePaymentMethodAction(token: string, method: PaymentMethod): Promise<Result> {
