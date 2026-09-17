@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { LogOut } from "lucide-react";
 
-import { navItems } from "@/lib/chillbros/nav";
+import { navItems, type NavItem } from "@/lib/chillbros/nav";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { signOutAction } from "@/app/sign-in/actions";
 import { AppNavigation } from "@/components/app-navigation";
@@ -13,9 +13,15 @@ import { PageTitle } from "@/components/page-title";
 
 type AppShellProps = { children: ReactNode; title: string; description?: string; highlight?: ReactNode };
 
+const OWNER_EMAIL = "chillprostx@gmail.com";
+const ownerNavItem: NavItem = { href: "/owner", label: "Owner Access", shortLabel: "Owner", roles: ["manager"] };
+
 export async function AppShell({ children }: AppShellProps) {
   const profile = await getCurrentStaffProfile();
-  const visibleNavItems = profile ? navItems.filter((item) => item.roles.includes(profile.role)) : [];
+  const isOwner = profile?.role === "manager" && profile.email.trim().toLowerCase() === OWNER_EMAIL;
+  const visibleNavItems = profile
+    ? [...navItems.filter((item) => item.roles.includes(profile.role)), ...(isOwner ? [ownerNavItem] : [])]
+    : [];
   const roleLabel = profile?.role === "manager" ? "Manager" : profile?.role === "office" ? "Office / Dispatch" : "Technician";
 
   return <div className="min-h-screen bg-transparent text-foreground">
