@@ -13,6 +13,7 @@ function load(file) {
   const mod = cache[file] = { exports: {} };
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   new Function('require', 'module', 'exports', source)(id => {
+    if (id === '@/lib/chillbros/customer-payment-actions') return { setCustomerPaymentMethodAction() { throw Error('Render must not mutate invoices'); } };
     if (id === '@/lib/chillbros/job-lifecycle-actions') return { approveEstimateLifecycleAction() { throw Error('Render must not mutate invoices'); } };
     if (id.startsWith('@/')) {
       const base = id.slice(2);
@@ -27,11 +28,13 @@ const { DocumentPaymentMethods } = load('components/document-payment-methods.tsx
 const render = (component, props) => renderToStaticMarkup(React.createElement(component, props));
 const invoice = { status: 'approved', issuedAt: '2026-09-17', paymentStatus: 'unpaid', invoiceNumber: 'INV-123', portalToken: 'token', signatureName: null, paymentMethod: 'zelle' };
 
-test('approved issued invoice offers only the supplied Square checkout and exact total', () => {
+test('approved issued invoice offers Square with cash and check alternatives and exact total', () => {
   for (const html of [render(ClientPortalActions, { invoice, amountDue: 123.45 }), render(DocumentPaymentMethods, { paymentStatus: 'unpaid', invoiceNumber: 'INV-123', amountDue: 123.45 })]) {
     assert.match(html, /href="https:\/\/square.link\/u\/TezbYuSG"/);
     assert.match(html, /Enter \$123\.45 in Square/);
     assert.match(html, /INV-123/);
+    assert.match(html, /value="cash"/);
+    assert.match(html, /value="check"/);
     assert.match(html, /until Chill Pros confirms/);
     assert.doesNotMatch(html, /Zelle|Venmo|Cash App|Other ways|stripe\/checkout|Selected manual/i);
   }

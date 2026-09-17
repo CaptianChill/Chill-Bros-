@@ -15,7 +15,7 @@ export default async function PaymentSettingsPage({ searchParams }: Props) {
   if (!profile || profile.role !== "manager") redirect("/");
   const params = await searchParams;
 
-  return <AppShell title="Payments & Payouts" description="Customers pay through your Square payment link." highlight={<StatusPill tone="emerald">Square payment link configured</StatusPill>}>
+  return <AppShell title="Payments & Payouts" description="Customers can pay through Square, cash, or check." highlight={<StatusPill tone="emerald">Square payment link configured</StatusPill>}>
     <div className="space-y-5">
       {params.success ? <p className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{params.success}</p> : null}
       {params.error ? <p className="rounded-2xl border border-rose-500/35 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{params.error}</p> : null}
@@ -24,7 +24,7 @@ export default async function PaymentSettingsPage({ searchParams }: Props) {
         <p className="mt-2 text-sm text-zinc-400">Sends to your signed-in email: {profile.email}</p>
       </form>
 
-      <SectionCard eyebrow="Customer payments" title="Square" description="Square is the payment option shown on customer invoices.">
+      <SectionCard eyebrow="Customer payments" title="Square" description="Square is the main online payment option. Customers can also select cash or check.">
         <div className="space-y-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-sm text-zinc-300">
           <a href={SQUARE_PAYMENT_URL} target="_blank" rel="noopener noreferrer" className="break-all text-[#bafcfc] underline">{SQUARE_PAYMENT_URL}</a>
           <p>Customers enter the invoice total in Square and use the name and email from their invoice. This shared link does not automatically fill in the amount or match a payment to an invoice.</p>

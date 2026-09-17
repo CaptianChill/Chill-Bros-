@@ -27,3 +27,7 @@ No database changes, credential changes, or historical payment deletions. Staff 
 - Production build and TypeScript passed.
 - Changed-file ESLint: no errors; one pre-existing unused-variable warning in direct-invoice action.
 - Live authenticated invoice/owner flow and an actual Square transaction were not tested. Preview deployment may require Vercel login.
+
+## Cash and check follow-up
+
+Customer invoices now also offer Cash and Check radio controls. These save the selected method with pending_manual_review; only staff confirmation marks paid. Square remains the main online option. Paid invoices reject customer changes, including concurrent updates. The customer action only accepts cash and check. Updated portal/document components and settings copy; added cash-check-payment.tsx and action regression coverage. All 17 tests, TypeScript, changed-file lint, and production build pass.

@@ -235,3 +235,18 @@ test('billing delivery logs use valid enum values and record missing-address fai
     assert.equal(h.tables.chillbros_workflow_events[0].stage, 'invoice_email_' + status);
   }
 });
+
+test('customer cash/check choices persist pending review and cannot change paid invoices', async () => {
+  for (const method of ['cash', 'check']) {
+    const row = { ...invoice('approved'), issued_at: '2026-09-17' };
+    const h = harness({ chillbros_invoices: [row] });
+    const action = h.load('lib/chillbros/customer-payment-actions.ts').setCustomerPaymentMethodAction;
+    assert.equal((await action('token', method)).ok, true);
+    assert.equal(h.tables.chillbros_invoices[0].payment_method, method);
+    assert.equal(h.tables.chillbros_invoices[0].payment_status, 'pending_manual_review');
+    h.tables.chillbros_invoices[0].payment_status = 'paid';
+    assert.equal((await action('token', method === 'cash' ? 'check' : 'cash')).ok, false);
+    assert.equal(h.tables.chillbros_invoices[0].payment_method, method);
+    assert.equal((await action('token', 'venmo')).ok, false);
+  }
+});

@@ -1,5 +1,7 @@
 "use client";
 
+import { CashCheckPayment } from "@/components/cash-check-payment";
+
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { BadgeCheck, FileText, Printer } from "lucide-react";
@@ -48,7 +50,7 @@ export function ClientPortalActions({
       <div className="flex items-start gap-3"><BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" /><div><h3 className="font-semibold text-white">Estimate approved</h3><p className="mt-1 text-sm leading-6 text-zinc-400">Chill Bros will complete the approved work or schedule the return visit. There is no final invoice to pay yet.</p></div></div>
     </div> : null}
 
-    {approved && invoiceIssued && !paid ? <SquarePayment amountDue={amountDue} invoiceNumber={invoice.invoiceNumber} /> : null}
+    {approved && invoiceIssued && !paid ? <><SquarePayment amountDue={amountDue} invoiceNumber={invoice.invoiceNumber} /><CashCheckPayment token={invoice.portalToken} initialMethod={invoice.paymentMethod} /></> : null}
 
     {paid ? <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/[0.07] p-5 text-center"><BadgeCheck className="mx-auto h-7 w-7 text-emerald-300" /><p className="mt-2 font-semibold text-white">Payment complete</p><p className="mt-1 text-sm text-zinc-400">Your paid receipt is available from this secure page.</p></div> : null}
 
