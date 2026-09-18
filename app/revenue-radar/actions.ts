@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { categories, normalizedKey, scoreSignal, serviceLines, statuses } from "@/lib/chillbros/revenue-radar";
+import { discoverSanAntonioRevenueLeads } from "@/lib/chillbros/revenue-discovery";
 
 async function office() {
   const profile = await getCurrentStaffProfile();
@@ -12,6 +13,27 @@ async function office() {
   return profile;
 }
 const value = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
+
+export async function scanForLeads(_form: FormData) {
+  const profile = await office();
+  const discovered = await discoverSanAntonioRevenueLeads(60);
+  if (!discovered.length) throw new Error("No leads were returned by the discovery source. Try the scan again shortly.");
+
+  const rows = discovered.map((lead) => ({
+    ...lead,
+    created_by: profile.id,
+    updated_by: profile.id,
+    status: "new",
+    updated_at: new Date().toISOString(),
+  }));
+
+  const { error } = await createServiceRoleClient()
+    .from("chillbros_revenue_prospects")
+    .upsert(rows, { onConflict: "normalized_key", ignoreDuplicates: true });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/revenue-radar");
+}
 
 export async function addProspect(form: FormData) {
   const profile = await office();
