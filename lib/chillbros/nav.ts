@@ -17,6 +17,7 @@ export const navItems: NavItem[] = [
   { href: "/schedule", label: "Schedule", shortLabel: "Schedule", roles: ["manager", "office"] },
   { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"] },
   { href: "/customers", label: "Customers", shortLabel: "Customers", roles: ["manager", "office"] },
+  { href: "/revenue-radar", label: "Revenue Radar", shortLabel: "Radar", roles: ["manager", "office"] },
   { href: "/technician", label: "Field Jobs", shortLabel: "Field", roles: ["manager", "technician"] },
   { href: "/invoices", label: "Quotes & Invoices", shortLabel: "Billing", roles: ["manager", "office"] },
   { href: "/payments", label: "Payments", shortLabel: "Payments", roles: ["manager"] },
