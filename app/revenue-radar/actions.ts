@@ -14,7 +14,7 @@ async function office() {
 }
 const value = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
-export async function scanForLeads() {
+export async function scanForLeads(_form: FormData) {
   const profile = await office();
   const discovered = await discoverSanAntonioRevenueLeads(60);
   if (!discovered.length) throw new Error("No leads were returned by the discovery source. Try the scan again shortly.");
@@ -27,14 +27,12 @@ export async function scanForLeads() {
     updated_at: new Date().toISOString(),
   }));
 
-  const { data, error } = await createServiceRoleClient()
+  const { error } = await createServiceRoleClient()
     .from("chillbros_revenue_prospects")
-    .upsert(rows, { onConflict: "normalized_key", ignoreDuplicates: true })
-    .select("id");
+    .upsert(rows, { onConflict: "normalized_key", ignoreDuplicates: true });
 
   if (error) throw new Error(error.message);
   revalidatePath("/revenue-radar");
-  return { discovered: discovered.length, added: data?.length ?? 0 };
 }
 
 export async function addProspect(form: FormData) {
