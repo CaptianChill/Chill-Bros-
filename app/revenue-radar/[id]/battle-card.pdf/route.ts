@@ -21,10 +21,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const client = createServiceRoleClient();
   const [{ data: lead, error: leadError }, { data: card, error: cardError }] = await Promise.all([
-    client.from("chillbros_revenue_prospects").select("id,business_name,city,score,service_line,signal_verified,source_url,sales_status").eq("id", id).maybeSingle(),
+    client.from("chillbros_revenue_prospects").select("id,business_name,city,score,service_line,signal_verified,source_url,sales_status,assigned_salesperson").eq("id", id).maybeSingle(),
     client.from("chillbros_revenue_battle_cards").select("id,content,prompt_version,created_at").eq("lead_id", id).eq("is_current", true).maybeSingle(),
   ]);
   if (leadError || !lead) return new Response(leadError?.message || "Lead not found.", { status: 404 });
+  if (profile.role === "office" && lead.assigned_salesperson !== profile.id) return new Response("This lead is not assigned to you.", { status: 403 });
   if (cardError || !card) return new Response(cardError?.message || "Save a Battle Card before exporting it.", { status: 409 });
 
   const content = (card.content ?? {}) as Record<string, unknown>;
