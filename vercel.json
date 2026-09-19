@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/revenue-radar",
+      "schedule": "15 13 * * *"
+    },
+    {
       "path": "/api/cron/invoice-reminders",
       "schedule": "0 15 * * *"
     }

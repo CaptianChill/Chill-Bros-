@@ -16,6 +16,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/auth",
   "/api/health",
   "/api/portal",
+  "/api/cron",
   "/api/3d-project-builder/blender-self-test",
 ];
 
