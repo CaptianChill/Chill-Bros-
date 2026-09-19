@@ -64,11 +64,11 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
   const field = (label: string, name: string, type = "text") => <label key={name}>{label}<input className={input} name={name} type={type} defaultValue={p[name] ?? ""} /></label>;
 
   return <AppShell title={p.business_name} description="Revenue Radar sales execution, follow-up, and technical handoff."><div className="mx-auto max-w-3xl space-y-4 text-left">
-    <div className="flex flex-wrap gap-3 text-sm"><Link href="/revenue-radar" className="text-cyan-200">← Revenue Radar</Link><Link href={`/revenue-radar/${id}/contacts`} className="text-cyan-200 underline underline-offset-2">Contacts</Link><Link href="/revenue-radar/tasks" className="text-cyan-200 underline underline-offset-2">Sales Tasks</Link>{profile.role === "manager" ? <Link href="/revenue-radar/handoffs" className="text-cyan-200 underline underline-offset-2">Tech Requests</Link> : null}</div>
+    <div className="flex flex-wrap items-center justify-between gap-3 text-sm"><Link href="/revenue-radar" className="text-cyan-200">← Revenue Radar</Link><span className="rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-100">Radar 2.1 · Sales View</span></div>
 
     <section className="rounded-2xl border border-cyan-400/25 bg-black/40 p-4">
       <div className="flex flex-wrap justify-between gap-3">
-        <h2 className="text-xl font-bold">{p.score}/100 · {p.category.replaceAll("_", " ")}</h2>
+        <h2 className="text-xl font-bold">{p.score}/100 · {p.service_line.replaceAll("_", " ")}</h2>
         <span className="rounded-full border border-cyan-300/30 px-3 py-1 text-sm text-cyan-200">{String(salesStatus).replaceAll("_", " ")}</span>
       </div>
       <p className="mt-2">{p.signal_summary}</p>
@@ -107,7 +107,17 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
       {p.do_not_contact ? <p className="mt-3 rounded-xl border border-red-400/40 bg-red-400/10 p-3 text-sm font-semibold text-red-100">DO NOT CONTACT · {p.do_not_contact_reason || "restriction active"}</p> : null}
     </section>
 
-    <section className="rounded-2xl border border-cyan-300/40 bg-cyan-400/5 p-4">
+    <RevenueRadarCloseScript
+      businessName={p.business_name}
+      serviceLine={p.service_line}
+      signalSummary={p.signal_summary}
+      signalVerified={Boolean(p.signal_verified)}
+      contactName={p.contact_name}
+    />
+
+    <details className="rounded-2xl border border-cyan-300/40 bg-cyan-400/5 p-4">
+      <summary className="cursor-pointer text-lg font-bold text-white">More sales help · Battle Card</summary>
+      <section className="mt-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200">Sales Assist</p>
@@ -137,9 +147,11 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
         <div><p className="text-xs uppercase text-zinc-400">Inferences</p><p className="mt-1 text-xs text-zinc-300">{battleCard.reasonableInferences.length} clearly labeled</p></div>
         <div><p className="text-xs uppercase text-zinc-400">Missing</p><p className="mt-1 text-xs text-zinc-300">{battleCard.missingInformation.length} items to qualify</p></div>
       </div>
-    </section>
+      </section>
+    </details>
 
-    {profile.role === "manager" ? <section className="rounded-2xl border border-white/10 bg-black/30 p-4">
+    {profile.role === "manager" ? <details className="rounded-2xl border border-white/10 bg-black/30 p-4">
+      <summary className="cursor-pointer font-semibold">Sales assignment</summary>
       <h2 className="font-semibold">Sales assignment</h2>
       <form action={assignRevenueSalesperson} className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input type="hidden" name="lead_id" value={id} />
@@ -149,9 +161,9 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
         </select>
         <button className="min-h-11 shrink-0 rounded-xl border border-cyan-300/50 px-4 font-semibold text-cyan-100">Assign</button>
       </form>
-    </section> : null}
+    </details> : null}
 
-    <details open className="rounded-2xl border border-cyan-300/25 bg-black/40 p-4">
+    <details className="rounded-2xl border border-cyan-300/25 bg-black/40 p-4">
       <summary className="cursor-pointer text-lg font-semibold text-white">Log call / activity</summary>
       <form action={logRevenueActivity} className="mt-4 grid gap-3 sm:grid-cols-2">
         <input type="hidden" name="lead_id" value={id} />
@@ -198,14 +210,6 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
         <button className="min-h-12 rounded-xl border border-amber-300/50 px-4 font-bold text-amber-50 sm:col-span-2">Create Technician Handoff</button>
       </form>
     </details>
-
-    <RevenueRadarCloseScript
-      businessName={p.business_name}
-      serviceLine={p.service_line}
-      signalSummary={p.signal_summary}
-      signalVerified={Boolean(p.signal_verified)}
-      contactName={p.contact_name}
-    />
 
     {!p.do_not_contact ? <details className="rounded-2xl border border-red-400/20 bg-red-400/5 p-4">
       <summary className="cursor-pointer font-semibold text-red-100">Do Not Contact</summary>
