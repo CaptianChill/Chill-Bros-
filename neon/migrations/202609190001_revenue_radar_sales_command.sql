@@ -171,12 +171,16 @@ alter table public.chillbros_revenue_handoffs enable row level security;
 alter table public.chillbros_revenue_tasks enable row level security;
 alter table public.chillbros_revenue_history enable row level security;
 
-revoke all on public.chillbros_revenue_contacts from anon, authenticated;
-revoke all on public.chillbros_revenue_battle_cards from anon, authenticated;
-revoke all on public.chillbros_revenue_activities from anon, authenticated;
-revoke all on public.chillbros_revenue_handoffs from anon, authenticated;
-revoke all on public.chillbros_revenue_tasks from anon, authenticated;
-revoke all on public.chillbros_revenue_history from anon, authenticated;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    revoke all on table public.chillbros_revenue_contacts, public.chillbros_revenue_battle_cards, public.chillbros_revenue_activities, public.chillbros_revenue_handoffs, public.chillbros_revenue_tasks, public.chillbros_revenue_history from anon;
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    revoke all on table public.chillbros_revenue_contacts, public.chillbros_revenue_battle_cards, public.chillbros_revenue_activities, public.chillbros_revenue_handoffs, public.chillbros_revenue_tasks, public.chillbros_revenue_history from authenticated;
+  end if;
+end;
+$$;
 
 comment on column public.chillbros_revenue_prospects.sales_status is 'Canonical Revenue Radar sales pipeline status. Legacy status column is preserved during rollout.';
 comment on table public.chillbros_revenue_activities is 'Append-only sales interaction records. Customer statements are customer-reported, not technical findings.';
