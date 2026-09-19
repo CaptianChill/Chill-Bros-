@@ -15,11 +15,12 @@ export default async function RevenueRadarPage() {
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
 
   const client = createServiceRoleClient();
-  const { data, error } = await client
+  let prospectsQuery = client
     .from("chillbros_revenue_prospects")
-    .select("id,business_name,city,category,service_line,signal_summary,signal_verified,signal_observed_at,score,status,follow_up_at,actual_revenue,direct_cost,business_address,contact_phone,contact_email")
-    .order("score", { ascending: false })
-    .limit(100);
+    .select("id,business_name,city,category,service_line,signal_summary,signal_verified,signal_observed_at,score,status,follow_up_at,actual_revenue,direct_cost,business_address,contact_phone,contact_email,assigned_salesperson,sales_status")
+    .order("score", { ascending: false });
+  if (profile.role === "office") prospectsQuery = prospectsQuery.eq("assigned_salesperson", profile.id);
+  const { data, error } = await prospectsQuery.limit(100);
 
   const prospects = data ?? [];
   const newCount = prospects.filter((p) => p.status === "new").length;
@@ -56,23 +57,23 @@ export default async function RevenueRadarPage() {
   const wonCount = salesPipeline.filter((lead) => lead.sales_status === "won").length;
   const leadNames = new Map(salesPipeline.map((lead) => [lead.id, lead.business_name]));
 
-  return <AppShell title="Revenue Radar" description="Automatically discover commercial prospects, rank them, then execute the sales follow-up that turns them into Chill Pros work.">
+  return <AppShell title="Revenue Radar" description={profile.role === "office" ? "Your assigned Revenue Radar leads, sales follow-up, and next actions." : "Automatically discover commercial prospects, rank them, then execute the sales follow-up that turns them into Chill Pros work."}>
     <div className="mx-auto max-w-5xl space-y-5 text-left">
       {error ? <p className="rounded-xl border border-amber-400 p-3 text-amber-200">Revenue Radar storage is not ready. {error.message}</p> : null}
 
       <section className="rounded-3xl border border-cyan-300/30 bg-cyan-400/5 p-5 shadow-[0_0_30px_rgba(34,211,238,0.08)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200">Automatic lead generation</p>
-            <h2 className="mt-1 text-2xl font-semibold text-white">Let Revenue Radar hunt for you.</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200">{profile.role === "office" ? "My assigned sales queue" : "Automatic lead generation"}</p>
+            <h2 className="mt-1 text-2xl font-semibold text-white">{profile.role === "office" ? "Work the leads assigned to you." : "Let Revenue Radar hunt for you."}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
-              Scan public commercial business data around San Antonio, identify businesses with strong HVAC/R, refrigeration, ice, and kitchen-equipment demand, remove duplicates, and rank the best prospects automatically.
+              {profile.role === "office" ? "This view is limited to your assigned Revenue Radar leads. Open a lead for its Battle Card, call logging, follow-up tasks, contacts, and technician handoff." : "Scan public commercial business data around San Antonio, identify businesses with strong HVAC/R, refrigeration, ice, and kitchen-equipment demand, remove duplicates, and rank the best prospects automatically."}
             </p>
           </div>
-          <ScanForLeadsButton action={scanForLeads} />
+          {profile.role === "manager" ? <ScanForLeadsButton action={scanForLeads} /> : null}
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><strong className="block text-xl text-white">{prospects.length}</strong><span className="text-xs text-zinc-400">On radar</span></div>
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><strong className="block text-xl text-white">{prospects.length}</strong><span className="text-xs text-zinc-400">{profile.role === "office" ? "Assigned" : "On radar"}</span></div>
           <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><strong className="block text-xl text-white">{newCount}</strong><span className="text-xs text-zinc-400">New</span></div>
           <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><strong className="block text-xl text-cyan-200">{highPriority}</strong><span className="text-xs text-zinc-400">65+ score</span></div>
         </div>
@@ -126,7 +127,7 @@ export default async function RevenueRadarPage() {
 
       <RevenueRadarList prospects={prospects} />
 
-      <details className="rounded-2xl border border-white/10 bg-black/30 p-4">
+      {profile.role === "manager" ? <details className="rounded-2xl border border-white/10 bg-black/30 p-4">
         <summary className="cursor-pointer text-sm font-medium text-zinc-300">Add a lead manually (backup only)</summary>
         <form action={addProspect} className="mt-4 grid gap-3 sm:grid-cols-2">
           <label>Business name<input className={input} name="business_name" required maxLength={200} /></label>
@@ -139,7 +140,7 @@ export default async function RevenueRadarPage() {
           <label className="sm:col-span-2 flex items-center gap-2"><input type="checkbox" name="signal_verified" />Verified directly with the business</label>
           <button className="min-h-11 rounded-xl border border-cyan-300/50 px-4 font-semibold text-cyan-100 sm:col-span-2">Add manual lead</button>
         </form>
-      </details>
+      </details> : null}
     </div>
   </AppShell>;
 }
