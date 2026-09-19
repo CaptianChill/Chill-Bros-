@@ -1,4 +1,7 @@
 {
+  "alias": [
+    "chill-bros.vercel.app"
+  ],
   "crons": [
     {
       "path": "/api/cron/revenue-radar",
