@@ -12,19 +12,34 @@ async function office() {
   if (!profile || !["manager", "office"].includes(profile.role)) throw new Error("Office access required.");
   return profile;
 }
+
+async function manager() {
+  const profile = await office();
+  if (profile.role !== "manager") throw new Error("Manager access required.");
+  return profile;
+}
+
+async function assertProspectAccess(profile: { id: string; role: string }, id: string) {
+  if (profile.role === "manager") return;
+  const { data: lead, error } = await createServiceRoleClient()
+    .from("chillbros_revenue_prospects")
+    .select("id,assigned_salesperson")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !lead) throw new Error(error?.message || "Lead not found.");
+  if (lead.assigned_salesperson !== profile.id) throw new Error("This lead is not assigned to you.");
+}
+
 const value = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
 export type ScanForLeadsResult = { ok: true } | { ok: false; error: string };
 
 export async function scanForLeads(_form: FormData): Promise<ScanForLeadsResult> {
-  // Next.js strips thrown-error messages from Server Actions in production
-  // (only a generic digest reaches the client), so real failures here must
-  // be returned as data, not thrown, for the UI to show anything useful.
-  let profile: Awaited<ReturnType<typeof office>>;
+  let profile: Awaited<ReturnType<typeof manager>>;
   try {
-    profile = await office();
+    profile = await manager();
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Office access required." };
+    return { ok: false, error: err instanceof Error ? err.message : "Manager access required." };
   }
 
   let discovered: Awaited<ReturnType<typeof discoverSanAntonioRevenueLeads>>;
@@ -53,7 +68,7 @@ export async function scanForLeads(_form: FormData): Promise<ScanForLeadsResult>
 }
 
 export async function addProspect(form: FormData) {
-  const profile = await office();
+  const profile = await manager();
   const name = value(form, "business_name").slice(0, 200);
   const city = value(form, "city").slice(0, 100) || "San Antonio";
   const category = value(form, "category");
@@ -83,6 +98,7 @@ export async function updateProspect(form: FormData) {
   const id = value(form, "id");
   const status = value(form, "status");
   if (!/^[0-9a-f-]{36}$/i.test(id) || !statuses.includes(status as typeof statuses[number])) throw new Error("Invalid prospect update.");
+  await assertProspectAccess(profile, id);
   const money = (key: string) => { const raw = value(form, key); const n = Number(raw); if (raw && (!Number.isFinite(n) || n < 0)) throw new Error("Amounts must be positive."); return raw ? n : null; };
   const date = value(form, "follow_up_at");
   if (date && Number.isNaN(new Date(date).getTime())) throw new Error("Invalid follow-up date.");
