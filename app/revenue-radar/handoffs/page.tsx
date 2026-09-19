@@ -42,7 +42,7 @@ export default async function RevenueHandoffsPage() {
 
   const renderHandoff = (handoff: NonNullable<typeof handoffs>[number]) => {
     const lead = leadMap.get(handoff.lead_id);
-    const assignedName = handoff.assigned_technician === profile.id ? profile.full_name : techMap.get(handoff.assigned_technician) || (handoff.assigned_technician ? "Assigned technician" : "Unassigned");
+    const assignedName = handoff.assigned_technician === profile.id ? profile.fullName : techMap.get(handoff.assigned_technician) || (handoff.assigned_technician ? "Assigned technician" : "Unassigned");
     return <article key={handoff.id} className="rounded-2xl border border-white/10 bg-black/35 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
