@@ -70,10 +70,13 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
           <h2 className="text-xl font-bold text-white">Lead Battle Card</h2>
           <p className="mt-1 text-xs text-zinc-400">{currentCard ? `Saved ${new Date(currentCard.created_at).toLocaleString()} · ${currentCard.prompt_version}` : "Live preview · save a version before calling"}</p>
         </div>
-        <form action={generateSalesBattleCard}>
-          <input type="hidden" name="lead_id" value={id} />
-          <button className="min-h-10 rounded-xl border border-cyan-300/50 px-4 text-sm font-semibold text-cyan-100">{currentCard ? "Refresh Battle Card" : "Save Battle Card"}</button>
-        </form>
+        <div className="flex flex-wrap gap-2">
+          <form action={generateSalesBattleCard}>
+            <input type="hidden" name="lead_id" value={id} />
+            <button className="min-h-10 rounded-xl border border-cyan-300/50 px-4 text-sm font-semibold text-cyan-100">{currentCard ? "Refresh Battle Card" : "Save Battle Card"}</button>
+          </form>
+          {currentCard ? <a href={`/revenue-radar/${id}/battle-card.pdf`} className="inline-flex min-h-10 items-center rounded-xl bg-cyan-300 px-4 text-sm font-bold text-black">Export PDF</a> : null}
+        </div>
       </div>
       <p className="mt-3 text-sm leading-6 text-zinc-200">{battleCard.whyNow}</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
