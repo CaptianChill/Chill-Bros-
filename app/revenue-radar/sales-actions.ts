@@ -25,6 +25,12 @@ async function managerUser() {
   return profile;
 }
 
+function requireAssignedLead(profile: { id: string; role: string }, lead: { assigned_salesperson?: string | null }) {
+  if (profile.role === "office" && lead.assigned_salesperson !== profile.id) {
+    throw new Error("This lead is not assigned to you.");
+  }
+}
+
 async function appendHistory(client: ReturnType<typeof createServiceRoleClient>, entry: {
   leadId: string;
   entityType: string;
@@ -114,6 +120,7 @@ export async function generateSalesBattleCard(form: FormData) {
     client.from("chillbros_revenue_battle_cards").select("id").eq("lead_id", leadId).eq("is_current", true).maybeSingle(),
   ]);
   if (error || !lead) throw new Error(error?.message || "Lead not found.");
+  requireAssignedLead(profile, lead);
 
   const card = buildSafeBattleCard({
     businessName: lead.business_name,
@@ -239,6 +246,7 @@ export async function logRevenueActivity(form: FormData) {
   const client = createServiceRoleClient();
   const { data: lead, error: leadError } = await client.from("chillbros_revenue_prospects").select("id,do_not_contact,sales_status,assigned_salesperson").eq("id", leadId).maybeSingle();
   if (leadError || !lead) throw new Error(leadError?.message || "Lead not found.");
+  requireAssignedLead(profile, lead);
   if (lead.do_not_contact) throw new Error("This lead is Do Not Contact. Manager review is required before outreach.");
 
   const { data: activity, error: activityError } = await client.from("chillbros_revenue_activities").insert({
@@ -322,10 +330,11 @@ export async function createRevenueTechnicianHandoff(form: FormData) {
   if (!uuid(leadId) || !problem || !urgency) throw new Error("Customer-reported problem and urgency are required.");
   const client = createServiceRoleClient();
   const [{ data: lead, error: leadError }, { data: manager }] = await Promise.all([
-    client.from("chillbros_revenue_prospects").select("id,do_not_contact,sales_status").eq("id", leadId).maybeSingle(),
+    client.from("chillbros_revenue_prospects").select("id,do_not_contact,sales_status,assigned_salesperson").eq("id", leadId).maybeSingle(),
     client.from("chillbros_profiles").select("id").eq("role", "manager").eq("status", "active").limit(1).maybeSingle(),
   ]);
   if (leadError || !lead) throw new Error(leadError?.message || "Lead not found.");
+  requireAssignedLead(profile, lead);
   if (lead.do_not_contact && form.get("permission_to_follow_up") !== "on") throw new Error("Do Not Contact lead requires explicit customer permission for technical follow-up.");
   const taskOwner = manager?.id || (profile.role === "manager" ? profile.id : null);
   if (!taskOwner) throw new Error("No active manager is available to own the technician handoff review.");
@@ -384,8 +393,9 @@ export async function markRevenueDoNotContact(form: FormData) {
   const reason = value(form, "reason").slice(0, 1500);
   if (!uuid(leadId) || !reason) throw new Error("Do Not Contact requires a reason.");
   const client = createServiceRoleClient();
-  const { data: lead, error: leadError } = await client.from("chillbros_revenue_prospects").select("id,do_not_contact,sales_status").eq("id", leadId).maybeSingle();
+  const { data: lead, error: leadError } = await client.from("chillbros_revenue_prospects").select("id,do_not_contact,sales_status,assigned_salesperson").eq("id", leadId).maybeSingle();
   if (leadError || !lead) throw new Error(leadError?.message || "Lead not found.");
+  requireAssignedLead(profile, lead);
   const { error } = await client.from("chillbros_revenue_prospects").update({ do_not_contact: true, do_not_contact_reason: reason, sales_status: "do_not_contact", status_reason: reason }).eq("id", leadId);
   if (error) throw new Error(error.message);
   const { error: cancelError } = await client.from("chillbros_revenue_tasks").update({ status: "canceled", cancellation_reason: "Lead marked Do Not Contact", updated_at: new Date().toISOString() }).eq("lead_id", leadId).in("status", [...ACTIVE_TASK_STATUSES]);
