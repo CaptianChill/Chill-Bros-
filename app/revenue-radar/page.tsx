@@ -17,7 +17,7 @@ export default async function RevenueRadarPage() {
   const client = createServiceRoleClient();
   let prospectsQuery = client
     .from("chillbros_revenue_prospects")
-    .select("id,business_name,city,category,service_line,signal_summary,signal_verified,signal_observed_at,score,status,follow_up_at,actual_revenue,direct_cost,business_address,contact_phone,contact_email,assigned_salesperson,sales_status")
+    .select("id,business_name,city,category,service_line,signal_summary,signal_verified,signal_observed_at,score,status,follow_up_at,actual_revenue,direct_cost,business_address,contact_phone,contact_email,contact_name,contact_role,verification_status,source_url,assigned_salesperson,sales_status")
     .order("score", { ascending: false });
   if (profile.role === "office") prospectsQuery = prospectsQuery.eq("assigned_salesperson", profile.id);
   const { data, error } = await prospectsQuery.limit(100);
