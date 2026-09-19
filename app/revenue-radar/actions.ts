@@ -14,10 +14,26 @@ async function office() {
 }
 const value = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
-export async function scanForLeads(_form: FormData) {
-  const profile = await office();
-  const discovered = await discoverSanAntonioRevenueLeads(60);
-  if (!discovered.length) throw new Error("No leads were returned by the discovery source. Try the scan again shortly.");
+export type ScanForLeadsResult = { ok: true } | { ok: false; error: string };
+
+export async function scanForLeads(_form: FormData): Promise<ScanForLeadsResult> {
+  // Next.js strips thrown-error messages from Server Actions in production
+  // (only a generic digest reaches the client), so real failures here must
+  // be returned as data, not thrown, for the UI to show anything useful.
+  let profile: Awaited<ReturnType<typeof office>>;
+  try {
+    profile = await office();
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Office access required." };
+  }
+
+  let discovered: Awaited<ReturnType<typeof discoverSanAntonioRevenueLeads>>;
+  try {
+    discovered = await discoverSanAntonioRevenueLeads(60);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Lead discovery failed." };
+  }
+  if (!discovered.length) return { ok: false, error: "No leads were returned by the discovery source. Try the scan again shortly." };
 
   const rows = discovered.map((lead) => ({
     ...lead,
@@ -31,8 +47,9 @@ export async function scanForLeads(_form: FormData) {
     .from("chillbros_revenue_prospects")
     .upsert(rows, { onConflict: "normalized_key", ignoreDuplicates: true });
 
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, error: error.message };
   revalidatePath("/revenue-radar");
+  return { ok: true };
 }
 
 export async function addProspect(form: FormData) {
