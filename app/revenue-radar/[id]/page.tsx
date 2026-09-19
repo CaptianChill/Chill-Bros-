@@ -118,8 +118,17 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
         <label>Current vendor<input className={input} name="current_vendor" /></label>
         <label>Urgency<select className={input} name="urgency" defaultValue=""><option value="">Not discussed</option><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option></select></label>
         <label className="sm:col-span-2">Next step<input className={input} name="next_step" placeholder="One concrete next action" /></label>
+        <div className="sm:col-span-2 rounded-xl border border-white/10 bg-black/25 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Appointment evidence</p>
+          <p className="mt-1 text-xs text-zinc-500">Required only when the outcome is Appointment scheduled.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label>Date / time<input className={input} name="appointment_at" type="datetime-local" /></label>
+            <label>Appointment type<input className={input} name="appointment_type" placeholder="Service visit / walkthrough / meeting" /></label>
+            <label className="sm:col-span-2">Location or remote method<input className={input} name="appointment_location" placeholder="Site address, phone, or video meeting" /></label>
+          </div>
+        </div>
         <label>Follow up<input className={input} name="follow_up_at" type="datetime-local" /></label>
-        <label>Internal notes<input className={input} name="notes" /></label>
+        <label>Internal notes<input className={input} name="notes" placeholder="Required as loss reason if no future follow-up" /></label>
         <button className="min-h-12 rounded-xl bg-cyan-300 px-4 font-bold text-black sm:col-span-2">Save Activity</button>
       </form>
     </details>
