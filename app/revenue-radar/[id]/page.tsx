@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { buildSafeBattleCard } from "@/lib/chillbros/revenue-sales";
+import { buildSafeBattleCard, explainLeadRanking } from "@/lib/chillbros/revenue-sales";
 import { updateProspect } from "../actions";
 import {
   assignRevenueSalesperson,
@@ -22,10 +22,11 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
   const { id } = await params;
   const client = createServiceRoleClient();
-  const [{ data: p }, { data: salesStaff }, { data: currentCard }] = await Promise.all([
+  const [{ data: p }, { data: salesStaff }, { data: currentCard }, { data: leadContacts }] = await Promise.all([
     client.from("chillbros_revenue_prospects").select("*").eq("id", id).maybeSingle(),
     client.from("chillbros_profiles").select("id,full_name,role,status").eq("status", "active").in("role", ["manager", "office"]).order("full_name"),
     client.from("chillbros_revenue_battle_cards").select("id,prompt_version,created_at").eq("lead_id", id).eq("is_current", true).maybeSingle(),
+    client.from("chillbros_revenue_contacts").select("id,name,role,phone,email,verification_status,source,is_primary,notes").eq("lead_id", id).order("is_primary", { ascending: false }).order("created_at", { ascending: true }),
   ]);
   if (!p) notFound();
 
@@ -45,6 +46,19 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
     contactPhone: p.contact_phone,
     contactEmail: p.contact_email,
   });
+  const rankingReasons = explainLeadRanking({
+    score: Number(p.score),
+    category: p.category,
+    serviceLine: p.service_line,
+    signalSummary: p.signal_summary,
+    signalVerified: Boolean(p.signal_verified),
+    verificationStatus: p.verification_status,
+    observedAt: p.signal_observed_at,
+    businessAddress: p.business_address,
+    contactName: p.contact_name,
+    contactPhone: p.contact_phone,
+    contactEmail: p.contact_email,
+  });
   const salesStatus = p.sales_status || p.status;
   const field = (label: string, name: string, type = "text") => <label key={name}>{label}<input className={input} name={name} type={type} defaultValue={p[name] ?? ""} /></label>;
 
@@ -60,6 +74,35 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
       <p className="mt-2 text-sm text-amber-200">{p.signal_verified ? "Verified directly" : "Unverified public signal; research before outreach"}</p>
       <p className="mt-2 text-sm text-zinc-400">Observed {new Date(p.signal_observed_at).toLocaleString()} · Added {new Date(p.created_at).toLocaleString()}</p>
       <a className="mt-2 block break-all text-cyan-200 underline" href={p.source_url} target="_blank" rel="noreferrer">Open source ↗</a>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Business address</p>
+          <p className="mt-1 text-sm text-white">{p.business_address || "Address research pending"}</p>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Primary contact</p>
+          <p className="mt-1 text-sm text-white">{p.contact_name || "Decision-maker research pending"}</p>
+          {p.contact_role ? <p className="text-xs text-zinc-400">{p.contact_role}</p> : null}
+          <p className="mt-1 text-xs text-cyan-200">{[p.contact_phone, p.contact_email].filter(Boolean).join(" · ") || "Direct contact details pending"}</p>
+        </div>
+      </div>
+      <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-400/5 p-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Why {p.score}/100</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-200">
+          {rankingReasons.map((reason) => <li key={reason}>{reason}</li>)}
+        </ul>
+        <p className="mt-2 text-[11px] text-zinc-500">These are the current ranking drivers available from the lead record. Revenue Radar preserves the stored score and explains the evidence behind its priority.</p>
+      </div>
+      {(leadContacts ?? []).length > 0 ? <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
+        <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Known contacts</p><Link href={`/revenue-radar/${id}/contacts`} className="text-xs text-cyan-200 underline">Manage contacts</Link></div>
+        <div className="mt-2 space-y-2">
+          {(leadContacts ?? []).map((contact) => <div key={contact.id} className="rounded-lg border border-white/10 p-2">
+            <div className="flex flex-wrap items-start justify-between gap-2"><div><strong className="text-sm text-white">{contact.name || "Unnamed contact"}</strong>{contact.role ? <p className="text-xs text-zinc-400">{contact.role}</p> : null}</div><span className="text-[10px] uppercase text-cyan-200">{contact.is_primary ? "Primary" : contact.verification_status?.replaceAll("_", " ")}</span></div>
+            {(contact.phone || contact.email) ? <p className="mt-1 text-xs text-cyan-200">{[contact.phone, contact.email].filter(Boolean).join(" · ")}</p> : <p className="mt-1 text-xs text-zinc-500">No direct phone/email verified.</p>}
+            {contact.notes ? <p className="mt-1 text-[11px] text-zinc-500">{contact.notes}</p> : null}
+          </div>)}
+        </div>
+      </div> : null}
       {p.do_not_contact ? <p className="mt-3 rounded-xl border border-red-400/40 bg-red-400/10 p-3 text-sm font-semibold text-red-100">DO NOT CONTACT · {p.do_not_contact_reason || "restriction active"}</p> : null}
     </section>
 
