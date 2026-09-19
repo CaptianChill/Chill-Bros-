@@ -1,13 +1,29 @@
 -- Revenue Radar Sales Command Center P0 schema
--- Additive only. Designed for Neon/Postgres Data API compatibility.
+-- Additive migration for Neon/Postgres Data API compatibility.
+-- Existing legacy lead statuses remain temporarily accepted during rollout.
 
 alter table public.chillbros_revenue_prospects
   add column if not exists priority text not null default 'normal',
-  add column if not exists assigned_salesperson uuid,
+  add column if not exists assigned_salesperson uuid references public.chillbros_profiles(id) on delete set null,
   add column if not exists verification_status text not null default 'unverified',
   add column if not exists do_not_contact boolean not null default false,
   add column if not exists do_not_contact_reason text,
+  add column if not exists status_reason text,
   add column if not exists last_activity_at timestamptz;
+
+alter table public.chillbros_revenue_prospects
+  drop constraint if exists chillbros_revenue_prospects_status_check;
+alter table public.chillbros_revenue_prospects
+  add constraint chillbros_revenue_prospects_status_check check (status in (
+    'new','ready_to_call','contacted','qualified','technician_needed','appointment_set',
+    'proposal_requested','won','lost','nurture','do_not_contact',
+    'research','approved','skipped','quoted'
+  ));
+
+alter table public.chillbros_revenue_prospects
+  drop constraint if exists chillbros_revenue_prospects_priority_check;
+alter table public.chillbros_revenue_prospects
+  add constraint chillbros_revenue_prospects_priority_check check (priority in ('low','normal','high','urgent'));
 
 create table if not exists public.chillbros_revenue_contacts (
   id uuid primary key default gen_random_uuid(),
@@ -16,7 +32,7 @@ create table if not exists public.chillbros_revenue_contacts (
   role text,
   phone text,
   email text,
-  verification_status text not null default 'unverified',
+  verification_status text not null default 'unverified' check (verification_status in ('unverified','customer_reported','source_verified','verified')),
   source text,
   preferred_contact_method text,
   is_primary boolean not null default false,
@@ -25,6 +41,7 @@ create table if not exists public.chillbros_revenue_contacts (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+create index if not exists chillbros_revenue_contacts_lead_idx on public.chillbros_revenue_contacts(lead_id, is_primary desc, created_at);
 
 create table if not exists public.chillbros_revenue_battle_cards (
   id uuid primary key default gen_random_uuid(),
@@ -32,7 +49,7 @@ create table if not exists public.chillbros_revenue_battle_cards (
   content jsonb not null default '{}'::jsonb,
   prompt_version text not null,
   generation_trigger text not null,
-  generated_by uuid,
+  generated_by uuid references public.chillbros_profiles(id) on delete set null,
   is_current boolean not null default true,
   superseded_at timestamptz,
   created_at timestamptz not null default now()
@@ -43,7 +60,7 @@ create unique index if not exists chillbros_revenue_one_current_battle_card
 create table if not exists public.chillbros_revenue_activities (
   id uuid primary key default gen_random_uuid(),
   lead_id uuid not null references public.chillbros_revenue_prospects(id) on delete cascade,
-  salesperson_id uuid,
+  salesperson_id uuid references public.chillbros_profiles(id) on delete set null,
   activity_type text not null,
   call_outcome text,
   contacted_person text,
@@ -63,9 +80,10 @@ create index if not exists chillbros_revenue_activities_lead_idx on public.chill
 create table if not exists public.chillbros_revenue_tasks (
   id uuid primary key default gen_random_uuid(),
   lead_id uuid not null references public.chillbros_revenue_prospects(id) on delete cascade,
-  activity_id uuid references public.chillbros_revenue_activities(id),
-  assigned_user uuid,
-  created_by uuid,
+  activity_id uuid references public.chillbros_revenue_activities(id) on delete set null,
+  handoff_id uuid,
+  assigned_user uuid references public.chillbros_profiles(id) on delete set null,
+  created_by uuid references public.chillbros_profiles(id) on delete set null,
   task_type text not null,
   description text not null,
   due_at timestamptz not null,
@@ -77,13 +95,14 @@ create table if not exists public.chillbros_revenue_tasks (
   updated_at timestamptz not null default now()
 );
 create index if not exists chillbros_revenue_tasks_due_idx on public.chillbros_revenue_tasks(status, due_at);
+create index if not exists chillbros_revenue_tasks_lead_idx on public.chillbros_revenue_tasks(lead_id, status, due_at);
 
 create table if not exists public.chillbros_revenue_handoffs (
   id uuid primary key default gen_random_uuid(),
   lead_id uuid not null references public.chillbros_revenue_prospects(id) on delete cascade,
-  activity_id uuid references public.chillbros_revenue_activities(id),
-  salesperson_id uuid,
-  assigned_technician uuid,
+  activity_id uuid references public.chillbros_revenue_activities(id) on delete set null,
+  salesperson_id uuid references public.chillbros_profiles(id) on delete set null,
+  assigned_technician uuid references public.chillbros_profiles(id) on delete set null,
   customer_contact text,
   equipment_type text,
   customer_reported_problem text not null,
@@ -105,6 +124,13 @@ create table if not exists public.chillbros_revenue_handoffs (
   updated_at timestamptz not null default now()
 );
 create index if not exists chillbros_revenue_handoffs_status_idx on public.chillbros_revenue_handoffs(status, created_at);
+create index if not exists chillbros_revenue_handoffs_lead_idx on public.chillbros_revenue_handoffs(lead_id, status, created_at desc);
+
+alter table public.chillbros_revenue_tasks
+  drop constraint if exists chillbros_revenue_tasks_handoff_id_fkey;
+alter table public.chillbros_revenue_tasks
+  add constraint chillbros_revenue_tasks_handoff_id_fkey foreign key (handoff_id)
+  references public.chillbros_revenue_handoffs(id) on delete set null;
 
 create table if not exists public.chillbros_revenue_history (
   id uuid primary key default gen_random_uuid(),
@@ -112,7 +138,7 @@ create table if not exists public.chillbros_revenue_history (
   entity_type text not null,
   entity_id uuid,
   action text not null,
-  actor_id uuid,
+  actor_id uuid references public.chillbros_profiles(id) on delete set null,
   actor_type text not null default 'user',
   previous_value jsonb,
   new_value jsonb,
@@ -120,6 +146,25 @@ create table if not exists public.chillbros_revenue_history (
   created_at timestamptz not null default now()
 );
 create index if not exists chillbros_revenue_history_lead_idx on public.chillbros_revenue_history(lead_id, created_at desc);
+
+create or replace function public.chillbros_revenue_reject_mutation()
+returns trigger
+language plpgsql
+as $$
+begin
+  raise exception '% is append-only; create an amendment/history record instead', TG_TABLE_NAME;
+end;
+$$;
+
+drop trigger if exists chillbros_revenue_activities_append_only on public.chillbros_revenue_activities;
+create trigger chillbros_revenue_activities_append_only
+before update or delete on public.chillbros_revenue_activities
+for each row execute function public.chillbros_revenue_reject_mutation();
+
+drop trigger if exists chillbros_revenue_history_append_only on public.chillbros_revenue_history;
+create trigger chillbros_revenue_history_append_only
+before update or delete on public.chillbros_revenue_history
+for each row execute function public.chillbros_revenue_reject_mutation();
 
 comment on table public.chillbros_revenue_activities is 'Append-only sales interaction records. Customer statements are customer-reported, not technical findings.';
 comment on table public.chillbros_revenue_handoffs is 'Technical escalation from sales. customer_reported_problem is not a diagnosis.';
