@@ -29,13 +29,13 @@ export async function AppShell({ children }: AppShellProps) {
     <a href="#main-content" className="box fixed left-3 top-3 z-[100] -translate-y-24 rounded-xl bg-[var(--saber)] px-4 py-2 text-center text-sm font-semibold text-black transition focus:translate-y-0">Skip to content</a>
     <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-3 pb-7 pt-2.5 sm:px-6 sm:pt-4 lg:px-8">
       <header
-        className="panel app-header sticky z-40 mb-2.5 rounded-2xl border border-[var(--saber-soft)] bg-[#020407] px-3 py-2.5 text-center sm:mb-3 sm:px-4 sm:py-3"
+        className="panel app-header sticky z-40 mb-2.5 rounded-2xl px-3 py-2.5 text-center sm:mb-3 sm:px-4 sm:py-3"
         style={{ top: "max(env(safe-area-inset-top), 8px)" }}
       >
         <div className="flex items-center justify-center gap-2.5 sm:gap-4">
           <LogoBadge variant="full" className="w-9 shrink-0 sm:w-11" />
           <div className="min-w-0 flex-1 text-center">
-            <div className="truncate font-serif text-[1.4rem] font-black italic uppercase leading-none tracking-[0.015em] text-[#071126] [-webkit-text-stroke:1px_#9ffcff] [text-shadow:0_0_2px_#ffffff,0_0_6px_#8ffcff,0_0_12px_#2d7dff,0_0_22px_#0057ff] sm:text-[1.8rem]">Chill Bros</div>
+            <div className="truncate font-serif text-[1.4rem] font-black italic uppercase leading-none tracking-[0.015em] text-[#e8f8ff] [-webkit-text-stroke:1px_#72d9ff] [text-shadow:0_0_2px_#ffffff,0_0_7px_#72d9ff,0_0_16px_#1e73ff] sm:text-[1.8rem]">Chill Bros</div>
             <div className="sub mt-1 hidden truncate font-brand text-[0.58rem] font-semibold uppercase tracking-[0.2em] sm:block">Operational Command Center</div>
           </div>
           <div className="flex shrink-0 items-center justify-center gap-1.5">

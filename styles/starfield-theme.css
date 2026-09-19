@@ -1,133 +1,71 @@
 :root {
-  --saber: #7ec8ff;
-  --saber-soft: rgba(126, 200, 255, 0.26);
-  --danger: #e24b4a;
-  --ink: #03060d;
+  --saber: #72d9ff;
+  --saber-soft: rgba(114,217,255,.38);
+  --danger:#e24b4a;
+  --ink:#01040a;
+  --ice:#dff8ff;
+  --steel:#8195ad;
 }
 
 .theme-starfield {
-  background: var(--ink);
-  color: #fff;
-  position: relative;
-  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% -10%,rgba(45,125,255,.26),transparent 38%),
+    linear-gradient(180deg,#020714 0%,#01040a 55%,#000 100%);
+  color:#fff; position:relative; min-height:100vh;
 }
+.theme-starfield:before {
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse at 12% 22%,rgba(70,126,190,.13),transparent 28%),
+    radial-gradient(ellipse at 86% 17%,rgba(38,105,185,.15),transparent 30%),
+    linear-gradient(115deg,transparent 48%,rgba(111,220,255,.055) 49%,transparent 50%);
+}
+.starfield-sky {position:fixed;inset:0;pointer-events:none;z-index:0}
+.theme-starfield>*{position:relative;z-index:1}
+.starfield-sky .st{position:absolute;border-radius:50%;animation:sf-twinkle 3s ease-in-out infinite}
+@keyframes sf-twinkle{0%,100%{opacity:.12;transform:scale(.55)}50%{opacity:1;transform:scale(1.25)}}
+.starfield-sky .cm{position:absolute;height:1.2px;border-radius:2px;opacity:0;animation:sf-fly 6s linear infinite}
+@keyframes sf-fly{0%{transform:translate(0,0) rotate(var(--r));opacity:0}8%{opacity:.9}62%{opacity:.75}78%,100%{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
 
-.starfield-sky {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
+.panel{
+ position:relative; overflow:hidden;
+ border:1px solid rgba(155,222,255,.62);
+ border-radius:14px;
+ background:linear-gradient(145deg,rgba(5,13,27,.93),rgba(0,3,9,.9));
+ box-shadow:0 0 1px #fff,0 0 9px rgba(76,181,255,.32),inset 0 0 26px rgba(20,105,190,.10);
+ backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:14px
 }
-.theme-starfield > * { position: relative; z-index: 1; }
+.panel:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(120deg,transparent 15%,rgba(255,255,255,.025) 35%,transparent 55%)}
+.panel.app-header{padding:10px 12px;border-color:rgba(196,237,255,.82);box-shadow:0 0 3px #fff,0 0 13px rgba(79,181,255,.42),inset 0 0 25px rgba(45,125,255,.09)}
+.panel.portal-header{padding:12px 16px}
+@media(min-width:640px){.panel.app-header{padding:12px 16px}}
 
-.starfield-sky .st {
-  position: absolute;
-  border-radius: 50%;
-  animation: sf-twinkle 3s ease-in-out infinite;
+.box{
+ border:1px solid rgba(92,166,225,.36);border-radius:10px;
+ background:linear-gradient(180deg,rgba(7,17,33,.82),rgba(2,7,15,.92));
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+ transition:border-color .18s ease,box-shadow .18s ease,background .18s ease,transform .18s ease
 }
-@keyframes sf-twinkle {
-  0%, 100% { opacity: 0.12; transform: scale(0.55); }
-  50% { opacity: 1; transform: scale(1.25); }
+a.box:hover,button.box:hover,.box.hot{
+ border-color:rgba(116,218,255,.78);
+ background:linear-gradient(180deg,rgba(10,31,55,.92),rgba(2,10,20,.96));
+ box-shadow:0 0 9px rgba(74,190,255,.28),inset 0 0 14px rgba(45,125,255,.08)
 }
+.danger-box{border:1px solid rgba(255,255,255,.7);box-shadow:0 0 2px rgba(226,75,74,.7);border-radius:10px;background:rgba(226,75,74,.05)}
+.panel .danger-box{box-shadow:0 0 2px rgba(226,75,74,.7)!important}
+.glo{color:#fff;text-shadow:0 0 2px #fff,0 0 8px rgba(108,217,255,.62),0 1px 3px #000}
+.txt{color:#f5fbff;text-shadow:0 1px 3px #000}
+.sub{color:#a8c5dc;text-shadow:0 1px 3px #000}
 
-.starfield-sky .cm {
-  position: absolute;
-  height: 1.2px;
-  border-radius: 2px;
-  opacity: 0;
-  animation: sf-fly 6s linear infinite;
+.theme-starfield h1,.theme-starfield h2,.theme-starfield h3{
+ text-transform:none;
+ text-shadow:0 0 2px rgba(255,255,255,.75),0 0 9px rgba(87,196,255,.38)
 }
-@keyframes sf-fly {
-  0% { transform: translate(0, 0) rotate(var(--r)); opacity: 0; }
-  8% { opacity: 0.9; }
-  62% { opacity: 0.75; }
-  78% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; }
-  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; }
-}
-
-.panel {
-  position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  box-shadow: 0 0 1px rgba(255,255,255,.9), 0 0 4px rgba(126,200,255,.5), 0 0 11px rgba(126,200,255,.2);
-  border-radius: 12px;
-  background: rgba(6, 14, 30, 0.1);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  padding: 14px;
-}
-
-.panel.app-header { padding: 10px 12px; }
-.panel.portal-header { padding: 12px 16px; }
-@media (min-width: 640px) {
-  .panel.app-header { padding: 12px 16px; }
-}
-
-.box {
-  border: 1px solid var(--saber-soft);
-  border-radius: 10px;
-  background: rgba(126, 200, 255, 0.02);
-  box-shadow: none;
-}
-.box.hot {
-  border-color: rgba(126, 200, 255, 0.6);
-  box-shadow: 0 0 2px rgba(126, 200, 255, 0.55);
-}
-.danger-box {
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 0 2px rgba(226, 75, 74, 0.7);
-  border-radius: 10px;
-  background: rgba(226, 75, 74, 0.05);
-}
-
-/* Inner elements never inherit a wide legacy halo. */
-.panel .box { box-shadow: none !important; }
-.panel .box.hot { box-shadow: 0 0 2px rgba(126, 200, 255, 0.55) !important; }
-.panel .danger-box { box-shadow: 0 0 2px rgba(226, 75, 74, 0.7) !important; }
-.panel [class*="shadow-"]:not(.panel) { box-shadow: none !important; }
-
-.glo { color:#fff; text-shadow:0 0 2px rgba(255,255,255,.75),0 0 7px rgba(126,200,255,.45),0 1px 3px rgba(0,0,0,.9); }
-.txt { color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.95); }
-.sub { color:#cfe2fb; text-shadow:0 1px 3px rgba(0,0,0,.95); }
-
-/* Last-loaded compatibility overrides: legacy app blues collapse to the saber variable. */
-.theme-starfield [class*="text-[#8ffafa]"],
-.theme-starfield [class*="text-[#d9fbff]"],
-.theme-starfield [class*="text-[#9ffcff]"],
-.theme-starfield [class*="text-[#a7f0ff]"] { color: var(--saber) !important; }
-.theme-starfield [class*="border-[#2d7dff]"],
-.theme-starfield [class*="border-[#8ffafa]"] { border-color: var(--saber-soft) !important; }
-.theme-starfield [class*="bg-[#2d7dff]"] { background-color: rgba(126,200,255,.08) !important; }
-.theme-starfield [class*="violet-"] {
-  border-color: var(--saber-soft) !important;
-  color: var(--saber) !important;
-  background-color: rgba(126,200,255,.02) !important;
-}
-
-/* Preserve every image asset exactly. */
-.theme-starfield img {
-  filter:none !important;
-  opacity:1 !important;
-  mix-blend-mode:normal !important;
-}
-
-/* Keep the star layer fixed to the full viewport. The earlier child rule makes
-   normal app content relative/z-indexed, so this more-specific late override
-   prevents the sky itself from being converted into a short relative element. */
-.theme-starfield > .starfield-sky {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100dvh;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-}
-
-@supports not (height: 100dvh) {
-  .theme-starfield > .starfield-sky { height: 100vh; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .starfield-sky .st, .starfield-sky .cm { animation:none; }
-  .starfield-sky .cm { opacity:0; }
-}
+.theme-starfield [class*="text-[#8ffafa]"],.theme-starfield [class*="text-[#d9fbff]"],.theme-starfield [class*="text-[#9ffcff]"],.theme-starfield [class*="text-[#a7f0ff]"]{color:var(--saber)!important}
+.theme-starfield [class*="border-[#2d7dff]"],.theme-starfield [class*="border-[#8ffafa]"]{border-color:var(--saber-soft)!important}
+.theme-starfield [class*="bg-[#2d7dff]"]{background-color:rgba(45,125,255,.10)!important}
+.theme-starfield [class*="violet-"]{border-color:var(--saber-soft)!important;color:var(--saber)!important;background-color:rgba(45,125,255,.04)!important}
+.theme-starfield img{filter:none!important;opacity:1!important;mix-blend-mode:normal!important}
+.theme-starfield > .starfield-sky{position:fixed;inset:0;width:100vw;height:100dvh;overflow:hidden;pointer-events:none;z-index:0}
+@supports not (height:100dvh){.theme-starfield>.starfield-sky{height:100vh}}
+@media(prefers-reduced-motion:reduce){.starfield-sky .st,.starfield-sky .cm{animation:none}.starfield-sky .cm{opacity:0}}
