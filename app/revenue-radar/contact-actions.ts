@@ -14,6 +14,12 @@ async function salesUser() {
   return profile;
 }
 
+async function assertRevenueLeadAccess(profile: { id: string; role: string }, client: ReturnType<typeof createServiceRoleClient>, leadId: string) {
+  const { data: lead, error } = await client.from("chillbros_revenue_prospects").select("id,assigned_salesperson").eq("id", leadId).maybeSingle();
+  if (error || !lead) throw new Error(error?.message || "Lead not found.");
+  if (profile.role === "office" && lead.assigned_salesperson !== profile.id) throw new Error("This lead is not assigned to you.");
+}
+
 async function audit(client: ReturnType<typeof createServiceRoleClient>, args: { leadId: string; contactId: string; actorId: string; action: string; previousValue?: unknown; newValue?: unknown; reason?: string | null }) {
   const { error } = await client.from("chillbros_revenue_history").insert({
     lead_id: args.leadId,
@@ -55,8 +61,7 @@ export async function createRevenueContact(form: FormData) {
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid email address.");
 
   const client = createServiceRoleClient();
-  const { data: lead, error: leadError } = await client.from("chillbros_revenue_prospects").select("id").eq("id", leadId).maybeSingle();
-  if (leadError || !lead) throw new Error(leadError?.message || "Lead not found.");
+  await assertRevenueLeadAccess(profile, client, leadId);
   if (makePrimary) {
     const { error } = await client.from("chillbros_revenue_contacts").update({ is_primary: false, updated_at: new Date().toISOString() }).eq("lead_id", leadId).eq("is_primary", true);
     if (error) throw new Error(error.message);
@@ -86,6 +91,7 @@ export async function setPrimaryRevenueContact(form: FormData) {
   const contactId = value(form, "contact_id");
   if (!uuid(leadId) || !uuid(contactId)) throw new Error("Invalid contact.");
   const client = createServiceRoleClient();
+  await assertRevenueLeadAccess(profile, client, leadId);
   const { data: contact, error: contactError } = await client.from("chillbros_revenue_contacts").select("id,lead_id,name,role,phone,email,is_primary,do_not_contact").eq("id", contactId).eq("lead_id", leadId).maybeSingle();
   if (contactError || !contact) throw new Error(contactError?.message || "Contact not found.");
   if (contact.do_not_contact) throw new Error("A Do Not Contact person cannot be the primary outreach contact.");
@@ -106,6 +112,7 @@ export async function markRevenueContactDoNotContact(form: FormData) {
   const reason = value(form, "reason").slice(0, 1500);
   if (!uuid(leadId) || !uuid(contactId) || !reason) throw new Error("Contact Do Not Contact requires a reason.");
   const client = createServiceRoleClient();
+  await assertRevenueLeadAccess(profile, client, leadId);
   const { data: contact, error: contactError } = await client.from("chillbros_revenue_contacts").select("id,lead_id,is_primary,do_not_contact").eq("id", contactId).eq("lead_id", leadId).maybeSingle();
   if (contactError || !contact) throw new Error(contactError?.message || "Contact not found.");
   const { error } = await client.from("chillbros_revenue_contacts").update({ do_not_contact: true, do_not_contact_reason: reason, is_primary: false, updated_at: new Date().toISOString() }).eq("id", contactId);
