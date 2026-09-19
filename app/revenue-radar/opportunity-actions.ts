@@ -67,11 +67,13 @@ export async function closeRevenueOpportunity(form: FormData) {
   const { error } = await client.from("chillbros_revenue_prospects").update(update).eq("id", leadId);
   if (error) throw new Error(error.message);
 
+  // Closing the sales opportunity ends sales follow-up/appointment tasks only.
+  // Technical handoff review remains operational work and must not disappear just because the deal closed.
   const { error: taskError } = await client.from("chillbros_revenue_tasks").update({
     status: "canceled",
     cancellation_reason: `Opportunity closed ${outcome}: ${reason}`.slice(0, 1500),
     updated_at: now,
-  }).eq("lead_id", leadId).in("status", ["open", "in_progress", "overdue"]);
+  }).eq("lead_id", leadId).in("task_type", ["follow_up", "appointment"]).in("status", ["open", "in_progress", "overdue"]);
   if (taskError) throw new Error(taskError.message);
 
   await audit(client, {
