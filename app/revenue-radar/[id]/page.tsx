@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { RevenueRadarCloseScript } from "@/components/revenue-radar-close-script";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { buildSafeBattleCard, explainLeadRanking } from "@/lib/chillbros/revenue-sales";
@@ -197,6 +198,14 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
         <button className="min-h-12 rounded-xl border border-amber-300/50 px-4 font-bold text-amber-50 sm:col-span-2">Create Technician Handoff</button>
       </form>
     </details>
+
+    <RevenueRadarCloseScript
+      businessName={p.business_name}
+      serviceLine={p.service_line}
+      signalSummary={p.signal_summary}
+      signalVerified={Boolean(p.signal_verified)}
+      contactName={p.contact_name}
+    />
 
     {!p.do_not_contact ? <details className="rounded-2xl border border-red-400/20 bg-red-400/5 p-4">
       <summary className="cursor-pointer font-semibold text-red-100">Do Not Contact</summary>
