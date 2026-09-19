@@ -41,7 +41,7 @@ function appBaseUrl() {
   if (explicit) return explicit;
   const vercel = String(process.env.VERCEL_PROJECT_PRODUCTION_URL || "").trim().replace(/\/$/, "");
   if (vercel) return vercel.startsWith("http") ? vercel : `https://${vercel}`;
-  return "https://chill-bros.vercel.app";
+  return "https://chill-bros-chill-pros.vercel.app";
 }
 function esc(value: string) { return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] ?? char)); }
 
