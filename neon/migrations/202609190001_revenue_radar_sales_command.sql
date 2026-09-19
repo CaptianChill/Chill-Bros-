@@ -1,9 +1,12 @@
 -- Revenue Radar Sales Command Center P0 schema
--- Additive migration for Neon/Postgres Data API compatibility.
--- Existing legacy lead statuses remain temporarily accepted during rollout.
+-- Strictly additive migration for Neon/Postgres Data API compatibility.
+-- Existing chillbros_revenue_prospects.status remains untouched for legacy workflow compatibility.
 
 alter table public.chillbros_revenue_prospects
-  add column if not exists priority text not null default 'normal',
+  add column if not exists sales_status text not null default 'new'
+    check (sales_status in ('new','ready_to_call','contacted','qualified','technician_needed','appointment_set','proposal_requested','won','lost','nurture','do_not_contact')),
+  add column if not exists priority text not null default 'normal'
+    check (priority in ('low','normal','high','urgent')),
   add column if not exists assigned_salesperson uuid references public.chillbros_profiles(id) on delete set null,
   add column if not exists verification_status text not null default 'unverified',
   add column if not exists do_not_contact boolean not null default false,
@@ -11,19 +14,8 @@ alter table public.chillbros_revenue_prospects
   add column if not exists status_reason text,
   add column if not exists last_activity_at timestamptz;
 
-alter table public.chillbros_revenue_prospects
-  drop constraint if exists chillbros_revenue_prospects_status_check;
-alter table public.chillbros_revenue_prospects
-  add constraint chillbros_revenue_prospects_status_check check (status in (
-    'new','ready_to_call','contacted','qualified','technician_needed','appointment_set',
-    'proposal_requested','won','lost','nurture','do_not_contact',
-    'research','approved','skipped','quoted'
-  ));
-
-alter table public.chillbros_revenue_prospects
-  drop constraint if exists chillbros_revenue_prospects_priority_check;
-alter table public.chillbros_revenue_prospects
-  add constraint chillbros_revenue_prospects_priority_check check (priority in ('low','normal','high','urgent'));
+create index if not exists chillbros_revenue_sales_pipeline_idx
+  on public.chillbros_revenue_prospects(sales_status, assigned_salesperson, priority, score desc);
 
 create table if not exists public.chillbros_revenue_contacts (
   id uuid primary key default gen_random_uuid(),
@@ -41,7 +33,8 @@ create table if not exists public.chillbros_revenue_contacts (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-create index if not exists chillbros_revenue_contacts_lead_idx on public.chillbros_revenue_contacts(lead_id, is_primary desc, created_at);
+create index if not exists chillbros_revenue_contacts_lead_idx
+  on public.chillbros_revenue_contacts(lead_id, is_primary desc, created_at);
 
 create table if not exists public.chillbros_revenue_battle_cards (
   id uuid primary key default gen_random_uuid(),
@@ -75,27 +68,8 @@ create table if not exists public.chillbros_revenue_activities (
   notes text,
   created_at timestamptz not null default now()
 );
-create index if not exists chillbros_revenue_activities_lead_idx on public.chillbros_revenue_activities(lead_id, created_at desc);
-
-create table if not exists public.chillbros_revenue_tasks (
-  id uuid primary key default gen_random_uuid(),
-  lead_id uuid not null references public.chillbros_revenue_prospects(id) on delete cascade,
-  activity_id uuid references public.chillbros_revenue_activities(id) on delete set null,
-  handoff_id uuid,
-  assigned_user uuid references public.chillbros_profiles(id) on delete set null,
-  created_by uuid references public.chillbros_profiles(id) on delete set null,
-  task_type text not null,
-  description text not null,
-  due_at timestamptz not null,
-  status text not null default 'open' check (status in ('open','in_progress','completed','canceled','overdue')),
-  completion_notes text,
-  cancellation_reason text,
-  completed_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-create index if not exists chillbros_revenue_tasks_due_idx on public.chillbros_revenue_tasks(status, due_at);
-create index if not exists chillbros_revenue_tasks_lead_idx on public.chillbros_revenue_tasks(lead_id, status, due_at);
+create index if not exists chillbros_revenue_activities_lead_idx
+  on public.chillbros_revenue_activities(lead_id, created_at desc);
 
 create table if not exists public.chillbros_revenue_handoffs (
   id uuid primary key default gen_random_uuid(),
@@ -123,14 +97,32 @@ create table if not exists public.chillbros_revenue_handoffs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-create index if not exists chillbros_revenue_handoffs_status_idx on public.chillbros_revenue_handoffs(status, created_at);
-create index if not exists chillbros_revenue_handoffs_lead_idx on public.chillbros_revenue_handoffs(lead_id, status, created_at desc);
+create index if not exists chillbros_revenue_handoffs_status_idx
+  on public.chillbros_revenue_handoffs(status, created_at);
+create index if not exists chillbros_revenue_handoffs_lead_idx
+  on public.chillbros_revenue_handoffs(lead_id, status, created_at desc);
 
-alter table public.chillbros_revenue_tasks
-  drop constraint if exists chillbros_revenue_tasks_handoff_id_fkey;
-alter table public.chillbros_revenue_tasks
-  add constraint chillbros_revenue_tasks_handoff_id_fkey foreign key (handoff_id)
-  references public.chillbros_revenue_handoffs(id) on delete set null;
+create table if not exists public.chillbros_revenue_tasks (
+  id uuid primary key default gen_random_uuid(),
+  lead_id uuid not null references public.chillbros_revenue_prospects(id) on delete cascade,
+  activity_id uuid references public.chillbros_revenue_activities(id) on delete set null,
+  handoff_id uuid references public.chillbros_revenue_handoffs(id) on delete set null,
+  assigned_user uuid references public.chillbros_profiles(id) on delete set null,
+  created_by uuid references public.chillbros_profiles(id) on delete set null,
+  task_type text not null,
+  description text not null,
+  due_at timestamptz not null,
+  status text not null default 'open' check (status in ('open','in_progress','completed','canceled','overdue')),
+  completion_notes text,
+  cancellation_reason text,
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists chillbros_revenue_tasks_due_idx
+  on public.chillbros_revenue_tasks(status, due_at);
+create index if not exists chillbros_revenue_tasks_lead_idx
+  on public.chillbros_revenue_tasks(lead_id, status, due_at);
 
 create table if not exists public.chillbros_revenue_history (
   id uuid primary key default gen_random_uuid(),
@@ -145,7 +137,8 @@ create table if not exists public.chillbros_revenue_history (
   reason text,
   created_at timestamptz not null default now()
 );
-create index if not exists chillbros_revenue_history_lead_idx on public.chillbros_revenue_history(lead_id, created_at desc);
+create index if not exists chillbros_revenue_history_lead_idx
+  on public.chillbros_revenue_history(lead_id, created_at desc);
 
 create or replace function public.chillbros_revenue_reject_mutation()
 returns trigger
@@ -156,16 +149,36 @@ begin
 end;
 $$;
 
-drop trigger if exists chillbros_revenue_activities_append_only on public.chillbros_revenue_activities;
-create trigger chillbros_revenue_activities_append_only
-before update or delete on public.chillbros_revenue_activities
-for each row execute function public.chillbros_revenue_reject_mutation();
+do $$
+begin
+  if not exists (select 1 from pg_trigger where tgname = 'chillbros_revenue_activities_append_only') then
+    create trigger chillbros_revenue_activities_append_only
+      before update or delete on public.chillbros_revenue_activities
+      for each row execute function public.chillbros_revenue_reject_mutation();
+  end if;
+  if not exists (select 1 from pg_trigger where tgname = 'chillbros_revenue_history_append_only') then
+    create trigger chillbros_revenue_history_append_only
+      before update or delete on public.chillbros_revenue_history
+      for each row execute function public.chillbros_revenue_reject_mutation();
+  end if;
+end;
+$$;
 
-drop trigger if exists chillbros_revenue_history_append_only on public.chillbros_revenue_history;
-create trigger chillbros_revenue_history_append_only
-before update or delete on public.chillbros_revenue_history
-for each row execute function public.chillbros_revenue_reject_mutation();
+alter table public.chillbros_revenue_contacts enable row level security;
+alter table public.chillbros_revenue_battle_cards enable row level security;
+alter table public.chillbros_revenue_activities enable row level security;
+alter table public.chillbros_revenue_handoffs enable row level security;
+alter table public.chillbros_revenue_tasks enable row level security;
+alter table public.chillbros_revenue_history enable row level security;
 
+revoke all on public.chillbros_revenue_contacts from anon, authenticated;
+revoke all on public.chillbros_revenue_battle_cards from anon, authenticated;
+revoke all on public.chillbros_revenue_activities from anon, authenticated;
+revoke all on public.chillbros_revenue_handoffs from anon, authenticated;
+revoke all on public.chillbros_revenue_tasks from anon, authenticated;
+revoke all on public.chillbros_revenue_history from anon, authenticated;
+
+comment on column public.chillbros_revenue_prospects.sales_status is 'Canonical Revenue Radar sales pipeline status. Legacy status column is preserved during rollout.';
 comment on table public.chillbros_revenue_activities is 'Append-only sales interaction records. Customer statements are customer-reported, not technical findings.';
 comment on table public.chillbros_revenue_handoffs is 'Technical escalation from sales. customer_reported_problem is not a diagnosis.';
 comment on table public.chillbros_revenue_history is 'Append-only audit history for Revenue Radar Sales Command Center.';
