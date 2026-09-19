@@ -14,11 +14,7 @@ function cookieSecret() {
   // Production already requires this high-entropy server credential. Deriving
   // a domain-separated cookie key keeps urgent deployments safe until the
   // dedicated NEON_AUTH_COOKIE_SECRET is configured and rotated in Vercel.
-  const serviceCredential = (
-    process.env.NEON_DATA_API_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    ""
-  ).trim();
+  const serviceCredential = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   if (!serviceCredential) {
     throw new Error("NEON_AUTH_COOKIE_SECRET is required.");
   }

@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { sendCompanyEmail } from "@/lib/chillbros/approval-notifications";
 
 

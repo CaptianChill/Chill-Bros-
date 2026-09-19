@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { JOB_ACTIVE_STATUSES } from "@/lib/chillbros/types";
 
 import { sendTechnicianAssignmentEmail, verifyTechnicianAssignment } from "@/lib/chillbros/assignment-notifications";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 function text(fd: FormData, key: string) { return String(fd.get(key) ?? "").trim(); }
 function scheduleWindow(date: string, start: string, end: string) { return `${date} ${start}-${end} CT`; }

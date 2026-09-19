@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { threeDAssets, type ThreeDAssetStatus } from "@/lib/chillbros/three-d-assets";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 

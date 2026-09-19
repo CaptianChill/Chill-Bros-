@@ -5,7 +5,7 @@ import { InventoryAdmin } from "@/components/inventory-admin";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { getFeeSettings, getPartsCatalog, getPriceBookEntries } from "@/lib/chillbros/queries";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 

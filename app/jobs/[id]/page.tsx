@@ -9,7 +9,7 @@ import { getActiveTechnicians } from "@/lib/chillbros/operations-queries";
 import { completedLifecycleStepCount, getJobLifecycle, LIFECYCLE_STEPS } from "@/lib/chillbros/job-lifecycle-queries";
 import { issueInvoiceForCompletedWorkAction, scheduleReturnVisitAction, startApprovedWorkAction } from "@/lib/chillbros/job-lifecycle-actions";
 import { invoiceTotals } from "@/lib/chillbros/invoice-v2";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ success?: string; error?: string; invoice?: string }> };

@@ -5,7 +5,7 @@ import { createReceiptForPaidInvoice } from "@/lib/chillbros/billing-receipts";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { getInvoiceV2ById, invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { verifyStripeSignature } from "@/lib/chillbros/stripe";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const runtime = "nodejs";
 

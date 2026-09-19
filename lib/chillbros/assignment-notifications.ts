@@ -1,6 +1,6 @@
 import "server-only";
 import { sendCompanyEmail } from "./approval-notifications";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 function appBaseUrl(){if(process.env.VERCEL_ENV==="preview"&&process.env.VERCEL_URL)return `https://${process.env.VERCEL_URL}`;const x=String(process.env.NEXT_PUBLIC_APP_URL||process.env.VERCEL_PROJECT_PRODUCTION_URL||"https://chill-bros.vercel.app").replace(/\/$/,"");return x.startsWith("http")?x:`https://${x}`;}
 

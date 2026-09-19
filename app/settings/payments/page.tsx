@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { SQUARE_PAYMENT_URL } from "@/lib/chillbros/square-payment";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { sendTestEmailAction } from "./actions";
 
 export const dynamic = "force-dynamic";

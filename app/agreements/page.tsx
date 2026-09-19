@@ -6,7 +6,7 @@ import { ServiceAgreementAdmin } from "@/components/service-agreement-admin";
 import { StatusPill } from "@/components/status-pill";
 import { getCustomers } from "@/lib/chillbros/queries";
 import { getServiceAgreements } from "@/lib/chillbros/service-agreement-queries";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 

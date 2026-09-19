@@ -3,8 +3,8 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth/server";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import type { StaffRole } from "./types";
 
 type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };

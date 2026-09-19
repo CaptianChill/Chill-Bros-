@@ -3,7 +3,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 
 import { getInvoiceV2ById, invoiceTotals } from "@/lib/chillbros/invoice-v2";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 function receiptNumber() {
   const now = new Date();

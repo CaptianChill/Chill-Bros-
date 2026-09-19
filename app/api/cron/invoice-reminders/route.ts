@@ -1,5 +1,5 @@
 import { sendBillingDelivery } from "@/lib/chillbros/billing-delivery";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
 

@@ -3,7 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { getInvoiceV2ById, invoiceTotals } from "@/lib/chillbros/invoice-v2";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { PAYMENT_METHOD_LABELS, PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
 
 export type ArchiveStage = "approved" | "paid";

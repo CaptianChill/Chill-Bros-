@@ -9,7 +9,7 @@ import { InvoiceAdminControls } from "@/components/invoice-admin-controls";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { getInvoiceCenterData, type InvoiceCenterRow } from "@/lib/chillbros/billing-queries";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
 
 export const dynamic = "force-dynamic";

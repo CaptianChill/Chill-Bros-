@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Eye } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import ProjectVisualizerClient from "./project-visualizer-client";
 
 export const dynamic = "force-dynamic";
