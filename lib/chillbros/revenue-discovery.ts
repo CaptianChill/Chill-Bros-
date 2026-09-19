@@ -63,15 +63,21 @@ export async function discoverSanAntonioRevenueLeads(limit = 60): Promise<Discov
 out tags center ${Math.max(20, Math.min(limit * 3, 180))};
 `;
 
-  const response = await fetch(OVERPASS_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
-      "user-agent": "ChillBros-RevenueRadar/1.0",
-    },
-    body: new URLSearchParams({ data: query }),
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(OVERPASS_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "user-agent": "ChillBros-RevenueRadar/1.0",
+      },
+      body: new URLSearchParams({ data: query }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch {
+    throw new Error("Lead discovery source is temporarily unavailable. Try the scan again in a moment.");
+  }
 
   if (!response.ok) throw new Error(`Lead discovery source returned HTTP ${response.status}.`);
 

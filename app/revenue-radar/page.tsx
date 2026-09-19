@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { RevenueRadarList } from "@/components/revenue-radar-list";
+import { ScanForLeadsButton } from "@/components/scan-for-leads-button";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { addProspect, scanForLeads } from "./actions";
@@ -35,11 +36,7 @@ export default async function RevenueRadarPage() {
               Scan public commercial business data around San Antonio, identify businesses with strong HVAC/R, refrigeration, ice, and kitchen-equipment demand, remove duplicates, and rank the best prospects automatically.
             </p>
           </div>
-          <form action={scanForLeads}>
-            <button className="min-h-12 whitespace-nowrap rounded-2xl bg-cyan-300 px-6 font-bold text-black shadow-[0_0_24px_rgba(103,232,249,0.28)] hover:bg-cyan-200">
-              Scan for leads
-            </button>
-          </form>
+          <ScanForLeadsButton action={scanForLeads} />
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><strong className="block text-xl text-white">{prospects.length}</strong><span className="text-xs text-zinc-400">On radar</span></div>
@@ -48,25 +45,7 @@ export default async function RevenueRadarPage() {
         </div>
       </section>
 
-      <div className="space-y-3">
-        {prospects.length === 0 ? <div className="rounded-2xl border border-white/20 p-6 text-center text-zinc-300">
-          <p className="font-semibold text-white">No leads loaded yet.</p>
-          <p className="mt-1 text-sm">Press <strong>Scan for leads</strong>. Revenue Radar will populate this list for you.</p>
-        </div> : prospects.map((p) => <Link key={p.id} href={"/revenue-radar/" + p.id} className="block rounded-2xl border border-cyan-400/25 bg-black/40 p-4 hover:border-cyan-300">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <strong className="text-lg">{p.business_name}</strong>
-              <p className="text-sm text-zinc-400">{p.city} · {p.service_line.replaceAll("_", " ")} · {p.business_address || "address research pending"}</p>
-            </div>
-            <strong className="rounded-full bg-cyan-400/20 px-3 py-1 text-cyan-200">{p.score}/100</strong>
-          </div>
-          <p className="mt-2 text-sm">{p.signal_summary}</p>
-          <p className="mt-2 text-xs text-zinc-400">{p.signal_verified ? "Verified" : "Auto-discovered public lead"} · {p.status} · {new Date(p.signal_observed_at).toLocaleDateString()}</p>
-          {(p.contact_phone || p.contact_email) ? <p className="mt-1 text-xs text-cyan-200">{[p.contact_phone, p.contact_email].filter(Boolean).join(" · ")}</p> : null}
-          {p.follow_up_at ? <p className="mt-1 text-xs text-cyan-200">Follow up {new Date(p.follow_up_at).toLocaleString()}</p> : null}
-          {p.actual_revenue != null ? <p className="mt-1 text-xs text-cyan-200">Revenue ${Number(p.actual_revenue).toFixed(2)} · Gross profit ${((Number(p.actual_revenue) || 0) - (Number(p.direct_cost) || 0)).toFixed(2)}</p> : null}
-        </Link>)}
-      </div>
+      <RevenueRadarList prospects={prospects} />
 
       <details className="rounded-2xl border border-white/10 bg-black/30 p-4">
         <summary className="cursor-pointer text-sm font-medium text-zinc-300">Add a lead manually (backup only)</summary>
