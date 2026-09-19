@@ -12,12 +12,43 @@ async function office() {
   if (!profile || !["manager", "office"].includes(profile.role)) throw new Error("Office access required.");
   return profile;
 }
+
+async function manager() {
+  const profile = await office();
+  if (profile.role !== "manager") throw new Error("Manager access required.");
+  return profile;
+}
+
+async function assertProspectAccess(profile: { id: string; role: string }, id: string) {
+  if (profile.role === "manager") return;
+  const { data: lead, error } = await createServiceRoleClient()
+    .from("chillbros_revenue_prospects")
+    .select("id,assigned_salesperson")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !lead) throw new Error(error?.message || "Lead not found.");
+  if (lead.assigned_salesperson !== profile.id) throw new Error("This lead is not assigned to you.");
+}
+
 const value = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
-export async function scanForLeads(_form: FormData) {
-  const profile = await office();
-  const discovered = await discoverSanAntonioRevenueLeads(60);
-  if (!discovered.length) throw new Error("No leads were returned by the discovery source. Try the scan again shortly.");
+export type ScanForLeadsResult = { ok: true } | { ok: false; error: string };
+
+export async function scanForLeads(_form: FormData): Promise<ScanForLeadsResult> {
+  let profile: Awaited<ReturnType<typeof manager>>;
+  try {
+    profile = await manager();
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Manager access required." };
+  }
+
+  let discovered: Awaited<ReturnType<typeof discoverSanAntonioRevenueLeads>>;
+  try {
+    discovered = await discoverSanAntonioRevenueLeads(60);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Lead discovery failed." };
+  }
+  if (!discovered.length) return { ok: false, error: "No leads were returned by the discovery source. Try the scan again shortly." };
 
   const rows = discovered.map((lead) => ({
     ...lead,
@@ -31,12 +62,13 @@ export async function scanForLeads(_form: FormData) {
     .from("chillbros_revenue_prospects")
     .upsert(rows, { onConflict: "normalized_key", ignoreDuplicates: true });
 
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, error: error.message };
   revalidatePath("/revenue-radar");
+  return { ok: true };
 }
 
 export async function addProspect(form: FormData) {
-  const profile = await office();
+  const profile = await manager();
   const name = value(form, "business_name").slice(0, 200);
   const city = value(form, "city").slice(0, 100) || "San Antonio";
   const category = value(form, "category");
@@ -66,6 +98,7 @@ export async function updateProspect(form: FormData) {
   const id = value(form, "id");
   const status = value(form, "status");
   if (!/^[0-9a-f-]{36}$/i.test(id) || !statuses.includes(status as typeof statuses[number])) throw new Error("Invalid prospect update.");
+  await assertProspectAccess(profile, id);
   const money = (key: string) => { const raw = value(form, key); const n = Number(raw); if (raw && (!Number.isFinite(n) || n < 0)) throw new Error("Amounts must be positive."); return raw ? n : null; };
   const date = value(form, "follow_up_at");
   if (date && Number.isNaN(new Date(date).getTime())) throw new Error("Invalid follow-up date.");
