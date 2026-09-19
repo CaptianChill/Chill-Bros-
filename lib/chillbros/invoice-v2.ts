@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { DetailedInvoice, WorkflowEvent } from "./types";
 
 async function adjustmentTotals(invoiceId: string) {

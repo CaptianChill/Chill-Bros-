@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import WalkthroughClient from "./walkthrough-client";
 
 export const dynamic = "force-dynamic";

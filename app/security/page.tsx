@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 import { revokeOtherSessionsAction } from "./actions";
 

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { sendCompanyEmail } from "@/lib/chillbros/approval-notifications";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export type BillingDeliveryType = "estimate" | "invoice" | "reminder" | "receipt";
 export type BillingDeliveryChannel = "email" | "sms";

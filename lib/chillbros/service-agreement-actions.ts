@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { AgreementCalculationMode, AgreementDiscountType, ServiceAgreementStatus } from "./service-agreement-queries";
 
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };

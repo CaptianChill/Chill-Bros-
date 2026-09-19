@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
 import { auth as neonAuth } from "@/lib/auth/server";
-import { getNeonDataApiConfig } from "./config";
+import { getSupabaseConfig } from "./config";
 import { createServiceRoleClient } from "./service-client";
 
 export type StaffProfile = {
@@ -19,16 +19,15 @@ const OWNER_EMAIL = "chillprostx@gmail.com";
 const OWNER_PROFILE_ID = "8c81f12a-ad86-4ceb-bca1-3924be1cbfec";
 
 /**
- * Legacy PostgREST-compatible auth adapter retained only for two migration-era
- * recovery/session actions. Interactive sign-in and authorization use Neon
- * Auth. The backend URL is still required to pass the Neon-only host guard.
+ * Legacy Supabase auth client retained only for remaining migration-era
+ * admin/recovery actions. Interactive sign-in uses Neon Auth.
  */
 export async function createAuthServerClient() {
-  const config = getNeonDataApiConfig();
-  if (!config) throw new Error("Neon Data API credentials are not configured.");
+  const config = getSupabaseConfig();
+  if (!config) throw new Error("Supabase server credentials are not configured.");
   const cookieStore = await cookies();
 
-  return createServerClient(config.url, config.anonymousKey, {
+  return createServerClient(config.url, config.anonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

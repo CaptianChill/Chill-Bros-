@@ -7,7 +7,7 @@ import { SectionCard } from "@/components/section-card";
 import { getDispatchJobs } from "@/lib/chillbros/operations-queries";
 import { getCustomers } from "@/lib/chillbros/queries";
 import { getCalendarJobs } from "@/lib/chillbros/schedule-queries";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 

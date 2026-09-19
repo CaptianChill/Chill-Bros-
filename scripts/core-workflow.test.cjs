@@ -49,8 +49,8 @@ function harness(seed = {}, delivery = { status: 'sent', recipient: 'test@exampl
     'server-only': {},
     'next/cache': { revalidatePath() {} },
     'next/navigation': { redirect(location) { throw Object.assign(new Error('redirect'), { location }); } },
-    '@/lib/neon/data-api/auth-server': { getCurrentStaffProfile: async () => profile },
-    '@/lib/neon/data-api/service-client': { createServiceRoleClient: () => db },
+    '@/lib/supabase/auth-server': { getCurrentStaffProfile: async () => profile },
+    '@/lib/supabase/service-client': { createServiceRoleClient: () => db },
     '@/lib/chillbros/assignment-notifications': {
       verifyTechnicianAssignment: async () => ({ ok: true }),
       sendTechnicianAssignmentEmail: async () => ({ sent: delivery.status === 'sent', ...delivery }),

@@ -8,8 +8,8 @@ import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications
 import { sendBillingDeliveryRecorded } from "@/lib/chillbros/billing-delivery";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { captureCompletedJobKnowledge } from "@/lib/chillbros/knowledge-cases";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { PaymentMethod, PaymentTerms } from "./types";
 
 type Result = { ok: true; data: undefined } | { ok: false; error: string };

@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth/server";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 const OWNER_EMAIL = "chillprostx@gmail.com";
 const OWNER_ID = "8c81f12a-ad86-4ceb-bca1-3924be1cbfec";

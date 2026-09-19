@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { safeInternalPath } from "@/lib/chillbros/security-guards";
-import { createAuthServerClient } from "@/lib/neon/data-api/auth-server";
+import { createAuthServerClient } from "@/lib/supabase/auth-server";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { getEquipmentByCustomer, type EquipmentRecord } from "./equipment-queries";
 import { getServiceAgreementsByCustomer, type ServiceAgreement } from "./service-agreement-queries";
 import type { Customer, JobStatus } from "./types";

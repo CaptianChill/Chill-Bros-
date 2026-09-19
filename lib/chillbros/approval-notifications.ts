@@ -1,7 +1,7 @@
 import "server-only";
 import * as tls from "node:tls";
 
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 type ApprovalNotification = {
   subject: string;

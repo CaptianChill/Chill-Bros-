@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth/server";
 import { checkLoginThrottle, recordLoginAttempt, safeInternalPath } from "@/lib/chillbros/security-guards";
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 const OWNER_EMAIL = "chillprostx@gmail.com";
 

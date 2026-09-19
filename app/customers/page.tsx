@@ -5,7 +5,7 @@ import { CustomerCenterCompact } from "@/components/customer-center-compact";
 import { getEquipment } from "@/lib/chillbros/equipment-queries";
 import { getActiveTechnicians, getDispatchJobs } from "@/lib/chillbros/operations-queries";
 import { getCustomers } from "@/lib/chillbros/queries";
-import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 

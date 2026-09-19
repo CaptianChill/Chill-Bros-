@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { reconcileTechnicianAssignmentsAndNotifications } from "./assignment-reconciliation";
 import type { JobStatus } from "./types";
 

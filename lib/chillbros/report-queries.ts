@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export type ReportInvoice = { id: string; invoiceNumber: string; customerName: string; status: string; paymentStatus: string; total: number };
 export type OperationsReport = {
