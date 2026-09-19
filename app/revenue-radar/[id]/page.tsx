@@ -49,7 +49,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
   const field = (label: string, name: string, type = "text") => <label key={name}>{label}<input className={input} name={name} type={type} defaultValue={p[name] ?? ""} /></label>;
 
   return <AppShell title={p.business_name} description="Revenue Radar sales execution, follow-up, and technical handoff."><div className="mx-auto max-w-3xl space-y-4 text-left">
-    <Link href="/revenue-radar" className="text-cyan-200">← Revenue Radar</Link>
+    <div className="flex flex-wrap gap-3 text-sm"><Link href="/revenue-radar" className="text-cyan-200">← Revenue Radar</Link><Link href={`/revenue-radar/${id}/contacts`} className="text-cyan-200 underline underline-offset-2">Contacts</Link><Link href="/revenue-radar/tasks" className="text-cyan-200 underline underline-offset-2">Sales Tasks</Link>{profile.role === "manager" ? <Link href="/revenue-radar/handoffs" className="text-cyan-200 underline underline-offset-2">Tech Requests</Link> : null}</div>
 
     <section className="rounded-2xl border border-cyan-400/25 bg-black/40 p-4">
       <div className="flex flex-wrap justify-between gap-3">
