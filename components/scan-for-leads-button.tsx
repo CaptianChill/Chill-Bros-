@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import type { ScanForLeadsResult } from "@/app/revenue-radar/actions";
 
-export function ScanForLeadsButton({ action }: { action: (form: FormData) => Promise<void> }) {
+export function ScanForLeadsButton({ action }: { action: (form: FormData) => Promise<ScanForLeadsResult> }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -17,7 +18,11 @@ export function ScanForLeadsButton({ action }: { action: (form: FormData) => Pro
           setError("");
           startTransition(async () => {
             try {
-              await action(new FormData());
+              const result = await action(new FormData());
+              if (!result.ok) {
+                setError(result.error);
+                return;
+              }
               router.refresh();
             } catch (err) {
               setError(err instanceof Error ? err.message : "Scan failed. Try again.");
