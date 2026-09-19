@@ -16,6 +16,47 @@ export type SalesLeadStatus = (typeof salesLeadStatuses)[number];
 
 export const BATTLE_CARD_PROMPT_VERSION = "revenue-radar-sales-v1";
 
+export type LeadRankingInput = {
+  score: number;
+  category: string;
+  serviceLine: string;
+  signalSummary: string;
+  signalVerified: boolean;
+  verificationStatus?: string | null;
+  observedAt: string;
+  businessAddress?: string | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+};
+
+export function explainLeadRanking(input: LeadRankingInput): string[] {
+  const reasons: string[] = [];
+  const ageDays = Math.max(0, (Date.now() - new Date(input.observedAt).getTime()) / 86400000);
+
+  if (input.score >= 90) reasons.push(`Top-tier Revenue Radar priority at ${input.score}/100.`);
+  else if (input.score >= 75) reasons.push(`High-priority Revenue Radar score at ${input.score}/100.`);
+  else reasons.push(`Revenue Radar score: ${input.score}/100.`);
+
+  if (input.category === "opening_remodel") reasons.push("Active opening or remodel creates a time-sensitive vendor opportunity.");
+  if (input.category === "equipment_failure") reasons.push("Reported equipment-failure signal can indicate immediate service demand, subject to customer confirmation.");
+  if (input.category === "property_manager") reasons.push("Property/facilities signal can lead to recurring multi-site service work.");
+  if (input.serviceLine === "multiple") reasons.push("One account fits multiple Chill Pros service lines, increasing account value.");
+
+  const summary = input.signalSummary.toLowerCase();
+  if (/room|hotel|resort|square[- ]foot|sq\.? ?ft|grocery|restaurant|multiple|four distinct|food-and-beverage|food and beverage/.test(summary)) {
+    reasons.push("Public information indicates a substantial commercial equipment footprint.");
+  }
+
+  if (input.signalVerified || input.verificationStatus === "source_verified") reasons.push("The lead signal is backed by a verified public source.");
+  if (ageDays <= 14) reasons.push("The opportunity signal is recent, improving timing for outreach.");
+  if (input.contactPhone || input.contactEmail) reasons.push("Reachable phone or email information is already available.");
+  if (input.contactName) reasons.push("A lead contact or contact role is already identified.");
+  if (input.businessAddress) reasons.push("The service location is identified.");
+
+  return reasons;
+}
+
 export type BattleCardInput = {
   businessName: string;
   city: string;
