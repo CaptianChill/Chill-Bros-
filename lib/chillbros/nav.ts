@@ -20,6 +20,7 @@ export const navItems: NavItem[] = [
   { href: "/revenue-radar", label: "Revenue Radar", shortLabel: "Radar", roles: ["manager", "office"] },
   { href: "/revenue-radar/tasks", label: "Sales Tasks", shortLabel: "Sales", roles: ["manager", "office"] },
   { href: "/revenue-radar/handoffs", label: "Tech Requests", shortLabel: "Requests", roles: ["manager", "technician"] },
+  { href: "/revenue-radar/opportunities", label: "Sales Closeout", shortLabel: "Closeout", roles: ["manager"] },
   { href: "/revenue-radar/audit", label: "Sales Audit", shortLabel: "Audit", roles: ["manager"] },
   { href: "/revenue-radar/dnc", label: "DNC Review", shortLabel: "DNC", roles: ["manager"] },
   { href: "/technician", label: "Field Jobs", shortLabel: "Field", roles: ["manager", "technician"] },
