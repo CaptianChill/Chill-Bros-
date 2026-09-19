@@ -12,9 +12,23 @@ export async function GET(request: Request) {
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
+  const client = createServiceRoleClient();
+  const now = new Date().toISOString();
+  const { data: overdueRows, error: overdueError } = await client
+    .from("chillbros_revenue_tasks")
+    .update({ status: "overdue", updated_at: now })
+    .lt("due_at", now)
+    .in("status", ["open", "in_progress"])
+    .select("id");
+
+  // The Sales Command tables are deployed additively. Until that migration is
+  // promoted, the legacy lead scan must continue working without interruption.
+  const missingSalesSchema = overdueError && ["PGRST205", "42P01"].includes(String(overdueError.code || ""));
+  if (overdueError && !missingSalesSchema) console.error("[revenue-radar-cron] overdue task update failed", overdueError);
+
   const discovered = await discoverSanAntonioRevenueLeads(80);
   if (!discovered.length) {
-    return Response.json({ ok: true, discovered: 0, added: 0 });
+    return Response.json({ ok: true, discovered: 0, added: 0, tasksMarkedOverdue: overdueRows?.length ?? 0, ranAt: now });
   }
 
   const rows = discovered.map((lead) => ({
@@ -22,10 +36,10 @@ export async function GET(request: Request) {
     status: "new",
     created_by: null,
     updated_by: null,
-    updated_at: new Date().toISOString(),
+    updated_at: now,
   }));
 
-  const { data, error } = await createServiceRoleClient()
+  const { data, error } = await client
     .from("chillbros_revenue_prospects")
     .upsert(rows, { onConflict: "normalized_key", ignoreDuplicates: true })
     .select("id");
@@ -39,6 +53,7 @@ export async function GET(request: Request) {
     ok: true,
     discovered: discovered.length,
     added: data?.length ?? 0,
-    ranAt: new Date().toISOString(),
+    tasksMarkedOverdue: overdueRows?.length ?? 0,
+    ranAt: now,
   });
 }
