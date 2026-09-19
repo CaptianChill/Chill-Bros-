@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { ScanForLeadsButton } from "@/components/scan-for-leads-button";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { addProspect, scanForLeads } from "./actions";
@@ -35,11 +36,7 @@ export default async function RevenueRadarPage() {
               Scan public commercial business data around San Antonio, identify businesses with strong HVAC/R, refrigeration, ice, and kitchen-equipment demand, remove duplicates, and rank the best prospects automatically.
             </p>
           </div>
-          <form action={scanForLeads}>
-            <button className="min-h-12 whitespace-nowrap rounded-2xl bg-cyan-300 px-6 font-bold text-black shadow-[0_0_24px_rgba(103,232,249,0.28)] hover:bg-cyan-200">
-              Scan for leads
-            </button>
-          </form>
+          <ScanForLeadsButton action={scanForLeads} />
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><strong className="block text-xl text-white">{prospects.length}</strong><span className="text-xs text-zinc-400">On radar</span></div>
