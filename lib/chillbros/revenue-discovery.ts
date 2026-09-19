@@ -8,6 +8,8 @@ type OsmElement = {
   tags?: Record<string, string>;
 };
 
+type OverpassPayload = { elements?: OsmElement[] };
+
 export type DiscoveredRevenueLead = {
   business_name: string;
   city: string;
@@ -24,7 +26,34 @@ export type DiscoveredRevenueLead = {
   contact_phone: string | null;
 };
 
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+] as const;
+
+async function fetchOverpass(query: string): Promise<OverpassPayload> {
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+          "user-agent": "ChillBros-RevenueRadar/1.1",
+        },
+        body: new URLSearchParams({ data: query }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!response.ok) continue;
+      const payload = (await response.json()) as OverpassPayload;
+      if (Array.isArray(payload.elements)) return payload;
+    } catch {
+      // Public Overpass instances can be overloaded or temporarily unreachable.
+      // Try the next global instance before surfacing a failure to the user.
+    }
+  }
+  throw new Error("Lead discovery sources are temporarily unavailable. Revenue Radar tried its backup source too; try the scan again shortly.");
+}
 
 function serviceFit(tags: Record<string, string>) {
   const amenity = tags.amenity ?? "";
@@ -63,25 +92,7 @@ export async function discoverSanAntonioRevenueLeads(limit = 60): Promise<Discov
 out tags center ${Math.max(20, Math.min(limit * 3, 180))};
 `;
 
-  let response: Response;
-  try {
-    response = await fetch(OVERPASS_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
-        "user-agent": "ChillBros-RevenueRadar/1.0",
-      },
-      body: new URLSearchParams({ data: query }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(20000),
-    });
-  } catch {
-    throw new Error("Lead discovery source is temporarily unavailable. Try the scan again in a moment.");
-  }
-
-  if (!response.ok) throw new Error(`Lead discovery source returned HTTP ${response.status}.`);
-
-  const payload = (await response.json()) as { elements?: OsmElement[] };
+  const payload = await fetchOverpass(query);
   const now = new Date().toISOString();
   const leads: DiscoveredRevenueLead[] = [];
 
