@@ -2,6 +2,18 @@
 
 Production Next.js app for Chill Bros dispatch, manager controls, technician workflows, customers, equipment, estimates, inventory, timesheets, agreements, reporting, security, and training.
 
+## Backend source of truth
+
+Chill Bros uses one backend: the dedicated Chill Bros Neon project. Neon
+Lakebase Postgres stores operational data, Neon Data API serves application
+queries, and Neon Auth owns staff identities and sessions. Supabase is not a
+Chill Bros database and must not be configured as one.
+
+The `@supabase/supabase-js` package remains temporarily as a PostgREST client
+for the Neon Data API. Package compatibility does not make Supabase a backend.
+See `docs/BACKEND_SOURCE_OF_TRUTH.md` for the enforced boundary and cutover
+rules.
+
 ## Local verification
 
 ```bash

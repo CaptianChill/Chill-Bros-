@@ -5,7 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { ManagerUserPanel } from "@/components/manager-user-panel";
 import { SectionCard } from "@/components/section-card";
 import { getStaffAccounts } from "@/lib/chillbros/queries";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 
 export const dynamic = "force-dynamic";
 

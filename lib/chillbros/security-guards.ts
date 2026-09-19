@@ -3,7 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const IDENTITY_FAILURE_LIMIT = 5;

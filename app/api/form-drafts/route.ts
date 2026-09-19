@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth/server";
 import type { FormDraft, FormDraftField } from "@/lib/chillbros/form-drafts";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { createUserScopedDataClient } from "@/lib/supabase/service-client";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { createUserScopedDataClient } from "@/lib/neon/data-api/service-client";
 
 export const dynamic = "force-dynamic";
 

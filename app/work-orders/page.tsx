@@ -6,7 +6,7 @@ import { StatusPill } from "@/components/status-pill";
 import { getOpenWorkOrders } from "@/lib/chillbros/open-work-orders";
 import { getActiveTechnicians } from "@/lib/chillbros/operations-queries";
 import { JOB_STATUS_LABELS, type JobStatus } from "@/lib/chillbros/types";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 import { markReadyToInvoiceAction, updateWorkOrderAssignmentAction, updateWorkOrderStatusAction } from "./actions";
 
 export const dynamic="force-dynamic";

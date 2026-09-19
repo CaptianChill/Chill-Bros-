@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { RevenueRadarList } from "@/components/revenue-radar-list";
 import { ScanForLeadsButton } from "@/components/scan-for-leads-button";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 import { addProspect, scanForLeads } from "./actions";
 
 export const dynamic = "force-dynamic";

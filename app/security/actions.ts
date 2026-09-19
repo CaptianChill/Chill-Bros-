@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 
-import { createAuthServerClient, getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { createAuthServerClient, getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 
 export async function revokeOtherSessionsAction(): Promise<void> {
   const profile = await getCurrentStaffProfile();

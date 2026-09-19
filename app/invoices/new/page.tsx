@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { getCustomers, getFeeSettings, getPartsCatalog, getPriceBookEntries } from "@/lib/chillbros/queries";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 import { createDirectInvoiceAction } from "./actions";
 import { LineItemsEditor } from "./line-items-editor";
 

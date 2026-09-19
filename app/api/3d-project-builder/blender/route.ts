@@ -1,7 +1,7 @@
 import { getVercelOidcToken } from "@vercel/functions/oidc";
 import { NextResponse } from "next/server";
 
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

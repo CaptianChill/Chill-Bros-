@@ -8,7 +8,7 @@ import { ScheduleSubmitButton } from "@/components/schedule-submit-button";
 import { getActiveTechnicians } from "@/lib/chillbros/operations-queries";
 import { getCalendarJobs } from "@/lib/chillbros/schedule-queries";
 import { getCustomers } from "@/lib/chillbros/queries";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 import { createScheduledJobAction, createTeamMeetingAction, rescheduleJobAction } from "./actions";
 import { createScheduleCustomerAction } from "./customer-actions";
 

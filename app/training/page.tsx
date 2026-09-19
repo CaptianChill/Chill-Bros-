@@ -8,7 +8,7 @@ import { TrainingBibleLibrary } from "@/components/training-bible-library";
 import { getEquipment } from "@/lib/chillbros/equipment-queries";
 import { getCustomers } from "@/lib/chillbros/queries";
 import { trainingCases } from "@/lib/chillbros/training-cases";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 
 export const dynamic = "force-dynamic";
 

@@ -1,4 +1,4 @@
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 import { discoverSanAntonioRevenueLeads } from "@/lib/chillbros/revenue-discovery";
 
 export const dynamic = "force-dynamic";

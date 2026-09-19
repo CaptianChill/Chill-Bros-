@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS, type JobStatus } from "./types";
 
 type Result = { ok: true } | { ok: false; error: string };

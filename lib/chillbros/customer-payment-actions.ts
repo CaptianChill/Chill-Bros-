@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 import type { PaymentMethod } from "./types";
 
 type Result = { ok: true } | { ok: false; error: string };

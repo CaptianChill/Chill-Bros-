@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 
 const PAYMENT_METHODS = new Set(["card", "cash", "check", "ach", "cash_app", "venmo", "zelle"]);
 const PAYMENT_TERMS = new Set(["due_on_receipt", "net_7", "net_15", "net_30", "custom"]);

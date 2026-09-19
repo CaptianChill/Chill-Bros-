@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 import { categories, normalizedKey, scoreSignal, serviceLines, statuses } from "@/lib/chillbros/revenue-radar";
 import { discoverSanAntonioRevenueLeads } from "@/lib/chillbros/revenue-discovery";
 
