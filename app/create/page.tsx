@@ -10,8 +10,8 @@ import { StatusPill } from "@/components/status-pill";
 import { getActiveTechnicians, getDispatchJobs } from "@/lib/chillbros/operations-queries";
 import { getCustomers } from "@/lib/chillbros/queries";
 import { JOB_ACTIVE_STATUSES } from "@/lib/chillbros/types";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 
 export const dynamic = "force-dynamic";
 

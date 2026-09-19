@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 
 export async function captureCompletedJobKnowledge(jobId: string, invoiceId: string, technicianId?: string | null) {
   const supabase = createServiceRoleClient();

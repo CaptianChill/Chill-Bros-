@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { LogOut } from "lucide-react";
 
 import { navItems, type NavItem } from "@/lib/chillbros/nav";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 import { signOutAction } from "@/app/sign-in/actions";
 import { AppNavigation } from "@/components/app-navigation";
 import { FormDraftProtector } from "@/components/form-draft-protector";

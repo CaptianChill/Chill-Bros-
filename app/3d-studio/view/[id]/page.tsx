@@ -7,7 +7,7 @@ import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { ThreeDAssetViewer } from "@/components/three-d-asset-viewer";
 import { threeDAssets } from "@/lib/chillbros/three-d-assets";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 
 export const dynamic = "force-dynamic";
 

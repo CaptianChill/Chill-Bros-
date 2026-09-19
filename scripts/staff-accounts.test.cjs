@@ -32,8 +32,8 @@ function harness({ role = 'manager', email = owner.email, rows = [owner, member]
   }};
   const mocks = {
     'next/cache': { revalidatePath() {} },
-    '@/lib/supabase/service-client': { createServiceRoleClient: () => db },
-    '@/lib/supabase/auth-server': { getCurrentStaffProfile: async () => ({...owner,role,email}) },
+    '@/lib/neon/data-api/service-client': { createServiceRoleClient: () => db },
+    '@/lib/neon/data-api/auth-server': { getCurrentStaffProfile: async () => ({...owner,role,email}) },
     '@/lib/auth/server': { auth: {
       getSession: async () => ({data:{user:users[0]}}),
       admin: {

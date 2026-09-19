@@ -1,5 +1,5 @@
 import "server-only";
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 
 export async function getInventoryIntelligence(){
   const s=createServiceRoleClient();

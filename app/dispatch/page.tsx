@@ -10,7 +10,7 @@ import { StatusPill } from "@/components/status-pill";
 import { getEquipment } from "@/lib/chillbros/equipment-queries";
 import { getCustomers } from "@/lib/chillbros/queries";
 import { getActiveTechnicians, getDispatchJobs } from "@/lib/chillbros/operations-queries";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 export const dynamic = "force-dynamic";
 export default async function DispatchPage() {
  const profile=await getCurrentStaffProfile(); if(!profile||!["manager","office"].includes(profile.role)) redirect("/");

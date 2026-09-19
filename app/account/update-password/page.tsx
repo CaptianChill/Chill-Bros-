@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { LogoBadge } from "@/components/logo-badge";
 import { auth } from "@/lib/auth/server";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 
 type UpdatePasswordPageProps = {
   searchParams: Promise<{ error?: string }>;

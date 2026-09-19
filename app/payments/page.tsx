@@ -5,7 +5,7 @@ import { CreditCard, ReceiptText, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { StatusPill } from "@/components/status-pill";
 import { getInvoiceCenterData } from "@/lib/chillbros/billing-queries";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 import { recordFullPaymentAction } from "@/app/payments/actions";
 
 export const dynamic = "force-dynamic";

@@ -8,8 +8,8 @@ import { sendBillingDeliveryRecorded } from "@/lib/chillbros/billing-delivery";
 import { createReceiptForPaidInvoice } from "@/lib/chillbros/billing-receipts";
 import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { createServiceRoleClient, createUserScopedDataClient } from "@/lib/supabase/service-client";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
+import { createServiceRoleClient, createUserScopedDataClient } from "@/lib/neon/data-api/service-client";
 import { approvalDueAt } from "@/lib/chillbros/billing-terms";
 import type { AdjustmentType, PaymentMethod, PaymentTerms } from "./types";
 

@@ -1,5 +1,5 @@
 import "server-only";
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 import { sendTechnicianAssignmentEmail } from "./assignment-notifications";
 
 const ACTIVE_STATUSES=["new","needs_scheduling","scheduled","in_progress","dispatched","en_route","arrived","diagnosing","awaiting_approval","approved","parts_required","return_visit_needed","repairing","work_complete","ready_to_invoice","invoice_sent"];

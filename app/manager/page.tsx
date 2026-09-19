@@ -9,9 +9,9 @@ import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { getInvoiceV2ByToken, getWorkflowEvents, invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { PAYMENT_METHOD_LABELS, type DetailedInvoice } from "@/lib/chillbros/types";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 import { getFeeSettings, getStaffAccounts } from "@/lib/chillbros/queries";
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient } from "@/lib/neon/data-api/service-client";
 
 export const dynamic = "force-dynamic";
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });

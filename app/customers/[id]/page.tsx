@@ -9,7 +9,7 @@ import { OpenFormDrafts } from "@/components/open-form-drafts";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { getCustomerProfile } from "@/lib/chillbros/customer-profile";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }> };

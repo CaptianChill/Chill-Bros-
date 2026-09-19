@@ -17,7 +17,7 @@ import { getDispatchJobs } from "@/lib/chillbros/operations-queries";
 import { getFeeSettings, getJob, getPartsCatalog } from "@/lib/chillbros/queries";
 import { getAssignedFieldJobsForTechnician } from "@/lib/chillbros/technician-assignment";
 import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS } from "@/lib/chillbros/types";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { getCurrentStaffProfile } from "@/lib/neon/data-api/auth-server";
 
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ job?: string }> };
