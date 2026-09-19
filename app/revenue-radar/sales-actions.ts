@@ -49,10 +49,11 @@ async function appendHistory(client: ReturnType<typeof createServiceRoleClient>,
   if (error) throw new Error(`Audit history failed: ${error.message}`);
 }
 
-async function upsertFollowUpTask(client: ReturnType<typeof createServiceRoleClient>, args: {
+async function upsertOpenTask(client: ReturnType<typeof createServiceRoleClient>, args: {
   leadId: string;
   activityId: string;
   ownerId: string;
+  taskType: string;
   dueAt: string;
   description: string;
 }) {
@@ -60,7 +61,7 @@ async function upsertFollowUpTask(client: ReturnType<typeof createServiceRoleCli
     .from("chillbros_revenue_tasks")
     .select("id,due_at,description,status")
     .eq("lead_id", args.leadId)
-    .eq("task_type", "follow_up")
+    .eq("task_type", args.taskType)
     .eq("assigned_user", args.ownerId)
     .in("status", [...ACTIVE_TASK_STATUSES])
     .order("created_at", { ascending: false })
@@ -85,7 +86,7 @@ async function upsertFollowUpTask(client: ReturnType<typeof createServiceRoleCli
     activity_id: args.activityId,
     assigned_user: args.ownerId,
     created_by: args.ownerId,
-    task_type: "follow_up",
+    task_type: args.taskType,
     description: args.description,
     due_at: args.dueAt,
     status: "open",
@@ -108,7 +109,10 @@ export async function generateSalesBattleCard(form: FormData) {
   const leadId = value(form, "lead_id");
   if (!uuid(leadId)) throw new Error("Invalid lead.");
   const client = createServiceRoleClient();
-  const { data: lead, error } = await client.from("chillbros_revenue_prospects").select("*").eq("id", leadId).maybeSingle();
+  const [{ data: lead, error }, { data: previousCard }] = await Promise.all([
+    client.from("chillbros_revenue_prospects").select("*").eq("id", leadId).maybeSingle(),
+    client.from("chillbros_revenue_battle_cards").select("id").eq("lead_id", leadId).eq("is_current", true).maybeSingle(),
+  ]);
   if (error || !lead) throw new Error(error?.message || "Lead not found.");
 
   const card = buildSafeBattleCard({
@@ -128,18 +132,26 @@ export async function generateSalesBattleCard(form: FormData) {
     contactEmail: lead.contact_email,
   });
 
-  const now = new Date().toISOString();
-  const { error: retireError } = await client.from("chillbros_revenue_battle_cards").update({ is_current: false, superseded_at: now }).eq("lead_id", leadId).eq("is_current", true);
-  if (retireError) throw new Error(retireError.message);
   const { data: created, error: createError } = await client.from("chillbros_revenue_battle_cards").insert({
     lead_id: leadId,
     content: card,
     prompt_version: BATTLE_CARD_PROMPT_VERSION,
     generation_trigger: "user_request",
     generated_by: profile.id,
-    is_current: true,
+    is_current: false,
   }).select("id").single();
   if (createError) throw new Error(createError.message);
+
+  const now = new Date().toISOString();
+  if (previousCard) {
+    const { error: retireError } = await client.from("chillbros_revenue_battle_cards").update({ is_current: false, superseded_at: now }).eq("id", previousCard.id);
+    if (retireError) throw new Error(retireError.message);
+  }
+  const { error: promoteError } = await client.from("chillbros_revenue_battle_cards").update({ is_current: true }).eq("id", created.id);
+  if (promoteError) {
+    if (previousCard) await client.from("chillbros_revenue_battle_cards").update({ is_current: true, superseded_at: null }).eq("id", previousCard.id);
+    throw new Error(promoteError.message);
+  }
 
   const shouldReady = Boolean(lead.assigned_salesperson) && ["new", "ready_to_call"].includes(lead.sales_status ?? "new");
   if (shouldReady) {
@@ -198,11 +210,31 @@ export async function logRevenueActivity(form: FormData) {
   const outcome = value(form, "call_outcome");
   if (!uuid(leadId) || !ACTIVITY_TYPES.includes(activityType as typeof ACTIVITY_TYPES[number]) || !OUTCOMES.includes(outcome as typeof OUTCOMES[number])) throw new Error("Complete the activity type and outcome.");
 
+  const nowMs = Date.now();
   const followUpRaw = value(form, "follow_up_at");
   const followUpAt = followUpRaw ? new Date(followUpRaw) : null;
-  if (followUpAt && Number.isNaN(followUpAt.getTime())) throw new Error("Invalid follow-up date.");
+  if (followUpAt && (Number.isNaN(followUpAt.getTime()) || followUpAt.getTime() <= nowMs)) throw new Error("Follow-up must be a future date and time.");
+
   const customerStatement = optional(value(form, "customer_statement"), 3000);
+  const needIdentified = optional(value(form, "need_identified"), 2000);
+  const nextStep = optional(value(form, "next_step"), 1500);
+  const notes = optional(value(form, "notes"), 3000);
   if (["connected_call", "inbound_inquiry", "meeting"].includes(activityType) && !customerStatement) throw new Error("Record the customer's statement for a connected interaction.");
+  if (outcome === "not_interested" && !followUpAt && !notes) throw new Error("Lost opportunities require a reason in Internal notes.");
+  if (outcome === "proposal_requested" && !customerStatement && !needIdentified && !notes) throw new Error("Proposal Requested requires a recorded customer request, scope, or reason.");
+
+  let appointmentAt: Date | null = null;
+  let appointmentLocation: string | null = null;
+  let appointmentType: string | null = null;
+  if (outcome === "appointment_scheduled") {
+    const raw = value(form, "appointment_at");
+    appointmentAt = raw ? new Date(raw) : null;
+    appointmentLocation = optional(value(form, "appointment_location"), 500);
+    appointmentType = optional(value(form, "appointment_type"), 200);
+    if (!appointmentAt || Number.isNaN(appointmentAt.getTime()) || appointmentAt.getTime() <= nowMs || !appointmentLocation || !appointmentType) {
+      throw new Error("Appointment Set requires a future date/time, location or remote method, and appointment type.");
+    }
+  }
 
   const client = createServiceRoleClient();
   const { data: lead, error: leadError } = await client.from("chillbros_revenue_prospects").select("id,do_not_contact,sales_status,assigned_salesperson").eq("id", leadId).maybeSingle();
@@ -217,13 +249,17 @@ export async function logRevenueActivity(form: FormData) {
     contacted_person: optional(value(form, "contacted_person"), 200),
     contacted_role: optional(value(form, "contacted_role"), 200),
     customer_statement: customerStatement,
-    need_identified: optional(value(form, "need_identified"), 2000),
+    need_identified: needIdentified,
     equipment_mentioned: optional(value(form, "equipment_mentioned"), 1000),
     current_vendor: optional(value(form, "current_vendor"), 500),
     urgency: optional(value(form, "urgency"), 100),
-    next_step: optional(value(form, "next_step"), 1500),
+    next_step: nextStep,
     follow_up_at: followUpAt?.toISOString() ?? null,
-    notes: optional(value(form, "notes"), 3000),
+    notes,
+    appointment_at: appointmentAt?.toISOString() ?? null,
+    appointment_location: appointmentLocation,
+    appointment_type: appointmentType,
+    appointment_confirmed: Boolean(appointmentAt),
   }).select("id").single();
   if (activityError) throw new Error(activityError.message);
 
@@ -233,13 +269,14 @@ export async function logRevenueActivity(form: FormData) {
     sales_status: nextStatus,
     last_activity_at: now,
     follow_up_at: followUpAt?.toISOString() ?? null,
-    status_reason: outcome === "not_interested" ? optional(value(form, "notes"), 1000) : null,
+    status_reason: outcome === "not_interested" ? notes : null,
   }).eq("id", leadId);
   if (leadUpdateError) throw new Error(leadUpdateError.message);
 
+  const taskOwner = lead.assigned_salesperson || profile.id;
   if (followUpAt) {
-    const description = optional(value(form, "next_step"), 1500) || "Follow up with lead";
-    const task = await upsertFollowUpTask(client, { leadId, activityId: activity.id, ownerId: lead.assigned_salesperson || profile.id, dueAt: followUpAt.toISOString(), description });
+    const description = nextStep || "Follow up with lead";
+    const task = await upsertOpenTask(client, { leadId, activityId: activity.id, ownerId: taskOwner, taskType: "follow_up", dueAt: followUpAt.toISOString(), description });
     await appendHistory(client, {
       leadId,
       entityType: "task",
@@ -247,7 +284,20 @@ export async function logRevenueActivity(form: FormData) {
       action: task.updated ? "rescheduled" : "created",
       actorId: profile.id,
       previousValue: task.previous,
-      newValue: { dueAt: followUpAt.toISOString(), description },
+      newValue: { taskType: "follow_up", dueAt: followUpAt.toISOString(), description },
+    });
+  }
+  if (appointmentAt && appointmentLocation && appointmentType) {
+    const description = `${appointmentType}: ${appointmentLocation}`;
+    const task = await upsertOpenTask(client, { leadId, activityId: activity.id, ownerId: taskOwner, taskType: "appointment", dueAt: appointmentAt.toISOString(), description });
+    await appendHistory(client, {
+      leadId,
+      entityType: "task",
+      entityId: task.id,
+      action: task.updated ? "rescheduled" : "created",
+      actorId: profile.id,
+      previousValue: task.previous,
+      newValue: { taskType: "appointment", dueAt: appointmentAt.toISOString(), location: appointmentLocation, appointmentType },
     });
   }
 
@@ -258,7 +308,7 @@ export async function logRevenueActivity(form: FormData) {
     action: "created",
     actorId: profile.id,
     previousValue: { salesStatus: lead.sales_status },
-    newValue: { salesStatus: nextStatus, outcome, customerReported: Boolean(customerStatement) },
+    newValue: { salesStatus: nextStatus, outcome, customerReported: Boolean(customerStatement), appointmentConfirmed: Boolean(appointmentAt) },
   });
   revalidatePath(`/revenue-radar/${leadId}`);
   revalidatePath("/revenue-radar");
@@ -271,9 +321,14 @@ export async function createRevenueTechnicianHandoff(form: FormData) {
   const urgency = value(form, "urgency").slice(0, 100);
   if (!uuid(leadId) || !problem || !urgency) throw new Error("Customer-reported problem and urgency are required.");
   const client = createServiceRoleClient();
-  const { data: lead, error: leadError } = await client.from("chillbros_revenue_prospects").select("id,do_not_contact,sales_status").eq("id", leadId).maybeSingle();
+  const [{ data: lead, error: leadError }, { data: manager }] = await Promise.all([
+    client.from("chillbros_revenue_prospects").select("id,do_not_contact,sales_status").eq("id", leadId).maybeSingle(),
+    client.from("chillbros_profiles").select("id").eq("role", "manager").eq("status", "active").limit(1).maybeSingle(),
+  ]);
   if (leadError || !lead) throw new Error(leadError?.message || "Lead not found.");
   if (lead.do_not_contact && form.get("permission_to_follow_up") !== "on") throw new Error("Do Not Contact lead requires explicit customer permission for technical follow-up.");
+  const taskOwner = manager?.id || (profile.role === "manager" ? profile.id : null);
+  if (!taskOwner) throw new Error("No active manager is available to own the technician handoff review.");
 
   const activityId = value(form, "activity_id");
   if (activityId && !uuid(activityId)) throw new Error("Invalid originating activity.");
@@ -295,18 +350,17 @@ export async function createRevenueTechnicianHandoff(form: FormData) {
   }).select("id").single();
   if (error) throw new Error(error.message);
 
-  const { data: manager } = await client.from("chillbros_profiles").select("id").eq("role", "manager").eq("status", "active").limit(1).maybeSingle();
   const dueAt = new Date(Date.now() + (urgency === "emergency" ? 15 : urgency === "urgent" ? 60 : 240) * 60000).toISOString();
-  const { error: taskError } = await client.from("chillbros_revenue_tasks").insert({
+  const { data: task, error: taskError } = await client.from("chillbros_revenue_tasks").insert({
     lead_id: leadId,
     handoff_id: handoff.id,
-    assigned_user: manager?.id ?? null,
+    assigned_user: taskOwner,
     created_by: profile.id,
     task_type: "technician_handoff_review",
     description: `Review customer-reported technical need: ${problem.slice(0, 240)}`,
     due_at: dueAt,
     status: "open",
-  });
+  }).select("id").single();
   if (taskError) throw new Error(taskError.message);
 
   const { error: leadUpdateError } = await client.from("chillbros_revenue_prospects").update({ sales_status: "technician_needed", last_activity_at: new Date().toISOString() }).eq("id", leadId);
@@ -318,7 +372,7 @@ export async function createRevenueTechnicianHandoff(form: FormData) {
     action: "received",
     actorId: profile.id,
     previousValue: { salesStatus: lead.sales_status },
-    newValue: { salesStatus: "technician_needed", urgency, customerReportedProblem: problem },
+    newValue: { salesStatus: "technician_needed", urgency, customerReportedProblem: problem, reviewTaskId: task.id },
   });
   revalidatePath(`/revenue-radar/${leadId}`);
   revalidatePath("/revenue-radar");
