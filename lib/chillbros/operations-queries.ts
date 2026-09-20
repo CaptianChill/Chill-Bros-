@@ -14,7 +14,7 @@ export type StaffCallRow = { id: string; technicianId: string; technicianName: s
 
 export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_jobs").select("id, customer_id, assigned_tech_id, status, location, scope, work_performed, scheduled_window, created_at, customer:chillbros_customers(name), tech:chillbros_profiles(full_name)").is("archived_at", null).order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("chillbros_jobs").select("id, customer_id, assigned_tech_id, status, location, scope, work_performed, scheduled_window, created_at, customer:chillbros_customers(name), tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)").is("archived_at", null).order("created_at", { ascending: false }).limit(limit);
   if (error || !data) return [];
   const ids = data.map((row) => row.id);
   const [{ data: invoices }, { data: events }] = ids.length ? await Promise.all([
@@ -98,7 +98,7 @@ export async function getTimesheetHistory(limit = 100): Promise<TimesheetHistory
 
 export async function getManagerStaffCalls(limit = 200): Promise<StaffCallRow[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_jobs").select("id,assigned_tech_id,status,location,scope,work_performed,labor_hours,drive_hours,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles(full_name)").order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("chillbros_jobs").select("id,assigned_tech_id,status,location,scope,work_performed,labor_hours,drive_hours,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)").order("created_at", { ascending: false }).limit(limit);
   if (error || !data) return [];
   return data.filter((row) => Boolean(row.assigned_tech_id)).map((row) => {
     const customer = Array.isArray(row.customer) ? row.customer[0] : row.customer;

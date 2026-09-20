@@ -85,7 +85,7 @@ export async function getEmailLog(limit = 20): Promise<EmailLogEntry[]> {
 
 export async function getJob(jobId: string): Promise<Job | null> {
   const supabase = createServiceRoleClient();
-  const { data: job, error } = await supabase.from("chillbros_jobs").select("id, customer_id, assigned_tech_id, status, location, scope, work_performed, labor_hours, drive_hours, scheduled_window, customer:chillbros_customers(name), tech:chillbros_profiles(full_name)").eq("id", jobId).maybeSingle();
+  const { data: job, error } = await supabase.from("chillbros_jobs").select("id, customer_id, assigned_tech_id, status, location, scope, work_performed, labor_hours, drive_hours, scheduled_window, customer:chillbros_customers(name), tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)").eq("id", jobId).maybeSingle();
   if (error || !job) return null;
   const [{ data: partsRows }, { data: photoRows }] = await Promise.all([
     supabase.from("chillbros_job_parts").select("id, quantity, part:chillbros_parts_catalog(id, name, part_number, retail_price)").eq("job_id", jobId),

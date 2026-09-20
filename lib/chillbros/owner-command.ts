@@ -5,7 +5,7 @@ import { JOB_ACTIVE_STATUSES } from "./types";
 export async function getOwnerCommandMetrics() {
   const supabase = createServiceRoleClient();
   const [{data:jobs},{data:invoices},{data:techs}] = await Promise.all([
-    supabase.from("chillbros_jobs").select("id,status,assigned_tech_id,scope,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles(full_name)").in("status",JOB_ACTIVE_STATUSES).order("created_at",{ascending:false}).limit(300),
+    supabase.from("chillbros_jobs").select("id,status,assigned_tech_id,scope,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)").in("status",JOB_ACTIVE_STATUSES).order("created_at",{ascending:false}).limit(300),
     supabase.from("chillbros_invoices").select("id,status,payment_status,invoice_number,updated_at,line:chillbros_invoice_line_items(amount),customer:chillbros_customers(name)").is("revoked_at",null).neq("status","void").order("updated_at",{ascending:false}).limit(300),
     supabase.from("chillbros_profiles").select("id,full_name,role,status").eq("role","technician").eq("status","active")
   ]);

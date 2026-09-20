@@ -43,7 +43,7 @@ export async function getEquipmentServiceRecord(equipmentId: string): Promise<Eq
 
   const { data: jobs } = await supabase
     .from("chillbros_jobs")
-    .select("id,status,location,scope,work_performed,labor_hours,drive_hours,scheduled_window,created_at,tech:chillbros_profiles(full_name)")
+    .select("id,status,location,scope,work_performed,labor_hours,drive_hours,scheduled_window,created_at,tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)")
     .eq("equipment_id", equipmentId)
     .order("created_at", { ascending: false });
 

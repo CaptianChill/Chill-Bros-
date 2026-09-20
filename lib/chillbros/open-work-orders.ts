@@ -12,7 +12,7 @@ export type OpenWorkOrderRow = {
 export async function getOpenWorkOrders(): Promise<OpenWorkOrderRow[]> {
   const s=createServiceRoleClient();
   const {data,error}=await s.from("chillbros_jobs")
-    .select("id,job_number,status,assigned_tech_id,location,scope,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles(full_name),invoice:chillbros_invoices(id,invoice_number,status,payment_status,updated_at)")
+    .select("id,job_number,status,assigned_tech_id,location,scope,scheduled_window,created_at,customer:chillbros_customers(name),tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name),invoice:chillbros_invoices(id,invoice_number,status,payment_status,updated_at)")
     .is("archived_at",null).in("status",JOB_ACTIVE_STATUSES).order("created_at",{ascending:false}).limit(500);
   if (error) {
     console.error("[open-work-orders] Neon query failed", {
