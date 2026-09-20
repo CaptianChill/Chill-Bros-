@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "ai": "6.0.264",
     "@neondatabase/auth": "0.5.0-beta",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.114.0",

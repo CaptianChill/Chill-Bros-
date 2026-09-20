@@ -1,0 +1,68 @@
+import { redirect } from "next/navigation";
+
+import { AppShell } from "@/components/app-shell";
+import { SectionCard } from "@/components/section-card";
+import { StatusPill } from "@/components/status-pill";
+import { FieldNotesIntakeForm } from "@/components/field-notes-intake-form";
+import { getCustomers } from "@/lib/chillbros/queries";
+import { getAssignedFieldJobsForTechnician } from "@/lib/chillbros/technician-assignment";
+import { getDispatchJobs } from "@/lib/chillbros/operations-queries";
+import { JOB_ACTIVE_STATUSES } from "@/lib/chillbros/types";
+import { getTechnicianFieldNotes } from "@/lib/chillbros/field-notes-queries";
+import { FIELD_NOTE_STATUS_LABELS } from "@/lib/chillbros/field-notes-types";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+
+export const dynamic = "force-dynamic";
+
+const STATUS_TONE = {
+  submitted: "cyan",
+  processing: "cyan",
+  needs_review: "amber",
+  ready: "cyan",
+  approved: "emerald",
+  completed: "emerald",
+  processing_failed: "rose",
+} as const;
+
+export default async function FieldNotesPage() {
+  const profile = await getCurrentStaffProfile();
+  if (!profile) redirect("/sign-in");
+  if (!["technician", "manager"].includes(profile.role)) redirect("/");
+
+  const allJobs = profile.role === "manager" ? await getDispatchJobs(250) : await getAssignedFieldJobsForTechnician({ id: profile.id, email: profile.email, fullName: profile.fullName }, 250);
+  const jobs = allJobs
+    .filter((job) => JOB_ACTIVE_STATUSES.includes(job.status))
+    .map((job) => ({ id: job.id, customerId: job.customerId, customerName: job.customerName, location: job.location }));
+
+  const [customers, recent] = await Promise.all([getCustomers(), getTechnicianFieldNotes(profile.id, 10)]);
+
+  return (
+    <AppShell title="Field Notes" description="Send your handwritten service notes straight to the office.">
+      <div className="mx-auto max-w-xl space-y-4">
+        <SectionCard title="Send to office">
+          <FieldNotesIntakeForm
+            technicianName={profile.fullName}
+            jobs={jobs.map((job) => ({ id: job.id, customerId: job.customerId, customerName: job.customerName, location: job.location }))}
+            customers={customers.map((customer) => ({ id: customer.id, name: customer.name }))}
+          />
+        </SectionCard>
+
+        <SectionCard title="Recent submissions">
+          {recent.length === 0 ? <p className="text-sm text-zinc-500">Nothing submitted yet.</p> : (
+            <div className="space-y-2 text-left">
+              {recent.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-[#2d7dff]/15 bg-black/40 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium text-white">{item.customerName ?? item.customerNameFreeform ?? "Customer"}</p>
+                    <StatusPill tone={STATUS_TONE[item.status]}>{FIELD_NOTE_STATUS_LABELS[item.status]}</StatusPill>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-400">{item.imageCount} photo{item.imageCount === 1 ? "" : "s"} · {new Date(item.submittedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+    </AppShell>
+  );
+}
