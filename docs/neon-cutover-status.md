@@ -1,1 +1,3 @@
 Neon destination provisioning complete. Production cutover is blocked only on source Supabase data extraction and production environment-variable replacement. No source data has been deleted.
+
+Update 2026-09-19: Revenue Radar's "table not found in schema cache" production error was a stale Neon Data API schema cache on the correct `main` branch, not a misconfigured Data API target — production env vars were already correct. See `docs/neon-revenue-radar-schema-cache-fix.md` for the audit and fix (schema cache reload + fresh production deploy `dpl_BJMPw3AY1nSq6iPQweoVi4egb6hf`).
