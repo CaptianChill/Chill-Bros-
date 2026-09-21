@@ -12,6 +12,7 @@ type PartOption = {
   partNumber?: string | null;
   stock: number;
   retailPrice: number;
+  trackInventory: boolean;
 };
 
 type FeeOption = {
@@ -59,7 +60,7 @@ export function LineItemsEditor({ parts, fees, priceBook }: Props) {
       </div>
       <label className={label}>Inventory / Price Book<select name={`itemPreset${i}`} defaultValue="" className={`${input} mt-1`}>
         <option value="">Manual line item</option>
-        {parts.length ? <optgroup label="Inventory parts">{parts.map((part) => <option key={part.id} value={`part:${part.id}`}>{part.name}{part.partNumber ? ` · ${part.partNumber}` : ""} · {part.stock} in stock · {usd(part.retailPrice)}</option>)}</optgroup> : null}
+        {parts.length ? <optgroup label="Inventory parts">{parts.map((part) => <option key={part.id} value={`part:${part.id}`}>{part.name}{part.partNumber ? ` · ${part.partNumber}` : ""}{part.trackInventory ? ` · ${part.stock} in stock` : ""} · {usd(part.retailPrice)}</option>)}</optgroup> : null}
         {fees.length ? <optgroup label="Service fees">{fees.map((fee) => <option key={fee.id} value={`fee:${fee.id}`}>{fee.label} · {usd(fee.amount)}</option>)}</optgroup> : null}
         {priceBook.length ? <optgroup label="Master price book">{priceBook.map((entry) => <option key={entry.code} value={`pb:${entry.code}`}>{entry.category} · {entry.title} · {usd(entry.currentValue)}</option>)}</optgroup> : null}
       </select></label>

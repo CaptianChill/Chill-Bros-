@@ -14,7 +14,7 @@ type InventoryPartRow = {
 export async function getInventoryIntelligence(){
   const s=createServiceRoleClient();
   const [{data:parts},{data:usage}]=await Promise.all([
-    s.from("chillbros_parts_catalog").select("id,name,part_number,default_cost,retail_price,stock,updated_at").not("part_number","like","PB-%").order("name"),
+    s.from("chillbros_parts_catalog").select("id,name,part_number,default_cost,retail_price,stock,updated_at").eq("track_inventory", true).order("name"),
     s.from("chillbros_job_parts").select("part_id,quantity,job:chillbros_jobs(id,equipment_id,created_at)").limit(5000)
   ]);
   const used=new Map<string,{qty:number;jobs:Set<string>;equipment:Set<string>}>();
