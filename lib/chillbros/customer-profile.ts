@@ -9,6 +9,7 @@ export type CustomerProfileJob = {
   id: string;
   jobNumber: string;
   status: JobStatus;
+  assignedTechId: string | null;
   assignedTechName: string | null;
   location: string | null;
   scheduledWindow: string | null;
@@ -44,7 +45,7 @@ export async function getCustomerProfile(customerId: string): Promise<CustomerPr
 
   const [{ data: history }, { data: jobs }, { data: documents }, equipment, agreements] = await Promise.all([
     supabase.from("chillbros_customer_service_history").select("note,occurred_on").eq("customer_id", customerId).order("occurred_on", { ascending: false }).limit(500),
-    supabase.from("chillbros_jobs").select("id,job_number,status,location,scheduled_window,scope,work_performed,created_at,archived_at,tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)").eq("customer_id", customerId).is("archived_at", null).order("created_at", { ascending: false }).limit(500),
+    supabase.from("chillbros_jobs").select("id,job_number,status,location,scheduled_window,scope,work_performed,created_at,archived_at,assigned_tech_id,tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)").eq("customer_id", customerId).is("archived_at", null).order("created_at", { ascending: false }).limit(500),
     supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,job_id,status,payment_status,issued_at,updated_at").eq("customer_id", customerId).is("revoked_at", null).neq("status", "void").order("updated_at", { ascending: false }).limit(500),
     getEquipmentByCustomer(customerId),
     getServiceAgreementsByCustomer(customerId),
@@ -79,6 +80,7 @@ export async function getCustomerProfile(customerId: string): Promise<CustomerPr
         id: row.id,
         jobNumber,
         status: row.status,
+        assignedTechId: row.assigned_tech_id,
         assignedTechName: tech?.full_name ?? null,
         location: row.location,
         scheduledWindow: `${jobNumber} • ${when}`,

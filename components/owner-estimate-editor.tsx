@@ -4,6 +4,8 @@ import { Plus, Save, Trash2 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import { AiTextAssist } from "@/components/ai-text-assist";
+import { VoiceDictationButton } from "@/components/voice-dictation-button";
 import { replaceEstimateLinesForManagerAction } from "@/lib/chillbros/owner-estimate-actions";
 import type { DetailedInvoice } from "@/lib/chillbros/types";
 
@@ -96,7 +98,7 @@ export function OwnerEstimateEditor({ invoice }: { invoice: DetailedInvoice }) {
 
       <button type="button" onClick={addLine} disabled={pending || lines.length >= 20} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-sm text-[#d9fbff] disabled:opacity-40"><Plus className="h-4 w-4" />Add line item</button>
 
-      <label className="block space-y-1"><span className="text-xs text-zinc-400">Customer notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} rows={3} className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /></label>
+      <label className="block space-y-1"><span className="text-xs text-zinc-400">Customer notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} rows={3} className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /><div className="flex flex-wrap items-center gap-2"><VoiceDictationButton getValue={() => notes} setValue={(next) => setNotes(next.slice(0, 2000))} /><AiTextAssist getValue={() => notes} setValue={(next) => setNotes(next.slice(0, 2000))} /></div></label>
 
       <button type="button" onClick={save} disabled={pending || subtotal <= 0} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#8ffafa]/45 bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] disabled:opacity-50"><Save className="h-4 w-4" />{pending ? "Saving owner revision..." : "Save owner revision"}</button>
     </div>

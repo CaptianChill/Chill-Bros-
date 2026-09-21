@@ -7,10 +7,12 @@ import { notFound } from "next/navigation";
 import { DocumentPaymentMethods } from "@/components/document-payment-methods";
 import { DocumentSignatureForm } from "@/components/document-signature-form";
 import { DocumentToolbar } from "@/components/document-toolbar";
+import { OwnerEstimateEditor } from "@/components/owner-estimate-editor";
 import { sendInvoiceViewedNotification } from "@/lib/chillbros/approval-notifications";
 import { getInvoiceV2ByToken, invoiceTotals, recordInvoiceFirstView } from "@/lib/chillbros/invoice-v2";
 import { getJob } from "@/lib/chillbros/queries";
 import { getPaymentSettings } from "@/lib/chillbros/payment-settings";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +35,8 @@ export default async function DocumentPage({ params }: Props) {
   const invoice = await getInvoiceV2ByToken(token);
   if (!invoice) notFound();
 
-  const [job, paymentSettings] = await Promise.all([invoice.jobId ? getJob(invoice.jobId) : null, getPaymentSettings()]);
+  const [job, paymentSettings, staffProfile] = await Promise.all([invoice.jobId ? getJob(invoice.jobId) : null, getPaymentSettings(), getCurrentStaffProfile()]);
+  const canEditHere = staffProfile?.role === "manager" && ["draft", "awaiting_approval"].includes(invoice.status) && invoice.paymentStatus !== "paid";
   const totals = invoiceTotals(invoice);
   const invoiceIssued = Boolean(invoice.issuedAt);
 
@@ -54,6 +57,8 @@ export default async function DocumentPage({ params }: Props) {
   return <main className="min-h-screen overflow-x-hidden bg-white px-3 py-4 text-zinc-950 sm:px-6 sm:py-8 print:p-0">
     <div className="mx-auto w-full max-w-4xl">
       <DocumentToolbar invoiceNumber={invoice.invoiceNumber} returnHref={`/portal/${token}`} backLabel="Back" />
+
+      {canEditHere ? <div className="mb-4 print:hidden"><OwnerEstimateEditor key={invoice.id} invoice={invoice} /></div> : null}
 
       <article className="w-full max-w-full overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-xl print:rounded-none print:border-0 print:shadow-none">
         <header className="border-b border-zinc-200 bg-[#020407] px-4 py-5 text-white sm:px-8">
