@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { CustomerFields } from "@/components/customer-fields";
 import { TextareaWithAI } from "@/components/textarea-with-ai";
 import { getCustomers, getFeeSettings, getPartsCatalog, getPriceBookEntries } from "@/lib/chillbros/queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -47,14 +48,8 @@ export default async function NewInvoicePage({ searchParams }: Props) {
         <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4 sm:p-5">
           <h2 className="text-xl font-semibold text-white">1. Customer</h2>
           <p className="mt-1 text-sm text-zinc-400">Pick an existing customer or create one here. No job selection is required.</p>
+          <CustomerFields customers={customers} initialCustomerId={selectedCustomerId} input={input} label={label} />
           <div className="mt-4 space-y-3">
-            <label className={label}>Customer database<select name="customerId" defaultValue={selectedCustomerId} className={`${input} mt-1`}><option value="">+ New customer</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}{customer.phone ? ` · ${customer.phone}` : ""}</option>)}</select></label>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className={label}>Customer / business name<input name="customerName" placeholder="Required only for a new customer" className={`${input} mt-1`} /></label>
-              <label className={label}>Phone<input name="customerPhone" inputMode="tel" placeholder="Phone" className={`${input} mt-1`} /></label>
-              <label className={label}>Email<input name="customerEmail" type="email" placeholder="Email" className={`${input} mt-1`} /></label>
-              <label className={label}>Address<input name="customerAddress" placeholder="Billing / service address" className={`${input} mt-1`} /></label>
-            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className={label}>Service location<input name="jobLocation" placeholder="Optional" className={`${input} mt-1`} /></label>
               <label className={label}>Description<input name="jobDescription" placeholder={isQuote ? "Quoted work / scope" : "Service performed / invoice description"} className={`${input} mt-1`} /></label>

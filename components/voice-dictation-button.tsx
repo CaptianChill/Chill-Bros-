@@ -84,14 +84,18 @@ export function VoiceDictationButton({ getValue, setValue, disabled }: { getValu
     const recognition = recognitionRef.current;
     if (!recognition) return;
     if (listening) {
-      recognition.stop();
+      try { recognition.stop(); } catch { /* already stopping */ }
       setListening(false);
       return;
     }
     setError(null);
     baseTextRef.current = getValueRef.current();
-    recognition.start();
-    setListening(true);
+    try {
+      recognition.start();
+      setListening(true);
+    } catch {
+      /* engine still shutting down from a rapid stop/start; onend will re-enable the button */
+    }
   }
 
   return (
