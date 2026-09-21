@@ -64,7 +64,7 @@ function statusCount(prospects: Prospect[], filter: StatusFilter) {
 }
 
 export function RevenueRadarList({ prospects }: { prospects: Prospect[] }) {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("hot");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("new");
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>("all");
 
   const visible = useMemo(() => {
@@ -125,9 +125,9 @@ export function RevenueRadarList({ prospects }: { prospects: Prospect[] }) {
 
       <div className="mt-3 flex items-center justify-between gap-3 text-xs text-zinc-400">
         <span>Showing <strong className="text-white">{visible.length}</strong> of {prospects.length} leads</span>
-        {(statusFilter !== "hot" || serviceFilter !== "all") ? <button
+        {(statusFilter !== "new" || serviceFilter !== "all") ? <button
           type="button"
-          onClick={() => { setStatusFilter("hot"); setServiceFilter("all"); }}
+          onClick={() => { setStatusFilter("new"); setServiceFilter("all"); }}
           className="text-cyan-200 underline underline-offset-2"
         >
           Reset filters

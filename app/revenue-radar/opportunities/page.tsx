@@ -50,6 +50,13 @@ export default async function RevenueOpportunitiesPage() {
         <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">Manager only</span>
       </div>
 
+      <div className="flex flex-wrap gap-2 text-xs">
+        <Link href="/revenue-radar/tasks" className="rounded-full border border-white/15 px-3 py-1.5 text-zinc-300 hover:border-cyan-300/50 hover:text-white">Sales tasks</Link>
+        <Link href="/revenue-radar/handoffs" className="rounded-full border border-white/15 px-3 py-1.5 text-zinc-300 hover:border-cyan-300/50 hover:text-white">Technician handoffs</Link>
+        <Link href="/revenue-radar/audit" className="rounded-full border border-white/15 px-3 py-1.5 text-zinc-300 hover:border-cyan-300/50 hover:text-white">Sales audit</Link>
+        <Link href="/revenue-radar/dnc" className="rounded-full border border-white/15 px-3 py-1.5 text-zinc-300 hover:border-cyan-300/50 hover:text-white">DNC review</Link>
+      </div>
+
       <section className="rounded-3xl border border-cyan-300/25 bg-cyan-400/5 p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Controlled closeout</p>
         <h2 className="mt-1 text-xl font-semibold text-white">A person closes the deal. The AI does not.</h2>
