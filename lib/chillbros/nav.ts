@@ -18,12 +18,13 @@ export const navItems: NavItem[] = [
   { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"] },
   { href: "/customers", label: "Customers", shortLabel: "Customers", roles: ["manager", "office"] },
   { href: "/revenue-radar", label: "Revenue Radar", shortLabel: "Radar", roles: ["manager", "office"] },
-  { href: "/revenue-radar/tasks", label: "Sales Tasks", shortLabel: "Sales", roles: ["manager", "office"] },
-  { href: "/revenue-radar/handoffs", label: "Tech Requests", shortLabel: "Requests", roles: ["manager", "technician"] },
-  { href: "/revenue-radar/opportunities", label: "Sales Closeout", shortLabel: "Closeout", roles: ["manager"] },
+  { href: "/revenue-radar/tasks", label: "Sales Tasks", shortLabel: "Sales", roles: ["office"] },
+  { href: "/revenue-radar/handoffs", label: "Tech Requests", shortLabel: "Requests", roles: ["technician"] },
   { href: "/technician", label: "Field Jobs", shortLabel: "Field", roles: ["manager", "technician"] },
   { href: "/invoices", label: "Quotes & Invoices", shortLabel: "Billing", roles: ["manager", "office"] },
-  { href: "/payments", label: "Payments", shortLabel: "Payments", roles: ["manager"] },
-  { href: "/settings/payments", label: "Payment Settings", shortLabel: "Settings", roles: ["manager"] },
-  { href: "/timesheet", label: "My Time", shortLabel: "Time", roles: ["technician"] },
+  { href: "/timesheet", label: "Clock", shortLabel: "Clock", roles: ["manager", "technician"] },
 ];
+
+// Manager-only tools that don't belong in the daily tab bar (sales pipeline
+// audit, DNC review, payment settings, manual payment recording, etc.) live
+// under Owner Access (app/owner/page.tsx) instead of as separate nav items.

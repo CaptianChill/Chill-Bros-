@@ -16,7 +16,7 @@ export type ManagerTimesheetInput = {
 };
 
 function refreshTimesheets() { revalidatePath("/timesheet"); revalidatePath("/manager"); revalidatePath("/office"); revalidatePath("/dispatch"); }
-function canClock(role: string) { return role === "technician" || role === "office"; }
+function canClock(role: string) { return role === "technician" || role === "office" || role === "manager"; }
 function hours(ms: number) { return Math.round(Math.max(0, ms) / 36000) / 100; }
 function validDate(value: string | null | undefined) { const date = value ? new Date(value) : null; return date && Number.isFinite(date.getTime()) ? date : null; }
 function validHours(value: number | undefined) { const n = Number(value ?? 0); return Number.isFinite(n) && n >= 0 && n <= 24 ? n : null; }
@@ -50,7 +50,7 @@ export async function clockInResilientAction(location: string): Promise<Result<{
   const activeJob = profile.role === "technician"
     ? (await supabase.from("chillbros_jobs").select("id, location").eq("assigned_tech_id", profile.id).in("status", ["scheduled", "in_progress"]).order("created_at", { ascending: true }).limit(1).maybeSingle()).data
     : null;
-  const cleanLocation = String(location ?? "").trim() || activeJob?.location || (profile.role === "office" ? "Office" : null);
+  const cleanLocation = String(location ?? "").trim() || activeJob?.location || (profile.role === "office" || profile.role === "manager" ? "Office" : null);
   const { data, error } = await supabase.from("chillbros_timesheets").insert({ technician_id: profile.id, job_id: activeJob?.id ?? null, location: cleanLocation, clock_in_at: new Date().toISOString() }).select("id, clock_in_at, location").single();
   if (error || !data) return { ok: false, error: error?.code === "23505" ? "You already have an open clock session. Refresh the page." : error?.message ?? "Could not clock in." };
   await supabase.from("chillbros_profiles").update({ last_clock_event: `Clocked in ${new Date(data.clock_in_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })}` }).eq("id", profile.id);
