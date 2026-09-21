@@ -20,3 +20,13 @@ without being fooled by that overlap.
 
 This warning stays here until the migration to Neon (if it happens) is
 actually finished and confirmed — not assumed.
+
+## Also read before touching billing/domain code
+
+- `docs/2026-09-21-session-log.md` — full record of what was fixed on
+  2026-09-21 (Revenue Radar, inventory tracking, job-status enum, employee
+  login FK, customer-facing branding) and, importantly, a **temporary env
+  var override** (`NEXT_PUBLIC_APP_URL=https://chill-bros.vercel.app`) that
+  is intentionally live right now because `chillprostx.com`'s DNS isn't
+  pointed at Vercel yet. Don't "clean that up" without reading why it's
+  there first — removing it breaks every customer-facing link.
