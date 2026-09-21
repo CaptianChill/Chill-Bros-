@@ -63,8 +63,16 @@ export async function reassignJobTechnicianAction(jobId: string, technicianId: s
     if (!tech || tech.status !== "active" || !["technician", "manager"].includes(tech.role)) return { ok: false, error: "Choose an active technician." };
   }
 
-  const { error } = await supabase.from("chillbros_jobs").update({ assigned_tech_id: techId, updated_at: new Date().toISOString() }).eq("id", jobId);
+  const { data: updated, error } = await supabase
+    .from("chillbros_jobs")
+    .update({ assigned_tech_id: techId, updated_at: new Date().toISOString() })
+    .eq("id", jobId)
+    .is("archived_at", null)
+    .in("status", [...ACTIVE_STATUSES])
+    .select("id")
+    .maybeSingle();
   if (error) return { ok: false, error: error.message };
+  if (!updated) return { ok: false, error: "This call changed before it could be dispatched. Refresh and review it first." };
   await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, actor_id: guard.profile.id, stage: "reassigned", message: techId ? `${guard.profile.fullName} dispatched this call.` : `${guard.profile.fullName} unassigned this call.` });
   refresh(jobId, job.customer_id);
   return { ok: true };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Archive, CalendarPlus, CheckCircle2, ChevronDown, MapPin, Save, UserPlus, Users, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -31,6 +31,17 @@ export function DispatchPanel({ customers, technicians, jobs }: { customers: Cus
   const [message, setMessage] = useState<string | null>(null);
   const [newCustomer, setNewCustomer] = useState({ name: "", address: "", phone: "", email: "" });
   const [jobForm, setJobForm] = useState({ customerId: customers[0]?.id ?? "", assignedTechId: "", location: "", scope: "", scheduledWindow: "" });
+  const lastAutoLocation = useRef("");
+
+  function selectJobCustomer(customerId: string) {
+    const customer = customers.find((c) => c.id === customerId);
+    const address = customer?.address ?? "";
+    setJobForm((prev) => {
+      const location = !prev.location || prev.location === lastAutoLocation.current ? address : prev.location;
+      return { ...prev, customerId, location };
+    });
+    lastAutoLocation.current = address;
+  }
 
   const openJobs = useMemo(() => jobs.filter((job) => !CLOSED_STATUSES.includes(job.status)), [jobs]);
   const closedJobs = useMemo(() => jobs.filter((job) => CLOSED_STATUSES.includes(job.status)), [jobs]);
@@ -95,7 +106,7 @@ export function DispatchPanel({ customers, technicians, jobs }: { customers: Cus
       <div className="rounded-2xl border border-[#2d7dff]/25 bg-black/55 p-4">
         <div className="mb-3 flex items-center gap-2 text-white"><CalendarPlus className="h-4 w-4 text-[#8ffafa]" /><h3 className="font-medium">Create service call</h3></div>
         <div className="grid gap-2 sm:grid-cols-2">
-          <select value={jobForm.customerId} onChange={(e) => setJobForm({ ...jobForm, customerId: e.target.value })} className="rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white"><option value="">Choose customer</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <select value={jobForm.customerId} onChange={(e) => selectJobCustomer(e.target.value)} className="rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white"><option value="">Choose customer</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           <select value={jobForm.assignedTechId} onChange={(e) => setJobForm({ ...jobForm, assignedTechId: e.target.value })} className="rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white"><option value="">Unassigned queue</option>{technicians.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}</select>
           <input value={jobForm.location} onChange={(e) => setJobForm({ ...jobForm, location: e.target.value })} placeholder="Location" className="rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white" />
           <input value={jobForm.scheduledWindow} onChange={(e) => setJobForm({ ...jobForm, scheduledWindow: e.target.value })} placeholder="Date / time window" className="rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white" />

@@ -68,6 +68,15 @@ function serialize(form: HTMLFormElement): FormDraftField[] {
   });
 }
 
+function nativeSetter(control: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, prop: "value" | "checked") {
+  const proto = control instanceof HTMLTextAreaElement ? window.HTMLTextAreaElement.prototype : control instanceof HTMLSelectElement ? window.HTMLSelectElement.prototype : window.HTMLInputElement.prototype;
+  return Object.getOwnPropertyDescriptor(proto, prop)?.set;
+}
+
+// React tracks each controlled input's "current value" on the DOM node itself, so a plain
+// `control.value = x` already satisfies that tracker and the ensuing native event never
+// reaches React's onChange. Writing through the prototype's own setter bypasses the
+// per-node tracker, so React still sees a real change when the event fires below.
 function restore(form: HTMLFormElement, draft: FormDraft) {
   const controls = draftableControls(form);
   for (const field of draft.fields) {
@@ -77,8 +86,13 @@ function restore(form: HTMLFormElement, draft: FormDraft) {
       control = candidates.find((candidate) => candidate instanceof HTMLInputElement && candidate.value === field.value) ?? control;
     }
     if (!control) continue;
-    if (control instanceof HTMLInputElement && (control.type === "checkbox" || control.type === "radio")) control.checked = Boolean(field.checked);
-    else control.value = field.value;
+    if (control instanceof HTMLInputElement && (control.type === "checkbox" || control.type === "radio")) {
+      const setter = nativeSetter(control, "checked");
+      if (setter) setter.call(control, Boolean(field.checked)); else control.checked = Boolean(field.checked);
+    } else {
+      const setter = nativeSetter(control, "value");
+      if (setter) setter.call(control, field.value); else control.value = field.value;
+    }
     control.dispatchEvent(new Event("input", { bubbles: true }));
     control.dispatchEvent(new Event("change", { bubbles: true }));
   }
