@@ -37,7 +37,11 @@ alone do not establish whether the underlying database is Supabase or Neon.
    configured storage endpoint. Actual upload/download remains part of live acceptance.
    Neon Data API table compatibility alone does not
    establish Storage API compatibility. Do not point uploads at a public bucket.
-4. Confirm Vercel AI Gateway authentication/funding for `openai/gpt-5.6-terra`.
+4. Field Notes uses the existing production `OPENAI_API_KEY` directly through
+   OpenAI Responses, defaulting to `gpt-5.4`. `OPENAI_FIELD_NOTES_MODEL` can
+   override the model. Responses are requested with `store: false`. Missing
+   credentials leave the submission available for manual review or retry.
+   The previous Gateway model was blocked by the team's free tier.
 5. Production recovery uses the existing `CRON_SECRET` and a five-minute cron
    (Pro plan). Preview uses `after()` and the manager's Retry control; Vercel cron
    scheduling only operates in production.
@@ -95,6 +99,7 @@ was applied to `xespxlqcjvhompsxranc` and verified in its SQL Editor.
 
 The local production build uses a temporary, process-only cookie signing value
 for build validation because deployment secrets are not stored in this checkout.
-This does not verify live authentication or AI Gateway funding. The remote
-preview must build using the project's existing environment and complete the
-signed-in submission/review acceptance steps above before a production release.
+This does not verify live authentication or OpenAI access. The remote preview
+builds using the project's existing environment. The OpenAI key is scoped only
+to production; live AI acceptance is performed there without copying the key
+into preview or this checkout.

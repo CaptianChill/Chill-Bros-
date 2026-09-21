@@ -93,20 +93,34 @@ test('empty submissions and equipment from another customer are rejected', async
 test('AI request accepts typed-only input and requires an invoice description in its schema', async () => {
   const requests = [];
   const mod = { exports: {} };
+  const testProcess = { env: { OPENAI_API_KEY: 'test-only-placeholder' } };
   const ai = {
     gateway: model => model,
     jsonSchema: schema => schema,
     generateObject: async request => { requests.push(request); return { object: { invoiceDescription: 'Cleaned condenser.' } }; },
   };
   const source = ts.transpileModule(fs.readFileSync('lib/chillbros/field-notes-ai.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  new Function('require', 'module', 'exports', source)(name => name === 'ai' ? ai : {}, mod, mod.exports);
+  const provider = { createOpenAI: settings => {
+    assert.equal(settings.apiKey, 'test-only-placeholder');
+    return { responses: model => ({ provider: 'openai', model }) };
+  } };
+  new Function('require', 'module', 'exports', 'process', source)(name => name === 'ai' ? ai : name === '@ai-sdk/openai' ? provider : {}, mod, mod.exports, testProcess);
   const result = await mod.exports.processFieldNoteImages({ imageUrls: [], technicianNote: 'Cleaned condenser.', customerName: null, equipmentContext: null });
   assert.equal(result.ok, true);
   assert.equal(requests.length, 1);
   assert.match(requests[0].messages[0].content[0].text, /Cleaned condenser/);
   assert.ok(requests[0].schema.required.includes('invoiceDescription'));
+  assert.equal(requests[0].model.provider, 'openai');
+  assert.equal(requests[0].providerOptions.openai.store, false);
   assert.equal((await mod.exports.processFieldNoteImages({ imageUrls: [], technicianNote: ' ', customerName: null, equipmentContext: null })).ok, false);
   assert.equal(requests.length, 1);
+  await mod.exports.processFieldNoteImages({ imageUrls: ['https://private.example/note.jpg'], technicianNote: null, customerName: null, equipmentContext: null });
+  assert.ok(requests[1].messages[0].content[1].image instanceof URL);
+  testProcess.env.OPENAI_API_KEY = '';
+  const missingKey = await mod.exports.processFieldNoteImages({ imageUrls: [], technicianNote: 'Saved note', customerName: null, equipmentContext: null });
+  assert.equal(missingKey.ok, false);
+  assert.match(missingKey.error, /submission is saved/);
+  assert.equal(requests.length, 2);
 });
 test('incomplete upload cannot be sent or processed and keeps its draft reservation', async () => {
   const h = harness(); await h.service.prepareNote(input,[descriptor],tech); await assert.rejects(h.service.finishNoteUpload(id,tech),/not finished/); await h.service.processNote(id); assert.equal(h.state.aiCalls,0); assert.equal(h.note().ai_error,h.service.UPLOAD_PENDING);

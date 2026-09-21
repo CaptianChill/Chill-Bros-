@@ -1,8 +1,9 @@
 import "server-only";
 
-import { gateway, generateObject, jsonSchema } from "ai";
+import { generateObject, jsonSchema } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
 
-const FIELD_NOTES_MODEL = "openai/gpt-5.6-terra";
+const FIELD_NOTES_MODEL = process.env.OPENAI_FIELD_NOTES_MODEL?.trim() || "gpt-5.4";
 
 export type FieldNoteAiResult = {
   rawTranscription: string;
@@ -116,6 +117,8 @@ export async function processFieldNoteImages(input: {
   equipmentContext: string | null;
 }): Promise<{ ok: true; data: FieldNoteAiResult; model: string } | { ok: false; error: string }> {
   if (input.imageUrls.length === 0 && !input.technicianNote?.trim()) return { ok: false, error: "No notes or images to process." };
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return { ok: false, error: "Field Notes AI requires the existing OPENAI_API_KEY on this deployment. Your submission is saved for owner review or retry." };
 
   const contextLines = [
     input.customerName ? `Customer: ${input.customerName}` : null,
@@ -125,7 +128,8 @@ export async function processFieldNoteImages(input: {
 
   try {
     const result = await generateObject({
-      model: gateway(FIELD_NOTES_MODEL),
+      model: createOpenAI({ apiKey }).responses(FIELD_NOTES_MODEL),
+      providerOptions: { openai: { store: false, reasoningEffort: "low" } },
       schema: RESULT_SCHEMA,
       system: SYSTEM_PROMPT,
       messages: [
@@ -133,7 +137,7 @@ export async function processFieldNoteImages(input: {
           role: "user",
           content: [
             { type: "text", text: contextLines || "No additional context provided." },
-            ...input.imageUrls.map((url) => ({ type: "image" as const, image: url })),
+            ...input.imageUrls.map((url) => ({ type: "image" as const, image: new URL(url) })),
           ],
         },
       ],
@@ -141,7 +145,7 @@ export async function processFieldNoteImages(input: {
       abortSignal: AbortSignal.timeout(180000),
     });
 
-    return { ok: true, data: result.object, model: FIELD_NOTES_MODEL };
+    return { ok: true, data: result.object, model: `openai/${FIELD_NOTES_MODEL}` };
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI processing failed.";
     return { ok: false, error: message };
