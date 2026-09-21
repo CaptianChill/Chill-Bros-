@@ -40,13 +40,13 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
     }
   } else { const { data: customer } = await supabase.from("chillbros_customers").select("id").eq("id", customerId).maybeSingle(); if (!customer) fail("Customer record not found.", type); }
 
-  const [{ data: catalogRows }, { data: feeRows }] = await Promise.all([supabase.from("chillbros_parts_catalog").select("id,name,part_number,retail_price,stock"), supabase.from("chillbros_fee_settings").select("id,label,amount")]);
+  const [{ data: catalogRows }, { data: feeRows }] = await Promise.all([supabase.from("chillbros_parts_catalog").select("id,name,part_number,retail_price,stock,track_inventory"), supabase.from("chillbros_fee_settings").select("id,label,amount")]);
   const catalog = new Map((catalogRows ?? []).map((row) => [String(row.id), row]));
   const priceBook = new Map((catalogRows ?? []).filter((row) => String(row.part_number ?? "").startsWith("PB-")).map((row) => [String(row.part_number), row]));
   const fees = new Map((feeRows ?? []).map((row) => [String(row.id), row]));
   const lines: DirectLine[] = Array.from({ length: 8 }, (_, i) => {
     const preset = text(formData, `itemPreset${i}`); let presetLabel = ""; let presetDescription = ""; let presetPrice: number | null = null; let inventoryPartId: string | null = null;
-    if (preset.startsWith("part:")) { const row = catalog.get(preset.slice(5)); if (row && !String(row.part_number ?? "").startsWith("PB-")) { presetLabel = row.name; presetDescription = row.part_number || "Inventory part"; presetPrice = Number(row.retail_price ?? 0); inventoryPartId = String(row.id); } }
+    if (preset.startsWith("part:")) { const row = catalog.get(preset.slice(5)); if (row) { presetLabel = row.name; presetDescription = row.part_number || "Inventory part"; presetPrice = Number(row.retail_price ?? 0); if (row.track_inventory) inventoryPartId = String(row.id); } }
     else if (preset.startsWith("fee:")) { const row = fees.get(preset.slice(4)); if (row) { presetLabel = row.label; presetDescription = "Service fee"; presetPrice = Number(row.amount ?? 0); } }
     else if (preset.startsWith("pb:")) { const row = priceBook.get(preset.slice(3)); if (row) { presetLabel = row.name; presetDescription = row.part_number || "Price book"; presetPrice = Number(row.retail_price ?? 0); } }
     return { label: presetLabel || text(formData, `itemLabel${i}`), description: text(formData, `itemDescription${i}`) || presetDescription, quantity: money(formData, `itemQty${i}`), unit_price: presetPrice ?? money(formData, `itemPrice${i}`), taxable: formData.get(`itemTaxable${i}`) === "on", inventoryPartId };

@@ -19,9 +19,9 @@ export async function getOperationsReport(): Promise<OperationsReport> {
     supabase.from("chillbros_invoice_line_items").select("invoice_id,amount"),
     supabase.from("chillbros_invoice_adjustments").select("invoice_id,adjustment_type,amount"),
     supabase.from("chillbros_timesheets").select("id,labor_hours,drive_hours"),
-    supabase.from("chillbros_parts_catalog").select("part_number,stock,default_cost,retail_price"),
+    supabase.from("chillbros_parts_catalog").select("part_number,stock,default_cost,retail_price,track_inventory"),
   ]);
-  const inventoryParts = (parts ?? []).filter((row) => !String(row.part_number ?? "").startsWith("PB-"));
+  const inventoryParts = (parts ?? []).filter((row) => row.track_inventory);
   const subtotals = new Map<string, number>();
   for (const row of lineItems ?? []) subtotals.set(row.invoice_id, (subtotals.get(row.invoice_id) ?? 0) + Number(row.amount ?? 0));
   const credits = new Map<string, number>();
