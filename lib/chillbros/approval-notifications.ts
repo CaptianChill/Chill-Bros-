@@ -59,7 +59,7 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
     await command(socket, "DATA", ["354"]);
 
     const headers = [
-      `From: Chill Bros <${safeHeader(user)}>`,
+      `From: Chill Pros <${safeHeader(user)}>`,
       `To: ${safeHeader(to)}`,
       `Subject: ${safeHeader(subject)}`,
       "MIME-Version: 1.0",
@@ -110,7 +110,7 @@ export async function sendApprovalNotification(input: ApprovalNotification) {
   const to = companyEmail();
   const subject = safeHeader(input.subject);
   const text = [
-    "Chill Bros customer approval received.",
+    "Chill Pros customer approval received.",
     "",
     `${input.documentLabel}: ${input.documentNumber}`,
     input.customerName ? `Customer: ${input.customerName}` : null,

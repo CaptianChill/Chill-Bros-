@@ -100,14 +100,14 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
   const receiptUrl = `${portalUrl}/receipt`;
   const due = formatDue(invoice.due_at);
   const label = effectiveType === "estimate" ? "estimate" : effectiveType === "receipt" ? "receipt" : "invoice";
-  const subject = effectiveType === "reminder" ? `Reminder · Chill Bros invoice ${invoice.invoice_number}` : `Chill Bros ${label} ${invoice.invoice_number}`;
+  const subject = effectiveType === "reminder" ? `Reminder · Chill Pros invoice ${invoice.invoice_number}` : `Chill Pros ${label} ${invoice.invoice_number}`;
   const link = effectiveType === "receipt" ? receiptUrl : documentUrl;
-  const intro = effectiveType === "estimate" ? "Your Chill Bros estimate is ready for review and approval."
-    : effectiveType === "invoice" ? "Your Chill Bros invoice is ready to review and pay."
-    : effectiveType === "reminder" ? `This is a reminder that Chill Bros invoice ${invoice.invoice_number}${due ? ` is due ${due}` : " is still outstanding"}.`
+  const intro = effectiveType === "estimate" ? "Your Chill Pros estimate is ready for review and approval."
+    : effectiveType === "invoice" ? "Your Chill Pros invoice is ready to review and pay."
+    : effectiveType === "reminder" ? `This is a reminder that Chill Pros invoice ${invoice.invoice_number}${due ? ` is due ${due}` : " is still outstanding"}.`
     : `Payment for ${invoice.invoice_number} has been recorded. Your receipt is ready.`;
-  const text = [customerName + ",", "", intro, "", `Open document: ${link}`, due && effectiveType !== "receipt" ? `Due: ${due}` : null, "", "Chill Bros"].filter(Boolean).join("\n");
-  const html = `<!doctype html><html><body style="margin:0;background:#05070a;font-family:Arial,sans-serif;color:#fff"><div style="max-width:640px;margin:0 auto;padding:28px"><div style="border:1px solid #2d7dff;border-radius:18px;padding:24px;background:#07111b"><div style="font-size:22px;font-weight:700;margin-bottom:16px">Chill Bros</div><p style="font-size:16px;line-height:1.6;color:#e5eef8">${esc(customerName)},</p><p style="font-size:16px;line-height:1.6;color:#e5eef8">${esc(intro)}</p>${due && effectiveType !== "receipt" ? `<p style="color:#b9c9d8">Due: ${esc(due)}</p>` : ""}<p style="margin:26px 0"><a href="${esc(link)}" style="display:inline-block;background:#1677ff;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:12px">Open ${esc(label)}</a></p><p style="font-size:12px;color:#91a4b5;word-break:break-all">${esc(link)}</p></div></div></body></html>`;
+  const text = [customerName + ",", "", intro, "", `Open document: ${link}`, due && effectiveType !== "receipt" ? `Due: ${due}` : null, "", "Chill Pros"].filter(Boolean).join("\n");
+  const html = `<!doctype html><html><body style="margin:0;background:#05070a;font-family:Arial,sans-serif;color:#fff"><div style="max-width:640px;margin:0 auto;padding:28px"><div style="border:1px solid #2d7dff;border-radius:18px;padding:24px;background:#07111b"><div style="font-size:22px;font-weight:700;margin-bottom:16px">Chill Pros</div><p style="font-size:16px;line-height:1.6;color:#e5eef8">${esc(customerName)},</p><p style="font-size:16px;line-height:1.6;color:#e5eef8">${esc(intro)}</p>${due && effectiveType !== "receipt" ? `<p style="color:#b9c9d8">Due: ${esc(due)}</p>` : ""}<p style="margin:26px 0"><a href="${esc(link)}" style="display:inline-block;background:#1677ff;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:12px">Open ${esc(label)}</a></p><p style="font-size:12px;color:#91a4b5;word-break:break-all">${esc(link)}</p></div></div></body></html>`;
 
   if (channel === "email") {
     const recipient = String(customer?.email || "").trim();
