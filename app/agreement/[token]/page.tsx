@@ -18,7 +18,7 @@ export default async function AgreementPage({ params }: Props) {
 
   return <PortalShell
     title={agreement.title}
-    description="Your custom Chill Bros monthly service plan, built around the schedule, hours, services, and pricing requested for your location."
+    description="Your custom Chill Pros monthly service plan, built around the schedule, hours, services, and pricing requested for your location."
     highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Agreement status</p><StatusPill tone={agreement.status === "active" || agreement.status === "accepted" ? "emerald" : "amber"}>{agreement.status}</StatusPill><p className="text-sm text-zinc-300">{agreement.agreementNumber}</p><p className="text-sm text-zinc-300">Customer: {agreement.customerName}</p></div>}
   >
     <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
