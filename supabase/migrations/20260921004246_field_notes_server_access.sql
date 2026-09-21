@@ -2,22 +2,25 @@
 -- operational database. All browser access uses authenticated server actions.
 -- No customer or technician JWT may directly read the review inbox or photos.
 BEGIN;
-ALTER TABLE public.chillbros_field_note_submissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.chillbros_field_note_images ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.chillbros_field_note_events ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.chillbros_field_note_submissions, public.chillbros_field_note_images, public.chillbros_field_note_events FROM PUBLIC;
 DO $$
-DECLARE r text;
+DECLARE r text; t text;
 BEGIN
-  FOREACH r IN ARRAY ARRAY['anon', 'authenticated'] LOOP
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
-      EXECUTE format('REVOKE ALL ON public.chillbros_field_note_submissions, public.chillbros_field_note_images, public.chillbros_field_note_events FROM %I', r);
+  -- Fresh operational databases receive these tables in the following bootstrap
+  -- migration. Existing Neon installations can be hardened immediately.
+  FOREACH t IN ARRAY ARRAY['chillbros_field_note_submissions', 'chillbros_field_note_images', 'chillbros_field_note_events'] LOOP
+    IF to_regclass('public.' || t) IS NOT NULL THEN
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+      EXECUTE format('REVOKE ALL ON public.%I FROM PUBLIC', t);
+      FOREACH r IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+          EXECUTE format('REVOKE ALL ON public.%I FROM %I', t, r);
+        END IF;
+      END LOOP;
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+        EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO service_role', t);
+      END IF;
     END IF;
   END LOOP;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
-    GRANT SELECT, INSERT, UPDATE, DELETE ON public.chillbros_field_note_submissions, public.chillbros_field_note_images, public.chillbros_field_note_events TO service_role;
-  END IF;
 END $$;
-COMMENT ON TABLE public.chillbros_field_note_images IS 'Temporary photos retained until owner verification and completion; approved text and events are permanent.';
 NOTIFY pgrst, 'reload schema';
 COMMIT;

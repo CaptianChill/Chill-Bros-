@@ -14,18 +14,28 @@ the Field Notes screen on his device. Installation wording varies by Chrome vers
 
 ## Backend prerequisites
 
-Confirm the Vercel project is `chill-pros/chill-bros-` and that its operational data
-API points at the database containing the Field Notes migration. Existing env names
+Confirmed preview runtime requests use Supabase project `xespxlqcjvhompsxranc`
+(dashboard display name `bbb-sports-intelligence`) for the operational Chill Pros
+tables. Neon provides sign-in. The original migration was installed in Neon and
+was absent from this operational database, causing the Field Notes load failure.
+The operational schema and server-only permissions were applied and verified on
+September 21, 2026 UTC using `20260921012119_field_notes_operational_schema.sql`.
+Existing env names
 are `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`; these names
 alone do not establish whether the underlying database is Supabase or Neon.
 
-1. Verify `neon/migrations/202609200001_field_notes_ai.sql` is applied to that database.
-2. Inspect the API service role and its RLS behavior, then apply
-   `supabase/migrations/20260921004246_field_notes_server_access.sql`. All access is
-   through authenticated server actions and routes. The server role must have
-   privileged access; browser roles must not have direct access to these tables.
-3. Verify a private, Supabase-compatible `chillbros-media` bucket exists at the
-   configured storage endpoint. Neon Data API table compatibility alone does not
+1. For another operational environment, apply
+   `supabase/migrations/20260921012119_field_notes_operational_schema.sql` after
+   verifying the target and existing Chill Pros tables. It includes the schema
+   and permissions. The earlier hardening migration safely skips absent tables.
+2. Verified on the current destination: all three tables have RLS enabled,
+   `service_role` has CRUD access and bypasses RLS, and `anon`/`authenticated`
+   have no direct table access. A service-role transaction inserted a submission,
+   image reference, and audit entry, updated the text, and read the staff join;
+   the transaction was rolled back after verification.
+3. A private `chillbros-media` bucket was confirmed at the
+   configured storage endpoint. Actual upload/download remains part of live acceptance.
+   Neon Data API table compatibility alone does not
    establish Storage API compatibility. Do not point uploads at a public bucket.
 4. Confirm Vercel AI Gateway authentication/funding for `openai/gpt-5.6-terra`.
 5. Production recovery uses the existing `CRON_SECRET` and a five-minute cron
