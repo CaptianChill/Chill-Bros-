@@ -18,9 +18,9 @@ async function logBillingEmail(invoiceId: string, subject: string, recipient: st
 }
 
 /** Delivery failures must not undo saved work, but remain visible in its audit trail. */
-export async function sendBillingDeliveryRecorded(invoiceId: string, type: BillingDeliveryType, channel: BillingDeliveryChannel): Promise<DeliveryResult> {
+export async function sendBillingDeliveryRecorded(invoiceId: string, type: BillingDeliveryType, channel: BillingDeliveryChannel, overrideRecipient?: string): Promise<DeliveryResult> {
   let result: DeliveryResult;
-  try { result = await sendBillingDelivery(invoiceId, type, channel); }
+  try { result = await sendBillingDelivery(invoiceId, type, channel, overrideRecipient); }
   catch (error) { result = { channel, recipient: null, status: "failed", error: error instanceof Error ? error.message : "Delivery failed." }; }
   try {
     const supabase = createServiceRoleClient();
@@ -86,7 +86,7 @@ function formatDue(value: string | null) {
   return new Date(value).toLocaleDateString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", year: "numeric" });
 }
 
-export async function sendBillingDelivery(invoiceId: string, deliveryType: BillingDeliveryType, channel: BillingDeliveryChannel): Promise<DeliveryResult> {
+export async function sendBillingDelivery(invoiceId: string, deliveryType: BillingDeliveryType, channel: BillingDeliveryChannel, overrideRecipient?: string): Promise<DeliveryResult> {
   const supabase = createServiceRoleClient();
   const { data: invoice } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,due_at,customer:chillbros_customers(name,email,phone)").eq("id", invoiceId).maybeSingle();
   if (!invoice) return { channel, recipient: null, status: "failed", error: "Invoice was not found." };
@@ -110,7 +110,9 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
   const html = `<!doctype html><html><body style="margin:0;background:#05070a;font-family:Arial,sans-serif;color:#fff"><div style="max-width:640px;margin:0 auto;padding:28px"><div style="border:1px solid #2d7dff;border-radius:18px;padding:24px;background:#07111b"><div style="font-size:22px;font-weight:700;margin-bottom:16px">Chill Pros</div><p style="font-size:16px;line-height:1.6;color:#e5eef8">${esc(customerName)},</p><p style="font-size:16px;line-height:1.6;color:#e5eef8">${esc(intro)}</p>${due && effectiveType !== "receipt" ? `<p style="color:#b9c9d8">Due: ${esc(due)}</p>` : ""}<p style="margin:26px 0"><a href="${esc(link)}" style="display:inline-block;background:#1677ff;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:12px">Open ${esc(label)}</a></p><p style="font-size:12px;color:#91a4b5;word-break:break-all">${esc(link)}</p></div></div></body></html>`;
 
   if (channel === "email") {
-    const recipient = String(customer?.email || "").trim();
+    const override = String(overrideRecipient || "").trim().toLowerCase();
+    if (override && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(override)) return { channel, recipient: null, status: "failed", error: "That override email address is not valid." };
+    const recipient = override || String(customer?.email || "").trim();
     if (!recipient) {
       const result: DeliveryResult = { channel, recipient: null, status: "skipped", error: "Customer has no email address." };
       await logDelivery(invoiceId, channel, effectiveType, "", result);
@@ -129,7 +131,9 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
     return result;
   }
 
-  const recipient = String(customer?.phone || "").trim();
+  const overridePhone = String(overrideRecipient || "").trim();
+  if (overridePhone && !normalizePhone(overridePhone)) return { channel, recipient: null, status: "failed", error: "That override phone number is not valid for SMS delivery." };
+  const recipient = overridePhone || String(customer?.phone || "").trim();
   if (!recipient) return { channel, recipient: null, status: "skipped", error: "Customer has no phone number." };
   let result: DeliveryResult;
   try {

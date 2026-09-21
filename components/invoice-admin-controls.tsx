@@ -45,7 +45,10 @@ export function InvoiceAdminControls(props: Props) {
   const [pending, setPending] = useState(false);
   const [needsEmail, setNeedsEmail] = useState(Boolean(props.missingEmail));
   const [email, setEmail] = useState("");
+  const [sendToEmail, setSendToEmail] = useState("");
+  const [sendToPhone, setSendToPhone] = useState("");
   const taxLocked = props.status === "approved";
+  const isAwaitingApproval = props.status === "awaiting_approval";
 
   const run = async (task: () => Promise<{ ok: boolean; error?: string; status?: string; data?: { recipient?: string | null; status?: string } }>, success: string, keepVisible = false) => {
     if (pending) return;
@@ -81,7 +84,8 @@ export function InvoiceAdminControls(props: Props) {
   };
 
   const send = (channel: "email" | "sms", reminder = false) => run(async () => {
-    const result = await sendInvoiceCommunicationAction(props.invoiceId, channel, reminder);
+    const override = channel === "email" ? sendToEmail.trim() : sendToPhone.trim();
+    const result = await sendInvoiceCommunicationAction(props.invoiceId, channel, reminder, override || undefined);
     return result;
   }, reminder ? `Reminder sent by ${channel}.` : `${channel === "email" ? "Email" : "Text"} sent.`);
 
@@ -100,6 +104,10 @@ export function InvoiceAdminControls(props: Props) {
       <label className="text-xs text-zinc-400">Customer email<input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="ml-2 rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white" /></label>
       <button type="submit" disabled={pending} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Save email & send</button>
     </form> : null}
+    <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+      <label>Send to a different email<input type="email" value={sendToEmail} onChange={(e) => setSendToEmail(e.target.value)} placeholder="Optional, this send only" className="ml-2 rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-2.5 py-1.5 text-white" /></label>
+      <label>or number<input type="tel" inputMode="tel" value={sendToPhone} onChange={(e) => setSendToPhone(e.target.value)} placeholder="Optional, this send only" className="ml-2 rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-2.5 py-1.5 text-white" /></label>
+    </div>
     <div className="flex flex-wrap gap-2">
       {["draft", "awaiting_approval"].includes(props.status) && props.paymentStatus !== "paid" ? <>
         {props.canManage ? <Link href={"/invoices?focus=" + props.invoiceId + "&edit=1"} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]">Edit prices</Link> : null}
@@ -107,8 +115,8 @@ export function InvoiceAdminControls(props: Props) {
       </> : null}
       {props.canManage && props.status === "approved" && props.paymentStatus === "unpaid" ? <button type="button" disabled={pending} onClick={() => void run(() => reopenInvoiceAction(props.invoiceId), "Invoice reopened. Select Edit prices to correct it, then Finalize & email.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Reopen to edit</button> : null}
       {props.canManage && props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void run(() => markInvoicePaidV2Action(props.invoiceId), "Payment recorded.", true)} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-xs text-emerald-100 disabled:opacity-40">Mark paid</button> : null}
-      <button type="button" disabled={pending} onClick={() => void send("email")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Mail className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Email receipt" : props.status === "approved" ? "Email invoice" : "Email for customer approval"}</button>
-      <button type="button" disabled={pending} onClick={() => void send("sms")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><MessageSquareText className="h-3.5 w-3.5" />Send text (auto)</button>
+      <button type="button" disabled={pending} onClick={() => void send("email")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Mail className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Email receipt" : isAwaitingApproval ? "Resend email" : props.status === "approved" ? "Email invoice" : "Email for customer approval"}</button>
+      <button type="button" disabled={pending} onClick={() => void send("sms")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><MessageSquareText className="h-3.5 w-3.5" />{isAwaitingApproval ? "Resend text" : "Send text (auto)"}</button>
       {props.customerPhone ? <button type="button" onClick={textFromMyPhone} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]"><MessageSquareText className="h-3.5 w-3.5" />Text from my phone</button> : null}
       {props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void send("email", true)} className="inline-flex items-center gap-2 rounded-xl border border-amber-400/25 px-3 py-2 text-xs text-amber-100 disabled:opacity-40"><Send className="h-3.5 w-3.5" />Email reminder</button> : null}
       {props.status === "approved" && !props.hasApprovedArchive ? <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await ensureInvoiceArchiveAction(props.invoiceId, "approved"); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Approved PDF archive created.")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Archive className="h-3.5 w-3.5" />Build approved PDF</button> : null}
