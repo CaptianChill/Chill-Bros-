@@ -1,11 +1,16 @@
 # Field Notes release and verification
 
-Eric's entry point is `/field-notes`. It uses the existing staff login and returns
+Eric uses Android. His entry point is `/field-notes`. It uses the existing staff login and returns
 to Field Notes after signing in. Add that page to the phone's Home Screen after
 login; its dedicated manifest launches Field Notes in standalone mode. A network
 connection is required to open the app and send. An open page retains an unfinished
 draft in IndexedDB when the browser permits it; sending is explicitly retried by
 the technician after reconnecting. It does not promise offline application launch.
+
+For Eric's Android phone, open the final production link in Chrome, sign in, then
+use Chrome's menu to install/add Field Notes to the Home Screen. The manifest
+includes 192px and 512px PNG launcher icons. Confirm the installed icon reopens
+the Field Notes screen on his device. Installation wording varies by Chrome version.
 
 ## Backend prerequisites
 
