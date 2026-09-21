@@ -41,7 +41,7 @@ export default async function NewInvoicePage({ searchParams }: Props) {
         {params.token ? <div className="mt-3 flex flex-wrap gap-2"><Link target="_blank" href={`/portal/${params.token}/document`} className="rounded-xl border border-emerald-400/30 px-3 py-2">Open / Print</Link><Link target="_blank" href={`/portal/${params.token}`} className="rounded-xl border border-emerald-400/30 px-3 py-2">Customer view</Link></div> : null}
       </div> : null}
 
-      <form data-no-draft action={createDirectInvoiceAction} className="space-y-5" data-draft-key={`billing:${documentType}:${selectedCustomerId || "new"}`} data-draft-label={isQuote ? "New quote" : "New invoice"}>
+      <form action={createDirectInvoiceAction} className="space-y-5" data-draft-key={`billing:${documentType}:${selectedCustomerId || "new"}`} data-draft-label={isQuote ? "New quote" : "New invoice"}>
         <input type="hidden" name="documentType" value={documentType} />
         <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4 sm:p-5">
           <h2 className="text-xl font-semibold text-white">1. Customer</h2>
@@ -71,6 +71,15 @@ export default async function NewInvoicePage({ searchParams }: Props) {
             <label className={label}>Sales tax %<input name="taxRate" type="number" min="0" max="25" step="0.001" defaultValue="8.25" className={`${input} mt-1`} /></label>
           </div>
           <label className={`${label} mt-3 block`}>Customer notes<textarea name="notes" rows={3} placeholder="Warranty, terms, thank-you note, exclusions, etc." className={`${input} mt-1 resize-y`} /></label>
+        </section>
+
+        <section className="rounded-3xl border border-amber-400/25 bg-amber-500/[0.04] p-4 sm:p-5">
+          <h2 className="text-xl font-semibold text-white">Down payment</h2>
+          <p className="mt-1 text-sm text-zinc-400">Optional amount required upfront before work begins.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className={label}>Type<select name="downPaymentType" defaultValue="" className={`${input} mt-1`}><option value="">No down payment</option><option value="percent">Percentage %</option><option value="dollar">Dollar $</option></select></label>
+            <label className={label}>Amount<input name="downPaymentValue" type="number" min="0" step="0.01" defaultValue="0" className={`${input} mt-1`} /></label>
+          </div>
         </section>
 
         {!isQuote ? <section className="rounded-3xl border border-emerald-400/25 bg-emerald-500/[0.04] p-4 sm:p-5">
