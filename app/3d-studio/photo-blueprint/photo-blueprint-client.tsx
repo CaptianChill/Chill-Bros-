@@ -31,11 +31,13 @@ async function savePhotos(files: File[]) {
   db.close();
 }
 
+type StoredPhotoRow = { id: number; name: string; type: string; blob: Blob };
+
 async function loadPhotos(): Promise<File[]> {
   const db = await openDb();
   const tx = db.transaction("photos", "readonly");
   const req = tx.objectStore("photos").getAll();
-  const rows = await new Promise<any[]>((resolve, reject) => { req.onsuccess = () => resolve(req.result ?? []); req.onerror = () => reject(req.error); });
+  const rows = await new Promise<StoredPhotoRow[]>((resolve, reject) => { req.onsuccess = () => resolve(req.result ?? []); req.onerror = () => reject(req.error); });
   db.close();
   return rows.sort((a,b) => a.id - b.id).map((row) => new File([row.blob], row.name, { type: row.type }));
 }
@@ -59,10 +61,13 @@ export default function PhotoBlueprintClient() {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
+    // Hydrating from localStorage can't run during SSR render (no `window`),
+    // so this has to load post-mount and then setState once.
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const saved = JSON.parse(raw) as SavedProject;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProjectName(saved.name || "New photo blueprint");
       setNotes(saved.notes || "");
       setRooms(saved.rooms?.length ? saved.rooms : [newRoom(0)]);
@@ -74,14 +79,16 @@ export default function PhotoBlueprintClient() {
   useEffect(() => () => previews.forEach((p) => URL.revokeObjectURL(p.url)), [previews]);
 
   const placements = useMemo(() => {
-    let x = 0, y = 0, rowDepth = 0;
-    return rooms.map((room, index) => {
+    type RowState = { list: { room: Room; x: number; y: number }[]; x: number; y: number; rowDepth: number };
+    const initial: RowState = { list: [], x: 0, y: 0, rowDepth: 0 };
+    return rooms.reduce<RowState>((acc, room, index) => {
+      let { x, y, rowDepth } = acc;
       if (index > 0 && index % 3 === 0) { x = 0; y += rowDepth + 3; rowDepth = 0; }
       const placed = { room, x, y };
       x += room.width + 3;
       rowDepth = Math.max(rowDepth, room.depth);
-      return placed;
-    });
+      return { list: [...acc.list, placed], x, y, rowDepth };
+    }, initial).list;
   }, [rooms]);
 
   function updateRoom(id: string, field: keyof Room, value: string | number | boolean) {
@@ -162,7 +169,7 @@ export default function PhotoBlueprintClient() {
                   <line x1={a[0]+ox} y1={a[1]+oy} x2={at[0]+ox} y2={at[1]+oy} stroke="#2d7dff" strokeWidth="2"/>
                   <line x1={c[0]+ox} y1={c[1]+oy} x2={ct[0]+ox} y2={ct[1]+oy} stroke="#2d7dff" strokeWidth="2"/>
                   <text x={center[0]+ox} y={center[1]+oy} fill="#e8fdff" fontSize="16" textAnchor="middle" fontFamily="Arial, sans-serif" fontWeight="700">{room.name}</text>
-                  <text x={center[0]+ox} y={center[1]+oy+19} fill={room.verified?"#62f5b3":"#f6c85f"} fontSize="11" textAnchor="middle" fontFamily="Arial, sans-serif">{room.width}' × {room.depth}' × {room.height}' · {room.verified?"VERIFIED":"UNVERIFIED"}</text>
+                  <text x={center[0]+ox} y={center[1]+oy+19} fill={room.verified?"#62f5b3":"#f6c85f"} fontSize="11" textAnchor="middle" fontFamily="Arial, sans-serif">{room.width}&apos; × {room.depth}&apos; × {room.height}&apos; · {room.verified?"VERIFIED":"UNVERIFIED"}</text>
                 </g>;
               })}
               <text x="36" y="42" fill="#8ffafa" fontSize="18" fontFamily="Arial, sans-serif" fontWeight="700">CHILL BROS · PHOTO-ASSISTED 3D CONCEPT</text>

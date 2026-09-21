@@ -108,8 +108,11 @@ export default function CompletedVisualClient({ onBackToModel }: { onBackToModel
   const [renderMeta, setRenderMeta] = useState("");
 
   useEffect(() => {
+    // Hydrating from localStorage can't run during SSR render (no `window`),
+    // so this has to load post-mount and then setState once.
     try {
       const raw = localStorage.getItem(BRIEF_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setBrief(JSON.parse(raw));
       const prior = localStorage.getItem(RENDER_KEY);
       if (prior) {
@@ -126,6 +129,8 @@ export default function CompletedVisualClient({ onBackToModel }: { onBackToModel
   useEffect(() => () => photos.forEach((p)=>URL.revokeObjectURL(p.url)), [photos]);
 
   useEffect(() => {
+    // Clear the previous selection's render before the new one loads asynchronously.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRenderUrl("");
     setRenderMeta("");
     getRender(selected).then((saved) => {

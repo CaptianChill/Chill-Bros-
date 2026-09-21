@@ -38,8 +38,11 @@ export default function WalkthroughClient() {
   const [photos, setPhotos] = useState<Array<{name:string;url:string}>>([]);
 
   useEffect(() => {
+    // Hydrating from localStorage can't run during SSR render (no `window`),
+    // so this has to load post-mount and then setState once.
     try {
       const raw = localStorage.getItem(BLUEPRINT_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setBlueprint(JSON.parse(raw));
       const briefRaw = localStorage.getItem(BRIEF_KEY);
       if (briefRaw) setBrief(JSON.parse(briefRaw));
@@ -89,7 +92,7 @@ export default function WalkthroughClient() {
         </div>
 
         <div className="pointer-events-none absolute inset-x-0 bottom-5 mx-auto w-[min(92%,620px)] rounded-2xl border border-[#8ffafa]/20 bg-black/70 p-4 backdrop-blur-md">
-          <div className="flex items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.18em] text-[#8ffafa]">{room.name}</p><p className="mt-1 text-lg font-semibold text-white">{room.width}' × {room.depth}' × {room.height}'</p></div><DoorOpen className="h-6 w-6 text-[#8ffafa]"/></div>
+          <div className="flex items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.18em] text-[#8ffafa]">{room.name}</p><p className="mt-1 text-lg font-semibold text-white">{room.width}&apos; × {room.depth}&apos; × {room.height}&apos;</p></div><DoorOpen className="h-6 w-6 text-[#8ffafa]"/></div>
         </div>
       </div>
 

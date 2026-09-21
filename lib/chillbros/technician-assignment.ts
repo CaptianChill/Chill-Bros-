@@ -1,10 +1,24 @@
 import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { JOB_ACTIVE_STATUSES } from "./types";
+import { JOB_ACTIVE_STATUSES, type JobStatus } from "./types";
 import type { DispatchJob } from "./operations-queries";
 
 const FIELD_VISIBLE = ["scheduled","in_progress","dispatched","en_route","arrived","diagnosing","awaiting_approval","approved","parts_required","return_visit_needed","repairing","work_complete","ready_to_invoice"] as const;
 const normalize = (value:string) => String(value||"").trim().toLowerCase().replace(/\s+/g," ");
+
+type AssignedJobRow = {
+  id: string;
+  customer_id: string;
+  assigned_tech_id: string | null;
+  status: JobStatus;
+  location: string | null;
+  scope: string | null;
+  work_performed: string | null;
+  scheduled_window: string | null;
+  created_at: string;
+  customer: { name: string } | { name: string }[] | null;
+  tech: { full_name: string } | { full_name: string }[] | null;
+};
 
 export async function getAssignedFieldJobsForTechnician(profile: { id:string; email:string; fullName?:string }, limit=250): Promise<DispatchJob[]> {
   const supabase=createServiceRoleClient();
@@ -36,7 +50,7 @@ export async function getAssignedFieldJobsForTechnician(profile: { id:string; em
     return [];
   }
   console.info(`[technician-queue] profile=${profile.id} aliases=${ids.length} jobs=${data.length}`);
-  return data.filter((row:any)=>JOB_ACTIVE_STATUSES.includes(row.status)).map((row:any)=>{
+  return data.filter((row:AssignedJobRow)=>JOB_ACTIVE_STATUSES.includes(row.status)).map((row:AssignedJobRow)=>{
     const customer=Array.isArray(row.customer)?row.customer[0]:row.customer;
     const tech=Array.isArray(row.tech)?row.tech[0]:row.tech;
     return {id:row.id,customerId:row.customer_id,customerName:customer?.name??"Unknown customer",assignedTechId:row.assigned_tech_id,assignedTechName:tech?.full_name??null,status:row.status,location:row.location,scope:row.scope,workPerformed:row.work_performed,scheduledWindow:row.scheduled_window,createdAt:row.created_at,workflowStage:row.status};

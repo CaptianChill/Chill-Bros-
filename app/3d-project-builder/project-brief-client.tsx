@@ -28,8 +28,11 @@ export function ProjectBriefClient() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    // Hydrating from localStorage can't run during SSR render (no `window`),
+    // so this has to load post-mount and then setState once.
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setBrief({ ...empty, ...JSON.parse(raw) });
     } catch {}
   }, []);

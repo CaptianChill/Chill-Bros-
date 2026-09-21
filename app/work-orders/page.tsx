@@ -17,7 +17,7 @@ const stages:JobStatus[]=["new","needs_scheduling","scheduled","in_progress","di
 export default async function WorkOrdersPage({searchParams}:Props){
  const p=await getCurrentStaffProfile(); if(!p||p.role!=="manager") redirect("/");
  const params=await searchParams; const [rows,techs]=await Promise.all([getOpenWorkOrders(),getActiveTechnicians()]);
- let filtered=rows.filter(r=>(!params.tech||r.assignedTechId===params.tech)&&(!params.status||r.status===params.status)&&(!params.q||[r.customerName,r.jobNumber,r.location,r.scope,r.assignedTechName].some(v=>String(v??"").toLowerCase().includes(params.q!.toLowerCase()))));
+ const filtered=rows.filter(r=>(!params.tech||r.assignedTechId===params.tech)&&(!params.status||r.status===params.status)&&(!params.q||[r.customerName,r.jobNumber,r.location,r.scope,r.assignedTechName].some(v=>String(v??"").toLowerCase().includes(params.q!.toLowerCase()))));
  if(params.sort==="schedule") filtered.sort((a,b)=>String(a.scheduledWindow??"9999").localeCompare(String(b.scheduledWindow??"9999")));
  else if(params.sort==="tech") filtered.sort((a,b)=>String(a.assignedTechName??"ZZZ").localeCompare(String(b.assignedTechName??"ZZZ")));
  else if(params.sort==="status") filtered.sort((a,b)=>a.status.localeCompare(b.status));

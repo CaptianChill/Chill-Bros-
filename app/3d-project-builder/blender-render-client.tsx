@@ -85,6 +85,9 @@ export default function BlenderRenderClient() {
   }, []);
 
   useEffect(() => {
+    // Hydrating from localStorage/network can't run during SSR render (no `window`),
+    // so this has to load post-mount and then setState once.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshSavedProject();
     checkEngine();
     const onSave = () => refreshSavedProject();
