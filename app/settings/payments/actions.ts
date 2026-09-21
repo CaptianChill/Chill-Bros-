@@ -5,6 +5,28 @@ import { redirect } from "next/navigation";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { sendCompanyEmail } from "@/lib/chillbros/approval-notifications";
+import { updatePaymentSettings } from "@/lib/chillbros/payment-settings";
+
+function text(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+export async function updateManualPaymentSettingsAction(formData: FormData): Promise<never> {
+  const profile = await getCurrentStaffProfile();
+  if (!profile || profile.role !== "manager") redirect("/settings/payments?error=Manager+access+required.");
+  const input = {
+    zelleContact: text(formData, "zelleContact"),
+    venmoHandle: text(formData, "venmoHandle"),
+    chimeHandle: text(formData, "chimeHandle"),
+    checkPayableTo: text(formData, "checkPayableTo"),
+    checkMailingAddress: text(formData, "checkMailingAddress"),
+  };
+  if (input.zelleContact.length > 200 || input.venmoHandle.length > 200 || input.chimeHandle.length > 200 || input.checkPayableTo.length > 200) redirect("/settings/payments?error=One+of+those+fields+is+too+long.");
+  if (input.checkMailingAddress.length > 500) redirect("/settings/payments?error=Mailing+address+is+too+long.");
+  const result = await updatePaymentSettings(input, profile.id);
+  if (!result.ok) redirect(`/settings/payments?error=${encodeURIComponent(result.error)}`);
+  redirect("/settings/payments?success=Payment+options+saved.+Customers+will+see+the+updated+tabs+on+their+next+invoice+view.");
+}
 
 
 export async function sendTestEmailAction(): Promise<never> {

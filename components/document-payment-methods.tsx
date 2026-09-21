@@ -1,14 +1,13 @@
 import type { PaymentMethod } from "@/lib/chillbros/types";
-import { CashCheckPayment } from "@/components/cash-check-payment";
-import { SquarePayment } from "@/components/square-payment";
+import { PaymentMethodTabs, type ManualPaymentSettings } from "@/components/payment-method-tabs";
 
-export function DocumentPaymentMethods({ paymentStatus, amountDue, invoiceNumber, token, initialMethod }: {
+export function DocumentPaymentMethods({ paymentStatus, amountDue, invoiceNumber, token, initialMethod, settings }: {
   token: string;
   initialMethod: PaymentMethod | null;
   paymentStatus: string;
   amountDue: number;
   invoiceNumber: string;
+  settings: ManualPaymentSettings;
 }) {
-  if (paymentStatus === "paid") return <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">Payment received. Thank you.</div>;
-  return <div className="space-y-4"><SquarePayment document amountDue={amountDue} invoiceNumber={invoiceNumber} /><CashCheckPayment token={token} initialMethod={initialMethod} /></div>;
+  return <PaymentMethodTabs document token={token} amountDue={amountDue} invoiceNumber={invoiceNumber} paymentStatus={paymentStatus} initialMethod={initialMethod} settings={settings} />;
 }
