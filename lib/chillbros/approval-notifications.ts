@@ -160,3 +160,15 @@ export async function sendInvoicePaidNotification(input: { invoiceNumber: string
     `Paid: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
   ], input.invoiceId);
 }
+
+export async function sendDownPaymentReceivedNotification(input: { invoiceNumber: string; customerName?: string | null; amount: number; method: string; invoiceId: string }) {
+  return sendOwnerAlertEmail(safeHeader(`Down payment received — Quote ${input.invoiceNumber}`), [
+    "Chill Pros down payment received.",
+    "",
+    `Quote: ${input.invoiceNumber}`,
+    input.customerName ? `Customer: ${input.customerName}` : null,
+    `Amount: ${input.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}`,
+    `Method: ${input.method.replace(/_/g, " ")}`,
+    `Received: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
+  ], input.invoiceId);
+}

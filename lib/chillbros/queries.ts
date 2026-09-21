@@ -107,11 +107,11 @@ export async function getActiveJobForTech(techId: string): Promise<Job | null> {
 
 export async function getInvoiceByToken(token: string): Promise<Invoice | null> {
   const supabase = createServiceRoleClient();
-  const { data: invoice, error } = await supabase.from("chillbros_invoices").select("id, invoice_number, portal_token, status, customer_id, job_id, signature_name, signed_at, payment_method, payment_status, notes, customer:chillbros_customers(name)").eq("portal_token", token).is("revoked_at", null).neq("status", "void").maybeSingle();
+  const { data: invoice, error } = await supabase.from("chillbros_invoices").select("id, invoice_number, portal_token, status, customer_id, job_id, signature_name, signed_at, payment_method, payment_status, down_payment_status, down_payment_method, down_payment_paid_at, notes, customer:chillbros_customers(name)").eq("portal_token", token).is("revoked_at", null).neq("status", "void").maybeSingle();
   if (error || !invoice) return null;
   const { data: lineItems } = await supabase.from("chillbros_invoice_line_items").select("id, label, amount").eq("invoice_id", invoice.id).order("sort_order", { ascending: true });
   const customer = Array.isArray(invoice.customer) ? invoice.customer[0] : invoice.customer;
-  return { id: invoice.id, invoiceNumber: invoice.invoice_number, portalToken: invoice.portal_token, status: invoice.status, customerId: invoice.customer_id, customerName: customer?.name ?? "Unknown customer", jobId: invoice.job_id, signatureName: invoice.signature_name, signedAt: invoice.signed_at, paymentMethod: invoice.payment_method, paymentStatus: invoice.payment_status, notes: invoice.notes, lineItems: (lineItems ?? []).map((item) => ({ id: item.id, label: item.label, amount: Number(item.amount) })) };
+  return { id: invoice.id, invoiceNumber: invoice.invoice_number, portalToken: invoice.portal_token, status: invoice.status, customerId: invoice.customer_id, customerName: customer?.name ?? "Unknown customer", jobId: invoice.job_id, signatureName: invoice.signature_name, signedAt: invoice.signed_at, paymentMethod: invoice.payment_method, paymentStatus: invoice.payment_status, downPaymentStatus: invoice.down_payment_status, downPaymentMethod: invoice.down_payment_method, downPaymentPaidAt: invoice.down_payment_paid_at, notes: invoice.notes, lineItems: (lineItems ?? []).map((item) => ({ id: item.id, label: item.label, amount: Number(item.amount) })) };
 }
 
 export async function getInvoiceByJobId(jobId: string): Promise<Invoice | null> {

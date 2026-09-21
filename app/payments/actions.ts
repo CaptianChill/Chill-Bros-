@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { createReceiptForPaidInvoice } from "@/lib/chillbros/billing-receipts";
-import { sendInvoicePaidNotification } from "@/lib/chillbros/approval-notifications";
-import { getInvoiceV2ById, invoiceTotals } from "@/lib/chillbros/invoice-v2";
+import { sendDownPaymentReceivedNotification, sendInvoicePaidNotification } from "@/lib/chillbros/approval-notifications";
+import { getInvoiceV2ById, invoiceTotals, recordDownPaymentReceived } from "@/lib/chillbros/invoice-v2";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
@@ -94,4 +94,59 @@ export async function recordFullPaymentAction(formData: FormData): Promise<never
   revalidatePath(`/portal/${invoice.portal_token}`);
   revalidatePath(`/portal/${invoice.portal_token}/receipt`);
   redirect(`/payments?invoice=${encodeURIComponent(invoiceId)}&success=Payment+recorded+and+receipt+generated.`);
+}
+
+const DOWN_PAYMENT_METHODS = new Set(["cash", "check", "ach", "cash_app", "venmo", "zelle", "chime", "apple_pay", "card"]);
+
+export async function recordDownPaymentAction(formData: FormData): Promise<never> {
+  const profile = await getCurrentStaffProfile();
+  if (!profile || profile.role !== "manager") redirect("/sign-in");
+
+  const invoiceId = text(formData, "invoiceId");
+  const method = text(formData, "method");
+  const reference = text(formData, "reference");
+  const paidAtRaw = text(formData, "paidAt");
+
+  if (!invoiceId || !DOWN_PAYMENT_METHODS.has(method)) redirect("/payments?tab=down&error=Choose+a+valid+quote+and+payment+method.");
+  if (reference.length > 120) redirect("/payments?tab=down&error=Payment+reference+is+too+long.");
+
+  const paidAt = paidAtRaw ? new Date(paidAtRaw) : new Date();
+  if (Number.isNaN(paidAt.getTime())) redirect(`/payments?tab=down&invoice=${encodeURIComponent(invoiceId)}&error=Enter+a+valid+payment+date.`);
+
+  const supabase = createServiceRoleClient();
+  const { data: invoice, error: readError } = await supabase
+    .from("chillbros_invoices")
+    .select("id,invoice_number,status,down_payment_amount,down_payment_status,job_id,portal_token")
+    .eq("id", invoiceId)
+    .is("revoked_at", null)
+    .maybeSingle();
+
+  if (readError || !invoice) redirect("/payments?tab=down&error=Quote+not+found.");
+  if (invoice.status !== "approved") redirect(`/payments?tab=down&invoice=${encodeURIComponent(invoiceId)}&error=Only+approved+quotes+can+have+a+down+payment+recorded.`);
+  if (!(Number(invoice.down_payment_amount) > 0)) redirect(`/payments?tab=down&invoice=${encodeURIComponent(invoiceId)}&error=This+quote+does+not+require+a+down+payment.`);
+  if (invoice.down_payment_status === "paid") redirect(`/payments?tab=down&invoice=${encodeURIComponent(invoiceId)}&error=The+down+payment+is+already+recorded.`);
+
+  const recorded = await recordDownPaymentReceived(invoiceId, { method, recordedBy: profile.id, paidAt: paidAt.toISOString() });
+  if (!recorded) redirect(`/payments?tab=down&invoice=${encodeURIComponent(invoiceId)}&error=Down+payment+could+not+be+recorded.`);
+
+  await supabase.from("chillbros_workflow_events").insert({
+    job_id: invoice.job_id,
+    invoice_id: invoiceId,
+    actor_id: profile.id,
+    stage: "down_payment_received",
+    message: `Down payment recorded by manager via ${method.replace(/_/g, " ")}${reference ? ` · Ref ${reference}` : ""}.`,
+  });
+
+  try {
+    const fullInvoice = await getInvoiceV2ById(invoiceId);
+    if (fullInvoice) await sendDownPaymentReceivedNotification({ invoiceNumber: fullInvoice.invoiceNumber, customerName: fullInvoice.customerName, amount: fullInvoice.downPaymentAmount, method, invoiceId });
+  } catch (error) { console.error("[record-down-payment] owner notification failed", error); }
+
+  revalidatePath("/payments");
+  revalidatePath("/invoices");
+  revalidatePath("/reports");
+  revalidatePath("/");
+  revalidatePath(`/portal/${invoice.portal_token}`);
+  revalidatePath(`/portal/${invoice.portal_token}/document`);
+  redirect(`/payments?tab=down&invoice=${encodeURIComponent(invoiceId)}&success=Down+payment+recorded.`);
 }
