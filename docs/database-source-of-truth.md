@@ -131,23 +131,24 @@ re-applying against the real database (`xespxlqcjvhompsxranc`):
    database, vs. 19 the app's `JobStatus` type expects (`lib/chillbros/types.ts`).
    This caused `invalid input value for enum chillbros_job_status: "new"` on
    a real production action. Added the missing 15 values directly.
-4. **Not fixed — needs the owner's input before touching it.** "Add
-   employee" fails with `chillbros_profiles_id_fkey` — on the real database
-   this constraint is `FOREIGN KEY (id) REFERENCES auth.users(id)`, i.e.
-   genuine Supabase Auth. But `addStaffAccountAction`
-   (`lib/chillbros/mutations.ts`) creates the login via **Neon Auth**
-   (`lib/auth/server.ts`'s `auth.admin.createUser`), so the id it gets can
-   never satisfy that FK. Worse: querying existing profiles shows almost
-   all of them have `auth_user_id = null` (only one, "Eric Lara," has it
-   set), meaning most current employee accounts likely can't sign in via
-   the app's actual session check (`getCurrentStaffProfile` matches on
-   `auth_user_id` against a Neon Auth session, except for the
-   hardcoded owner-email bypass). This looks like a real, pre-existing gap
-   in how employee logins work post-migration-attempt, not something caused
-   by anything today. Given the blast radius of getting this wrong (locking
-   staff out of their accounts), this needs a deliberate decision — whether
-   employee logins should go through Supabase Auth or Neon Auth — not a
-   guessed fix.
+4. **Fixed for real, 2026-09-21.** "Add employee" failed with
+   `chillbros_profiles_id_fkey` — on the real database this constraint was
+   `FOREIGN KEY (id) REFERENCES auth.users(id)`, i.e. genuine Supabase Auth.
+   But `addStaffAccountAction` (`lib/chillbros/mutations.ts`) creates the
+   login via **Neon Auth** (`lib/auth/server.ts`'s `auth.admin.createUser`),
+   so the id it gets could never satisfy that FK. The app's own session
+   check (`getCurrentStaffProfile`) already only ever reads `auth_user_id`
+   to match a signed-in user, never `id` — so the FK on `id` was leftover
+   from before the Neon Auth changeover and served no purpose the current
+   code relies on. Dropped it (`alter table chillbros_profiles drop
+   constraint chillbros_profiles_id_fkey`) — a pure restriction-removal, no
+   existing rows touched, can't break anything that was working. Also worth
+   knowing: querying existing profiles at the time showed almost all of
+   them have `auth_user_id = null` (only "Eric Lara" had it set), which
+   means most current employee accounts likely still can't sign in via the
+   app's real session check, except through the hardcoded owner-email
+   bypass. That's a separate, likely pre-existing problem from before today
+   — worth a deliberate look, but out of scope for the FK fix itself.
 
 ## Before doing anything else in a new session
 
