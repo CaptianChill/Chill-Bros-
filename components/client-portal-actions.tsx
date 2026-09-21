@@ -6,7 +6,7 @@ import { BadgeCheck, FileText, Printer } from "lucide-react";
 
 import { approveEstimateLifecycleAction } from "@/lib/chillbros/job-lifecycle-actions";
 import { PaymentMethodTabs, type ManualPaymentSettings } from "@/components/payment-method-tabs";
-import { type Invoice } from "@/lib/chillbros/types";
+import { type DetailedInvoice } from "@/lib/chillbros/types";
 import { StatusPill } from "@/components/status-pill";
 
 export function ClientPortalActions({
@@ -14,7 +14,7 @@ export function ClientPortalActions({
   amountDue = 0,
   paymentSettings,
 }: {
-  invoice: Invoice;
+  invoice: DetailedInvoice;
   amountDue?: number;
   paymentSettings: ManualPaymentSettings;
 }) {
@@ -24,6 +24,8 @@ export function ClientPortalActions({
   const [pending, startTransition] = useTransition();
   const invoiceIssued = Boolean(invoice.issuedAt);
   const paid = invoice.paymentStatus === "paid";
+  const downPaymentRequired = invoice.downPaymentAmount > 0;
+  const downPaymentPaid = invoice.downPaymentStatus === "paid";
   const status = paid ? "Paid • receipt available" : invoiceIssued ? "Invoice ready • payment due" : approved ? "Approved • work pending" : "Awaiting signature approval";
 
   const handleApprove = () => {
@@ -46,8 +48,14 @@ export function ClientPortalActions({
       <p className="text-xs leading-5 text-zinc-500">Approval authorizes the quoted work. It does not create a final bill before the work is completed.</p>
     </div> : null}
 
-    {approved && !invoiceIssued && !paid ? <div className="rounded-3xl border border-emerald-400/25 bg-emerald-400/[0.06] p-5">
-      <div className="flex items-start gap-3"><BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" /><div><h3 className="font-semibold text-white">Estimate approved</h3><p className="mt-1 text-sm leading-6 text-zinc-400">Chill Bros will complete the approved work or schedule the return visit. There is no final invoice to pay yet.</p></div></div>
+    {approved && !invoiceIssued && downPaymentRequired && !downPaymentPaid ? <PaymentMethodTabs token={invoice.portalToken} amountDue={invoice.downPaymentAmount} invoiceNumber={invoice.invoiceNumber} paymentStatus={invoice.downPaymentStatus} initialMethod={invoice.downPaymentMethod} settings={paymentSettings} kind="down_payment" /> : null}
+
+    {approved && !invoiceIssued && downPaymentRequired && downPaymentPaid ? <div className="rounded-3xl border border-emerald-400/25 bg-emerald-400/[0.06] p-5">
+      <div className="flex items-start gap-3"><BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" /><div><h3 className="font-semibold text-white">Down payment received</h3><p className="mt-1 text-sm leading-6 text-zinc-400">Chill Pros will complete the approved work or schedule the return visit. The remaining balance is due on the final invoice.</p></div></div>
+    </div> : null}
+
+    {approved && !invoiceIssued && !downPaymentRequired ? <div className="rounded-3xl border border-emerald-400/25 bg-emerald-400/[0.06] p-5">
+      <div className="flex items-start gap-3"><BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" /><div><h3 className="font-semibold text-white">Estimate approved</h3><p className="mt-1 text-sm leading-6 text-zinc-400">Chill Pros will complete the approved work or schedule the return visit. There is no final invoice to pay yet.</p></div></div>
     </div> : null}
 
     {approved && invoiceIssued && !paid ? <PaymentMethodTabs token={invoice.portalToken} amountDue={amountDue} invoiceNumber={invoice.invoiceNumber} paymentStatus={invoice.paymentStatus} initialMethod={invoice.paymentMethod} settings={paymentSettings} /> : null}

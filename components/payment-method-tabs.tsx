@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { setCustomerPaymentMethodAction } from "@/lib/chillbros/customer-payment-actions";
+import { setCustomerDownPaymentMethodAction, setCustomerPaymentMethodAction } from "@/lib/chillbros/customer-payment-actions";
 import { SQUARE_PAYMENT_URL, squarePaymentAvailable } from "@/lib/chillbros/square-payment";
 import type { PaymentMethod } from "@/lib/chillbros/types";
 
@@ -23,7 +23,7 @@ const TABS: { key: PaymentMethod; label: string }[] = [
   { key: "cash", label: "Cash" },
 ];
 
-export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStatus, initialMethod, settings, document: printable = false }: {
+export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStatus, initialMethod, settings, document: printable = false, kind = "invoice" }: {
   token: string;
   amountDue: number;
   invoiceNumber: string;
@@ -31,7 +31,10 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
   initialMethod: PaymentMethod | null;
   settings: ManualPaymentSettings;
   document?: boolean;
+  kind?: "invoice" | "down_payment";
 }) {
+  const isDownPayment = kind === "down_payment";
+  const documentLabel = isDownPayment ? "Quote" : "Invoice";
   const money = amountDue.toLocaleString("en-US", { style: "currency", currency: "USD" });
   const startTab = TABS.some((tab) => tab.key === initialMethod) ? (initialMethod as PaymentMethod) : "card";
   const [active, setActive] = useState<PaymentMethod>(startTab);
@@ -41,17 +44,18 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
   const [pending, startTransition] = useTransition();
 
   if (paymentStatus === "paid") {
-    return <div className={printable ? "rounded-xl border-2 border-emerald-600 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800" : "rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm font-semibold text-emerald-100"}>Payment received. Thank you.</div>;
+    const paidLabel = isDownPayment ? "Down payment received. Thank you." : "Payment received. Thank you.";
+    return <div className={printable ? "rounded-xl border-2 border-emerald-600 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800" : "rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm font-semibold text-emerald-100"}>{paidLabel}</div>;
   }
 
   function choose(method: PaymentMethod) {
     setMessage(""); setError("");
     startTransition(async () => {
       try {
-        const result = await setCustomerPaymentMethodAction(token, method);
+        const result = isDownPayment ? await setCustomerDownPaymentMethodAction(token, method) : await setCustomerPaymentMethodAction(token, method);
         if (!result.ok) { setError(result.error); return; }
         setSelected(method);
-        setMessage("Payment choice saved. Chill Pros will confirm when payment is received.");
+        setMessage(isDownPayment ? "Down payment choice saved. Chill Pros will confirm when it's received." : "Payment choice saved. Chill Pros will confirm when payment is received.");
       } catch { setError("Could not save your payment choice. Please try again."); }
     });
   }
@@ -74,8 +78,8 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
 
   return <section className={shell}>
     <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <h3 className="text-lg font-bold">Pay this invoice</h3>
-      <p className="text-sm">Invoice {invoiceNumber} &middot; Amount due: <strong>{money}</strong></p>
+      <h3 className="text-lg font-bold">{isDownPayment ? "Pay your down payment" : "Pay this invoice"}</h3>
+      <p className="text-sm">{documentLabel} {invoiceNumber} &middot; {isDownPayment ? "Down payment due" : "Amount due"}: <strong>{money}</strong></p>
     </div>
 
     <div className="flex flex-wrap gap-2" role="tablist">
@@ -90,18 +94,18 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
     <div className={panel}>
       {active === "card" ? (
         squarePaymentAvailable(amountDue) ? <div className="space-y-3">
-          <p>Enter {money} in Square and use the name and email from your invoice so we can match your payment.</p>
+          <p>Enter {money} in Square and use the name and email from your {isDownPayment ? "quote" : "invoice"} so we can match your payment.</p>
           <a href={SQUARE_PAYMENT_URL} target="_blank" rel="noopener noreferrer" className="print:hidden inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#2d7dff] px-4 py-3 font-bold text-white">Pay with Square<span className="sr-only"> (opens in a new tab)</span></a>
           <p className="hidden break-all text-sm print:block">Pay online: {SQUARE_PAYMENT_URL}</p>
-          <p className="text-xs opacity-80">Your invoice stays unpaid here until Chill Pros confirms your Square payment. If you have already paid, keep your Square receipt and contact us before paying again.</p>
-        </div> : <p>Contact Chill Pros to settle this invoice. This amount cannot be paid through the shared Square link.</p>
-      ) : active === "zelle" ? manualPanel("Zelle", "zelle", Boolean(settings.zelleContact.trim()), `Send ${money} via Zelle to ${settings.zelleContact}. Include invoice ${invoiceNumber} in the memo.`)
-      : active === "venmo" ? manualPanel("Venmo", "venmo", Boolean(settings.venmoHandle.trim()), `Send ${money} on Venmo to ${settings.venmoHandle}. Include invoice ${invoiceNumber} in the note.`)
-      : active === "chime" ? manualPanel("Chime", "chime", Boolean(settings.chimeHandle.trim()), `Send ${money} via Chime to ${settings.chimeHandle}. Include invoice ${invoiceNumber} in the note.`)
+          <p className="text-xs opacity-80">{isDownPayment ? "This down payment stays unrecorded" : "Your invoice stays unpaid"} here until Chill Pros confirms your Square payment. If you have already paid, keep your Square receipt and contact us before paying again.</p>
+        </div> : <p>Contact Chill Pros to settle {isDownPayment ? "this down payment" : "this invoice"}. This amount cannot be paid through the shared Square link.</p>
+      ) : active === "zelle" ? manualPanel("Zelle", "zelle", Boolean(settings.zelleContact.trim()), `Send ${money} via Zelle to ${settings.zelleContact}. Include ${documentLabel.toLowerCase()} ${invoiceNumber} in the memo.`)
+      : active === "venmo" ? manualPanel("Venmo", "venmo", Boolean(settings.venmoHandle.trim()), `Send ${money} on Venmo to ${settings.venmoHandle}. Include ${documentLabel.toLowerCase()} ${invoiceNumber} in the note.`)
+      : active === "chime" ? manualPanel("Chime", "chime", Boolean(settings.chimeHandle.trim()), `Send ${money} via Chime to ${settings.chimeHandle}. Include ${documentLabel.toLowerCase()} ${invoiceNumber} in the note.`)
       : active === "check" ? manualPanel("Check", "check", true, `Make checks payable to ${settings.checkPayableTo || "Chill Professionals LLC"}.${settings.checkMailingAddress ? ` Mail or drop off at: ${settings.checkMailingAddress}.` : " Ask Chill Pros where to send it."}`)
       : manualPanel("Cash", "cash", true, "Pay Chill Pros directly in cash and get a receipt at the time of payment.")}
     </div>
 
-    <p className="text-xs opacity-70">Selecting Zelle, Venmo, Chime, check, or cash tells our office how you&apos;re paying. It does not mark this invoice paid until Chill Pros confirms the payment was received.</p>
+    <p className="text-xs opacity-70">Selecting Zelle, Venmo, Chime, check, or cash tells our office how you&apos;re paying. It does not mark {isDownPayment ? "this down payment" : "this invoice"} paid until Chill Pros confirms the payment was received.</p>
   </section>;
 }
