@@ -9,6 +9,7 @@ import { addProspect, scanForLeads } from "./actions";
 
 export const dynamic = "force-dynamic";
 const input = "min-h-11 w-full rounded-xl border border-cyan-400/30 bg-black/50 px-3 py-2 text-white";
+function currentTimeMs() { return Date.now(); }
 
 export default async function RevenueRadarPage() {
   const profile = await getCurrentStaffProfile();
@@ -48,7 +49,7 @@ export default async function RevenueRadarPage() {
     }
   }
 
-  const now = Date.now();
+  const now = currentTimeMs();
   const readyToCall = salesPipeline.filter((lead) => lead.sales_status === "ready_to_call").length;
   const unassigned = salesPipeline.filter((lead) => !lead.assigned_salesperson).length;
   const missingCards = salesPipeline.filter((lead) => !currentCardLeadIds.has(lead.id)).length;

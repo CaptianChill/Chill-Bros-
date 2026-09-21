@@ -14,6 +14,10 @@ const renderProfiles = {
 
 type RenderProfile = keyof typeof renderProfiles;
 type ImageAttempt = { model: string; quality: string };
+type ImageProviderPayload = {
+  error?: { message?: string; code?: string; type?: string };
+  data?: { b64_json?: string; url?: string; revised_prompt?: string }[];
+};
 
 function cleanOption(value: FormDataEntryValue | null, fallback: string) {
   const text = typeof value === "string" ? value.trim() : "";
@@ -36,7 +40,7 @@ async function requestImageEdit(apiKey: string, source: File, prompt: string, at
     signal: AbortSignal.timeout(150_000),
   });
 
-  const payload = await response.json().catch(() => ({}));
+  const payload = (await response.json().catch(() => ({}))) as ImageProviderPayload;
   return { response, payload };
 }
 
@@ -97,7 +101,7 @@ export async function POST(request: Request) {
       attempts.push({ model: "gpt-image-2", quality: "high" });
     }
 
-    let lastPayload: any = {};
+    let lastPayload: ImageProviderPayload = {};
     let lastStatus = 500;
     const attemptedModels: string[] = [];
 

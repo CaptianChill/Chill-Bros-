@@ -1,6 +1,26 @@
 import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { JOB_ACTIVE_STATUSES } from "./types";
+import { JOB_ACTIVE_STATUSES, type JobStatus } from "./types";
+
+type OwnerInvoiceRow = {
+  id: string;
+  status: string;
+  payment_status: string;
+  invoice_number: string;
+  updated_at: string;
+  line: { amount: number | string | null }[] | null;
+  customer: { name: string } | { name: string }[] | null;
+};
+type OwnerJobRow = {
+  id: string;
+  status: JobStatus;
+  assigned_tech_id: string | null;
+  scope: string | null;
+  scheduled_window: string | null;
+  created_at: string;
+  customer: { name: string } | { name: string }[] | null;
+  tech: { full_name: string } | { full_name: string }[] | null;
+};
 
 export async function getOwnerCommandMetrics() {
   const supabase = createServiceRoleClient();
@@ -9,8 +29,8 @@ export async function getOwnerCommandMetrics() {
     supabase.from("chillbros_invoices").select("id,status,payment_status,invoice_number,updated_at,line:chillbros_invoice_line_items(amount),customer:chillbros_customers(name)").is("revoked_at",null).neq("status","void").order("updated_at",{ascending:false}).limit(300),
     supabase.from("chillbros_profiles").select("id,full_name,role,status").eq("role","technician").eq("status","active")
   ]);
-  const invoiceRows=(invoices??[]) as any[]; const jobRows=(jobs??[]) as any[];
-  const total=(r:any)=>((r.line??[]) as any[]).reduce((s:number,x:any)=>s+Number(x.amount??0),0);
+  const invoiceRows=(invoices??[]) as OwnerInvoiceRow[]; const jobRows=(jobs??[]) as OwnerJobRow[];
+  const total=(r:OwnerInvoiceRow)=>(r.line??[]).reduce((s,x)=>s+Number(x.amount??0),0);
   const unpaid=invoiceRows.filter(r=>r.payment_status!=="paid");
   const awaiting=invoiceRows.filter(r=>r.status==="awaiting_approval");
   const activeTechIds=new Set(jobRows.map(r=>r.assigned_tech_id).filter(Boolean));

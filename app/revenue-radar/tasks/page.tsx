@@ -7,6 +7,7 @@ import { cancelRevenueTask, completeRevenueTask, rescheduleRevenueTask } from ".
 
 export const dynamic = "force-dynamic";
 const input = "min-h-10 w-full rounded-xl border border-cyan-400/30 bg-black/50 px-3 py-2 text-white";
+function currentTimeMs() { return Date.now(); }
 
 export default async function RevenueTasksPage() {
   const profile = await getCurrentStaffProfile();
@@ -23,7 +24,7 @@ export default async function RevenueTasksPage() {
   const leadIds = [...new Set((tasks ?? []).map((task) => task.lead_id))];
   const { data: leads } = leadIds.length ? await client.from("chillbros_revenue_prospects").select("id,business_name,sales_status,score").in("id", leadIds) : { data: [] };
   const leadMap = new Map((leads ?? []).map((lead) => [lead.id, lead]));
-  const now = Date.now();
+  const now = currentTimeMs();
   const overdue = (tasks ?? []).filter((task) => new Date(task.due_at).getTime() < now);
   const dueToday = (tasks ?? []).filter((task) => {
     const due = new Date(task.due_at);

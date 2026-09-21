@@ -9,6 +9,15 @@ export type OpenWorkOrderRow = {
   createdAt:string; invoiceId:string|null; invoiceNumber:string|null; invoiceStatus:string|null; paymentStatus:string|null;
 };
 
+type WorkOrderInvoiceEmbed = { id:string; invoice_number:string|null; status:string|null; payment_status:string|null; updated_at:string|null };
+type WorkOrderJobRow = {
+  id:string; job_number:string|null; status:JobStatus; assigned_tech_id:string|null; location:string|null; scope:string|null;
+  scheduled_window:string|null; created_at:string;
+  customer:{name:string}|{name:string}[]|null;
+  tech:{full_name:string}|{full_name:string}[]|null;
+  invoice: WorkOrderInvoiceEmbed | WorkOrderInvoiceEmbed[] | null;
+};
+
 export async function getOpenWorkOrders(): Promise<OpenWorkOrderRow[]> {
   const s=createServiceRoleClient();
   const {data,error}=await s.from("chillbros_jobs")
@@ -24,5 +33,5 @@ export async function getOpenWorkOrders(): Promise<OpenWorkOrderRow[]> {
     throw new Error("Could not load open work orders.");
   }
   if (!data) return [];
-  return data.map((r:any)=>{const c=Array.isArray(r.customer)?r.customer[0]:r.customer; const t=Array.isArray(r.tech)?r.tech[0]:r.tech; const invoices=(Array.isArray(r.invoice)?r.invoice:[]).filter((x:any)=>x?.status!=="void").sort((a:any,b:any)=>String(b.updated_at??"").localeCompare(String(a.updated_at??""))); const i=invoices[0]??null; return {id:r.id,jobNumber:r.job_number??null,customerName:c?.name??"Unknown customer",location:r.location,scope:r.scope,status:r.status,assignedTechId:r.assigned_tech_id,assignedTechName:t?.full_name??null,scheduledWindow:r.scheduled_window,createdAt:r.created_at,invoiceId:i?.id??null,invoiceNumber:i?.invoice_number??null,invoiceStatus:i?.status??null,paymentStatus:i?.payment_status??null};});
+  return (data as WorkOrderJobRow[]).map((r)=>{const c=Array.isArray(r.customer)?r.customer[0]:r.customer; const t=Array.isArray(r.tech)?r.tech[0]:r.tech; const invoices=(Array.isArray(r.invoice)?r.invoice:[]).filter((x)=>x?.status!=="void").sort((a,b)=>String(b.updated_at??"").localeCompare(String(a.updated_at??""))); const i=invoices[0]??null; return {id:r.id,jobNumber:r.job_number??null,customerName:c?.name??"Unknown customer",location:r.location,scope:r.scope,status:r.status,assignedTechId:r.assigned_tech_id,assignedTechName:t?.full_name??null,scheduledWindow:r.scheduled_window,createdAt:r.created_at,invoiceId:i?.id??null,invoiceNumber:i?.invoice_number??null,invoiceStatus:i?.status??null,paymentStatus:i?.payment_status??null};});
 }
