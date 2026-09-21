@@ -6,6 +6,8 @@ import { LogoBadge } from "@/components/logo-badge";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { FieldNotesIntakeForm } from "@/components/field-notes-intake-form";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { checkDb } from "@/lib/chillbros/field-notes-service";
 import { getCustomers } from "@/lib/chillbros/queries";
 import { getAssignedFieldJobsForTechnician } from "@/lib/chillbros/technician-assignment";
 import { getDispatchJobs } from "@/lib/chillbros/operations-queries";
@@ -39,6 +41,11 @@ export default async function FieldNotesPage() {
 
   const [customers, recent] = await Promise.all([getCustomers(), getTechnicianFieldNotes(profile.id, 10)]);
 
+  const customerIds = customers.map(c => c.id);
+  const equipmentResult = customerIds.length ? await createServiceRoleClient().from("chillbros_equipment").select("id,customer_id,equipment_type,model,serial_number").in("customer_id", customerIds).limit(1000) : { data: [], error: null };
+  checkDb(equipmentResult.error, "Could not load equipment");
+  const equipment = (equipmentResult.data ?? []).map(e => ({ id: String(e.id), customerId: String(e.customer_id), label: [e.equipment_type, e.model, e.serial_number].filter(Boolean).join(" · ") || "Equipment" }));
+
   return (
     <main className="mx-auto min-h-screen max-w-xl space-y-4 px-4 pb-8 pt-4 text-white">
       <header className="flex items-center justify-between gap-3">
@@ -51,6 +58,7 @@ export default async function FieldNotesPage() {
           <FieldNotesIntakeForm
             technicianName={profile.fullName}
             profileId={profile.id}
+            equipment={equipment}
             jobs={jobs.map((job) => ({ id: job.id, customerId: job.customerId, customerName: job.customerName, location: job.location }))}
             customers={customers.map((customer) => ({ id: customer.id, name: customer.name }))}
           />

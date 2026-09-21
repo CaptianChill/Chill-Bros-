@@ -81,3 +81,20 @@ modules with service doubles: idempotent uploads, incomplete delivery, authoriza
 file validation, job relationships, failed writes, AI failure, stale work recovery,
 concurrent review protection, approval, and cleanup recovery. These tests do not
 substitute for the real backend, model, or phone checks above.
+
+## Typed notes and invoice wording (September 21 first slice)
+
+The intake accepts typed notes, photos, or both. Equipment can be selected from
+existing customer equipment, or identified in the typed notes when not on file.
+The AI produces a separate invoice description; the owner can edit it before
+approval and copy it once approved. No invoice is changed or sent automatically.
+
+Apply `20260921204213_field_notes_invoice_description.sql` to the verified
+operational database before deploying this revision. The additive text column
+was applied to `xespxlqcjvhompsxranc` and verified in its SQL Editor.
+
+The local production build uses a temporary, process-only cookie signing value
+for build validation because deployment secrets are not stored in this checkout.
+This does not verify live authentication or AI Gateway funding. The remote
+preview must build using the project's existing environment and complete the
+signed-in submission/review acceptance steps above before a production release.

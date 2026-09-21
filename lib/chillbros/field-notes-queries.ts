@@ -38,6 +38,7 @@ type SubmissionRow = {
   follow_up_required: boolean;
   cleaned_internal_notes: string | null;
   customer_summary: string | null;
+  invoice_description: string | null;
   confidence_flags: FieldNoteConfidenceFlag[] | null;
   ai_model: string | null;
   ai_error: string | null;
@@ -58,7 +59,7 @@ const SUMMARY_SELECT =
 const DETAIL_SELECT =
   "id, technician_id, customer_id, customer_name_freeform, job_id, equipment_id, status, technician_note, raw_transcription," +
   " customer_complaint, diagnosis, work_performed, materials, labor_hours, drive_hours, equipment_status, recommendations," +
-  " follow_up_required, cleaned_internal_notes, customer_summary, confidence_flags, ai_model, ai_error, submitted_at," +
+  " follow_up_required, cleaned_internal_notes, customer_summary, invoice_description, confidence_flags, ai_model, ai_error, submitted_at," +
   " processed_at, approved_at, approved_by, completed_at, updated_at," +
   " technician:chillbros_profiles!chillbros_field_note_submissions_technician_id_fkey(full_name)," +
   " customer:chillbros_customers(name)";
@@ -211,6 +212,7 @@ export async function getFieldNoteSubmission(id: string): Promise<FieldNoteSubmi
     followUpRequired: row.follow_up_required,
     cleanedInternalNotes: row.cleaned_internal_notes,
     customerSummary: row.customer_summary,
+    invoiceDescription: row.invoice_description,
     confidenceFlags: row.confidence_flags ?? [],
     aiModel: row.ai_model,
     aiError: row.ai_error,

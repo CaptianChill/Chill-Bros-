@@ -86,6 +86,7 @@ export type FieldNoteSubmission = FieldNoteSubmissionSummary & {
   followUpRequired: boolean;
   cleanedInternalNotes: string | null;
   customerSummary: string | null;
+  invoiceDescription: string | null;
   confidenceFlags: FieldNoteConfidenceFlag[];
   aiModel: string | null;
   aiError: string | null;

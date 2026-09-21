@@ -61,6 +61,53 @@ test('retrying prepare and upload creates one submission and one immutable image
   const h = harness(); await h.upload(); await h.upload(); assert.equal(h.tables.chillbros_field_note_submissions.length,1); assert.equal(h.tables.chillbros_field_note_images.length,1); assert.equal(h.objects.size,1);
   await h.service.finishNoteUpload(id,tech); await h.service.finishNoteUpload(id,tech); assert.equal(h.tables.chillbros_field_note_events.length,1);
 });
+test('typed-only notes deliver once, process, and retain owner-approved invoice wording', async () => {
+  const h = harness();
+  h.state.publicBucket = true; // Typed notes must not depend on photo storage.
+  await h.service.prepareNote(input, [], tech);
+  await h.service.prepareNote(input, [], tech);
+  await h.service.finishNoteUpload(id, tech);
+  await h.service.finishNoteUpload(id, tech);
+  await h.service.processNote(id);
+  assert.equal(h.note().status, 'ready');
+  assert.equal(h.state.aiCalls, 1);
+  assert.equal(h.tables.chillbros_field_note_submissions.length, 1);
+  assert.equal(h.tables.chillbros_field_note_images.length, 0);
+  h.as(manager);
+  assert.equal((await h.actions.updateFieldNoteSubmissionAction(id, { invoiceDescription: 'Cleaned condenser and verified operation.' }, h.note().updated_at)).ok, true);
+  assert.equal((await h.actions.approveFieldNoteSubmissionAction(id, h.note().updated_at, true)).ok, true);
+  assert.equal((await h.actions.updateFieldNoteSubmissionAction(id, { invoiceDescription: 'Changed after approval' }, h.note().updated_at)).ok, false);
+  assert.equal((await h.actions.completeFieldNoteSubmissionAction(id, h.note().updated_at)).ok, true);
+  assert.equal(h.note().invoice_description, 'Cleaned condenser and verified operation.');
+});
+test('empty submissions and equipment from another customer are rejected', async () => {
+  const h = harness();
+  await assert.rejects(h.service.prepareNote({ ...input, technicianNote: '   ' }, [], tech), /Type your notes/);
+  h.tables.chillbros_equipment.push({ id: manager.id, customer_id: tech.id });
+  await assert.rejects(h.service.prepareNote({ ...input, equipmentId: manager.id }, [], tech), /equipment belonging/);
+  assert.equal(h.tables.chillbros_field_note_submissions.length, 0);
+  h.tables.chillbros_equipment[0].customer_id = customer;
+  await h.service.prepareNote({ ...input, equipmentId: manager.id }, [], tech);
+  assert.equal(h.note().equipment_id, manager.id);
+});
+test('AI request accepts typed-only input and requires an invoice description in its schema', async () => {
+  const requests = [];
+  const mod = { exports: {} };
+  const ai = {
+    gateway: model => model,
+    jsonSchema: schema => schema,
+    generateObject: async request => { requests.push(request); return { object: { invoiceDescription: 'Cleaned condenser.' } }; },
+  };
+  const source = ts.transpileModule(fs.readFileSync('lib/chillbros/field-notes-ai.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  new Function('require', 'module', 'exports', source)(name => name === 'ai' ? ai : {}, mod, mod.exports);
+  const result = await mod.exports.processFieldNoteImages({ imageUrls: [], technicianNote: 'Cleaned condenser.', customerName: null, equipmentContext: null });
+  assert.equal(result.ok, true);
+  assert.equal(requests.length, 1);
+  assert.match(requests[0].messages[0].content[0].text, /Cleaned condenser/);
+  assert.ok(requests[0].schema.required.includes('invoiceDescription'));
+  assert.equal((await mod.exports.processFieldNoteImages({ imageUrls: [], technicianNote: ' ', customerName: null, equipmentContext: null })).ok, false);
+  assert.equal(requests.length, 1);
+});
 test('incomplete upload cannot be sent or processed and keeps its draft reservation', async () => {
   const h = harness(); await h.service.prepareNote(input,[descriptor],tech); await assert.rejects(h.service.finishNoteUpload(id,tech),/not finished/); await h.service.processNote(id); assert.equal(h.state.aiCalls,0); assert.equal(h.note().ai_error,h.service.UPLOAD_PENDING);
 });

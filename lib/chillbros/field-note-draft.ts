@@ -1,5 +1,5 @@
 "use client";
-export type FieldNoteDraft = { id: string; jobId: string; otherCustomer: boolean; customerName: string; note: string; files: File[]; locked: boolean };
+export type FieldNoteDraft = { id: string; jobId: string; equipmentId?: string; otherCustomer: boolean; customerName: string; note: string; files: File[]; locked: boolean };
 let writes = Promise.resolve();
 async function database() {
   return new Promise<IDBDatabase>((resolve, reject) => {

@@ -80,13 +80,16 @@ export async function prepareNote(input: NoteInput, photos: PhotoDescriptor[], p
   requireUuid(input.id);
   if (!input.customerId && !input.customerNameFreeform?.trim()) throw new Error("Choose a customer or type a customer name.");
   if (input.technicianNote.length > 10000 || (input.customerNameFreeform?.length ?? 0) > 200) throw new Error("The note or customer name is too long.");
-  if (!photos.length || photos.length > 10) throw new Error("Choose between 1 and 10 photos.");
+  if (!photos.length && !input.technicianNote.trim()) throw new Error("Type your notes or add at least one photo.");
+  if (photos.length > 10) throw new Error("Choose up to 10 photos.");
   for (const photo of photos) if (!Number.isInteger(photo.size) || photo.size <= 0 || photo.size > FIELD_NOTE_IMAGE_LIMIT || !/^[a-f0-9]{64}$/.test(photo.sha256)) throw new Error("A photo could not be prepared. Please select it again.");
   await validateNoteLinks(input, profile);
   const db = createServiceRoleClient();
+  if (photos.length) {
   const { data: bucket, error: bucketError } = await db.storage.getBucket(FIELD_NOTES_BUCKET);
   checkDb(bucketError, "Private photo storage is unavailable");
   if (!bucket || bucket.public) throw new Error("Photo storage must be private. Contact the office.");
+  }
   const { data: existing, error: readError } = await db.from("chillbros_field_note_submissions").select("*").eq("id", input.id).maybeSingle();
   checkDb(readError);
   if (!existing) {
@@ -104,8 +107,10 @@ export async function prepareNote(input: NoteInput, photos: PhotoDescriptor[], p
   const descriptors = photos.map((p, i) => ({ id: photoId(note.id, i), submission_id: note.id, storage_path: `field-notes/${note.id}/${i+1}-${p.sha256}.jpg`, filename: p.name.slice(0,200), mime_type: "image/jpeg", page_number: i+1 }));
   const previous = await noteImages(note.id);
   if (previous.some(p => !descriptors.some(d => p.id === d.id && p.storage_path === d.storage_path))) throw new Error("This saved draft has different photos. Finish the original draft before starting another.");
-  const { error } = await db.from("chillbros_field_note_images").upsert(descriptors, { onConflict: "id", ignoreDuplicates: true });
-  checkDb(error, "Could not reserve the photos");
+  if (descriptors.length) {
+    const { error } = await db.from("chillbros_field_note_images").upsert(descriptors, { onConflict: "id", ignoreDuplicates: true });
+    checkDb(error, "Could not reserve the photos");
+  }
   const reserved = await noteImages(note.id);
   if (reserved.length !== descriptors.length || reserved.some(p => !descriptors.some(d => p.id === d.id && p.storage_path === d.storage_path))) throw new Error("The saved photo list changed in another window. Refresh before continuing.");
   return { id: note.id, sent: false, images: reserved };
@@ -126,7 +131,7 @@ export async function finishNoteUpload(id: string, profile: StaffProfile) {
   const note = await readNote(id); requireNoteAccess(note, profile);
   if (note.status !== "submitted" || note.ai_error !== UPLOAD_PENDING) return;
   const images = await noteImages(id);
-  if (!images.length) throw new Error("At least one photo is required.");
+  if (!images.length && !note.technician_note?.trim()) throw new Error("Type your notes or add at least one photo.");
   for (const image of images) {
     const { data, error } = await createServiceRoleClient().storage.from(FIELD_NOTES_BUCKET).info(image.storage_path);
     checkDb(error, `Photo ${image.page_number} has not finished uploading`);
@@ -143,14 +148,18 @@ export async function processNote(id: string, allowRetry = false) {
   note = await changeNote(note, { status: "processing", ai_error: null });
   try {
     const images = await noteImages(id);
-    if (!images.length) throw new Error("No photos are available. Ask the technician to submit the photos again.");
+    if (!images.length && !note.technician_note?.trim()) throw new Error("No notes or photos are available.");
+    let imageUrls: string[] = [];
+    if (images.length) {
     const { data, error } = await createServiceRoleClient().storage.from(FIELD_NOTES_BUCKET).createSignedUrls(images.map(i => i.storage_path), 600);
     checkDb(error, "Could not open the photos");
     if (!data || data.length !== images.length || data.some(item => item.error || !item.signedUrl)) throw new Error("Not all pages could be opened. Retry processing.");
-    const result = await processFieldNoteImages({ imageUrls: data.map(item => item.signedUrl!), technicianNote: note.technician_note, customerName: note.customer_name_freeform, equipmentContext: null });
+    imageUrls = data.map(item => item.signedUrl!);
+    }
+    const result = await processFieldNoteImages({ imageUrls, technicianNote: note.technician_note, customerName: note.customer_name_freeform, equipmentContext: null });
     if (!result.ok) throw new Error(result.error);
     const r = result.data;
-    const saved = await changeNote(note, { status: r.confidenceFlags.length || !note.customer_id ? "needs_review" : "ready", raw_transcription: r.rawTranscription, customer_complaint: r.customerComplaint, diagnosis: r.diagnosis, work_performed: r.workPerformed, materials: r.materials, labor_hours: r.laborHours, drive_hours: r.driveHours, equipment_status: r.equipmentStatus, recommendations: r.recommendations, follow_up_required: r.followUpRequired, cleaned_internal_notes: r.cleanedInternalNotes, customer_summary: r.customerSummary, confidence_flags: r.confidenceFlags, ai_model: result.model, ai_error: null, processed_at: new Date().toISOString() });
+    const saved = await changeNote(note, { status: r.confidenceFlags.length || !note.customer_id ? "needs_review" : "ready", raw_transcription: r.rawTranscription, customer_complaint: r.customerComplaint, diagnosis: r.diagnosis, work_performed: r.workPerformed, materials: r.materials, labor_hours: r.laborHours, drive_hours: r.driveHours, equipment_status: r.equipmentStatus, recommendations: r.recommendations, follow_up_required: r.followUpRequired, cleaned_internal_notes: r.cleanedInternalNotes, customer_summary: r.customerSummary, invoice_description: r.invoiceDescription, confidence_flags: r.confidenceFlags, ai_model: result.model, ai_error: null, processed_at: new Date().toISOString() });
     await recordNoteEvent(id, null, saved.status, "AI processing finished. Owner review is required.");
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : "Processing failed.";

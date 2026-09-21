@@ -44,12 +44,12 @@ export async function retryFieldNoteProcessingAction(id: string): Promise<Action
 export type FieldNoteEditableFields = Partial<{
   customerComplaint: string; diagnosis: string; workPerformed: string; materials: FieldNoteMaterial[];
   laborHours: number | null; driveHours: number | null; equipmentStatus: string; recommendations: string;
-  followUpRequired: boolean; cleanedInternalNotes: string; customerSummary: string;
+  followUpRequired: boolean; cleanedInternalNotes: string; customerSummary: string; invoiceDescription: string;
 }>;
 export async function updateFieldNoteSubmissionAction(id: string, patch: FieldNoteEditableFields, version: string): Promise<ActionResult> {
   return action(true, async profile => {
     const note = await readNote(id); assertVersion(note, version); assertEditable(note);
-    const names = { customerComplaint: "customer_complaint", diagnosis: "diagnosis", workPerformed: "work_performed", materials: "materials", laborHours: "labor_hours", driveHours: "drive_hours", equipmentStatus: "equipment_status", recommendations: "recommendations", followUpRequired: "follow_up_required", cleanedInternalNotes: "cleaned_internal_notes", customerSummary: "customer_summary" };
+    const names = { customerComplaint: "customer_complaint", diagnosis: "diagnosis", workPerformed: "work_performed", materials: "materials", laborHours: "labor_hours", driveHours: "drive_hours", equipmentStatus: "equipment_status", recommendations: "recommendations", followUpRequired: "follow_up_required", cleanedInternalNotes: "cleaned_internal_notes", customerSummary: "customer_summary", invoiceDescription: "invoice_description" };
     const update: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(patch)) {
       if (!(key in names)) throw new Error("Unknown field.");
@@ -91,7 +91,7 @@ export async function getFieldNoteLinkOptionsAction(customerId: string) {
 export async function approveFieldNoteSubmissionAction(id: string, version: string, reviewed: boolean): Promise<ActionResult> {
   return action(true, async profile => {
     const note = await readNote(id); assertVersion(note, version); assertEditable(note);
-    if (!reviewed) throw new Error("Confirm you checked the text and flagged values against the photos.");
+    if (!reviewed) throw new Error("Confirm you checked the text and flagged values against the original notes and photos.");
     if (!note.customer_id) throw new Error("Link this note to the correct customer before approval.");
     if (!note.cleaned_internal_notes?.trim() || !note.customer_summary?.trim()) throw new Error("Save internal notes and a customer summary before approval.");
     await changeNote(note, { status: "approved", approved_at: new Date().toISOString(), approved_by: profile.id });

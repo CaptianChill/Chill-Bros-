@@ -29,10 +29,10 @@ const STATUS_TONE = {
 
 function EditableField({ label, value, onChange, rows = 3 }: { label: string; value: string; onChange: (next: string) => void; rows?: number }) {
   return (
-    <div className="text-left">
-      <p className="mb-1 text-xs uppercase tracking-[0.16em] text-zinc-500">{label}</p>
+    <label className="block text-left">
+      <span className="mb-1 block text-xs uppercase tracking-[0.16em] text-zinc-500">{label}</span>
       <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={rows} className="w-full rounded-xl border border-[#2d7dff]/25 bg-black/50 px-3 py-2 text-sm text-white" />
-    </div>
+    </label>
   );
 }
 
@@ -43,7 +43,7 @@ export function FieldNotesReviewPanel({ submission, customers }: { submission: F
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"internal" | "customer" | null>(null);
+  const [copied, setCopied] = useState<"internal" | "customer" | "invoice" | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
   const [form, setForm] = useState<FieldNoteEditableFields>({
@@ -58,6 +58,7 @@ export function FieldNotesReviewPanel({ submission, customers }: { submission: F
     followUpRequired: submission.followUpRequired,
     cleanedInternalNotes: submission.cleanedInternalNotes ?? "",
     customerSummary: submission.customerSummary ?? "",
+    invoiceDescription: submission.invoiceDescription ?? "",
   });
 
   const flaggedFields = new Set(submission.confidenceFlags.map((flag) => flag.field));
@@ -119,8 +120,8 @@ export function FieldNotesReviewPanel({ submission, customers }: { submission: F
     });
   }
 
-  async function copy(kind: "internal" | "customer") {
-    const text = kind === "internal" ? submission.cleanedInternalNotes ?? "" : submission.customerSummary ?? "";
+  async function copy(kind: "internal" | "customer" | "invoice") {
+    const text = kind === "invoice" ? submission.invoiceDescription ?? "" : kind === "internal" ? submission.cleanedInternalNotes ?? "" : submission.customerSummary ?? "";
     try {
       await navigator.clipboard.writeText(text);
       setCopied(kind);
@@ -145,7 +146,7 @@ export function FieldNotesReviewPanel({ submission, customers }: { submission: F
         </div>
 
         <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
-          <p className="mb-3 text-sm font-medium text-white">Original handwritten notes ({submission.images.length})</p>
+          <p className="mb-3 text-sm font-medium text-white">Attached photos ({submission.images.length})</p>
           <div className="grid grid-cols-2 gap-2">
             {submission.images.map((image) => image.url ? (
               <button key={image.id} type="button" onClick={() => setPreview(image.url)} className="relative aspect-[3/4] overflow-hidden rounded-xl border border-[#2d7dff]/20 bg-black/60">
@@ -198,11 +199,12 @@ export function FieldNotesReviewPanel({ submission, customers }: { submission: F
           ) : editing ? (
             <>
               <button type="button" onClick={saveEdits} disabled={pending} className="inline-flex items-center gap-2 rounded-xl bg-[#2d7dff] px-3 py-2 text-xs font-medium text-white"><Check className="h-3.5 w-3.5" />Save</button>
-              <button type="button" disabled={pending} onClick={() => { setForm({ customerComplaint: submission.customerComplaint ?? "", diagnosis: submission.diagnosis ?? "", workPerformed: submission.workPerformed ?? "", materials: submission.materials, laborHours: submission.laborHours, driveHours: submission.driveHours, equipmentStatus: submission.equipmentStatus ?? "", recommendations: submission.recommendations ?? "", followUpRequired: submission.followUpRequired, cleanedInternalNotes: submission.cleanedInternalNotes ?? "", customerSummary: submission.customerSummary ?? "" }); setEditing(false); }} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/20 px-3 py-2 text-xs text-zinc-300"><X className="h-3.5 w-3.5" />Cancel</button>
+              <button type="button" disabled={pending} onClick={() => { setForm({ customerComplaint: submission.customerComplaint ?? "", diagnosis: submission.diagnosis ?? "", workPerformed: submission.workPerformed ?? "", materials: submission.materials, laborHours: submission.laborHours, driveHours: submission.driveHours, equipmentStatus: submission.equipmentStatus ?? "", recommendations: submission.recommendations ?? "", followUpRequired: submission.followUpRequired, cleanedInternalNotes: submission.cleanedInternalNotes ?? "", customerSummary: submission.customerSummary ?? "", invoiceDescription: submission.invoiceDescription ?? "" }); setEditing(false); }} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/20 px-3 py-2 text-xs text-zinc-300"><X className="h-3.5 w-3.5" />Cancel</button>
             </>
           ) : null}
           <button type="button" disabled={editing || pending} onClick={() => copy("internal")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]"><Clipboard className="h-3.5 w-3.5" />{copied === "internal" ? "Copied" : "Copy Notes"}</button>
           <button type="button" disabled={editing || pending} onClick={() => copy("customer")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]"><Clipboard className="h-3.5 w-3.5" />{copied === "customer" ? "Copied" : "Customer Version"}</button>
+          <button type="button" disabled={editing || pending || !["approved", "completed"].includes(submission.status)} onClick={() => copy("invoice")} className="min-h-11 rounded-xl border border-cyan-800 px-3 text-xs">{copied === "invoice" ? "Copied" : "Copy approved invoice description"}</button>
           {editable ? (
             <button type="button" onClick={approve} disabled={pending || editing || !reviewed} className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100"><Check className="h-3.5 w-3.5" />Approve</button>
           ) : null}
@@ -211,7 +213,7 @@ export function FieldNotesReviewPanel({ submission, customers }: { submission: F
           ) : null}
         </div>
 
-        {editable ? <><label className="flex items-start gap-2 rounded-xl border border-cyan-900 p-3 text-sm"><input type="checkbox" disabled={editing || pending} checked={reviewed} onChange={e => setReviewed(e.target.checked)} />I checked the saved text and all flagged technical values against the photos.</label><FieldNoteLinks submission={submission} customers={customers} disabled={editing || pending} /></> : null}
+        {editable ? <><label className="flex items-start gap-2 rounded-xl border border-cyan-900 p-3 text-sm"><input type="checkbox" disabled={editing || pending} checked={reviewed} onChange={e => setReviewed(e.target.checked)} />I checked the saved text and all flagged technical values against the original notes and photos.</label><FieldNoteLinks submission={submission} customers={customers} disabled={editing || pending} /></> : null}
         {submission.status === "approved" ? <p className="text-sm text-emerald-200">The reviewed text is saved and locked. Complete keeps this service record and removes its temporary photos.</p> : null}
         {submission.status === "completed" && !submission.images.length ? <p className="text-sm text-emerald-200">Verified text is saved. Temporary photos have been removed.</p> : null}
         {editing ? (
@@ -255,6 +257,7 @@ export function FieldNotesReviewPanel({ submission, customers }: { submission: F
             </label>
 
             <EditableField label="Internal notes (office / technician)" value={form.cleanedInternalNotes ?? ""} onChange={(v) => setForm((c) => ({ ...c, cleanedInternalNotes: v }))} rows={5} />
+            <EditableField label="Invoice description" value={form.invoiceDescription ?? ""} onChange={(v) => setForm((c) => ({ ...c, invoiceDescription: v }))} />
             <EditableField label="Customer-facing summary" value={form.customerSummary ?? ""} onChange={(v) => setForm((c) => ({ ...c, customerSummary: v }))} rows={5} />
           </div>
         ) : (
@@ -267,6 +270,7 @@ export function FieldNotesReviewPanel({ submission, customers }: { submission: F
               <p className="mb-2 text-sm font-medium text-white">Customer-facing summary</p>
               <p className="whitespace-pre-wrap text-sm text-zinc-300">{form.customerSummary || "Not yet available."}</p>
             </div>
+            <div className="rounded-xl border border-cyan-900 p-3 text-left"><p className="text-sm font-medium">Invoice description</p><p className="whitespace-pre-wrap text-sm text-zinc-300">{form.invoiceDescription || "Not yet available."}</p></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3 text-left"><p className={`text-xs uppercase tracking-[0.16em] ${flaggedFields.has("labor_hours") ? "text-amber-300" : "text-zinc-500"}`}>Labor hours</p><p className="mt-1 text-white">{form.laborHours ?? "—"}</p></div>
               <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3 text-left"><p className={`text-xs uppercase tracking-[0.16em] ${flaggedFields.has("drive_hours") ? "text-amber-300" : "text-zinc-500"}`}>Drive hours</p><p className="mt-1 text-white">{form.driveHours ?? "—"}</p></div>
