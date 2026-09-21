@@ -59,7 +59,7 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
     await command(socket, "DATA", ["354"]);
 
     const headers = [
-      `From: Chill Bros <${safeHeader(user)}>`,
+      `From: Chill Pros <${safeHeader(user)}>`,
       `To: ${safeHeader(to)}`,
       `Subject: ${safeHeader(subject)}`,
       "MIME-Version: 1.0",
@@ -106,19 +106,9 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
   }
 }
 
-export async function sendApprovalNotification(input: ApprovalNotification) {
+async function sendOwnerAlertEmail(subject: string, lines: (string | null)[], relatedInvoiceId?: string | null) {
   const to = companyEmail();
-  const subject = safeHeader(input.subject);
-  const text = [
-    "Chill Bros customer approval received.",
-    "",
-    `${input.documentLabel}: ${input.documentNumber}`,
-    input.customerName ? `Customer: ${input.customerName}` : null,
-    `Signed by: ${input.signedBy}`,
-    `Approved: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
-    "",
-    "The manager and dispatch views have already been updated in the Operations Center.",
-  ].filter(Boolean).join("\n");
+  const text = lines.filter(Boolean).join("\n");
 
   let status = "failed";
   try {
@@ -130,8 +120,55 @@ export async function sendApprovalNotification(input: ApprovalNotification) {
 
   try {
     const supabase = createServiceRoleClient();
-    const { error } = await supabase.from("chillbros_email_log").insert({ subject, recipients: to, related_invoice_id: input.relatedInvoiceId ?? null, status: status === "sent" ? "sent" : "failed" });
-    if (error) console.error("[approval-email] log insert failed", error);
-  } catch (error) { console.error("[approval-email] log insert failed", error); }
+    const { error } = await supabase.from("chillbros_email_log").insert({ subject, recipients: to, related_invoice_id: relatedInvoiceId ?? null, status: status === "sent" ? "sent" : "failed" });
+    if (error) console.error("[owner-alert-email] log insert failed", error);
+  } catch (error) { console.error("[owner-alert-email] log insert failed", error); }
   return { sent: status === "sent", status, recipient: to };
+}
+
+export async function sendApprovalNotification(input: ApprovalNotification) {
+  return sendOwnerAlertEmail(safeHeader(input.subject), [
+    "Chill Pros customer approval received.",
+    "",
+    `${input.documentLabel}: ${input.documentNumber}`,
+    input.customerName ? `Customer: ${input.customerName}` : null,
+    `Signed by: ${input.signedBy}`,
+    `Approved: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
+    "",
+    "The manager and dispatch views have already been updated in the Operations Center.",
+  ], input.relatedInvoiceId);
+}
+
+export async function sendInvoiceViewedNotification(input: { invoiceNumber: string; customerName?: string | null; invoiceId: string }) {
+  return sendOwnerAlertEmail(safeHeader(`Invoice ${input.invoiceNumber} opened by customer`), [
+    "Chill Pros invoice opened by the customer.",
+    "",
+    `Invoice: ${input.invoiceNumber}`,
+    input.customerName ? `Customer: ${input.customerName}` : null,
+    `Opened: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
+  ], input.invoiceId);
+}
+
+export async function sendInvoicePaidNotification(input: { invoiceNumber: string; customerName?: string | null; amount: number; method: string; invoiceId: string }) {
+  return sendOwnerAlertEmail(safeHeader(`Payment received — Invoice ${input.invoiceNumber}`), [
+    "Chill Pros payment received.",
+    "",
+    `Invoice: ${input.invoiceNumber}`,
+    input.customerName ? `Customer: ${input.customerName}` : null,
+    `Amount: ${input.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}`,
+    `Method: ${input.method.replace(/_/g, " ")}`,
+    `Paid: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
+  ], input.invoiceId);
+}
+
+export async function sendDownPaymentReceivedNotification(input: { invoiceNumber: string; customerName?: string | null; amount: number; method: string; invoiceId: string }) {
+  return sendOwnerAlertEmail(safeHeader(`Down payment received — Quote ${input.invoiceNumber}`), [
+    "Chill Pros down payment received.",
+    "",
+    `Quote: ${input.invoiceNumber}`,
+    input.customerName ? `Customer: ${input.customerName}` : null,
+    `Amount: ${input.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}`,
+    `Method: ${input.method.replace(/_/g, " ")}`,
+    `Received: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
+  ], input.invoiceId);
 }

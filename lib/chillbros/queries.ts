@@ -49,9 +49,9 @@ export async function getCustomers(): Promise<Customer[]> {
 
 export async function getPartsCatalog(): Promise<PartsCatalogItem[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_parts_catalog").select("id, name, part_number, default_cost, retail_price, stock").order("name", { ascending: true });
+  const { data, error } = await supabase.from("chillbros_parts_catalog").select("id, name, part_number, default_cost, retail_price, stock, track_inventory").order("name", { ascending: true });
   if (error || !data) return [];
-  return data.filter((part) => !String(part.part_number ?? "").startsWith("PB-")).map((part) => ({ id: part.id, name: part.name, partNumber: part.part_number, defaultCost: Number(part.default_cost), retailPrice: Number(part.retail_price), stock: part.stock }));
+  return data.filter((part) => !String(part.part_number ?? "").startsWith("PB-")).map((part) => ({ id: part.id, name: part.name, partNumber: part.part_number, defaultCost: Number(part.default_cost), retailPrice: Number(part.retail_price), stock: part.stock, trackInventory: part.track_inventory }));
 }
 
 export async function getPriceBookEntries(): Promise<PriceBookEntry[]> {
@@ -60,7 +60,7 @@ export async function getPriceBookEntries(): Promise<PriceBookEntry[]> {
   const existingCodes = new Set((existingRows ?? []).map((row) => String(row.part_number)));
   const missing = PRICE_BOOK_SEED.filter((item) => !existingCodes.has(item.code));
   if (missing.length > 0) {
-    await supabase.from("chillbros_parts_catalog").insert(missing.map((item) => ({ name: item.description.slice(0, 200), part_number: item.code, default_cost: item.defaultValue, retail_price: item.defaultValue, stock: 0 })));
+    await supabase.from("chillbros_parts_catalog").insert(missing.map((item) => ({ name: item.description.slice(0, 200), part_number: item.code, default_cost: item.defaultValue, retail_price: item.defaultValue, stock: 0, track_inventory: false })));
   }
   const { data: storedRows } = await supabase.from("chillbros_parts_catalog").select("part_number, name, retail_price").like("part_number", "PB-%");
   type StoredPriceBookRow = { part_number: string; name: string; retail_price: number };
@@ -107,11 +107,11 @@ export async function getActiveJobForTech(techId: string): Promise<Job | null> {
 
 export async function getInvoiceByToken(token: string): Promise<Invoice | null> {
   const supabase = createServiceRoleClient();
-  const { data: invoice, error } = await supabase.from("chillbros_invoices").select("id, invoice_number, portal_token, status, customer_id, job_id, signature_name, signed_at, payment_method, payment_status, notes, customer:chillbros_customers(name)").eq("portal_token", token).is("revoked_at", null).neq("status", "void").maybeSingle();
+  const { data: invoice, error } = await supabase.from("chillbros_invoices").select("id, invoice_number, portal_token, status, customer_id, job_id, signature_name, signed_at, payment_method, payment_status, down_payment_status, down_payment_method, down_payment_paid_at, notes, customer:chillbros_customers(name)").eq("portal_token", token).is("revoked_at", null).neq("status", "void").maybeSingle();
   if (error || !invoice) return null;
   const { data: lineItems } = await supabase.from("chillbros_invoice_line_items").select("id, label, amount").eq("invoice_id", invoice.id).order("sort_order", { ascending: true });
   const customer = Array.isArray(invoice.customer) ? invoice.customer[0] : invoice.customer;
-  return { id: invoice.id, invoiceNumber: invoice.invoice_number, portalToken: invoice.portal_token, status: invoice.status, customerId: invoice.customer_id, customerName: customer?.name ?? "Unknown customer", jobId: invoice.job_id, signatureName: invoice.signature_name, signedAt: invoice.signed_at, paymentMethod: invoice.payment_method, paymentStatus: invoice.payment_status, notes: invoice.notes, lineItems: (lineItems ?? []).map((item) => ({ id: item.id, label: item.label, amount: Number(item.amount) })) };
+  return { id: invoice.id, invoiceNumber: invoice.invoice_number, portalToken: invoice.portal_token, status: invoice.status, customerId: invoice.customer_id, customerName: customer?.name ?? "Unknown customer", jobId: invoice.job_id, signatureName: invoice.signature_name, signedAt: invoice.signed_at, paymentMethod: invoice.payment_method, paymentStatus: invoice.payment_status, downPaymentStatus: invoice.down_payment_status, downPaymentMethod: invoice.down_payment_method, downPaymentPaidAt: invoice.down_payment_paid_at, notes: invoice.notes, lineItems: (lineItems ?? []).map((item) => ({ id: item.id, label: item.label, amount: Number(item.amount) })) };
 }
 
 export async function getInvoiceByJobId(jobId: string): Promise<Invoice | null> {
@@ -129,8 +129,8 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const [{ count: openJobs }, { count: approvalsToday }, { data: lowStockRows }, { count: emailEventsToday }] = await Promise.all([
     supabase.from("chillbros_jobs").select("id", { count: "exact", head: true }).in("status", ["scheduled", "in_progress"]),
     supabase.from("chillbros_invoices").select("id", { count: "exact", head: true }).eq("status", "approved").gte("updated_at", startOfToday.toISOString()),
-    supabase.from("chillbros_parts_catalog").select("part_number, stock").lt("stock", 5),
+    supabase.from("chillbros_parts_catalog").select("id").eq("track_inventory", true).lt("stock", 5),
     supabase.from("chillbros_email_log").select("id", { count: "exact", head: true }).gte("created_at", startOfToday.toISOString()),
   ]);
-  return { openJobs: openJobs ?? 0, approvalsToday: approvalsToday ?? 0, lowStockParts: (lowStockRows ?? []).filter((row) => !String(row.part_number ?? "").startsWith("PB-")).length, emailEventsToday: emailEventsToday ?? 0 };
+  return { openJobs: openJobs ?? 0, approvalsToday: approvalsToday ?? 0, lowStockParts: (lowStockRows ?? []).length, emailEventsToday: emailEventsToday ?? 0 };
 }

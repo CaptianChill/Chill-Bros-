@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { JOB_ACTIVE_STATUSES } from "./types";
 
 import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications";
-import { sendBillingDeliveryRecorded } from "@/lib/chillbros/billing-delivery";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { captureCompletedJobKnowledge } from "@/lib/chillbros/knowledge-cases";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -170,19 +169,20 @@ export async function issueInvoiceForCompletedWorkAction(formData: FormData): Pr
   if (readError) jobMessage(jobId, "error", readError.message);
   if (!invoice || invoice.status !== "approved") jobMessage(jobId, "error", "Finalize the invoice first", invoiceId);
   if (invoice.payment_status === "paid") jobMessage(jobId, "error", "This invoice is already paid.", invoiceId);
-  if (invoice.issued_at) jobMessage(jobId, "success", "Invoice already issued. Open it to email again.", invoiceId);
+  if (invoice.issued_at) redirect(`/invoices?focus=${encodeURIComponent(invoiceId)}`);
   const now = new Date();
   const { data: issued, error } = await supabase.from("chillbros_invoices").update({ issued_at: now.toISOString(), due_at: dueAtFor(invoice.payment_terms ?? "due_on_receipt", invoice.due_at, now), updated_at: now.toISOString() })
     .eq("id", invoiceId).eq("status", "approved").is("revoked_at", null).neq("payment_status", "paid").is("issued_at", null).select("id").maybeSingle();
   if (error || !issued) jobMessage(jobId, "error", error?.message ?? "Invoice changed. Refresh before issuing.");
   const { error: closeError } = await supabase.from("chillbros_jobs").update({ status: "completed", updated_at: now.toISOString() }).eq("id", jobId).in("status", JOB_ACTIVE_STATUSES);
-  const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: invoiceId, actor_id: allowed.profile.id, stage: "invoice_issued", message: "Work completed. Final invoice issued and payment is now due." });
+  const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: invoiceId, actor_id: allowed.profile.id, stage: "invoice_issued", message: "Work completed. Final invoice issued and held for office review before it is sent to the customer." });
   try { await captureCompletedJobKnowledge(jobId, invoiceId, allowed.profile.id); } catch (error) { console.error("[tech-assist] completed job capture failed", error); }
-  const delivery = await sendBillingDeliveryRecorded(invoiceId, "invoice", "email");
-  await sendBillingDeliveryRecorded(invoiceId, "invoice", "sms");
   refresh(jobId, invoice.portal_token);
-  const failure = [closeError?.message, eventError?.message, delivery.status !== "sent" ? delivery.error ?? delivery.status : null].filter(Boolean).join("; ");
-  jobMessage(jobId, failure ? "error" : "success", failure ? `Invoice issued. ${failure}` : `Invoice emailed to ${delivery.recipient}.`, invoiceId);
+  const query = new URLSearchParams({ focus: invoiceId });
+  const failure = [closeError?.message, eventError?.message].filter(Boolean).join("; ");
+  if (failure) query.set("error", `Invoice issued. ${failure}`);
+  else query.set("success", "Invoice issued. Review the document below, then Email or Text it to the customer.");
+  redirect(`/invoices?${query.toString()}`);
 }
 
 export async function setIssuedInvoicePaymentMethodAction(token: string, method: PaymentMethod): Promise<Result> {

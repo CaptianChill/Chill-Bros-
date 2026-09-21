@@ -35,3 +35,9 @@ jobs:
 
       - name: Production build
         run: npm run build
+        env:
+          # Build-only placeholder so module evaluation for /auth/callback
+          # doesn't throw; this never deploys anything and carries no
+          # real credential. Vercel's actual deployments already have
+          # NEON_AUTH_COOKIE_SECRET configured separately.
+          NEON_AUTH_COOKIE_SECRET: ci-build-placeholder-not-a-real-secret

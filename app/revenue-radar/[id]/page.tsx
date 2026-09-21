@@ -1,15 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { RevenueRadarCloseScript } from "@/components/revenue-radar-close-script";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { buildSafeBattleCard, explainLeadRanking } from "@/lib/chillbros/revenue-sales";
+import { explainLeadRanking } from "@/lib/chillbros/revenue-sales";
 import { updateProspect } from "../actions";
 import {
   assignRevenueSalesperson,
   createRevenueTechnicianHandoff,
-  generateSalesBattleCard,
   logRevenueActivity,
   markRevenueDoNotContact,
 } from "../sales-actions";
@@ -23,30 +21,13 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
   const { id } = await params;
   const client = createServiceRoleClient();
-  const [{ data: p }, { data: salesStaff }, { data: currentCard }, { data: leadContacts }] = await Promise.all([
+  const [{ data: p }, { data: salesStaff }, { data: leadContacts }] = await Promise.all([
     client.from("chillbros_revenue_prospects").select("*").eq("id", id).maybeSingle(),
     client.from("chillbros_profiles").select("id,full_name,role,status").eq("status", "active").in("role", ["manager", "office"]).order("full_name"),
-    client.from("chillbros_revenue_battle_cards").select("id,prompt_version,created_at").eq("lead_id", id).eq("is_current", true).maybeSingle(),
     client.from("chillbros_revenue_contacts").select("id,name,role,phone,email,verification_status,source,is_primary,notes").eq("lead_id", id).order("is_primary", { ascending: false }).order("created_at", { ascending: true }),
   ]);
   if (!p) notFound();
 
-  const battleCard = buildSafeBattleCard({
-    businessName: p.business_name,
-    city: p.city,
-    businessType: p.category,
-    score: Number(p.score),
-    serviceLine: p.service_line,
-    signalSummary: p.signal_summary,
-    signalVerified: Boolean(p.signal_verified),
-    sourceUrl: p.source_url,
-    observedAt: p.signal_observed_at,
-    businessAddress: p.business_address,
-    contactName: p.contact_name,
-    contactRole: p.contact_role,
-    contactPhone: p.contact_phone,
-    contactEmail: p.contact_email,
-  });
   const rankingReasons = explainLeadRanking({
     score: Number(p.score),
     category: p.category,
@@ -106,49 +87,6 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
       </div> : null}
       {p.do_not_contact ? <p className="mt-3 rounded-xl border border-red-400/40 bg-red-400/10 p-3 text-sm font-semibold text-red-100">DO NOT CONTACT · {p.do_not_contact_reason || "restriction active"}</p> : null}
     </section>
-
-    <RevenueRadarCloseScript
-      businessName={p.business_name}
-      serviceLine={p.service_line}
-      signalSummary={p.signal_summary}
-      signalVerified={Boolean(p.signal_verified)}
-      contactName={p.contact_name}
-    />
-
-    <details className="rounded-2xl border border-cyan-300/40 bg-cyan-400/5 p-4">
-      <summary className="cursor-pointer text-lg font-bold text-white">More sales help · Battle Card</summary>
-      <section className="mt-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200">Sales Assist</p>
-          <h2 className="text-xl font-bold text-white">Lead Battle Card</h2>
-          <p className="mt-1 text-xs text-zinc-400">{currentCard ? `Saved ${new Date(currentCard.created_at).toLocaleString()} · ${currentCard.prompt_version}` : "Live preview · save a version before calling"}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <form action={generateSalesBattleCard}>
-            <input type="hidden" name="lead_id" value={id} />
-            <button className="min-h-10 rounded-xl border border-cyan-300/50 px-4 text-sm font-semibold text-cyan-100">{currentCard ? "Refresh Battle Card" : "Save Battle Card"}</button>
-          </form>
-          {currentCard ? <a href={`/revenue-radar/${id}/battle-card.pdf`} className="inline-flex min-h-10 items-center rounded-xl bg-cyan-300 px-4 text-sm font-bold text-black">Export PDF</a> : null}
-        </div>
-      </div>
-      <p className="mt-3 text-sm leading-6 text-zinc-200">{battleCard.whyNow}</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-white/10 bg-black/30 p-3"><p className="text-xs uppercase text-zinc-400">Best contact</p><strong>{battleCard.primaryContactRole}</strong><p className="mt-1 text-xs text-zinc-400">Backups: {battleCard.backupContactRoles.join(" · ")}</p></div>
-        <div className="rounded-xl border border-white/10 bg-black/30 p-3"><p className="text-xs uppercase text-zinc-400">Service angle</p><p className="text-sm">{battleCard.serviceAngle}</p></div>
-      </div>
-      <div className="mt-3 rounded-xl border border-cyan-300/20 bg-black/40 p-3"><p className="text-xs font-semibold uppercase text-cyan-200">Call opener</p><p className="mt-1 text-sm leading-6">{battleCard.callOpener}</p></div>
-      <details className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3"><summary className="cursor-pointer font-semibold">Discovery questions</summary><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-200">{battleCard.discoveryQuestions.map((q) => <li key={q}>{q}</li>)}</ul></details>
-      <details className="mt-2 rounded-xl border border-white/10 bg-black/30 p-3"><summary className="cursor-pointer font-semibold">Buying signals</summary><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-200">{battleCard.buyingSignals.map((signal) => <li key={signal}>{signal}</li>)}</ul></details>
-      <details className="mt-2 rounded-xl border border-white/10 bg-black/30 p-3"><summary className="cursor-pointer font-semibold">Objections & responses</summary><div className="mt-2 space-y-2 text-sm">{battleCard.objectionResponses.map((o) => <div key={o.objection}><strong>{o.objection}</strong><p className="text-zinc-300">{o.response}</p></div>)}</div></details>
-      <div className="mt-3 rounded-xl border border-amber-300/30 bg-amber-400/5 p-3"><p className="text-xs font-semibold uppercase text-amber-200">Technician handoff</p><p className="mt-1 text-sm text-zinc-200">{battleCard.technicalHandoff}</p></div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <div><p className="text-xs uppercase text-zinc-400">Verified facts</p><p className="mt-1 text-xs text-zinc-300">{battleCard.verifiedFacts.length} available</p></div>
-        <div><p className="text-xs uppercase text-zinc-400">Inferences</p><p className="mt-1 text-xs text-zinc-300">{battleCard.reasonableInferences.length} clearly labeled</p></div>
-        <div><p className="text-xs uppercase text-zinc-400">Missing</p><p className="mt-1 text-xs text-zinc-300">{battleCard.missingInformation.length} items to qualify</p></div>
-      </div>
-      </section>
-    </details>
 
     {profile.role === "manager" ? <details className="rounded-2xl border border-white/10 bg-black/30 p-4">
       <summary className="cursor-pointer font-semibold">Sales assignment</summary>
@@ -226,12 +164,6 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
         <label>Legacy status<select className={input} name="status" defaultValue={p.status}>{["new","research","approved","skipped","contacted","quoted","won","lost"].map(s => <option key={s} value={s}>{s.replaceAll("_", " ")}</option>)}</select></label>
         <label>Follow up at<input className={input} type="datetime-local" name="follow_up_at" defaultValue={p.follow_up_at ? new Date(p.follow_up_at).toISOString().slice(0,16) : ""} /></label>
         <label className="sm:col-span-2">Follow-up note<textarea className={area} name="follow_up_note" defaultValue={p.follow_up_note ?? ""} rows={2} /></label>
-      </section>
-      <section className="grid gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 sm:grid-cols-2"><h2 className="font-semibold sm:col-span-2">Email draft · office approval required</h2>
-        {field("Subject", "email_subject")}<div className="sm:col-span-2"><label>Draft<textarea className={area} name="email_draft" defaultValue={p.email_draft ?? ""} rows={5} /></label></div>
-        {field("Recipient business address", "business_address")}{field("Chill Pros postal address", "sender_postal_address")}
-        <label className="sm:col-span-2">Opt-out instructions<input className={input} name="unsubscribe_instructions" defaultValue={p.unsubscribe_instructions ?? "Reply 'unsubscribe' to opt out."} /></label>
-        <p className="text-xs text-zinc-400 sm:col-span-2">Check the subject, sender identity, postal address, and opt-out text before sending outside this app. Saving never sends an email.</p>
       </section>
       <section className="grid gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 sm:grid-cols-2"><h2 className="font-semibold sm:col-span-2">Revenue attribution</h2>
         {field("Job ID", "job_id")}{field("Quote or invoice ID", "invoice_id")}{field("Estimated revenue", "estimated_revenue", "number")}{field("Actual revenue", "actual_revenue", "number")}{field("Direct cost", "direct_cost", "number")}

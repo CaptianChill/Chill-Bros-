@@ -146,7 +146,7 @@ export async function sendInvoiceCommunicationAction(invoiceId: string, channel:
   return { ok: true, data: { status: result.status, recipient: result.recipient } };
 }
 
-export async function finalizeInvoiceAction(invoiceId: string): Promise<Result<{ status: string; recipient: string | null }>> {
+export async function finalizeInvoiceAction(invoiceId: string): Promise<Result> {
   const guard = await requireOfficeOrManager();
   if (!guard.ok) return guard;
   const supabase = createServiceRoleClient();
@@ -160,12 +160,10 @@ export async function finalizeInvoiceAction(invoiceId: string): Promise<Result<{
     issued_at: invoice.issued_at ?? now.toISOString(), due_at: approvalDueAt(invoice.payment_terms ?? "due_on_receipt", invoice.due_at, now), updated_at: now.toISOString(),
   }).eq("id", invoiceId).eq("status", invoice.status).eq("updated_at", invoice.updated_at).is("revoked_at", null).neq("payment_status", "paid").select("id").maybeSingle();
   if (error || !updated) return { ok: false, error: error?.message ?? "Invoice changed. Refresh before finalizing." };
-  const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.job_id, invoice_id: invoiceId, actor_id: guard.profile.id, stage: "invoice_finalized", message: "Approved by Chill Bros office. Invoice finalized without customer signature." });
+  const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.job_id, invoice_id: invoiceId, actor_id: guard.profile.id, stage: "invoice_finalized", message: "Approved by Chill Bros office. Finalized and held for review before it is sent to the customer." });
   refreshInvoicePaths(invoice.portal_token);
-  const delivery = await sendInvoiceCommunicationAction(invoiceId, "email");
-  if (!delivery.ok) return { ...delivery, error: `Invoice finalized. ${delivery.error}` };
-  if (eventError) return { ok: false, error: `Invoice finalized and emailed to ${delivery.data.recipient}, but audit logging failed: ${eventError.message}` };
-  return delivery;
+  if (eventError) return { ok: false, error: `Invoice finalized, but audit logging failed: ${eventError.message}` };
+  return { ok: true, data: undefined };
 }
 
 export async function reopenInvoiceAction(invoiceId: string): Promise<Result> {

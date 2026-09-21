@@ -49,6 +49,18 @@ const ownerTools = [
     title: "Quotes & invoices",
     description: "Create and edit quotes or invoices, finalize documents, email customers, and manage payment status.",
   },
+  {
+    href: "/payments",
+    eyebrow: "Billing",
+    title: "Record a payment",
+    description: "Log cash, check, ACH, or other manual payments against an approved invoice.",
+  },
+  {
+    href: "/revenue-radar/opportunities",
+    eyebrow: "Sales",
+    title: "Sales pipeline & closeout",
+    description: "The full Revenue Radar pipeline, follow-up tasks, technician handoffs, audit, and DNC review — for when you need to dig in.",
+  },
 ] as const;
 
 export default async function OwnerAccessPage() {

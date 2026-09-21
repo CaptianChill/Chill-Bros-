@@ -10,54 +10,56 @@ import { addProspect, scanForLeads } from "./actions";
 export const dynamic = "force-dynamic";
 const input = "min-h-11 w-full rounded-xl border border-cyan-400/30 bg-black/50 px-3 py-2 text-white";
 
+const PROSPECT_COLUMNS = "id,business_name,city,category,service_line,signal_summary,signal_verified,signal_observed_at,score,status,follow_up_at,estimated_revenue,actual_revenue,direct_cost,business_address,contact_phone,contact_email,contact_name,contact_role,verification_status,source_url,assigned_salesperson,sales_status";
+const PAGE_SIZE = 50;
+const MAX_PAGES = 40; // safety cap: 40 * 50 = 2,000 leads
+
+// Neon's Data API silently truncates a single large response somewhere
+// ahead of Postgres — raising .limit()/db_max_rows didn't change it, and it
+// isn't RLS (that's all-or-nothing per role, not a partial cut). Fetching in
+// small pages keeps every individual request comfortably under whatever that
+// cap is, so newly-scanned leads can't quietly disappear again regardless of
+// table size. A tiebreaker on id is required: many leads share the same
+// score, and without a deterministic secondary sort, separate paged requests
+// can return ties in different orders and duplicate or skip rows.
+async function fetchAllProspects(
+  client: ReturnType<typeof createServiceRoleClient>,
+  role: string,
+  profileId: string,
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows: any[] = [];
+  let offset = 0;
+  let lastError: { message: string } | null = null;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    let query = client
+      .from("chillbros_revenue_prospects")
+      .select(PROSPECT_COLUMNS)
+      .order("score", { ascending: false })
+      .order("id", { ascending: true });
+    if (role === "office") query = query.eq("assigned_salesperson", profileId);
+    const { data, error } = await query.range(offset, offset + PAGE_SIZE - 1);
+    if (error) { lastError = error; break; }
+    if (!data || data.length === 0) break;
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return { data: rows, error: lastError };
+}
+
 export default async function RevenueRadarPage() {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
 
   const client = createServiceRoleClient();
-  let prospectsQuery = client
-    .from("chillbros_revenue_prospects")
-    .select("id,business_name,city,category,service_line,signal_summary,signal_verified,signal_observed_at,score,status,follow_up_at,actual_revenue,direct_cost,business_address,contact_phone,contact_email,contact_name,contact_role,verification_status,source_url,assigned_salesperson,sales_status")
-    .order("score", { ascending: false });
-  if (profile.role === "office") prospectsQuery = prospectsQuery.eq("assigned_salesperson", profile.id);
-  const { data, error } = await prospectsQuery.limit(100);
+  const { data, error } = await fetchAllProspects(client, profile.role, profile.id);
 
   const prospects = data ?? [];
   const newCount = prospects.filter((p) => p.status === "new").length;
   const highPriority = prospects.filter((p) => Number(p.score) >= 65).length;
 
-  let salesCommandReady = false;
-  let salesPipeline: Array<{ id: string; business_name: string; sales_status: string; assigned_salesperson: string | null; priority: string; follow_up_at: string | null; last_activity_at: string | null }> = [];
-  let openTasks: Array<{ id: string; lead_id: string; task_type: string; description: string; due_at: string; status: string; assigned_user: string | null }> = [];
-  let openHandoffs: Array<{ id: string; lead_id: string; status: string; urgency: string; customer_reported_problem: string; created_at: string }> = [];
-  let currentCardLeadIds = new Set<string>();
-
-  if (profile.role === "manager") {
-    const [pipelineResult, tasksResult, handoffsResult, cardsResult] = await Promise.all([
-      client.from("chillbros_revenue_prospects").select("id,business_name,sales_status,assigned_salesperson,priority,follow_up_at,last_activity_at").order("score", { ascending: false }).limit(100),
-      client.from("chillbros_revenue_tasks").select("id,lead_id,task_type,description,due_at,status,assigned_user").in("status", ["open", "in_progress", "overdue"]).order("due_at", { ascending: true }).limit(50),
-      client.from("chillbros_revenue_handoffs").select("id,lead_id,status,urgency,customer_reported_problem,created_at").in("status", ["received", "accepted", "scheduled"]).order("created_at", { ascending: true }).limit(50),
-      client.from("chillbros_revenue_battle_cards").select("lead_id").eq("is_current", true).limit(200),
-    ]);
-    salesCommandReady = !pipelineResult.error && !tasksResult.error && !handoffsResult.error && !cardsResult.error;
-    if (salesCommandReady) {
-      salesPipeline = pipelineResult.data ?? [];
-      openTasks = tasksResult.data ?? [];
-      openHandoffs = handoffsResult.data ?? [];
-      currentCardLeadIds = new Set((cardsResult.data ?? []).map((card) => card.lead_id));
-    }
-  }
-
-  const now = Date.now();
-  const readyToCall = salesPipeline.filter((lead) => lead.sales_status === "ready_to_call").length;
-  const unassigned = salesPipeline.filter((lead) => !lead.assigned_salesperson).length;
-  const missingCards = salesPipeline.filter((lead) => !currentCardLeadIds.has(lead.id)).length;
-  const overdueTasks = openTasks.filter((task) => new Date(task.due_at).getTime() < now).length;
-  const proposalCount = salesPipeline.filter((lead) => lead.sales_status === "proposal_requested").length;
-  const wonCount = salesPipeline.filter((lead) => lead.sales_status === "won").length;
-  const leadNames = new Map(salesPipeline.map((lead) => [lead.id, lead.business_name]));
-
-  return <AppShell title="Revenue Radar" description={profile.role === "office" ? "Your assigned Revenue Radar leads, sales follow-up, and next actions." : "Automatically discover commercial prospects, rank them, then execute the sales follow-up that turns them into Chill Pros work."}>
+  return <AppShell title="Revenue Radar" description={profile.role === "office" ? "Your assigned Revenue Radar leads, sales follow-up, and next actions." : "New leads first. Open one to work it and lock it in."}>
     <div className="mx-auto max-w-5xl space-y-5 text-left">
       {error ? <p className="rounded-xl border border-amber-400 p-3 text-amber-200">Revenue Radar storage is not ready. {error.message}</p> : null}
 
@@ -79,51 +81,9 @@ export default async function RevenueRadarPage() {
         </div>
       </section>
 
-      {profile.role === "manager" ? <section className="rounded-3xl border border-white/10 bg-black/35 p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Sales Command Center</p>
-            <h2 className="mt-1 text-xl font-semibold text-white">Manager visibility</h2>
-          </div>
-          <span className={`rounded-full border px-3 py-1 text-xs ${salesCommandReady ? "border-emerald-300/30 text-emerald-200" : "border-amber-300/30 text-amber-200"}`}>{salesCommandReady ? "Sales schema ready" : "Sales schema pending deployment"}</span>
-        </div>
-        {salesCommandReady ? <>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {[
-              ["Ready to Call", readyToCall],
-              ["Unassigned", unassigned],
-              ["Missing Card", missingCards],
-              ["Overdue Tasks", overdueTasks],
-              ["Open Handoffs", openHandoffs.length],
-              ["Proposals / Won", `${proposalCount} / ${wonCount}`],
-            ].map(([label, metric]) => <div key={String(label)} className="rounded-2xl border border-white/10 bg-black/30 p-3 text-center"><strong className="block text-xl text-white">{metric}</strong><span className="text-[11px] text-zinc-400">{label}</span></div>)}
-          </div>
-
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
-              <div className="flex items-center justify-between"><h3 className="font-semibold text-white">Due / overdue work</h3><span className="text-xs text-zinc-500">{openTasks.length} open</span></div>
-              <div className="mt-2 space-y-2">
-                {openTasks.slice(0, 5).map((task) => <Link key={task.id} href={`/revenue-radar/${task.lead_id}`} className="block rounded-xl border border-white/10 p-3 hover:border-cyan-300/40">
-                  <div className="flex justify-between gap-2 text-sm"><strong>{leadNames.get(task.lead_id) || "Lead"}</strong><span className={new Date(task.due_at).getTime() < now ? "text-red-200" : "text-cyan-200"}>{new Date(task.due_at).toLocaleString()}</span></div>
-                  <p className="mt-1 text-xs text-zinc-400">{task.task_type.replaceAll("_", " ")} · {task.description}</p>
-                </Link>)}
-                {openTasks.length === 0 ? <p className="py-3 text-sm text-zinc-500">No open sales tasks.</p> : null}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
-              <div className="flex items-center justify-between"><h3 className="font-semibold text-white">Technical handoffs</h3><span className="text-xs text-zinc-500">{openHandoffs.length} active</span></div>
-              <div className="mt-2 space-y-2">
-                {openHandoffs.slice(0, 5).map((handoff) => <Link key={handoff.id} href={`/revenue-radar/${handoff.lead_id}`} className="block rounded-xl border border-amber-300/15 p-3 hover:border-amber-300/40">
-                  <div className="flex justify-between gap-2 text-sm"><strong>{leadNames.get(handoff.lead_id) || "Lead"}</strong><span className="text-amber-200">{handoff.urgency}</span></div>
-                  <p className="mt-1 line-clamp-2 text-xs text-zinc-400">Customer reported: {handoff.customer_reported_problem}</p>
-                </Link>)}
-                {openHandoffs.length === 0 ? <p className="py-3 text-sm text-zinc-500">No active technician handoffs.</p> : null}
-              </div>
-            </div>
-          </div>
-        </> : <p className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/5 p-3 text-sm text-amber-100">The Sales Command code is ready, but these manager metrics stay dormant until the additive Sales Command migration is approved for production. Existing Revenue Radar remains available below.</p>}
-      </section> : null}
+      {profile.role === "manager" ? <div className="flex flex-wrap gap-2 text-xs">
+        <Link href="/revenue-radar/opportunities" className="rounded-full border border-cyan-300/30 px-3 py-1.5 text-cyan-100 hover:border-cyan-300/60">Sales pipeline & closeout →</Link>
+      </div> : null}
 
       <RevenueRadarList prospects={prospects} />
 

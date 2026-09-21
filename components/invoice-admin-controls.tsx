@@ -23,6 +23,9 @@ type Props = {
   hasPaidArchive: boolean;
   canManage: boolean;
   missingEmail?: boolean;
+  portalToken: string;
+  invoiceNumber: string;
+  customerPhone: string | null;
 };
 
 function inputDate(value: string | null) { return value ? new Date(value).toISOString().slice(0, 10) : ""; }
@@ -82,6 +85,12 @@ export function InvoiceAdminControls(props: Props) {
     return result;
   }, reminder ? `Reminder sent by ${channel}.` : `${channel === "email" ? "Email" : "Text"} sent.`);
 
+  const textFromMyPhone = () => {
+    if (!props.customerPhone) return;
+    const portalUrl = `${window.location.origin}/portal/${props.portalToken}`;
+    window.location.href = `sms:${props.customerPhone.replace(/[^+\d]/g, "")}?&body=${encodeURIComponent(`Chill Bros ${props.invoiceNumber}: ${portalUrl}`)}`;
+  };
+
   return <div className="space-y-3">
     {pending ? <p className="rounded-xl border border-[#2d7dff]/30 bg-[#2d7dff]/10 px-3 py-2 text-xs text-[#d9fbff]">Sending invoice action…</p> : null}
     {message ? <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">{message}</p> : null}
@@ -94,12 +103,13 @@ export function InvoiceAdminControls(props: Props) {
     <div className="flex flex-wrap gap-2">
       {["draft", "awaiting_approval"].includes(props.status) && props.paymentStatus !== "paid" ? <>
         {props.canManage ? <Link href={"/invoices?focus=" + props.invoiceId + "&edit=1"} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]">Edit prices</Link> : null}
-        <button type="button" disabled={pending} onClick={() => void run(() => finalizeInvoiceAction(props.invoiceId), "Invoice finalized.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Finalize & email</button>
+        <button type="button" disabled={pending} onClick={() => void run(() => finalizeInvoiceAction(props.invoiceId), "Invoice finalized. Review the Document link below, then Email or Text it to the customer.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Finalize (review before sending)</button>
       </> : null}
       {props.canManage && props.status === "approved" && props.paymentStatus === "unpaid" ? <button type="button" disabled={pending} onClick={() => void run(() => reopenInvoiceAction(props.invoiceId), "Invoice reopened. Select Edit prices to correct it, then Finalize & email.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Reopen to edit</button> : null}
       {props.canManage && props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void run(() => markInvoicePaidV2Action(props.invoiceId), "Payment recorded.", true)} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-xs text-emerald-100 disabled:opacity-40">Mark paid</button> : null}
       <button type="button" disabled={pending} onClick={() => void send("email")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Mail className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Email receipt" : props.status === "approved" ? "Email invoice" : "Email for customer approval"}</button>
-      <button type="button" disabled={pending} onClick={() => void send("sms")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><MessageSquareText className="h-3.5 w-3.5" />Send text</button>
+      <button type="button" disabled={pending} onClick={() => void send("sms")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><MessageSquareText className="h-3.5 w-3.5" />Send text (auto)</button>
+      {props.customerPhone ? <button type="button" onClick={textFromMyPhone} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]"><MessageSquareText className="h-3.5 w-3.5" />Text from my phone</button> : null}
       {props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void send("email", true)} className="inline-flex items-center gap-2 rounded-xl border border-amber-400/25 px-3 py-2 text-xs text-amber-100 disabled:opacity-40"><Send className="h-3.5 w-3.5" />Email reminder</button> : null}
       {props.status === "approved" && !props.hasApprovedArchive ? <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await ensureInvoiceArchiveAction(props.invoiceId, "approved"); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Approved PDF archive created.")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Archive className="h-3.5 w-3.5" />Build approved PDF</button> : null}
       {props.paymentStatus === "paid" && !props.hasPaidArchive ? <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await ensureInvoiceArchiveAction(props.invoiceId, "paid"); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Paid PDF archive created.")} className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/25 px-3 py-2 text-xs text-emerald-100 disabled:opacity-40"><ReceiptText className="h-3.5 w-3.5" />Build paid PDF</button> : null}

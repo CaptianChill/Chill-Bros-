@@ -30,6 +30,7 @@ export type InvoiceCenterRow = {
   refundAmount: number;
   total: number;
   downPaymentAmount: number;
+  downPaymentStatus: PaymentStatus;
   paymentTerms: PaymentTerms;
   issuedAt: string | null;
   dueAt: string | null;
@@ -62,7 +63,7 @@ function daysBetween(a: string, b: string) { return Math.max(0, Math.round((new 
 
 export async function getInvoiceCenterData(): Promise<{ rows: InvoiceCenterRow[]; metrics: InvoiceCenterMetrics }> {
   const supabase = createServiceRoleClient();
-  const { data: invoices, error } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,customer_id,job_id,discount_amount,down_payment_amount,tax_rate,tax_amount,issued_at,payment_terms,due_at,last_reminder_at,reminder_count,paid_at,created_at,updated_at").order("updated_at", { ascending: false }).limit(300);
+  const { data: invoices, error } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,customer_id,job_id,discount_amount,down_payment_amount,down_payment_status,tax_rate,tax_amount,issued_at,payment_terms,due_at,last_reminder_at,reminder_count,paid_at,created_at,updated_at").order("updated_at", { ascending: false }).limit(300);
   if (error || !invoices?.length) return { rows: [], metrics: { outstandingValue: 0, dueToday: 0, overdueValue: 0, collectedThisMonth: 0, pendingApproval: 0, averageDaysToPay: 0 } };
 
   const invoiceIds = invoices.map((row) => row.id);
@@ -150,6 +151,7 @@ export async function getInvoiceCenterData(): Promise<{ rows: InvoiceCenterRow[]
       refundAmount,
       total,
       downPaymentAmount: Number(invoice.down_payment_amount ?? 0),
+      downPaymentStatus: invoice.down_payment_status as PaymentStatus,
       paymentTerms: (invoice.payment_terms ?? "due_on_receipt") as PaymentTerms,
       issuedAt: invoice.issued_at,
       dueAt: invoice.due_at,

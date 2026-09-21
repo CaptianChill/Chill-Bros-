@@ -5,6 +5,7 @@ import { createReceiptForPaidInvoice } from "@/lib/chillbros/billing-receipts";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { getInvoiceV2ById, invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { verifyStripeSignature } from "@/lib/chillbros/stripe";
+import { sendInvoicePaidNotification } from "@/lib/chillbros/approval-notifications";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const runtime = "nodejs";
@@ -54,6 +55,9 @@ async function markPaid(session: StripeSession) {
     stage: "paid",
     message: `Online payment confirmed by Stripe via ${method === "ach" ? "ACH bank account" : "card / wallet"}.`,
   });
+  try {
+    await sendInvoicePaidNotification({ invoiceNumber: invoice.invoiceNumber, customerName: invoice.customerName, amount: expectedCents / 100, method, invoiceId });
+  } catch (error) { console.error("[stripe-webhook] owner paid notification failed", error); }
   try { await archiveInvoicePdf(invoiceId, "paid"); } catch { /* payment remains authoritative */ }
   for (const path of ["/invoices", "/payments", "/reports", "/", `/portal/${invoice.portalToken}`, `/portal/${invoice.portalToken}/receipt`]) revalidatePath(path);
 }

@@ -14,9 +14,12 @@ export default async function TimesheetPage() {
   if (!profile) redirect("/sign-in");
 
   if (profile.role === "manager") {
-    const [rows, staff, calls] = await Promise.all([getTimesheetHistory(250), getTimekeepingStaff(), getManagerStaffCalls(250)]);
+    const [open, rows, staff, calls] = await Promise.all([getOpenTimesheet(profile.id), getTimesheetHistory(250), getTimekeepingStaff(), getManagerStaffCalls(250)]);
     return (
-      <AppShell title="Team Time & Activity">
+      <AppShell title="Clock & Team Time">
+        <SectionCard title="Your clock">
+          <TimesheetPanel initialOpen={open} />
+        </SectionCard>
         <SectionCard title="Employee time, calls & notes">
           <ManagerTimesheetAdmin rows={rows} staff={staff} calls={calls} />
         </SectionCard>
