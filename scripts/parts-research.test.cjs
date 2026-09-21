@@ -54,3 +54,9 @@ test('requires real search and keeps shared credential server-side', async () =>
     assert.equal(data.parts[0].partNumber,'123');
   } finally {global.fetch=oldFetch;if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;}
 });
+test('preserves manuals read through open-page and find-in-page actions', () => {
+  const payload=response();payload.output[0].action={type:'open_page',url};
+  assert.equal(research.parseResearchResponse(payload).manuals[0].url,url);
+  payload.output[0].action={type:'find_in_page',url};
+  assert.equal(research.parseResearchResponse(payload).parts[0].partNumber,'123');
+});
