@@ -142,18 +142,16 @@ test('recent duplicate and concurrent double submit insert only one call', async
   assert.equal(retry.searchParams.get('success'), 'Already saved');
 });
 
-test('office finalizes without signature; failed delivery preserves approval and job progress', async () => {
-  for (const status of ['sent', 'failed', 'skipped', 'configuration_required']) {
-    const h = harness({ chillbros_jobs: [job('work_complete')], chillbros_invoices: [invoice()] }, { status, recipient: status === 'skipped' ? null : 'test@example.com', error: status === 'sent' ? undefined : 'exact delivery error' }, 'office');
-    const result = await h.load('lib/chillbros/billing-actions.ts').finalizeInvoiceAction('invoice');
-    assert.equal(result.ok, status === 'sent');
-    assert.equal(h.tables.chillbros_invoices[0].status, 'approved');
-    assert.equal(h.tables.chillbros_invoices[0].signature_name, 'Approved by Chill Bros office');
-    assert.equal(h.tables.chillbros_jobs[0].status, status === 'sent' ? 'invoice_sent' : 'work_complete');
-    assert.equal(new Date(h.tables.chillbros_invoices[0].due_at) - new Date(h.tables.chillbros_invoices[0].signed_at), 7 * 86400000);
-    assert.equal(h.tables.chillbros_workflow_events[0].stage, 'invoice_finalized');
-    if (!result.ok) assert.match(result.error, /Invoice finalized.*exact delivery error/);
-  }
+test('office finalizes without sending; finalize never emails and never touches job status', async () => {
+  const h = harness({ chillbros_jobs: [job('work_complete')], chillbros_invoices: [invoice()] }, undefined, 'office');
+  const result = await h.load('lib/chillbros/billing-actions.ts').finalizeInvoiceAction('invoice');
+  assert.equal(result.ok, true);
+  assert.equal(h.tables.chillbros_invoices[0].status, 'approved');
+  assert.equal(h.tables.chillbros_invoices[0].signature_name, 'Approved by Chill Bros office');
+  assert.equal(h.tables.chillbros_jobs[0].status, 'work_complete');
+  assert.equal(new Date(h.tables.chillbros_invoices[0].due_at) - new Date(h.tables.chillbros_invoices[0].signed_at), 7 * 86400000);
+  assert.equal(h.tables.chillbros_workflow_events[0].stage, 'invoice_finalized');
+  assert.ok(!h.calls.some(call => call.table === 'chillbros_delivery_log'));
 });
 
 test('finalize guards status and role, preserves issued_at and never reopens closed jobs', async () => {

@@ -9,6 +9,7 @@ import { DocumentSignatureForm } from "@/components/document-signature-form";
 import { DocumentToolbar } from "@/components/document-toolbar";
 import { getInvoiceV2ByToken, invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { getJob } from "@/lib/chillbros/queries";
+import { getPaymentSettings } from "@/lib/chillbros/payment-settings";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ export default async function DocumentPage({ params }: Props) {
   const invoice = await getInvoiceV2ByToken(token);
   if (!invoice) notFound();
 
-  const job = invoice.jobId ? await getJob(invoice.jobId) : null;
+  const [job, paymentSettings] = await Promise.all([invoice.jobId ? getJob(invoice.jobId) : null, getPaymentSettings()]);
   const totals = invoiceTotals(invoice);
   const invoiceIssued = Boolean(invoice.issuedAt);
   const paid = invoice.paymentStatus === "paid";
@@ -74,7 +75,7 @@ export default async function DocumentPage({ params }: Props) {
             <div className="text-center sm:text-right"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">{invoiceIssued ? "Payment method" : "Document stage"}</p><p className="mt-2 break-words text-sm font-semibold [overflow-wrap:anywhere]">{invoiceIssued ? paid ? invoice.paymentMethod ? invoice.paymentMethod.replace(/_/g, " ") : "Recorded by office" : invoice.paymentMethod === "cash" ? "Cash (awaiting confirmation)" : invoice.paymentMethod === "check" ? "Check (awaiting confirmation)" : "Square" : invoice.status === "approved" ? "Signed estimate" : "Estimate awaiting signature"}</p>{invoice.status === "approved" ? <Link href={`/api/portal/${token}/pdf?stage=${paid ? "paid" : "approved"}`} target="_blank" className="mt-4 inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-xs"><FileDown className="h-3.5 w-3.5" />Archived PDF</Link> : null}</div>
           </section>
 
-          {invoiceIssued && invoice.status === "approved" ? <DocumentPaymentMethods token={token} initialMethod={invoice.paymentMethod} paymentStatus={invoice.paymentStatus} amountDue={totals.total} invoiceNumber={invoice.invoiceNumber} /> : invoice.status === "approved" ? <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900"><strong>Next step:</strong> Chill Bros completes the approved work. This same document becomes the final invoice when the job is finished. No final payment is due yet.</section> : <section className="rounded-xl border border-zinc-300 bg-zinc-50 p-4 text-sm leading-6 text-zinc-700"><strong>Next step:</strong> Sign and approve the estimate above.</section>}
+          {invoiceIssued && invoice.status === "approved" ? <DocumentPaymentMethods token={token} initialMethod={invoice.paymentMethod} paymentStatus={invoice.paymentStatus} amountDue={totals.total} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} /> : invoice.status === "approved" ? <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900"><strong>Next step:</strong> Chill Bros completes the approved work. This same document becomes the final invoice when the job is finished. No final payment is due yet.</section> : <section className="rounded-xl border border-zinc-300 bg-zinc-50 p-4 text-sm leading-6 text-zinc-700"><strong>Next step:</strong> Sign and approve the estimate above.</section>}
         </div>
       </article>
     </div>

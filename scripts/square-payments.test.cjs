@@ -26,32 +26,60 @@ function load(file) {
 const { ClientPortalActions } = load('components/client-portal-actions.tsx');
 const { DocumentPaymentMethods } = load('components/document-payment-methods.tsx');
 const render = (component, props) => renderToStaticMarkup(React.createElement(component, props));
-const invoice = { status: 'approved', issuedAt: '2026-09-17', paymentStatus: 'unpaid', invoiceNumber: 'INV-123', portalToken: 'token', signatureName: null, paymentMethod: 'zelle' };
 
-test('approved issued invoice offers Square with cash and check alternatives and exact total', () => {
-  for (const html of [render(ClientPortalActions, { invoice, amountDue: 123.45 }), render(DocumentPaymentMethods, { paymentStatus: 'unpaid', invoiceNumber: 'INV-123', amountDue: 123.45 })]) {
+const configuredSettings = { zelleContact: 'owner@chillpros.example', venmoHandle: '@chill-pros', chimeHandle: '$ChillPros', checkPayableTo: 'Chill Professionals LLC', checkMailingAddress: '123 Main St, Austin, TX' };
+const unconfiguredSettings = { zelleContact: '', venmoHandle: '', chimeHandle: '', checkPayableTo: '', checkMailingAddress: '' };
+const invoice = { status: 'approved', issuedAt: '2026-09-17', paymentStatus: 'unpaid', invoiceNumber: 'INV-123', portalToken: 'token', signatureName: null, paymentMethod: null };
+
+test('approved issued invoice defaults to the card tab, offers Square, and lists every payment tab', () => {
+  for (const html of [
+    render(ClientPortalActions, { invoice, amountDue: 123.45, paymentSettings: configuredSettings }),
+    render(DocumentPaymentMethods, { paymentStatus: 'unpaid', invoiceNumber: 'INV-123', amountDue: 123.45, token: 'token', initialMethod: null, settings: configuredSettings }),
+  ]) {
     assert.match(html, /href="https:\/\/square.link\/u\/TezbYuSG"/);
     assert.match(html, /Enter \$123\.45 in Square/);
     assert.match(html, /INV-123/);
-    assert.match(html, /value="cash"/);
-    assert.match(html, /value="check"/);
-    assert.match(html, /until Chill Pros confirms/);
-    assert.doesNotMatch(html, /Zelle|Venmo|Cash App|Other ways|stripe\/checkout|Selected manual/i);
+    assert.match(html, />Zelle</);
+    assert.match(html, />Venmo</);
+    assert.match(html, />Chime</);
+    assert.match(html, />Check</);
+    assert.match(html, />Cash</);
+    assert.doesNotMatch(html, /stripe\/checkout/i);
   }
+});
+
+test('unconfigured manual methods tell the customer to contact the office instead of offering a broken option', () => {
+  const zelleActive = { ...invoice, paymentMethod: 'zelle' };
+  const configured = render(ClientPortalActions, { invoice: zelleActive, amountDue: 123.45, paymentSettings: configuredSettings });
+  assert.match(configured, /Send \$123\.45 via Zelle to owner@chillpros\.example/);
+  assert.match(configured, /Marked as paying by Zelle/);
+
+  const unconfigured = render(ClientPortalActions, { invoice: zelleActive, amountDue: 123.45, paymentSettings: unconfiguredSettings });
+  assert.match(unconfigured, /Zelle isn(?:&#x27;|')t set up yet/);
+  assert.doesNotMatch(unconfigured, /paying by Zelle/);
+});
+
+test('check tab shows payable-to and mailing address when configured', () => {
+  const checkActive = { ...invoice, paymentMethod: 'check' };
+  const html = render(ClientPortalActions, { invoice: checkActive, amountDue: 123.45, paymentSettings: configuredSettings });
+  assert.match(html, /Make checks payable to Chill Professionals LLC/);
+  assert.match(html, /123 Main St, Austin, TX/);
 });
 
 test('estimates, unapproved invoices and paid invoices have no checkout link', () => {
   for (const changes of [{ issuedAt: null }, { status: 'awaiting_approval' }, { status: 'draft' }, { paymentStatus: 'paid' }]) {
-    assert.doesNotMatch(render(ClientPortalActions, { invoice: { ...invoice, ...changes }, amountDue: 123.45 }), /square\.link/);
+    assert.doesNotMatch(render(ClientPortalActions, { invoice: { ...invoice, ...changes }, amountDue: 123.45, paymentSettings: configuredSettings }), /square\.link/);
   }
-  assert.doesNotMatch(render(DocumentPaymentMethods, { paymentStatus: 'paid', invoiceNumber: 'INV-123', amountDue: 123.45 }), /square\.link/);
+  const paidHtml = render(DocumentPaymentMethods, { paymentStatus: 'paid', invoiceNumber: 'INV-123', amountDue: 123.45, token: 'token', initialMethod: null, settings: configuredSettings });
+  assert.doesNotMatch(paidHtml, /square\.link/);
+  assert.match(paidHtml, /Payment received/);
 });
 
 test('out-of-range totals cannot open the buyer-entered Square checkout', () => {
   for (const amountDue of [0, -1, 0.99, 50000.01, NaN, Infinity]) {
-    assert.doesNotMatch(render(ClientPortalActions, { invoice, amountDue }), /href="https:\/\/square\.link/);
+    assert.doesNotMatch(render(ClientPortalActions, { invoice, amountDue, paymentSettings: configuredSettings }), /href="https:\/\/square\.link/);
   }
-  for (const amountDue of [1, 50000]) assert.match(render(ClientPortalActions, { invoice, amountDue }), /href="https:\/\/square\.link/);
+  for (const amountDue of [1, 50000]) assert.match(render(ClientPortalActions, { invoice, amountDue, paymentSettings: configuredSettings }), /href="https:\/\/square\.link/);
 });
 
 test('retired Stripe endpoint never creates a session', async () => {

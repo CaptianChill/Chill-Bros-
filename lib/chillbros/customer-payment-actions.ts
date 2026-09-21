@@ -3,14 +3,21 @@
 import { revalidatePath } from "next/cache";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { getPaymentSettings } from "./payment-settings";
 import type { PaymentMethod } from "./types";
 
 type Result = { ok: true } | { ok: false; error: string };
 
-const CUSTOMER_PAYMENT_METHODS = new Set<PaymentMethod>(["cash", "check"]);
+const CUSTOMER_PAYMENT_METHODS = new Set<PaymentMethod>(["cash", "check", "zelle", "venmo", "chime"]);
+const CONFIGURABLE_METHODS = new Set<PaymentMethod>(["zelle", "venmo", "chime"]);
 
 export async function setCustomerPaymentMethodAction(token: string, method: PaymentMethod): Promise<Result> {
   if (!CUSTOMER_PAYMENT_METHODS.has(method)) return { ok: false, error: "Choose an available payment method." };
+  if (CONFIGURABLE_METHODS.has(method)) {
+    const settings = await getPaymentSettings();
+    const configured = method === "zelle" ? settings.zelleContact : method === "venmo" ? settings.venmoHandle : settings.chimeHandle;
+    if (!configured.trim()) return { ok: false, error: `${method === "zelle" ? "Zelle" : method === "venmo" ? "Venmo" : "Chime"} is not set up yet. Choose another payment option.` };
+  }
   const supabase = createServiceRoleClient();
   const { data: invoice } = await supabase
     .from("chillbros_invoices")

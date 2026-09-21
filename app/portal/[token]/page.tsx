@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { getInvoiceV2ByToken, invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { getJob } from "@/lib/chillbros/queries";
+import { getPaymentSettings } from "@/lib/chillbros/payment-settings";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   const [{ token }, query] = await Promise.all([params, searchParams]);
   const invoice = await getInvoiceV2ByToken(token);
   if (!invoice) notFound();
-  const job = invoice.jobId ? await getJob(invoice.jobId) : null;
+  const [job, paymentSettings] = await Promise.all([invoice.jobId ? getJob(invoice.jobId) : null, getPaymentSettings()]);
   const totals = invoiceTotals(invoice);
   const invoiceIssued = Boolean(invoice.issuedAt);
   const paid = invoice.paymentStatus === "paid";
@@ -60,7 +61,7 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
 
         <SectionCard eyebrow={invoiceIssued ? "Payment" : "Approval"} title={invoiceIssued ? "Pay securely" : invoice.status === "approved" ? "Approved · next step is the work" : "Review and approve"} description={invoiceIssued ? "Pay through Square using the invoice total shown here." : "Approval authorizes the work. Final payment does not open until Chill Bros completes the job and issues the invoice."}>
           <div className="mb-4 grid gap-2 sm:grid-cols-2"><div className="rounded-xl border border-[#2d7dff]/15 bg-black/40 p-3"><p className="text-xs text-zinc-500">{invoiceIssued ? "Invoice total" : "Estimate total"}</p><p className="mt-1 text-xl font-semibold text-[#bafcfc]">{money(totals.total)}</p></div><div className="rounded-xl border border-[#2d7dff]/15 bg-black/40 p-3"><p className="text-xs text-zinc-500">Status</p><p className="mt-1 text-sm font-semibold text-white">{statusLabel}</p></div></div>
-          <ClientPortalActions invoice={invoice} amountDue={totals.total} />
+          <ClientPortalActions invoice={invoice} amountDue={totals.total} paymentSettings={paymentSettings} />
         </SectionCard>
       </div>
     </div>
