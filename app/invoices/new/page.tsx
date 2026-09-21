@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { TextareaWithAI } from "@/components/textarea-with-ai";
 import { getCustomers, getFeeSettings, getPartsCatalog, getPriceBookEntries } from "@/lib/chillbros/queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createDirectInvoiceAction } from "./actions";
@@ -58,7 +59,7 @@ export default async function NewInvoicePage({ searchParams }: Props) {
               <label className={label}>Service location<input name="jobLocation" placeholder="Optional" className={`${input} mt-1`} /></label>
               <label className={label}>Description<input name="jobDescription" placeholder={isQuote ? "Quoted work / scope" : "Service performed / invoice description"} className={`${input} mt-1`} /></label>
             </div>
-            <label className={label}>Work / scope notes<textarea name="workPerformed" rows={3} placeholder="Optional internal or customer-facing summary" className={`${input} mt-1 resize-y`} /></label>
+            <label className={label}>Work / scope notes<TextareaWithAI name="workPerformed" rows={3} placeholder="Optional internal or customer-facing summary" className={`${input} mt-1 resize-y`} /></label>
           </div>
         </section>
 
@@ -70,7 +71,7 @@ export default async function NewInvoicePage({ searchParams }: Props) {
             <label className={label}>Discount $<input name="discount" type="number" min="0" step="0.01" defaultValue="0" className={`${input} mt-1`} /></label>
             <label className={label}>Sales tax %<input name="taxRate" type="number" min="0" max="25" step="0.001" defaultValue="8.25" className={`${input} mt-1`} /></label>
           </div>
-          <label className={`${label} mt-3 block`}>Customer notes<textarea name="notes" rows={3} placeholder="Warranty, terms, thank-you note, exclusions, etc." className={`${input} mt-1 resize-y`} /></label>
+          <label className={`${label} mt-3 block`}>Customer notes<TextareaWithAI name="notes" rows={3} placeholder="Warranty, terms, thank-you note, exclusions, etc." className={`${input} mt-1 resize-y`} /></label>
         </section>
 
         <section className="rounded-3xl border border-amber-400/25 bg-amber-500/[0.04] p-4 sm:p-5">

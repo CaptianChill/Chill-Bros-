@@ -49,6 +49,27 @@ export async function closeCallAction(jobId: string): Promise<Result> {
   return { ok: true };
 }
 
+export async function reassignJobTechnicianAction(jobId: string, technicianId: string): Promise<Result> {
+  const guard = await requireOfficeOrManager();
+  if (!guard.ok) return guard;
+  const supabase = createServiceRoleClient();
+  const { data: job, error: readError } = await supabase.from("chillbros_jobs").select("id,customer_id,status,archived_at").eq("id", jobId).maybeSingle();
+  if (readError || !job || job.archived_at) return { ok: false, error: "Call is unavailable." };
+  if (!ACTIVE_STATUSES.includes(job.status as (typeof ACTIVE_STATUSES)[number])) return { ok: false, error: `Cannot dispatch a call with current status "${job.status}".` };
+
+  const techId = technicianId.trim() || null;
+  if (techId) {
+    const { data: tech } = await supabase.from("chillbros_profiles").select("id,role,status").eq("id", techId).maybeSingle();
+    if (!tech || tech.status !== "active" || !["technician", "manager"].includes(tech.role)) return { ok: false, error: "Choose an active technician." };
+  }
+
+  const { error } = await supabase.from("chillbros_jobs").update({ assigned_tech_id: techId, updated_at: new Date().toISOString() }).eq("id", jobId);
+  if (error) return { ok: false, error: error.message };
+  await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, actor_id: guard.profile.id, stage: "reassigned", message: techId ? `${guard.profile.fullName} dispatched this call.` : `${guard.profile.fullName} unassigned this call.` });
+  refresh(jobId, job.customer_id);
+  return { ok: true };
+}
+
 export async function cancelCallAction(jobId: string): Promise<Result> {
   const guard = await requireOfficeOrManager();
   if (!guard.ok) return guard;
