@@ -133,7 +133,8 @@ export async function processFieldNoteImages(input: {
           ],
         },
       ],
-      maxOutputTokens: 3000,
+      maxOutputTokens: 10000,
+      abortSignal: AbortSignal.timeout(180000),
     });
 
     return { ok: true, data: result.object, model: FIELD_NOTES_MODEL };

@@ -1,5 +1,6 @@
 {
   "crons": [
+    { "path": "/api/cron/field-notes", "schedule": "*/5 * * * *" },
     {
       "path": "/api/cron/revenue-radar",
       "schedule": "15 13 * * *"

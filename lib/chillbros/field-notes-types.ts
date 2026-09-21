@@ -72,6 +72,7 @@ export type FieldNoteSubmissionSummary = {
 };
 
 export type FieldNoteSubmission = FieldNoteSubmissionSummary & {
+  updatedAt: string;
   technicianNote: string | null;
   rawTranscription: string | null;
   customerComplaint: string | null;

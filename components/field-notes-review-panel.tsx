@@ -14,6 +14,7 @@ import {
 } from "@/lib/chillbros/field-notes-actions";
 import type { FieldNoteMaterial, FieldNoteSubmission } from "@/lib/chillbros/field-notes-types";
 import { FIELD_NOTE_STATUS_LABELS } from "@/lib/chillbros/field-notes-types";
+import { FieldNoteLinks } from "./field-note-links";
 import { StatusPill } from "@/components/status-pill";
 
 const STATUS_TONE = {
@@ -35,8 +36,10 @@ function EditableField({ label, value, onChange, rows = 3 }: { label: string; va
   );
 }
 
-export function FieldNotesReviewPanel({ submission }: { submission: FieldNoteSubmission }) {
+export function FieldNotesReviewPanel({ submission, customers }: { submission: FieldNoteSubmission; customers: { id: string; name: string }[] }) {
   const router = useRouter();
+  const [reviewed, setReviewed] = useState(false);
+  const editable = ["ready", "needs_review", "processing_failed"].includes(submission.status);
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -74,42 +77,50 @@ export function FieldNotesReviewPanel({ submission }: { submission: FieldNoteSub
   function saveEdits() {
     setError(null);
     startTransition(async () => {
-      const result = await updateFieldNoteSubmissionAction(submission.id, form);
-      if (!result.ok) { setError(result.error); return; }
+      try {
+      const result = await updateFieldNoteSubmissionAction(submission.id, form, submission.updatedAt);
+      if (!result.ok) { setError(result.error); router.refresh(); return; }
       setEditing(false);
       router.refresh();
+      } catch { setError("The connection was interrupted. Refresh to check the saved status before retrying."); }
     });
   }
 
   function approve() {
     setError(null);
     startTransition(async () => {
-      const result = await approveFieldNoteSubmissionAction(submission.id);
-      if (!result.ok) { setError(result.error); return; }
+      try {
+      const result = await approveFieldNoteSubmissionAction(submission.id, submission.updatedAt, reviewed);
+      if (!result.ok) { setError(result.error); router.refresh(); return; }
       router.refresh();
+      } catch { setError("The connection was interrupted. Refresh to check the saved status before retrying."); }
     });
   }
 
   function complete() {
     setError(null);
     startTransition(async () => {
-      const result = await completeFieldNoteSubmissionAction(submission.id);
-      if (!result.ok) { setError(result.error); return; }
+      try {
+      const result = await completeFieldNoteSubmissionAction(submission.id, submission.updatedAt);
+      if (!result.ok) { setError(result.error); router.refresh(); return; }
       router.refresh();
+      } catch { setError("The connection was interrupted. Refresh to check the saved status before retrying."); }
     });
   }
 
   function retry() {
     setError(null);
     startTransition(async () => {
+      try {
       const result = await retryFieldNoteProcessingAction(submission.id);
-      if (!result.ok) { setError(result.error); return; }
+      if (!result.ok) { setError(result.error); router.refresh(); return; }
       router.refresh();
+      } catch { setError("The connection was interrupted. Refresh to check the saved status before retrying."); }
     });
   }
 
   async function copy(kind: "internal" | "customer") {
-    const text = kind === "internal" ? form.cleanedInternalNotes ?? "" : form.customerSummary ?? "";
+    const text = kind === "internal" ? submission.cleanedInternalNotes ?? "" : submission.customerSummary ?? "";
     try {
       await navigator.clipboard.writeText(text);
       setCopied(kind);
@@ -144,9 +155,9 @@ export function FieldNotesReviewPanel({ submission }: { submission: FieldNoteSub
           </div>
         </div>
 
-        {submission.status === "processing_failed" ? (
+        {["submitted", "processing", "processing_failed"].includes(submission.status) ? (
           <div className="rounded-2xl border border-rose-500/25 bg-rose-500/5 p-4 text-left">
-            <p className="flex items-center gap-2 text-sm font-medium text-rose-200"><AlertTriangle className="h-4 w-4" />AI processing failed</p>
+            <p className="flex items-center gap-2 text-sm font-medium text-rose-200"><AlertTriangle className="h-4 w-4" />Processing status</p>
             <p className="mt-1 text-xs text-rose-200/80">{submission.aiError}</p>
             <button type="button" onClick={retry} disabled={pending} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-rose-400/40 px-3 py-2 text-xs text-rose-100"><RefreshCw className="h-3.5 w-3.5" />Retry AI processing</button>
           </div>
@@ -182,24 +193,27 @@ export function FieldNotesReviewPanel({ submission }: { submission: FieldNoteSub
         {error ? <p className="rounded-xl border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</p> : null}
 
         <div className="flex flex-wrap gap-2">
-          {!editing ? (
+          {!editing && editable ? (
             <button type="button" onClick={() => setEditing(true)} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]"><Pencil className="h-3.5 w-3.5" />Edit</button>
-          ) : (
+          ) : editing ? (
             <>
               <button type="button" onClick={saveEdits} disabled={pending} className="inline-flex items-center gap-2 rounded-xl bg-[#2d7dff] px-3 py-2 text-xs font-medium text-white"><Check className="h-3.5 w-3.5" />Save</button>
-              <button type="button" onClick={() => setEditing(false)} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/20 px-3 py-2 text-xs text-zinc-300"><X className="h-3.5 w-3.5" />Cancel</button>
+              <button type="button" disabled={pending} onClick={() => { setForm({ customerComplaint: submission.customerComplaint ?? "", diagnosis: submission.diagnosis ?? "", workPerformed: submission.workPerformed ?? "", materials: submission.materials, laborHours: submission.laborHours, driveHours: submission.driveHours, equipmentStatus: submission.equipmentStatus ?? "", recommendations: submission.recommendations ?? "", followUpRequired: submission.followUpRequired, cleanedInternalNotes: submission.cleanedInternalNotes ?? "", customerSummary: submission.customerSummary ?? "" }); setEditing(false); }} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/20 px-3 py-2 text-xs text-zinc-300"><X className="h-3.5 w-3.5" />Cancel</button>
             </>
-          )}
-          <button type="button" onClick={() => copy("internal")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]"><Clipboard className="h-3.5 w-3.5" />{copied === "internal" ? "Copied" : "Copy Notes"}</button>
-          <button type="button" onClick={() => copy("customer")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]"><Clipboard className="h-3.5 w-3.5" />{copied === "customer" ? "Copied" : "Customer Version"}</button>
-          {submission.status !== "approved" && submission.status !== "completed" ? (
-            <button type="button" onClick={approve} disabled={pending} className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100"><Check className="h-3.5 w-3.5" />Approve</button>
           ) : null}
-          {submission.status === "approved" ? (
-            <button type="button" onClick={complete} disabled={pending} className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100"><Check className="h-3.5 w-3.5" />Complete</button>
+          <button type="button" disabled={editing || pending} onClick={() => copy("internal")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]"><Clipboard className="h-3.5 w-3.5" />{copied === "internal" ? "Copied" : "Copy Notes"}</button>
+          <button type="button" disabled={editing || pending} onClick={() => copy("customer")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]"><Clipboard className="h-3.5 w-3.5" />{copied === "customer" ? "Copied" : "Customer Version"}</button>
+          {editable ? (
+            <button type="button" onClick={approve} disabled={pending || editing || !reviewed} className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100"><Check className="h-3.5 w-3.5" />Approve</button>
+          ) : null}
+          {submission.status === "approved" || (submission.status === "completed" && submission.images.length > 0) ? (
+            <button type="button" onClick={complete} disabled={pending} className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100"><Check className="h-3.5 w-3.5" />{submission.status === "completed" ? "Retry photo cleanup" : "Complete & remove photos"}</button>
           ) : null}
         </div>
 
+        {editable ? <><label className="flex items-start gap-2 rounded-xl border border-cyan-900 p-3 text-sm"><input type="checkbox" disabled={editing || pending} checked={reviewed} onChange={e => setReviewed(e.target.checked)} />I checked the saved text and all flagged technical values against the photos.</label><FieldNoteLinks submission={submission} customers={customers} disabled={editing || pending} /></> : null}
+        {submission.status === "approved" ? <p className="text-sm text-emerald-200">The reviewed text is saved and locked. Complete keeps this service record and removes its temporary photos.</p> : null}
+        {submission.status === "completed" && !submission.images.length ? <p className="text-sm text-emerald-200">Verified text is saved. Temporary photos have been removed.</p> : null}
         {editing ? (
           <div className="space-y-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
             <EditableField label="Customer complaint" value={form.customerComplaint ?? ""} onChange={(v) => setForm((c) => ({ ...c, customerComplaint: v }))} />

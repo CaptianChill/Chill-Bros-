@@ -57,16 +57,17 @@ export default async function OwnerAccessPage() {
 
   if (!isOwner) redirect("/");
 
-  const [accounts, fieldNoteCounts] = await Promise.all([getStaffAccounts(), getFieldNoteInboxCounts()]);
+  const [accounts, fieldNoteCounts] = await Promise.all([getStaffAccounts(), getFieldNoteInboxCounts().catch(() => null)]);
 
   return (
     <AppShell title="Owner Control Center">
       <div className="space-y-4">
         <SectionCard eyebrow="Technician intake" title="Field Notes" description="Eric's handwritten service notes, cleaned up by AI and waiting on your review.">
+          {!fieldNoteCounts ? <p role="alert">Field Notes could not load. Open the inbox to retry.</p> : null}
           <Link href="/owner/field-notes" className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-left transition hover:border-[#8ffafa]/50"><p className="text-xs uppercase tracking-[0.2em] text-zinc-500">New</p><p className="mt-1 text-3xl font-semibold text-white">{fieldNoteCounts.new}</p></div>
-            <div className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4 text-left transition hover:border-amber-300/60"><p className="text-xs uppercase tracking-[0.2em] text-amber-200">Needs Review</p><p className="mt-1 text-3xl font-semibold text-white">{fieldNoteCounts.needsReview}</p></div>
-            <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/5 p-4 text-left transition hover:border-emerald-300/60"><p className="text-xs uppercase tracking-[0.2em] text-emerald-200">Approved</p><p className="mt-1 text-3xl font-semibold text-white">{fieldNoteCounts.approved}</p></div>
+            <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-left transition hover:border-[#8ffafa]/50"><p className="text-xs uppercase tracking-[0.2em] text-zinc-500">New</p><p className="mt-1 text-3xl font-semibold text-white">{fieldNoteCounts?.new ?? "—"}</p></div>
+            <div className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4 text-left transition hover:border-amber-300/60"><p className="text-xs uppercase tracking-[0.2em] text-amber-200">Needs Review</p><p className="mt-1 text-3xl font-semibold text-white">{fieldNoteCounts?.needsReview ?? "—"}</p></div>
+            <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/5 p-4 text-left transition hover:border-emerald-300/60"><p className="text-xs uppercase tracking-[0.2em] text-emerald-200">Approved</p><p className="mt-1 text-3xl font-semibold text-white">{fieldNoteCounts?.approved ?? "—"}</p></div>
           </Link>
         </SectionCard>
 

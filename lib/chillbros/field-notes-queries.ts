@@ -1,3 +1,5 @@
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { checkDb } from "./field-notes-service";
 import "server-only";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
@@ -12,10 +14,10 @@ import type {
   FieldNoteSubmissionSummary,
 } from "./field-notes-types";
 
-const MEDIA_BUCKET = "chillbros-media";
-const SIGNED_URL_TTL_SECONDS = 3600;
+
 
 type SubmissionRow = {
+  updated_at: string;
   id: string;
   technician_id: string;
   customer_id: string | null;
@@ -57,7 +59,7 @@ const DETAIL_SELECT =
   "id, technician_id, customer_id, customer_name_freeform, job_id, equipment_id, status, technician_note, raw_transcription," +
   " customer_complaint, diagnosis, work_performed, materials, labor_hours, drive_hours, equipment_status, recommendations," +
   " follow_up_required, cleaned_internal_notes, customer_summary, confidence_flags, ai_model, ai_error, submitted_at," +
-  " processed_at, approved_at, approved_by, completed_at," +
+  " processed_at, approved_at, approved_by, completed_at, updated_at," +
   " technician:chillbros_profiles!chillbros_field_note_submissions_technician_id_fkey(full_name)," +
   " customer:chillbros_customers(name)";
 
@@ -85,36 +87,45 @@ function toSummary(row: SubmissionRow, imageCount: number): FieldNoteSubmissionS
 }
 
 export async function getFieldNoteInboxCounts(): Promise<FieldNoteInboxCounts> {
+  const profile = await getCurrentStaffProfile();
+  if (profile?.role !== "manager") throw new Error("Manager access required.");
   const supabase = createServiceRoleClient();
-  const [{ count: newCount }, { count: needsReviewCount }, { count: approvedCount }] = await Promise.all([
+  const [newResult, reviewResult, approvedResult] = await Promise.all([
     supabase.from("chillbros_field_note_submissions").select("id", { count: "exact", head: true }).in("status", ["submitted", "processing"]),
     supabase.from("chillbros_field_note_submissions").select("id", { count: "exact", head: true }).in("status", ["needs_review", "ready", "processing_failed"]),
     supabase.from("chillbros_field_note_submissions").select("id", { count: "exact", head: true }).eq("status", "approved"),
   ]);
-  return { new: newCount ?? 0, needsReview: needsReviewCount ?? 0, approved: approvedCount ?? 0 };
+  for (const result of [newResult, reviewResult, approvedResult]) checkDb(result.error, "Field Notes is unavailable");
+  return { new: newResult.count ?? 0, needsReview: reviewResult.count ?? 0, approved: approvedResult.count ?? 0 };
 }
 
 async function imageCountsBySubmission(submissionIds: string[]): Promise<Map<string, number>> {
   const counts = new Map<string, number>();
   if (submissionIds.length === 0) return counts;
   const supabase = createServiceRoleClient();
-  const { data } = await supabase.from("chillbros_field_note_images").select("submission_id").in("submission_id", submissionIds);
+  const { data, error } = await supabase.from("chillbros_field_note_images").select("submission_id").in("submission_id", submissionIds);
+  checkDb(error);
   for (const row of data ?? []) counts.set(row.submission_id, (counts.get(row.submission_id) ?? 0) + 1);
   return counts;
 }
 
 export async function getFieldNoteInbox(statuses?: FieldNoteStatus[]): Promise<FieldNoteSubmissionSummary[]> {
+  const profile = await getCurrentStaffProfile();
+  if (profile?.role !== "manager") throw new Error("Manager access required.");
   const supabase = createServiceRoleClient();
   let query = supabase.from("chillbros_field_note_submissions").select(SUMMARY_SELECT).order("submitted_at", { ascending: false }).limit(200);
   if (statuses && statuses.length > 0) query = query.in("status", statuses);
   const { data, error } = await query;
-  if (error || !data) return [];
+  checkDb(error, "Could not load field notes");
+  if (!data) return [];
   const rows = data as unknown as SubmissionRow[];
   const counts = await imageCountsBySubmission(rows.map((row) => row.id));
   return rows.map((row) => toSummary(row, counts.get(row.id) ?? 0));
 }
 
 export async function getTechnicianFieldNotes(technicianId: string, limit = 20): Promise<FieldNoteSubmissionSummary[]> {
+  const profile = await getCurrentStaffProfile();
+  if (!profile || (profile.role !== "manager" && profile.id !== technicianId)) throw new Error("Access denied.");
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from("chillbros_field_note_submissions")
@@ -122,19 +133,23 @@ export async function getTechnicianFieldNotes(technicianId: string, limit = 20):
     .eq("technician_id", technicianId)
     .order("submitted_at", { ascending: false })
     .limit(limit);
-  if (error || !data) return [];
+  checkDb(error, "Could not load field notes");
+  if (!data) return [];
   const rows = data as unknown as SubmissionRow[];
   const counts = await imageCountsBySubmission(rows.map((row) => row.id));
   return rows.map((row) => toSummary(row, counts.get(row.id) ?? 0));
 }
 
 export async function getFieldNoteSubmission(id: string): Promise<FieldNoteSubmission | null> {
+  const profile = await getCurrentStaffProfile();
+  if (profile?.role !== "manager") throw new Error("Manager access required.");
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase.from("chillbros_field_note_submissions").select(DETAIL_SELECT).eq("id", id).maybeSingle();
-  if (error || !data) return null;
+  checkDb(error, "Could not load the field note");
+  if (!data) return null;
   const row = data as unknown as SubmissionRow;
 
-  const [{ data: imageRows }, { data: eventRows }] = await Promise.all([
+  const [imageResult, eventResult] = await Promise.all([
     supabase.from("chillbros_field_note_images").select("id, storage_path, filename, mime_type, page_number").eq("submission_id", id).order("page_number", { ascending: true }),
     supabase
       .from("chillbros_field_note_events")
@@ -143,20 +158,15 @@ export async function getFieldNoteSubmission(id: string): Promise<FieldNoteSubmi
       .order("created_at", { ascending: true }),
   ]);
 
-  const paths = (imageRows ?? []).map((image) => image.storage_path);
-  const signedUrlByPath = new Map<string, string>();
-  if (paths.length > 0) {
-    const { data: signed } = await supabase.storage.from(MEDIA_BUCKET).createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
-    for (const entry of signed ?? []) if (entry.signedUrl && entry.path) signedUrlByPath.set(entry.path, entry.signedUrl);
-  }
-
+  checkDb(imageResult.error); checkDb(eventResult.error);
+  const imageRows = imageResult.data; const eventRows = eventResult.data;
   const images: FieldNoteImage[] = (imageRows ?? []).map((image) => ({
     id: image.id,
     storagePath: image.storage_path,
     filename: image.filename,
     mimeType: image.mime_type,
     pageNumber: image.page_number,
-    url: signedUrlByPath.get(image.storage_path) ?? null,
+    url: `/api/field-notes/${id}/images/${image.id}`,
   }));
 
   const events: FieldNoteEvent[] = (eventRows ?? []).map((event) => {
@@ -187,6 +197,7 @@ export async function getFieldNoteSubmission(id: string): Promise<FieldNoteSubmi
     imageCount: images.length,
     hasConfidenceFlags: (row.confidence_flags ?? []).length > 0,
     submittedAt: row.submitted_at,
+    updatedAt: row.updated_at,
     technicianNote: row.technician_note,
     rawTranscription: row.raw_transcription,
     customerComplaint: row.customer_complaint,

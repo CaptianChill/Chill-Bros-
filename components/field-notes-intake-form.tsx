@@ -1,188 +1,107 @@
 "use client";
-
-import { useMemo, useRef, useState, useTransition } from "react";
-import { Camera, Loader2, Send, Upload, X } from "lucide-react";
-
-import { createFieldNoteSubmissionAction } from "@/lib/chillbros/field-notes-actions";
-import { StatusPill } from "@/components/status-pill";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { Camera, Upload, X } from "lucide-react";
+import { finishFieldNoteSubmissionAction, prepareFieldNoteSubmissionAction } from "@/lib/chillbros/field-notes-actions";
+import { prepareNotePhoto, readFieldNoteDraft, saveFieldNoteDraft, type FieldNoteDraft } from "@/lib/chillbros/field-note-draft";
 
 export type FieldJobOption = { id: string; customerId: string; customerName: string; location: string | null };
 export type CustomerOption = { id: string; name: string };
+export type FieldNotesIntakeTheme = { heading: string; subheading: string; sendLabel: string };
+const defaultTheme = { heading: "Field Notes", subheading: "Photograph your handwritten notes and send them to the office.", sendLabel: "SEND TO OFFICE" };
+const inputClass = "w-full rounded-xl border border-cyan-800 bg-black/60 px-3 py-3 text-base text-white";
 
-/**
- * Presentation-facing configuration. A future BoodaForge shell can override
- * these labels/tokens without touching the submission logic below.
- */
-export type FieldNotesIntakeTheme = {
-  heading: string;
-  subheading: string;
-  sendLabel: string;
-};
-
-const DEFAULT_THEME: FieldNotesIntakeTheme = {
-  heading: "Field Notes",
-  subheading: "Photograph your handwritten notes and send them to the office.",
-  sendLabel: "SEND TO OFFICE",
-};
-
-type PendingPhoto = { file: File; previewUrl: string };
-
-export function FieldNotesIntakeForm({
-  technicianName,
-  jobs,
-  customers,
-  theme = DEFAULT_THEME,
-  onSubmitted,
-}: {
-  technicianName: string;
-  jobs: FieldJobOption[];
-  customers: CustomerOption[];
-  theme?: FieldNotesIntakeTheme;
-  onSubmitted?: (result: { customerLabel: string; photoCount: number }) => void;
+export function FieldNotesIntakeForm({ technicianName, profileId, jobs, customers, theme = defaultTheme, onSubmitted }: {
+  technicianName: string; profileId: string; jobs: FieldJobOption[]; customers: CustomerOption[];
+  theme?: FieldNotesIntakeTheme; onSubmitted?: (result: { customerLabel: string; photoCount: number }) => void;
 }) {
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const uploadInputRef = useRef<HTMLInputElement>(null);
-  const [jobId, setJobId] = useState<string>(jobs[0]?.id ?? "");
-  const [otherCustomer, setOtherCustomer] = useState(false);
-  const [customerName, setCustomerName] = useState("");
-  const [note, setNote] = useState("");
-  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<{ customerLabel: string; photoCount: number; submittedAt: string } | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  const selectedJob = useMemo(() => jobs.find((job) => job.id === jobId) ?? null, [jobs, jobId]);
-  const matchedCustomer = useMemo(() => customers.find((customer) => customer.name.trim().toLowerCase() === customerName.trim().toLowerCase()) ?? null, [customers, customerName]);
-
-  function addFiles(fileList: FileList | null) {
-    if (!fileList || fileList.length === 0) return;
-    const next: PendingPhoto[] = [];
-    for (const file of Array.from(fileList)) next.push({ file, previewUrl: URL.createObjectURL(file) });
-    setPhotos((current) => [...current, ...next].slice(0, 10));
-    setError(null);
+  const router = useRouter();
+  const camera = useRef<HTMLInputElement>(null); const upload = useRef<HTMLInputElement>(null);
+  const busyRef = useRef(false);
+  const [draft, setDraft] = useState<FieldNoteDraft | null>(null);
+  const [busy, setBusy] = useState(false); const [progress, setProgress] = useState("");
+  const [error, setError] = useState<string | null>(null); const [storageWarning, setStorageWarning] = useState(false);
+  const [confirmation, setConfirmation] = useState(""); const [previews, setPreviews] = useState<string[]>([]);
+  const initialJobId = jobs[0]?.id ?? "";
+  const key = `draft:${profileId}`;
+  useEffect(() => {
+    let active = true;
+    const fresh = () => ({ id: crypto.randomUUID(), jobId: initialJobId, otherCustomer: !initialJobId, customerName: "", note: "", files: [], locked: false });
+    readFieldNoteDraft(key).then(saved => { if (active) setDraft(saved ?? fresh()); }).catch(() => { if (active) { setDraft(fresh()); setStorageWarning(true); } });
+    return () => { active = false; };
+  }, [key, initialJobId]);
+  useEffect(() => {
+    if (!draft) return;
+    void saveFieldNoteDraft(key, draft).catch(() => setStorageWarning(true));
+  }, [draft, key]);
+  useEffect(() => {
+    const urls = (draft?.files ?? []).map(file => URL.createObjectURL(file));
+    Promise.resolve().then(() => setPreviews(urls));
+    return () => urls.forEach(url => URL.revokeObjectURL(url));
+  }, [draft?.files]);
+  function patch(value: Partial<FieldNoteDraft>) { setDraft(d => d ? { ...d, ...value } : d); }
+  async function addFiles(files: FileList | null) {
+    if (!files || !draft || busyRef.current || draft.locked) return;
+    if (files.length + draft.files.length > 10) { setError("You can send up to 10 pages at a time."); return; }
+    busyRef.current = true; setBusy(true); setError(null);
+    try { const prepared: File[] = []; for (const file of Array.from(files)) { setProgress(`Preparing photo ${prepared.length + 1} of ${files.length}…`); prepared.push(await prepareNotePhoto(file)); } patch({ files: [...draft.files, ...prepared] }); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not open that photo."); }
+    finally { busyRef.current = false; setBusy(false); setProgress(""); }
   }
-
-  function removePhoto(index: number) {
-    setPhotos((current) => {
-      const target = current[index];
-      if (target) URL.revokeObjectURL(target.previewUrl);
-      return current.filter((_, i) => i !== index);
-    });
+  async function submit() {
+    if (!draft || busyRef.current) return;
+    const job = jobs.find(j => j.id === draft.jobId);
+    if (!draft.otherCustomer && !job) { setError("Choose your job, or select Different customer."); return; }
+    if (draft.otherCustomer && !draft.customerName.trim()) { setError("Enter the customer name."); return; }
+    if (!draft.files.length) { setError("Add at least one photo."); return; }
+    if (!navigator.onLine) { setError("You are offline. Your draft stays here; reconnect and press Send to Office."); return; }
+    busyRef.current = true; setBusy(true); setError(null); setConfirmation("");
+    const frozen = { ...draft, locked: true }; patch({ locked: true });
+    try {
+      await saveFieldNoteDraft(key, frozen).catch(() => setStorageWarning(true));
+      setProgress("Starting submission…");
+      const descriptors = await Promise.all(draft.files.map(async file => ({ name: file.name, size: file.size, sha256: Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()))).map(n => n.toString(16).padStart(2,"0")).join("") })));
+      const matches = customers.filter(c => c.name.trim().toLowerCase() === draft.customerName.trim().toLowerCase());
+      const prepared = await prepareFieldNoteSubmissionAction({ id: draft.id, customerId: draft.otherCustomer ? (matches.length === 1 ? matches[0].id : null) : job!.customerId, customerNameFreeform: draft.otherCustomer ? draft.customerName.trim() : null, jobId: draft.otherCustomer ? null : job!.id, equipmentId: null, technicianNote: draft.note }, descriptors);
+      if (!prepared.ok) throw new Error(prepared.error);
+      if (!prepared.data.sent) {
+        for (let i = 0; i < draft.files.length; i++) {
+          setProgress(`Sending photo ${i+1} of ${draft.files.length}…`);
+          const image = prepared.data.images.find(row => row.page_number === i+1);
+          if (!image) throw new Error("The photo list could not be verified. Please retry.");
+          const response = await fetch(`/api/field-notes/${draft.id}/images/${image.id}`, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: draft.files[i], signal: AbortSignal.timeout(90000) });
+          if (!response.ok || response.redirected) { const result = await response.json().catch(() => null); throw new Error(result?.error || "Photo upload failed. Check your connection and sign-in, then retry."); }
+        }
+        setProgress("Confirming delivery…");
+        const finished = await finishFieldNoteSubmissionAction(draft.id);
+        if (!finished.ok) throw new Error(finished.error);
+      }
+      const customerLabel = draft.otherCustomer ? draft.customerName : job!.customerName;
+      setConfirmation(`Notes sent to office. ${customerLabel} · ${draft.files.length} photos · ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Processing and review status appears below.`);
+      await saveFieldNoteDraft(key, null).catch(() => setStorageWarning(true));
+      setDraft({ id: crypto.randomUUID(), jobId: initialJobId, otherCustomer: !initialJobId, customerName: "", note: "", files: [], locked: false });
+      onSubmitted?.({ customerLabel, photoCount: draft.files.length }); router.refresh();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Sending failed. Your photos are still here; retry when connected."); }
+    finally { busyRef.current = false; setBusy(false); setProgress(""); }
   }
-
-  function handleSubmit() {
-    setError(null);
-    if (!otherCustomer && !selectedJob) { setError("Choose a customer/job, or switch to “Different customer”."); return; }
-    if (otherCustomer && !customerName.trim()) { setError("Type the customer's name."); return; }
-    if (photos.length === 0) { setError("Take or upload at least one photo of your notes."); return; }
-
-    startTransition(async () => {
-      const result = await createFieldNoteSubmissionAction(
-        {
-          customerId: otherCustomer ? matchedCustomer?.id ?? null : selectedJob?.customerId ?? null,
-          customerNameFreeform: otherCustomer ? customerName.trim() : null,
-          jobId: otherCustomer ? null : selectedJob?.id ?? null,
-          equipmentId: null,
-          technicianNote: note,
-        },
-        photos.map((photo) => photo.file),
-      );
-
-      if (!result.ok) { setError(result.error); return; }
-
-      const customerLabel = otherCustomer ? customerName.trim() : selectedJob?.customerName ?? "Customer";
-      const photoCount = photos.length;
-      for (const photo of photos) URL.revokeObjectURL(photo.previewUrl);
-      setPhotos([]);
-      setNote("");
-      setConfirmation({ customerLabel, photoCount, submittedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) });
-      onSubmitted?.({ customerLabel, photoCount });
-    });
-  }
-
-  return (
-    <div className="space-y-4 text-center">
-      <div>
-        <p className="text-xs uppercase tracking-[0.3em] text-[#8ffafa]">{theme.heading}</p>
-        <p className="mt-1 text-sm text-zinc-400">{theme.subheading}</p>
-        <p className="mt-1 text-sm text-zinc-500">Technician: <span className="text-white">{technicianName}</span></p>
-      </div>
-
-      {confirmation ? (
-        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/5 p-4 text-sm text-emerald-100">
-          <p className="font-medium">Notes sent to office.</p>
-          <p className="mt-1 text-xs text-emerald-200/80">{confirmation.customerLabel} · {confirmation.photoCount} photo{confirmation.photoCount === 1 ? "" : "s"} · {confirmation.submittedAt}</p>
-        </div>
-      ) : null}
-
-      {error ? <p className="rounded-xl border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</p> : null}
-
-      <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-left">
-        <p className="mb-2 text-sm font-medium text-white">Customer / Job</p>
-        {!otherCustomer ? (
-          <>
-            {jobs.length > 0 ? (
-              <select value={jobId} onChange={(event) => setJobId(event.target.value)} className="w-full rounded-xl border border-[#2d7dff]/30 bg-black/60 px-3 py-3 text-base text-white">
-                {jobs.map((job) => <option key={job.id} value={job.id}>{job.customerName}{job.location ? ` — ${job.location}` : ""}</option>)}
-              </select>
-            ) : <p className="text-sm text-zinc-500">No active field jobs assigned right now.</p>}
-            <button type="button" onClick={() => setOtherCustomer(true)} className="mt-2 text-xs text-[#8ffafa] underline underline-offset-2">Different customer / no job yet</button>
-          </>
-        ) : (
-          <>
-            <input
-              list="field-notes-customer-options"
-              value={customerName}
-              onChange={(event) => setCustomerName(event.target.value)}
-              placeholder="Type the customer's name"
-              className="w-full rounded-xl border border-[#2d7dff]/30 bg-black/60 px-3 py-3 text-base text-white placeholder:text-zinc-500"
-            />
-            <datalist id="field-notes-customer-options">{customers.map((customer) => <option key={customer.id} value={customer.name} />)}</datalist>
-            {jobs.length > 0 ? <button type="button" onClick={() => setOtherCustomer(false)} className="mt-2 text-xs text-[#8ffafa] underline underline-offset-2">Back to my assigned jobs</button> : null}
-          </>
-        )}
-      </div>
-
-      <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-medium text-white">Notes photos</p>
-          <StatusPill>{photos.length} added</StatusPill>
-        </div>
-
-        {photos.length > 0 ? (
-          <div className="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {photos.map((photo, index) => (
-              <div key={photo.previewUrl} className="relative aspect-square overflow-hidden rounded-xl border border-[#2d7dff]/20 bg-black/60">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.previewUrl} alt={`Note page ${index + 1}`} className="h-full w-full object-cover" />
-                <button type="button" onClick={() => removePhoto(index)} aria-label="Remove photo" className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white"><X className="h-3.5 w-3.5" /></button>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }} />
-        <input ref={uploadInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }} />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <button type="button" onClick={() => cameraInputRef.current?.click()} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[#2d7dff]/40 px-4 py-4 text-sm text-[#d9fbff] transition hover:bg-[#2d7dff]/10"><Camera className="h-5 w-5" />TAKE PHOTO</button>
-          <button type="button" onClick={() => uploadInputRef.current?.click()} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[#2d7dff]/40 px-4 py-4 text-sm text-[#d9fbff] transition hover:bg-[#2d7dff]/10"><Upload className="h-5 w-5" />UPLOAD PHOTOS</button>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-left">
-        <p className="mb-2 text-sm font-medium text-white">Optional additional note</p>
-        <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Anything you want to add for the office..." className="w-full rounded-xl border border-[#2d7dff]/30 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-500" />
-      </div>
-
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={pending}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2d7dff] px-4 py-4 text-base font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-[#2d7dff]/85 disabled:opacity-60"
-      >
-        {pending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-        {pending ? "Sending…" : theme.sendLabel}
-      </button>
-    </div>
-  );
+  if (!draft) return <p role="status">Opening your saved draft…</p>;
+  return <div className="space-y-5">
+    <div><h1 className="text-2xl font-semibold">{theme.heading}</h1><p className="mt-1 text-sm text-zinc-300">{theme.subheading}</p><p className="mt-2 text-sm">Technician: {technicianName}</p></div>
+    {confirmation ? <p role="status" className="rounded-xl bg-emerald-900/40 p-3">{confirmation}</p> : null}
+    {error ? <p role="alert" className="rounded-xl bg-red-950 p-3 text-red-100">{error}</p> : null}
+    {storageWarning ? <p role="alert" className="text-sm text-amber-200">This browser cannot save a local draft. Keep this page open until delivery is confirmed.</p> : null}
+    <fieldset disabled={busy || draft.locked} className="space-y-4 disabled:opacity-70">
+      {!draft.otherCustomer ? <label className="block space-y-2"><span>Customer / Job</span><select className={inputClass} value={draft.jobId} onChange={e => patch({ jobId: e.target.value })}><option value="">Choose a job</option>{jobs.map(j => <option key={j.id} value={j.id}>{j.customerName}{j.location ? ` — ${j.location}` : ""}</option>)}</select></label> : <label className="block space-y-2"><span>Customer name</span><input className={inputClass} list="field-customers" value={draft.customerName} maxLength={200} onChange={e => patch({ customerName: e.target.value })} /><datalist id="field-customers">{customers.map(c => <option key={c.id} value={c.name} />)}</datalist></label>}
+      <button type="button" onClick={() => patch({ otherCustomer: !draft.otherCustomer })} className="min-h-11 text-cyan-200 underline">{draft.otherCustomer ? "Choose from my assigned jobs" : "Different customer / no job yet"}</button>
+      <div className="grid grid-cols-3 gap-2">{previews.map((url,i) => <div key={url} className="relative"><Image width={300} height={400} unoptimized src={url} alt={`Note page ${i+1}`} className="aspect-[3/4] w-full rounded-lg object-cover" /><button aria-label={`Remove page ${i+1}`} type="button" className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full bg-black/80" onClick={() => patch({ files: draft.files.filter((_,index) => index !== i) })}><X /></button></div>)}</div>
+      <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { void addFiles(e.target.files); e.target.value = ""; }} />
+      <input ref={upload} type="file" accept="image/*" multiple className="hidden" onChange={e => { void addFiles(e.target.files); e.target.value = ""; }} />
+      <div className="grid grid-cols-2 gap-3"><button type="button" className="flex min-h-14 items-center justify-center gap-2 rounded-xl border border-cyan-700" onClick={() => camera.current?.click()}><Camera />Take photo</button><button type="button" className="flex min-h-14 items-center justify-center gap-2 rounded-xl border border-cyan-700" onClick={() => upload.current?.click()}><Upload />Upload photos</button></div>
+      <p className="text-xs text-zinc-400">Keep your original photos on your phone. Check that the writing is clear before sending.</p>
+      <label className="block space-y-2"><span>Additional note (optional)</span><textarea className={inputClass} rows={3} maxLength={10000} value={draft.note} onChange={e => patch({ note: e.target.value })} /></label>
+    </fieldset>
+    {draft.locked && !busy ? <p className="text-sm text-amber-200">This draft is ready to retry. Press Send to Office again to finish the same submission.</p> : null}
+    <button type="button" disabled={busy} onClick={() => void submit()} className="min-h-14 w-full rounded-xl bg-blue-600 px-4 py-4 font-semibold disabled:opacity-60">{busy ? progress || "Sending…" : theme.sendLabel}</button>
+  </div>;
 }

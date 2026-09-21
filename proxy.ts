@@ -13,6 +13,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/favicon.ico",
   "/logo",
   "/manifest.webmanifest",
+  "/field-notes/manifest.webmanifest",
   "/api/auth",
   "/api/health",
   "/api/portal",
@@ -41,7 +42,15 @@ export async function proxy(request: NextRequest) {
   // Neon Auth is the single source of truth for interactive sessions.
   // This validates/refreshes Neon session cookies and redirects only when
   // the Neon session is missing or invalid.
-  return neonAuthProxy(request);
+  const response = await neonAuthProxy(request);
+  if (pathname === "/field-notes" && response.headers.get("location")) {
+    const destination = new URL(response.headers.get("location")!, request.url);
+    if (destination.pathname === "/sign-in") {
+      destination.searchParams.set("next", "/field-notes");
+      response.headers.set("location", destination.toString());
+    }
+  }
+  return response;
 }
 
 export const config = {
