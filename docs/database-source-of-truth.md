@@ -100,31 +100,54 @@ Checked directly and confirmed empty/unrelated:
 | Neon | `Chill pro Q3D` (`restless-math-36137941`) | `public` schema completely empty. |
 | Supabase | `alpha-hunter` (`nhpybnubeyqxattzkaoh`) | No `chillbros_*` tables. Unrelated app, same org. |
 
-## Work applied to the wrong database on 2026-09-21 — needs redoing on Supabase
+## Work applied to the wrong database on 2026-09-21, and its current status
 
-Before this was caught, the following fixes were applied to Neon
-(`calm-recipe-99461264`) believing it was live. **None of these have taken
-effect in production.** They need to be re-applied against
-`xespxlqcjvhompsxranc` (or abandoned if the Neon migration is picked back up
-instead — that's the owner's call, see the note below):
+Before this was caught, several fixes were applied to Neon
+(`calm-recipe-99461264`) believing it was live. Status of each, after
+re-applying against the real database (`xespxlqcjvhompsxranc`):
 
 1. Revenue Radar Battle Card UI changes (`components/revenue-radar-list.tsx`,
-   `lib/chillbros/battle-card.ts`) — these are pure app-code changes and
-   *are* live in production (they don't depend on which database backs
-   them), but the row-limit/pagination fix and `db_max_rows` Data API
-   config change were Neon-specific and do nothing for the real database.
-2. `chillbros_parts_catalog.track_inventory` column + the
-   `chillbros_add_job_part` / `chillbros_set_job_part_quantity` Postgres
-   function fixes (the "Not enough inventory" bug) — schema and RPC changes,
-   applied only to Neon. **Confirmed Supabase does not have this column.**
-   The app code was still updated to reference `track_inventory` in
-   `app/invoices/new/actions.ts` and elsewhere — against Supabase, where
-   that column doesn't exist, this likely makes the inventory check silently
-   no-op (selecting a nonexistent column returns nothing usable, so
-   `row.track_inventory` reads as falsy for every part, so no part ever gets
-   flagged as inventory-tracked) rather than working correctly. This needs
-   verification and a real fix on Supabase, not just re-running the same
-   migration there.
+   `lib/chillbros/battle-card.ts`) — pure app-code, doesn't depend on which
+   database backs it, already live. The row-limit/pagination fix in
+   `app/revenue-radar/page.tsx` (fetches in 50-row pages via `.range()`)
+   is also DB-agnostic and already live; confirmed Supabase's real
+   `chillbros_revenue_prospects` only has 80 rows (vs. Neon's 108 — the two
+   databases have diverged, not identical copies), well under one page, so
+   no further action needed there. The `db_max_rows` Data API config
+   change was Neon-specific and irrelevant now.
+2. **Fixed for real, 2026-09-21.** `chillbros_parts_catalog.track_inventory`
+   column (default `true`, backfilled `false` for `PB-%` price-book rows
+   and Labor/Service Charge/Trip charge) added directly to
+   `xespxlqcjvhompsxranc`, and the real `chillbros_add_job_part` /
+   `chillbros_set_job_part_quantity` functions there (which are simpler
+   than the ones written for Neon — no role/job-ownership checks existed
+   in the Supabase versions, so none were added, only the
+   `track_inventory` bypass) updated to match. Sent a
+   `NOTIFY pgrst, 'reload schema'` so PostgREST picks it up without a
+   redeploy. This is a schema/data change, not an app-code change, so nothing
+   needed to be redeployed.
+3. **Fixed for real, 2026-09-21.** `chillbros_job_status` enum only had 4
+   values (`scheduled`, `in_progress`, `completed`, `cancelled`) on the real
+   database, vs. 19 the app's `JobStatus` type expects (`lib/chillbros/types.ts`).
+   This caused `invalid input value for enum chillbros_job_status: "new"` on
+   a real production action. Added the missing 15 values directly.
+4. **Not fixed — needs the owner's input before touching it.** "Add
+   employee" fails with `chillbros_profiles_id_fkey` — on the real database
+   this constraint is `FOREIGN KEY (id) REFERENCES auth.users(id)`, i.e.
+   genuine Supabase Auth. But `addStaffAccountAction`
+   (`lib/chillbros/mutations.ts`) creates the login via **Neon Auth**
+   (`lib/auth/server.ts`'s `auth.admin.createUser`), so the id it gets can
+   never satisfy that FK. Worse: querying existing profiles shows almost
+   all of them have `auth_user_id = null` (only one, "Eric Lara," has it
+   set), meaning most current employee accounts likely can't sign in via
+   the app's actual session check (`getCurrentStaffProfile` matches on
+   `auth_user_id` against a Neon Auth session, except for the
+   hardcoded owner-email bypass). This looks like a real, pre-existing gap
+   in how employee logins work post-migration-attempt, not something caused
+   by anything today. Given the blast radius of getting this wrong (locking
+   staff out of their accounts), this needs a deliberate decision — whether
+   employee logins should go through Supabase Auth or Neon Auth — not a
+   guessed fix.
 
 ## Before doing anything else in a new session
 
