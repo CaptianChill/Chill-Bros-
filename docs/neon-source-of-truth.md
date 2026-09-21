@@ -1,4 +1,12 @@
-# Chill Bros database — source of truth
+# Chill Pros database — source of truth
+
+> **Naming note:** the business is **Chill Pros** (Vercel team `chill-pros`,
+> domain `chillprostx.com`, owner email `chillprostx@gmail.com`). The GitHub
+> repo, the Neon project name, and the `chillbros_*` table prefix all say
+> "Bros" instead — that's a legacy naming mismatch baked in early, not a
+> different product. Everywhere below that says "Chill Bros" or `chillbros_*`
+> is quoting the actual, literal name of that repo/project/table as it exists
+> today — not a typo to silently correct.
 
 This exists because the account this app runs under has several similarly-named
 Supabase and Neon projects, and it's easy to burn time re-investigating which
