@@ -7,7 +7,8 @@ import { notFound } from "next/navigation";
 import { DocumentPaymentMethods } from "@/components/document-payment-methods";
 import { DocumentSignatureForm } from "@/components/document-signature-form";
 import { DocumentToolbar } from "@/components/document-toolbar";
-import { getInvoiceV2ByToken, invoiceTotals } from "@/lib/chillbros/invoice-v2";
+import { sendInvoiceViewedNotification } from "@/lib/chillbros/approval-notifications";
+import { getInvoiceV2ByToken, invoiceTotals, recordInvoiceFirstView } from "@/lib/chillbros/invoice-v2";
 import { getJob } from "@/lib/chillbros/queries";
 import { getPaymentSettings } from "@/lib/chillbros/payment-settings";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
@@ -35,6 +36,13 @@ export default async function DocumentPage({ params }: Props) {
   const [job, paymentSettings] = await Promise.all([invoice.jobId ? getJob(invoice.jobId) : null, getPaymentSettings()]);
   const totals = invoiceTotals(invoice);
   const invoiceIssued = Boolean(invoice.issuedAt);
+
+  if (invoiceIssued && !invoice.firstViewedAt) {
+    try {
+      const firstView = await recordInvoiceFirstView(invoice.id);
+      if (firstView) await sendInvoiceViewedNotification({ invoiceNumber: invoice.invoiceNumber, customerName: invoice.customerName, invoiceId: invoice.id });
+    } catch (error) { console.error("[portal-document] view notification failed", error); }
+  }
   const paid = invoice.paymentStatus === "paid";
   const documentName = invoiceIssued || paid ? "INVOICE" : "ESTIMATE";
   const workPerformed = polishedServiceCopy(job?.workPerformed);

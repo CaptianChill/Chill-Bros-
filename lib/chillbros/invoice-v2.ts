@@ -17,7 +17,7 @@ async function adjustmentTotals(invoiceId: string) {
 
 export async function getInvoiceV2ByToken(token: string): Promise<DetailedInvoice | null> {
   const supabase = createServiceRoleClient();
-  const { data: invoice, error } = await supabase.from("chillbros_invoices").select("id, invoice_number, portal_token, status, customer_id, job_id, signature_name, signed_at, payment_method, payment_status, notes, discount_type, discount_value, discount_amount, down_payment_type, down_payment_value, down_payment_amount, tax_rate, taxable_subtotal, tax_amount, issued_at, payment_terms, due_at, last_reminder_at, reminder_count, customer:chillbros_customers(name)").eq("portal_token", token).is("revoked_at", null).neq("status", "void").maybeSingle();
+  const { data: invoice, error } = await supabase.from("chillbros_invoices").select("id, invoice_number, portal_token, status, customer_id, job_id, signature_name, signed_at, payment_method, payment_status, notes, discount_type, discount_value, discount_amount, down_payment_type, down_payment_value, down_payment_amount, tax_rate, taxable_subtotal, tax_amount, issued_at, payment_terms, due_at, last_reminder_at, reminder_count, first_viewed_at, customer:chillbros_customers(name)").eq("portal_token", token).is("revoked_at", null).neq("status", "void").maybeSingle();
   if (error || !invoice) return null;
   const [{ data: lineItems }, adjustments] = await Promise.all([
     supabase.from("chillbros_invoice_line_items").select("id, label, description, quantity, unit_price, amount, taxable").eq("invoice_id", invoice.id).order("sort_order", { ascending: true }),
@@ -53,6 +53,7 @@ export async function getInvoiceV2ByToken(token: string): Promise<DetailedInvoic
     downPaymentType: invoice.down_payment_type,
     downPaymentValue: Number(invoice.down_payment_value ?? 0),
     downPaymentAmount: Number(invoice.down_payment_amount ?? 0),
+    firstViewedAt: invoice.first_viewed_at,
     lineItems: (lineItems ?? []).map((item) => ({ id: item.id, label: item.label, description: item.description, quantity: Number(item.quantity ?? 1), unitPrice: Number(item.unit_price ?? item.amount), amount: Number(item.amount), taxable: Boolean(item.taxable) })),
   };
 }
@@ -61,6 +62,19 @@ export async function getInvoiceV2ById(invoiceId: string): Promise<DetailedInvoi
   const supabase = createServiceRoleClient();
   const { data } = await supabase.from("chillbros_invoices").select("portal_token").eq("id", invoiceId).maybeSingle();
   return data?.portal_token ? getInvoiceV2ByToken(data.portal_token) : null;
+}
+
+/** Returns true only the first time this invoice is marked viewed, so callers can gate a one-time owner notification. */
+export async function recordInvoiceFirstView(invoiceId: string): Promise<boolean> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("chillbros_invoices")
+    .update({ first_viewed_at: new Date().toISOString() })
+    .eq("id", invoiceId)
+    .is("first_viewed_at", null)
+    .select("id")
+    .maybeSingle();
+  return !error && Boolean(data);
 }
 
 export async function getInvoiceV2ByJobId(jobId: string): Promise<DetailedInvoice | null> {

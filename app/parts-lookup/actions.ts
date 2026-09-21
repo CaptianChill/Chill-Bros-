@@ -1,8 +1,9 @@
 "use server";
 
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { lookupPartsDepartmentContact, type PartsDepartmentContact } from "@/lib/chillbros/parts-department-contacts";
 
-export type PartsLookupResult = { ok: true; data: string } | { ok: false; error: string };
+export type PartsLookupResult = { ok: true; data: string; partsDepartmentContact?: PartsDepartmentContact } | { ok: false; error: string };
 
 const MODEL = process.env.OPENAI_PARTS_LOOKUP_MODEL || "gpt-4o";
 
@@ -69,7 +70,10 @@ export async function lookupParts(formData: FormData): Promise<PartsLookupResult
 
     const text = String(payload?.choices?.[0]?.message?.content ?? "").trim();
     if (!text) return { ok: false, error: "No result came back. Try again with more detail." };
-    return { ok: true, data: text };
+
+    const couldNotSource = text.toLowerCase().includes("no confident part number recalled");
+    const partsDepartmentContact = couldNotSource ? lookupPartsDepartmentContact(brand) ?? undefined : undefined;
+    return { ok: true, data: text, partsDepartmentContact };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Parts lookup failed." };
   }

@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { createReceiptForPaidInvoice } from "@/lib/chillbros/billing-receipts";
+import { sendInvoicePaidNotification } from "@/lib/chillbros/approval-notifications";
+import { getInvoiceV2ById, invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
@@ -78,6 +80,11 @@ export async function recordFullPaymentAction(formData: FormData): Promise<never
     stage: "paid",
     message: `Full payment recorded by manager via ${method.replace(/_/g, " ")}${reference ? ` · Ref ${reference}` : ""}.`,
   });
+
+  try {
+    const fullInvoice = await getInvoiceV2ById(invoiceId);
+    if (fullInvoice) await sendInvoicePaidNotification({ invoiceNumber: fullInvoice.invoiceNumber, customerName: fullInvoice.customerName, amount: invoiceTotals(fullInvoice).total, method, invoiceId });
+  } catch (error) { console.error("[record-payment] owner paid notification failed", error); }
 
   try { await archiveInvoicePdf(invoiceId, "paid"); } catch { /* payment remains authoritative */ }
   revalidatePath("/payments");
