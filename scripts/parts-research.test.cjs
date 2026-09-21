@@ -54,3 +54,22 @@ test('requires real search and keeps shared credential server-side', async () =>
     assert.equal(data.parts[0].partNumber,'123');
   } finally {global.fetch=oldFetch;if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;}
 });
+test('preserves manuals read through open-page and find-in-page actions', () => {
+  const payload=response();payload.output[0].action={type:'open_page',url};
+  assert.equal(research.parseResearchResponse(payload).manuals[0].url,url);
+  payload.output[0].action={type:'find_in_page',url};
+  assert.equal(research.parseResearchResponse(payload).parts[0].partNumber,'123');
+});
+test('repairs mismatched citations only against retrieved evidence within the same deadline', async () => {
+  const oldFetch=global.fetch;const oldKey=process.env.OPENAI_API_KEY;process.env.OPENAI_API_KEY='test-only';let calls=0;let deadline;
+  try {
+    global.fetch=async(_url,options)=>{
+      calls++;const body=JSON.parse(options.body);
+      if(calls===1){deadline=options.signal;return {ok:true,json:async()=>response({parts:[{name:'Valve',partNumber:'123',evidence:'OEM',url:'https://uncited.example/part'}]})};}
+      assert.equal(options.signal,deadline);assert.equal(body.tools,undefined);assert.ok(JSON.parse(body.input).sources.some(s=>s.url===url));
+      const fixed=response();fixed.output.shift();return {ok:true,json:async()=>fixed};
+    };
+    const data=await research.researchParts({brand:'Hoshizaki',model:'KM-515MAJ',serial:'',details:'valve',mode:'parts'});
+    assert.equal(calls,2);assert.equal(data.parts[0].url,url);
+  } finally {global.fetch=oldFetch;if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;}
+});
