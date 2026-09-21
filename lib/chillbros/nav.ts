@@ -23,6 +23,7 @@ export const navItems: NavItem[] = [
   { href: "/technician", label: "Field Jobs", shortLabel: "Field", roles: ["manager", "technician"] },
   { href: "/invoices", label: "Quotes & Invoices", shortLabel: "Billing", roles: ["manager", "office"] },
   { href: "/timesheet", label: "Clock", shortLabel: "Clock", roles: ["manager", "technician"] },
+  { href: "/parts-lookup", label: "Parts Lookup", shortLabel: "Parts", roles: ["manager", "technician", "office"] },
 ];
 
 // Manager-only tools that don't belong in the daily tab bar (sales pipeline
