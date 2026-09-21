@@ -10,20 +10,50 @@ import { addProspect, scanForLeads } from "./actions";
 export const dynamic = "force-dynamic";
 const input = "min-h-11 w-full rounded-xl border border-cyan-400/30 bg-black/50 px-3 py-2 text-white";
 
+const PROSPECT_COLUMNS = "id,business_name,city,category,service_line,signal_summary,signal_verified,signal_observed_at,score,status,follow_up_at,estimated_revenue,actual_revenue,direct_cost,business_address,contact_phone,contact_email,contact_name,contact_role,verification_status,source_url,assigned_salesperson,sales_status";
+const PAGE_SIZE = 50;
+const MAX_PAGES = 40; // safety cap: 40 * 50 = 2,000 leads
+
+// Neon's Data API silently truncates a single large response somewhere
+// ahead of Postgres — raising .limit()/db_max_rows didn't change it, and it
+// isn't RLS (that's all-or-nothing per role, not a partial cut). Fetching in
+// small pages keeps every individual request comfortably under whatever that
+// cap is, so newly-scanned leads can't quietly disappear again regardless of
+// table size. A tiebreaker on id is required: many leads share the same
+// score, and without a deterministic secondary sort, separate paged requests
+// can return ties in different orders and duplicate or skip rows.
+async function fetchAllProspects(
+  client: ReturnType<typeof createServiceRoleClient>,
+  role: string,
+  profileId: string,
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows: any[] = [];
+  let offset = 0;
+  let lastError: { message: string } | null = null;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    let query = client
+      .from("chillbros_revenue_prospects")
+      .select(PROSPECT_COLUMNS)
+      .order("score", { ascending: false })
+      .order("id", { ascending: true });
+    if (role === "office") query = query.eq("assigned_salesperson", profileId);
+    const { data, error } = await query.range(offset, offset + PAGE_SIZE - 1);
+    if (error) { lastError = error; break; }
+    if (!data || data.length === 0) break;
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return { data: rows, error: lastError };
+}
+
 export default async function RevenueRadarPage() {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
 
   const client = createServiceRoleClient();
-  let prospectsQuery = client
-    .from("chillbros_revenue_prospects")
-    .select("id,business_name,city,category,service_line,signal_summary,signal_verified,signal_observed_at,score,status,follow_up_at,estimated_revenue,actual_revenue,direct_cost,business_address,contact_phone,contact_email,contact_name,contact_role,verification_status,source_url,assigned_salesperson,sales_status")
-    .order("score", { ascending: false });
-  if (profile.role === "office") prospectsQuery = prospectsQuery.eq("assigned_salesperson", profile.id);
-  // A hard cap here silently drops any lead ranked below it once the table
-  // passes that many rows, however new or recent it is — this previously sat
-  // at 100 and cut off real leads with the table already past that size.
-  const { data, error } = await prospectsQuery.limit(1000);
+  const { data, error } = await fetchAllProspects(client, profile.role, profile.id);
 
   const prospects = data ?? [];
   const newCount = prospects.filter((p) => p.status === "new").length;
