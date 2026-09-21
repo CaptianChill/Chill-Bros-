@@ -2,33 +2,15 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { explainLeadRanking } from "@/lib/chillbros/revenue-sales";
+import { buildBattleCard, urgencyScore, type BattleCardLead } from "@/lib/chillbros/battle-card";
 
-type Prospect = {
+type Prospect = BattleCardLead & {
   id: string;
-  business_name: string;
-  city: string;
-  category: string;
-  service_line: string;
-  signal_summary: string;
-  signal_verified: boolean;
-  signal_observed_at: string;
-  score: number;
-  status: string;
-  follow_up_at: string | null;
-  actual_revenue: number | string | null;
-  direct_cost: number | string | null;
-  business_address: string | null;
-  contact_phone: string | null;
-  contact_email: string | null;
-  contact_name: string | null;
-  contact_role: string | null;
-  verification_status: string | null;
-  source_url: string;
 };
 
 type StatusFilter = "all" | "hot" | "new" | "follow_up" | "quoted" | "won";
 type ServiceFilter = "all" | "hvac_r" | "refrigeration" | "ice_machine" | "kitchen_equipment" | "exhaust_hood" | "multiple";
+type SortMode = "score" | "newest" | "urgent";
 
 const statusFilters: Array<{ value: StatusFilter; label: string }> = [
   { value: "all", label: "All Leads" },
@@ -49,6 +31,12 @@ const serviceFilters: Array<{ value: ServiceFilter; label: string }> = [
   { value: "multiple", label: "Multiple" },
 ];
 
+const sortModes: Array<{ value: SortMode; label: string }> = [
+  { value: "score", label: "Highest Score" },
+  { value: "newest", label: "Newest" },
+  { value: "urgent", label: "Most Urgent" },
+];
+
 function matchesStatus(p: Prospect, filter: StatusFilter) {
   if (filter === "all") return true;
   if (filter === "hot") return Number(p.score) >= 65 && !["won", "lost"].includes(p.status);
@@ -63,17 +51,26 @@ function statusCount(prospects: Prospect[], filter: StatusFilter) {
   return prospects.filter((p) => matchesStatus(p, filter)).length;
 }
 
+function sortProspects(prospects: Prospect[], mode: SortMode) {
+  const copy = [...prospects];
+  if (mode === "newest") return copy.sort((a, b) => new Date(b.signal_observed_at).getTime() - new Date(a.signal_observed_at).getTime());
+  if (mode === "urgent") return copy.sort((a, b) => urgencyScore(b) - urgencyScore(a));
+  return copy.sort((a, b) => Number(b.score) - Number(a.score));
+}
+
 export function RevenueRadarList({ prospects }: { prospects: Prospect[] }) {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("new");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("score");
 
   const visible = useMemo(() => {
-    return prospects.filter((p) => {
+    const filtered = prospects.filter((p) => {
       const statusMatch = matchesStatus(p, statusFilter);
       const serviceMatch = serviceFilter === "all" || p.service_line === serviceFilter;
       return statusMatch && serviceMatch;
     });
-  }, [prospects, serviceFilter, statusFilter]);
+    return sortProspects(filtered, sortMode);
+  }, [prospects, serviceFilter, statusFilter, sortMode]);
 
   if (prospects.length === 0) {
     return <div className="rounded-2xl border border-white/20 p-6 text-center text-zinc-300">
@@ -123,15 +120,38 @@ export function RevenueRadarList({ prospects }: { prospects: Prospect[] }) {
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3 text-xs text-zinc-400">
-        <span>Showing <strong className="text-white">{visible.length}</strong> of {prospects.length} leads</span>
-        {(statusFilter !== "new" || serviceFilter !== "all") ? <button
-          type="button"
-          onClick={() => { setStatusFilter("new"); setServiceFilter("all"); }}
-          className="text-cyan-200 underline underline-offset-2"
-        >
-          Reset filters
-        </button> : null}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <span>Sort:</span>
+          <div className="flex gap-1">
+            {sortModes.map((mode) => {
+              const active = sortMode === mode.value;
+              return <button
+                key={mode.value}
+                type="button"
+                onClick={() => setSortMode(mode.value)}
+                className={[
+                  "min-h-8 shrink-0 rounded-lg border px-2.5 text-xs font-medium transition",
+                  active
+                    ? "border-cyan-400/70 bg-cyan-400/15 text-cyan-100"
+                    : "border-white/10 bg-black/25 text-zinc-400 hover:text-white",
+                ].join(" ")}
+              >
+                {mode.label}
+              </button>;
+            })}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-zinc-400">
+          <span>Showing <strong className="text-white">{visible.length}</strong> of {prospects.length} leads</span>
+          {(statusFilter !== "all" || serviceFilter !== "all" || sortMode !== "score") ? <button
+            type="button"
+            onClick={() => { setStatusFilter("all"); setServiceFilter("all"); setSortMode("score"); }}
+            className="text-cyan-200 underline underline-offset-2"
+          >
+            Reset filters
+          </button> : null}
+        </div>
       </div>
     </div>
 
@@ -139,49 +159,68 @@ export function RevenueRadarList({ prospects }: { prospects: Prospect[] }) {
       {visible.length === 0 ? <div className="rounded-2xl border border-white/15 bg-black/25 p-5 text-center text-sm text-zinc-400">
         No leads match these filters.
       </div> : visible.map((p) => {
-        const rankingReasons = explainLeadRanking({
-          score: Number(p.score),
-          category: p.category,
-          serviceLine: p.service_line,
-          signalSummary: p.signal_summary,
-          signalVerified: p.signal_verified,
-          verificationStatus: p.verification_status,
-          observedAt: p.signal_observed_at,
-          businessAddress: p.business_address,
-          contactName: p.contact_name,
-          contactPhone: p.contact_phone,
-          contactEmail: p.contact_email,
-        });
+        const card = buildBattleCard(p);
         return <Link key={p.id} href={"/revenue-radar/" + p.id} className="block rounded-2xl border border-cyan-400/25 bg-black/40 p-4 transition hover:border-cyan-300">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <strong className="text-lg text-white">{p.business_name}</strong>
-            <p className="text-sm text-zinc-400">{p.city} · {p.service_line.replaceAll("_", " ")} · {p.business_address || "address research pending"}</p>
+            <p className="text-sm text-zinc-400">{p.city} · {p.service_line.replaceAll("_", " ")}</p>
           </div>
           <strong className="rounded-full bg-cyan-400/20 px-3 py-1 text-cyan-200">{p.score}/100</strong>
         </div>
-        <p className="mt-2 text-sm text-zinc-200">{p.signal_summary}</p>
-        <p className="mt-2 text-xs text-zinc-400">{p.signal_verified ? "Verified directly" : p.verification_status === "source_verified" ? "Source verified" : "Auto-discovered public lead"} · {p.status.replaceAll("_", " ")} · {new Date(p.signal_observed_at).toLocaleDateString()}</p>
-        <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/30 p-3 sm:grid-cols-2">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Lead contact</p>
-            <p className="mt-1 text-sm text-white">{p.contact_name || "Decision-maker research pending"}</p>
-            {p.contact_role ? <p className="text-xs text-zinc-400">{p.contact_role}</p> : null}
-          </div>
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Contact details</p>
-            <p className="mt-1 text-xs text-cyan-200">{p.contact_phone || "Phone pending"}</p>
-            <p className="break-all text-xs text-cyan-200">{p.contact_email || "Email pending"}</p>
-          </div>
-        </div>
+
+        <span className={[
+          "mt-2 inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
+          card.isGeneric ? "border-zinc-500/40 bg-zinc-500/10 text-zinc-400" : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300",
+        ].join(" ")}>
+          {card.leadKindLabel}
+        </span>
+
         <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/5 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200">Why {p.score}/100</p>
-          <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-zinc-300">
-            {rankingReasons.slice(0, 4).map((reason) => <li key={reason}>{reason}</li>)}
-          </ul>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200">Why now — score {p.score}/100</p>
+          <p className="mt-1 text-sm text-zinc-100">{card.whyNow}</p>
         </div>
-        {p.follow_up_at ? <p className="mt-1 text-xs text-cyan-200">Follow up {new Date(p.follow_up_at).toLocaleString()}</p> : null}
-        {p.actual_revenue != null ? <p className="mt-1 text-xs text-cyan-200">Revenue ${Number(p.actual_revenue).toFixed(2)} · Gross profit ${((Number(p.actual_revenue) || 0) - (Number(p.direct_cost) || 0)).toFixed(2)}</p> : null}
+
+        <div className="mt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Business</p>
+          <p className="mt-1 text-sm text-zinc-200">{card.businessSummary}</p>
+        </div>
+
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Decision-maker</p>
+            {card.decisionMaker ? <>
+              <p className="mt-1 text-sm text-white">{card.decisionMaker.name}</p>
+              {card.decisionMaker.role ? <p className="text-xs text-zinc-400">{card.decisionMaker.role}</p> : null}
+              <p className="mt-1 text-xs text-cyan-200">{[card.decisionMaker.phone, card.decisionMaker.email].filter(Boolean).join(" · ") || "Phone/email pending"}</p>
+            </> : <p className="mt-1 text-sm text-zinc-400">Research pending</p>}
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Recommended offer</p>
+            <p className="mt-1 text-sm text-zinc-200">{card.recommendedOffer}</p>
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Estimated opportunity</p>
+          <p className="mt-1 text-sm text-zinc-200">{card.opportunitySummary}</p>
+        </div>
+
+        <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/5 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">Next action</p>
+          <p className="mt-1 text-sm text-amber-100">{card.nextAction}</p>
+        </div>
+
+        <details className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
+          <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Evidence &amp; details
+          </summary>
+          <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-zinc-300">
+            {card.evidence.map((line) => <li key={line} className="break-words">{line}</li>)}
+          </ul>
+          <p className="mt-2 text-xs text-zinc-400">{p.status.replaceAll("_", " ")} · observed {new Date(p.signal_observed_at).toLocaleDateString()}</p>
+          {p.follow_up_at ? <p className="mt-1 text-xs text-cyan-200">Follow up {new Date(p.follow_up_at).toLocaleString()}</p> : null}
+        </details>
       </Link>;
       })}
     </div>
