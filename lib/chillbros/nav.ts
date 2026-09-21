@@ -26,5 +26,6 @@ export const navItems: NavItem[] = [
   { href: "/technician", label: "Field Jobs", shortLabel: "Field", roles: ["manager", "technician"] },
   { href: "/invoices", label: "Quotes & Invoices", shortLabel: "Billing", roles: ["manager", "office"] },
   { href: "/payments", label: "Payments", shortLabel: "Payments", roles: ["manager"] },
+  { href: "/settings/payments", label: "Payment Settings", shortLabel: "Settings", roles: ["manager"] },
   { href: "/timesheet", label: "My Time", shortLabel: "Time", roles: ["technician"] },
 ];

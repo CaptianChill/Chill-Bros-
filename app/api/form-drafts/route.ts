@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth/server";
 import type { FormDraft, FormDraftField } from "@/lib/chillbros/form-drafts";
-import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { createUserScopedDataClient } from "@/lib/supabase/service-client";
+import { getCurrentStaffProfile, type StaffProfile } from "@/lib/supabase/auth-server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
 
@@ -71,29 +70,12 @@ function parseDraft(input: unknown): Omit<FormDraft, "updatedAt"> | null {
   return { id, path, label, customerId, formIndex, fields };
 }
 
-async function currentContext() {
-  try {
-    const profile = await getCurrentStaffProfile();
-    if (!profile) return null;
-    const { data: session, error: sessionError } = await auth.getSession();
-    const authUserId = session?.user?.id;
-    if (sessionError || !authUserId) return null;
-    const authWithToken = auth as unknown as {
-      token?: () => Promise<{ data?: unknown; error?: unknown }>;
-    };
-    if (!authWithToken.token) return null;
-    const { data, error } = await authWithToken.token();
-    if (error) return null;
-    const token = typeof data === "string"
-      ? data
-      : data && typeof data === "object" && "token" in data && typeof (data as { token?: unknown }).token === "string"
-        ? (data as { token: string }).token
-        : "";
-    if (!token) return null;
-    return { profile, authUserId, service: createUserScopedDataClient(token) };
-  } catch {
-    return null;
-  }
+type Context = { profile: StaffProfile; service: ReturnType<typeof createServiceRoleClient> };
+
+async function currentContext(): Promise<Context | null> {
+  const profile = await getCurrentStaffProfile();
+  if (!profile) return null;
+  return { profile, service: createServiceRoleClient() };
 }
 
 export async function GET(request: NextRequest) {
@@ -124,7 +106,7 @@ export async function POST(request: NextRequest) {
   if (!sameOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   const context = await currentContext();
   if (!context) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
-  const { profile, authUserId, service } = context;
+  const { profile, service } = context;
   const contentLength = Number(request.headers.get("content-length") || "0");
   if (contentLength > MAX_BODY_BYTES) return NextResponse.json({ error: "Draft is too large." }, { status: 413 });
 
@@ -137,7 +119,6 @@ export async function POST(request: NextRequest) {
   const { data, error } = await service
     .from("chillbros_staff_drafts")
     .upsert({
-      owner_auth_user_id: authUserId,
       owner_profile_id: profile.id,
       draft_key: parsed.id,
       path: parsed.path,
@@ -146,7 +127,7 @@ export async function POST(request: NextRequest) {
       form_index: parsed.formIndex,
       fields: parsed.fields,
       updated_at: now,
-    }, { onConflict: "owner_auth_user_id,draft_key" })
+    }, { onConflict: "owner_profile_id,draft_key" })
     .select("draft_key,path,label,customer_id,form_index,fields,updated_at")
     .single();
 
