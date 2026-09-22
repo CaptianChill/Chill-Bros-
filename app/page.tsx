@@ -93,7 +93,7 @@ export default async function HomePage() {
   );
 
   return (
-    <AppShell title="Home" description="One service call record from intake through payment.">
+    <AppShell title="Home" description="One service call record from intake through payment." notificationCount={attention.length}>
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <MetricCard label="Today's Jobs" value={todaySchedule.length} href="/schedule" size="lg" tone="cyan" />
