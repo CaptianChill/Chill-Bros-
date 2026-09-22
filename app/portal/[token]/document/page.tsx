@@ -63,7 +63,7 @@ export default async function DocumentPage({ params }: Props) {
       <article className="w-full max-w-full overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-xl print:rounded-none print:border-0 print:shadow-none">
         <header className="border-b border-zinc-200 bg-[#020407] px-4 py-5 text-white sm:px-8">
           <div className="flex min-w-0 flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
-            <div className="flex min-w-0 flex-col items-center gap-3 sm:flex-row"><Image src="/chill-pros-document-logo.png" alt="Chill Pros logo" width={220} height={220} priority className="h-auto w-20 shrink-0 object-contain sm:w-16" /><div className="min-w-0"><p className="text-2xl font-bold tracking-wide">CHILL PROS</p><p className="text-xs uppercase tracking-[0.2em] text-cyan-100 sm:tracking-[0.24em]">Service Document</p></div></div>
+            <div className="flex min-w-0 flex-col items-center gap-3 sm:flex-row"><Image src="/brand/chill-pros-badge.png" alt="Chill Pros logo" width={220} height={220} priority className="h-auto w-20 shrink-0 object-contain sm:w-16" /><div className="min-w-0"><p className="text-2xl font-bold tracking-wide">CHILL PROS</p><p className="text-xs uppercase tracking-[0.2em] text-cyan-100 sm:tracking-[0.24em]">Service Document</p></div></div>
             <div className="min-w-0 max-w-full text-center sm:max-w-[56%] sm:text-right"><p className="text-sm font-semibold tracking-[0.18em] text-cyan-100">{documentName}</p><p className="mt-1 break-all text-base font-bold sm:text-lg">{invoice.invoiceNumber}</p><p className="mt-1 text-xs text-zinc-300">{status}</p></div>
           </div>
         </header>
