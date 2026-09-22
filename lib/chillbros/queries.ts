@@ -134,3 +134,20 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   ]);
   return { openJobs: openJobs ?? 0, approvalsToday: approvalsToday ?? 0, lowStockParts: (lowStockRows ?? []).length, emailEventsToday: emailEventsToday ?? 0 };
 }
+
+export type RevenueRadarPulse = { newLeads: number; highPriorityLeads: number };
+
+// Mirrors the scoping on /revenue-radar: office staff only ever see leads
+// assigned to them there, so a dashboard tile counting all leads would be
+// misleading for that role. Pass the profile id to scope it the same way.
+export async function getRevenueRadarPulse(assignedSalespersonId?: string): Promise<RevenueRadarPulse> {
+  const supabase = createServiceRoleClient();
+  let newQuery = supabase.from("chillbros_revenue_prospects").select("id", { count: "exact", head: true }).eq("status", "new");
+  let highPriorityQuery = supabase.from("chillbros_revenue_prospects").select("id", { count: "exact", head: true }).gte("score", 65);
+  if (assignedSalespersonId) {
+    newQuery = newQuery.eq("assigned_salesperson", assignedSalespersonId);
+    highPriorityQuery = highPriorityQuery.eq("assigned_salesperson", assignedSalespersonId);
+  }
+  const [{ count: newLeads }, { count: highPriorityLeads }] = await Promise.all([newQuery, highPriorityQuery]);
+  return { newLeads: newLeads ?? 0, highPriorityLeads: highPriorityLeads ?? 0 };
+}

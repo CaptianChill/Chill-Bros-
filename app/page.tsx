@@ -3,13 +3,17 @@ import { redirect } from "next/navigation";
 import { AlertCircle, Banknote, CalendarDays, CheckCircle2, ClipboardList, CreditCard, Route, UsersRound } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { MetricCard } from "@/components/metric-card";
 import { SectionCard } from "@/components/section-card";
+import { getInvoiceCenterData } from "@/lib/chillbros/billing-queries";
 import { getDispatchJobs } from "@/lib/chillbros/operations-queries";
-import { getCustomers } from "@/lib/chillbros/queries";
+import { getCustomers, getRevenueRadarPulse } from "@/lib/chillbros/queries";
 import { getCalendarJobs } from "@/lib/chillbros/schedule-queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
+
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 function ctToday() {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
@@ -54,11 +58,14 @@ export default async function HomePage() {
   if (profile.role === "technician") redirect("/technician");
   if (profile.role === "office") redirect("/office");
 
-  const [rawCustomers, jobs, lifecycleJobs] = await Promise.all([
+  const [rawCustomers, jobs, lifecycleJobs, invoiceCenter, revenueRadarPulse] = await Promise.all([
     getCustomers(),
     getCalendarJobs(),
     getDispatchJobs(150),
+    getInvoiceCenterData().catch(() => ({ rows: [], metrics: { outstandingValue: 0, dueToday: 0, overdueValue: 0, collectedThisMonth: 0, pendingApproval: 0, averageDaysToPay: 0 } })),
+    getRevenueRadarPulse().catch(() => ({ newLeads: 0, highPriorityLeads: 0 })),
   ]);
+  const { metrics: billingMetrics } = invoiceCenter;
 
   const customers = uniqueCustomers(rawCustomers.filter((customer) => customer.name !== "Chill Pros Team"));
   const today = ctToday();
@@ -108,6 +115,17 @@ export default async function HomePage() {
               })}
             </div>
           )}
+        </SectionCard>
+
+        <SectionCard eyebrow="Owner snapshot" title="Revenue & pipeline">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
+            <MetricCard label="Outstanding" value={money.format(billingMetrics.outstandingValue)} href="/invoices" tone="amber" />
+            <MetricCard label="Overdue" value={money.format(billingMetrics.overdueValue)} href="/invoices" tone={billingMetrics.overdueValue > 0 ? "rose" : "default"} />
+            <MetricCard label="Collected this month" value={money.format(billingMetrics.collectedThisMonth)} href="/payments" tone="emerald" />
+            <MetricCard label="Awaiting approval" value={billingMetrics.pendingApproval} href="/invoices" />
+            <MetricCard label="New leads" value={revenueRadarPulse.newLeads} href="/revenue-radar" tone="cyan" />
+            <MetricCard label="Hot leads (65+)" value={revenueRadarPulse.highPriorityLeads} href="/revenue-radar" tone="cyan" />
+          </div>
         </SectionCard>
 
         <SectionCard title="Today">
