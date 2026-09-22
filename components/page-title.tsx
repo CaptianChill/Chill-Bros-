@@ -31,38 +31,8 @@ export function PageTitle() {
   const label = TITLES.find(([test]) => test(pathname))?.[1] ?? "Chill Bros";
 
   return (
-    <div className="relative flex min-h-12 w-full items-center justify-between gap-2 overflow-visible sm:gap-3">
-      <div className="relative z-20 flex h-10 w-10 shrink-0 items-center justify-center overflow-visible sm:h-12 sm:w-12">
-        <img
-          src="/internal/chill-bros-smiley-v4.png"
-          alt=""
-          aria-hidden="true"
-          width={96}
-          height={96}
-          loading="eager"
-          decoding="sync"
-          className="block h-full w-full max-w-none object-contain [clip-path:none] [filter:none] [transform:none]"
-          style={{ WebkitTransform: "none", transform: "none", filter: "none" }}
-        />
-      </div>
-
-      <h1 className="glo relative z-10 min-w-0 flex-1 text-center font-serif text-[1.35rem] font-black italic uppercase leading-tight tracking-[0.015em] sm:text-[1.8rem]">
-        {label}
-      </h1>
-
-      <div className="relative z-20 flex h-10 w-11 shrink-0 items-center justify-center overflow-visible sm:h-12 sm:w-14">
-        <img
-          src="/brand/chill-pros-texas-chrome.png"
-          alt=""
-          aria-hidden="true"
-          width={64}
-          height={64}
-          loading="eager"
-          decoding="sync"
-          className="block h-full w-full max-w-none object-contain [clip-path:none] [filter:none] [transform:none]"
-          style={{ WebkitTransform: "none", transform: "none", filter: "none" }}
-        />
-      </div>
-    </div>
+    <h1 className="glo w-full text-center font-serif text-[1.35rem] font-black italic uppercase leading-tight tracking-[0.015em] sm:text-[1.8rem]">
+      {label}
+    </h1>
   );
 }
