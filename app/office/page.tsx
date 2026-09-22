@@ -4,15 +4,19 @@ import { Banknote, CalendarDays, Route, UsersRound } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { LiveOfficeRefresh } from "@/components/live-office-refresh";
+import { MetricCard } from "@/components/metric-card";
 import { OfficeDocumentActions } from "@/components/office-document-actions";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
+import { getInvoiceCenterData } from "@/lib/chillbros/billing-queries";
 import { getActiveTechnicians, getDispatchJobs } from "@/lib/chillbros/operations-queries";
-import { getCustomers } from "@/lib/chillbros/queries";
+import { getCustomers, getRevenueRadarPulse } from "@/lib/chillbros/queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
+
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 type OfficeInvoice = {
   id: string;
@@ -89,12 +93,15 @@ export default async function OfficePage() {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
 
-  const [jobs, customers, technicians, invoices] = await Promise.all([
+  const [jobs, customers, technicians, invoices, invoiceCenter, revenueRadarPulse] = await Promise.all([
     getDispatchJobs(100),
     getCustomers(),
     getActiveTechnicians(),
     getOfficeInvoices(),
+    getInvoiceCenterData().catch(() => ({ rows: [], metrics: { outstandingValue: 0, dueToday: 0, overdueValue: 0, collectedThisMonth: 0, pendingApproval: 0, averageDaysToPay: 0 } })),
+    getRevenueRadarPulse(profile.role === "office" ? profile.id : undefined).catch(() => ({ newLeads: 0, highPriorityLeads: 0 })),
   ]);
+  const { metrics: billingMetrics } = invoiceCenter;
 
   const openJobs = jobs.filter((job) => ["scheduled", "in_progress"].includes(job.status));
   const unassignedJobs = openJobs.filter((job) => !job.assignedTechId);
@@ -114,12 +121,18 @@ export default async function OfficePage() {
       <div className="space-y-4">
         <SectionCard eyebrow="Today" title="Office operating pulse" description="Only the work that needs to move today stays visible.">
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-            {[["Open calls", openJobs.length], ["In progress", inProgressJobs.length], ["Unassigned", unassignedJobs.length], ["Awaiting approval", awaitingApproval], ["Approved / unpaid", approvedUnpaid]].map(([label, value]) => (
-              <div key={String(label)} className="rounded-xl border border-[#2d7dff]/20 bg-black/40 p-2.5 text-center">
-                <p className="text-[11px] text-zinc-500">{label}</p>
-                <p className="mt-1 text-xl font-semibold text-white">{value}</p>
-              </div>
-            ))}
+            <MetricCard label="Open calls" value={openJobs.length} href="/dispatch" tone="emerald" />
+            <MetricCard label="In progress" value={inProgressJobs.length} href="/dispatch" />
+            <MetricCard label="Unassigned" value={unassignedJobs.length} href="/dispatch" tone={unassignedJobs.length > 0 ? "amber" : "default"} />
+            <MetricCard label="Awaiting approval" value={awaitingApproval} href="/invoices" />
+            <MetricCard label="Approved / unpaid" value={approvedUnpaid} href="/payments" />
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-5">
+            <MetricCard label="Outstanding" value={money.format(billingMetrics.outstandingValue)} href="/invoices" tone="amber" />
+            <MetricCard label="Overdue" value={money.format(billingMetrics.overdueValue)} href="/invoices" tone={billingMetrics.overdueValue > 0 ? "rose" : "default"} />
+            <MetricCard label="Collected this month" value={money.format(billingMetrics.collectedThisMonth)} href="/payments" tone="emerald" />
+            <MetricCard label="New leads" value={revenueRadarPulse.newLeads} href="/revenue-radar" tone="cyan" />
+            <MetricCard label="Hot leads (65+)" value={revenueRadarPulse.highPriorityLeads} href="/revenue-radar" tone="cyan" />
           </div>
         </SectionCard>
 

@@ -15,9 +15,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black",
   },
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
-    shortcut: "/logo.png",
+    icon: "/brand/chill-pros-badge-192.png",
+    apple: "/brand/chill-pros-badge-180.png",
+    shortcut: "/favicon.ico",
   },
   other: {
     "mobile-web-app-capable": "yes",

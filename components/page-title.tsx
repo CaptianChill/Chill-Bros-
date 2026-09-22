@@ -52,7 +52,7 @@ export function PageTitle() {
 
       <div className="relative z-20 flex h-10 w-11 shrink-0 items-center justify-center overflow-visible sm:h-12 sm:w-14">
         <img
-          src="/internal/chill-bros-texas-v3.png"
+          src="/brand/chill-pros-texas-chrome.png"
           alt=""
           aria-hidden="true"
           width={64}

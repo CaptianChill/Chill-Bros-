@@ -6,16 +6,23 @@ type LogoBadgeProps = {
 };
 
 const imageSources = {
-  icon: { src: "/logo.png", alt: "Chill Bros neon logo", width: 220, height: 220 },
-  full: { src: "/logo.png", alt: "Chill Bros neon logo", width: 220, height: 220 },
+  icon: { src: "/brand/chill-pros-badge.png", alt: "Chill Pros logo", width: 512, height: 512 },
+  full: { src: "/brand/chill-pros-badge.png", alt: "Chill Pros logo", width: 512, height: 512 },
 };
 
 export function LogoBadge({ variant = "full", className = "" }: LogoBadgeProps) {
   if (variant === "text") {
     return (
-      <div className={`neon-frame sign-surface flex flex-col items-center justify-center rounded-2xl px-4 py-3 ${className}`}>
-        <p className="font-brand neon-text text-2xl font-bold uppercase tracking-wide text-white sm:text-3xl">Chill Bros</p>
-        <p className="font-brand mt-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#d9fbff] sm:text-xs">Operational Command Center</p>
+      <div className={`flex flex-col items-center justify-center ${className}`}>
+        <Image
+          src="/brand/chill-pros-wordmark-chrome.png"
+          alt="Chill Pros"
+          width={2159}
+          height={728}
+          priority
+          className="h-auto w-full object-contain"
+        />
+        <p className="font-brand -mt-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#d9fbff] sm:text-xs">Operational Command Center</p>
       </div>
     );
   }

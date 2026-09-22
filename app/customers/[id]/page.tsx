@@ -26,11 +26,13 @@ export default async function CustomerProfilePage({ params }: Props) {
   const activePlans = data.agreements.filter((plan) => ["accepted", "active"].includes(plan.status));
   const openDocuments = data.documents.filter((document) => document.paymentStatus !== "paid" && document.status !== "void");
   const archivedDocuments = data.documents.filter((document) => document.paymentStatus === "paid" || document.status === "void");
+  const outstandingBalance = data.documents.filter((document) => document.status === "approved" && document.paymentStatus !== "paid").reduce((sum, document) => sum + document.total, 0);
+  const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
   return <AppShell
     title={data.customer.name}
     description="Customer information, open work, saved forms, billing history, service history, equipment, and monthly plans in one record."
-    highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Customer profile</p><StatusPill tone="emerald">{data.equipment.length} assets</StatusPill><StatusPill>{activeJobs.length} open calls</StatusPill><StatusPill tone={openDocuments.length ? "amber" : "emerald"}>{openDocuments.length} open documents</StatusPill><StatusPill>{activePlans.length} active plans</StatusPill></div>}
+    highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Customer profile</p><StatusPill tone="emerald">{data.equipment.length} assets</StatusPill><StatusPill>{activeJobs.length} open calls</StatusPill><StatusPill tone={openDocuments.length ? "amber" : "emerald"}>{openDocuments.length} open documents</StatusPill><StatusPill>{activePlans.length} active plans</StatusPill><StatusPill tone={outstandingBalance > 0 ? "amber" : "emerald"}>{money.format(outstandingBalance)} outstanding</StatusPill></div>}
   >
     <div className="space-y-4">
       <SectionCard eyebrow="Customer record" title="Contact & service history" description="Edit the customer record here. All equipment, documents, calls, and plans remain tied to this customer ID."><CustomerEditor customer={data.customer} /></SectionCard>
@@ -44,7 +46,7 @@ export default async function CustomerProfilePage({ params }: Props) {
               const jobIsFieldActive = Boolean(linkedJob && !linkedJob.archivedAt && ["scheduled", "in_progress"].includes(linkedJob.status));
               const editHref = document.status === "approved" ? `/invoices?focus=${encodeURIComponent(document.id)}` : jobIsFieldActive ? `/technician?job=${encodeURIComponent(document.jobId!)}` : `/invoices?focus=${encodeURIComponent(document.id)}&edit=1`;
               return <div key={document.id} className="rounded-xl border border-[#2d7dff]/15 bg-black/40 p-3">
-                <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="inline-flex items-center gap-2 font-medium text-white"><FilePenLine className="h-4 w-4 text-[#8ffafa]" />{document.invoiceNumber}</p><p className="mt-1 text-xs text-zinc-500">{document.status.replace(/_/g, " ")} • {document.paymentStatus.replace(/_/g, " ")}</p></div><StatusPill tone={document.status === "approved" ? "emerald" : "amber"}>{document.status === "approved" ? "ready / unpaid" : "in progress"}</StatusPill></div>
+                <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="inline-flex items-center gap-2 font-medium text-white"><FilePenLine className="h-4 w-4 text-[#8ffafa]" />{document.invoiceNumber} <span className="text-zinc-400">{money.format(document.total)}</span></p><p className="mt-1 text-xs text-zinc-500">{document.status.replace(/_/g, " ")} • {document.paymentStatus.replace(/_/g, " ")}</p></div><StatusPill tone={document.status === "approved" ? "emerald" : "amber"}>{document.status === "approved" ? "ready / unpaid" : "in progress"}</StatusPill></div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-3"><Link href={`/portal/${document.portalToken}/document`} target="_blank" className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#2d7dff]/25 px-2.5 py-2 text-xs text-[#d9fbff]"><FileText className="h-3.5 w-3.5" />Open</Link><Link href={editHref} className="inline-flex items-center justify-center rounded-lg border border-[#8ffafa]/35 bg-[#2d7dff]/10 px-2.5 py-2 text-xs font-semibold text-[#d9fbff]">{document.status === "approved" ? "Manage" : "Edit / Continue"}</Link><Link href={`/portal/${document.portalToken}`} target="_blank" className="inline-flex items-center justify-center rounded-lg border border-[#2d7dff]/25 px-2.5 py-2 text-xs text-[#d9fbff]">Customer view</Link></div>
               </div>;
             })}
