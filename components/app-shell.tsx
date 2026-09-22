@@ -42,10 +42,10 @@ export async function AppShell({ children, description, highlight }: AppShellPro
     <div
       className="min-h-screen text-foreground"
       style={{
-        backgroundImage: "linear-gradient(rgba(4,6,10,.87), rgba(4,6,10,.87)), url('/brand/chill-pros-camo-blue.webp')",
-        backgroundRepeat: "no-repeat, repeat",
-        backgroundSize: "cover, 460px auto",
-        backgroundPosition: "center top, top left",
+        backgroundImage: "url('/brand/chill-pros-camo-blue.webp')",
+        backgroundRepeat: "repeat",
+        backgroundSize: "460px auto",
+        backgroundPosition: "top left",
       }}
     >
       {profile ? <LiveOfficeRefresh intervalMs={10000} /> : null}
