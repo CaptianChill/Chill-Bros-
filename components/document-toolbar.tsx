@@ -1,16 +1,18 @@
 "use client";
 
-import { ArrowLeft, Copy, Mail, Printer, Share2 } from "lucide-react";
+import { ArrowLeft, Copy, Home, Mail, Printer, Share2 } from "lucide-react";
 import { useState } from "react";
 
 export function DocumentToolbar({
   invoiceNumber,
   returnHref,
   backLabel = "Back to estimate",
+  homeHref,
 }: {
   invoiceNumber: string;
   returnHref: string;
   backLabel?: string;
+  homeHref?: string;
 }) {
   const [message, setMessage] = useState<string | null>(null);
   const url = () => window.location.href;
@@ -67,6 +69,15 @@ export function DocumentToolbar({
           <ArrowLeft className="h-4 w-4" />
           {backLabel}
         </button>
+        {homeHref ? (
+          <a
+            href={homeHref}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-white"
+          >
+            <Home className="h-4 w-4" />
+            Home
+          </a>
+        ) : null}
         <button
           type="button"
           onClick={() => window.print()}
