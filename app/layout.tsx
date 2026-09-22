@@ -2,8 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "../styles/starfield-theme.css";
 
-import { StarfieldSky } from "@/components/starfield-sky";
-
 export const metadata: Metadata = {
   title: "Chill Bros Operational Command Center",
   description: "Chill Bros internal operations, dispatch, field service, training, equipment, estimates, and customer workflow.",
@@ -41,10 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className="h-full bg-background antialiased">
       <body className="min-h-full bg-background font-sans text-foreground">
-        <div className="theme-starfield min-h-screen">
-          <StarfieldSky />
-          {children}
-        </div>
+        <div className="theme-starfield min-h-screen">{children}</div>
       </body>
     </html>
   );

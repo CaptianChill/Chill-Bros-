@@ -46,7 +46,15 @@ export default async function UpdatePasswordPage({ searchParams }: UpdatePasswor
           : null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-transparent px-4 text-foreground">
+    <div
+      className="flex min-h-screen items-center justify-center px-4 text-foreground"
+      style={{
+        backgroundImage: "url('/brand/chill-pros-camo-blue.webp')",
+        backgroundRepeat: "repeat",
+        backgroundSize: "460px auto",
+        backgroundPosition: "top left",
+      }}
+    >
       <div className="panel w-full max-w-sm space-y-6 neon-frame sign-surface rounded-3xl p-6">
         <div className="flex flex-col items-center gap-3 text-center">
           <LogoBadge variant="full" className="w-16" />

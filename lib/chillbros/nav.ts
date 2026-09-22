@@ -1,10 +1,37 @@
+import {
+  Banknote,
+  CalendarDays,
+  Clock3,
+  CreditCard,
+  Home,
+  Radar,
+  Route,
+  StickyNote,
+  UsersRound,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
+
 import type { StaffRole } from "./types";
+
+export type NavGroup = "command" | "crm" | "operations" | "sales" | "financial";
 
 export type NavItem = {
   href: string;
   label: string;
   shortLabel: string;
   roles: StaffRole[];
+  group: NavGroup;
+};
+
+export const GROUP_ORDER: NavGroup[] = ["command", "crm", "operations", "sales", "financial"];
+
+export const GROUP_LABELS: Record<NavGroup, string> = {
+  command: "Command Center",
+  crm: "CRM",
+  operations: "Operations",
+  sales: "Sales",
+  financial: "Financial",
 };
 
 // Production navigation is intentionally small. The app still contains legacy,
@@ -12,21 +39,53 @@ export type NavItem = {
 // are not part of the day-to-day operating surface until the core service-call
 // workflow is stable end to end.
 export const navItems: NavItem[] = [
-  { href: "/", label: "Home", shortLabel: "Home", roles: ["manager"] },
-  { href: "/office", label: "Office", shortLabel: "Office", roles: ["office"] },
-  { href: "/schedule", label: "Schedule", shortLabel: "Schedule", roles: ["manager", "office"] },
-  { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"] },
-  { href: "/customers", label: "Customers", shortLabel: "Customers", roles: ["manager", "office"] },
-  { href: "/revenue-radar", label: "Revenue Radar", shortLabel: "Radar", roles: ["manager", "office"] },
-  { href: "/revenue-radar/tasks", label: "Sales Tasks", shortLabel: "Sales", roles: ["office"] },
-  { href: "/revenue-radar/handoffs", label: "Tech Requests", shortLabel: "Requests", roles: ["technician"] },
-  { href: "/technician", label: "Field Jobs", shortLabel: "Field", roles: ["manager", "technician"] },
-  { href: "/field-notes", label: "Field Notes", shortLabel: "Notes", roles: ["manager", "technician"] },
-  { href: "/invoices", label: "Quotes & Invoices", shortLabel: "Billing", roles: ["manager", "office"] },
-  { href: "/timesheet", label: "Clock", shortLabel: "Clock", roles: ["manager", "technician"] },
-  { href: "/parts-lookup", label: "Parts Lookup", shortLabel: "Parts", roles: ["manager", "technician", "office"] },
+  { href: "/", label: "Home", shortLabel: "Home", roles: ["manager"], group: "command" },
+  { href: "/office", label: "Office", shortLabel: "Office", roles: ["office"], group: "command" },
+  { href: "/schedule", label: "Schedule", shortLabel: "Schedule", roles: ["manager", "office"], group: "command" },
+  { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"], group: "command" },
+  { href: "/customers", label: "Customers", shortLabel: "Customers", roles: ["manager", "office"], group: "crm" },
+  { href: "/technician", label: "Field Jobs", shortLabel: "Field", roles: ["manager", "technician"], group: "operations" },
+  { href: "/field-notes", label: "Field Notes", shortLabel: "Notes", roles: ["manager", "technician"], group: "operations" },
+  { href: "/timesheet", label: "Clock", shortLabel: "Clock", roles: ["manager", "technician"], group: "operations" },
+  { href: "/parts-lookup", label: "Parts Lookup", shortLabel: "Parts", roles: ["manager", "technician", "office"], group: "operations" },
+  { href: "/revenue-radar", label: "Revenue Radar", shortLabel: "Radar", roles: ["manager", "office"], group: "sales" },
+  { href: "/revenue-radar/tasks", label: "Sales Tasks", shortLabel: "Sales", roles: ["office"], group: "sales" },
+  { href: "/revenue-radar/handoffs", label: "Tech Requests", shortLabel: "Requests", roles: ["technician"], group: "sales" },
+  { href: "/invoices", label: "Quotes & Invoices", shortLabel: "Billing", roles: ["manager", "office"], group: "financial" },
+  { href: "/payments", label: "Payments", shortLabel: "Payments", roles: ["manager", "office"], group: "financial" },
 ];
 
-// Manager-only tools that don't belong in the daily tab bar (sales pipeline
+// Manager-only tools that don't belong in the daily nav (sales pipeline
 // audit, DNC review, payment settings, manual payment recording, etc.) live
 // under Owner Access (app/owner/page.tsx) instead of as separate nav items.
+export const ownerNavItem: NavItem = { href: "/owner", label: "Owner Access", shortLabel: "Owner", roles: ["manager"], group: "command" };
+
+export const NAV_ICONS: Partial<Record<string, LucideIcon>> = {
+  "/": Home,
+  "/office": Home,
+  "/schedule": CalendarDays,
+  "/dispatch": Route,
+  "/customers": UsersRound,
+  "/technician": Wrench,
+  "/field-notes": StickyNote,
+  "/timesheet": Clock3,
+  "/parts-lookup": Wrench,
+  "/revenue-radar": Radar,
+  "/revenue-radar/tasks": Radar,
+  "/revenue-radar/handoffs": Radar,
+  "/invoices": Banknote,
+  "/payments": CreditCard,
+};
+
+export function isNavItemActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  if (href === "/technician") return pathname === "/technician" || pathname.startsWith("/jobs/");
+  if (href === "/invoices") return pathname === "/invoices" || pathname.startsWith("/invoices/");
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function groupNavItems(items: NavItem[]) {
+  return GROUP_ORDER.map((group) => ({ group, label: GROUP_LABELS[group], items: items.filter((item) => item.group === group) })).filter(
+    (entry) => entry.items.length > 0,
+  );
+}

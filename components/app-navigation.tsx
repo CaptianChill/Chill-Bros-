@@ -3,39 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import {
-  Banknote,
-  CalendarDays,
-  ChevronDown,
-  CreditCard,
-  Home,
-  Menu,
-  Route,
-  UsersRound,
-  Wrench,
-  Clock3,
-} from "lucide-react";
+import { ChevronDown, Menu, Wrench } from "lucide-react";
 
-import type { NavItem } from "@/lib/chillbros/nav";
-
-const ICONS = {
-  "/": Home,
-  "/office": Home,
-  "/schedule": CalendarDays,
-  "/dispatch": Route,
-  "/customers": UsersRound,
-  "/technician": Wrench,
-  "/invoices": Banknote,
-  "/payments": CreditCard,
-  "/timesheet": Clock3,
-} as const;
-
-function isActive(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  if (href === "/technician") return pathname === "/technician" || pathname.startsWith("/jobs/");
-  if (href === "/invoices") return pathname === "/invoices" || pathname.startsWith("/invoices/");
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+import { groupNavItems, isNavItemActive, NAV_ICONS, type NavItem } from "@/lib/chillbros/nav";
 
 export function AppNavigation({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
@@ -43,40 +13,50 @@ export function AppNavigation({ items }: { items: NavItem[] }) {
 
   if (!items.length) return null;
 
-  const current = items.find((item) => isActive(pathname, item.href));
+  const current = items.find((item) => isNavItemActive(pathname, item.href));
+  const groups = groupNavItems(items);
 
   return (
-    <nav aria-label="Primary" className="mt-2 border-t border-[var(--saber-soft)] pt-2">
+    <nav aria-label="Primary" className="mt-2 border-t border-[var(--saber-soft)] pt-2 lg:hidden">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="box flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.04em] text-white transition lg:hidden"
+        className="box flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.04em] text-white transition"
       >
         <Menu className="h-4 w-4 shrink-0 text-[var(--saber)]" />
         <span className="truncate">{current ? current.shortLabel : "Menu"}</span>
         <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[var(--saber)] transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
-      <div className={`${open ? "grid" : "hidden"} mt-1.5 grid-cols-3 gap-1.5 sm:grid-cols-4 lg:mt-0 lg:grid lg:grid-cols-7`}>
-        {items.map((item) => {
-          const active = isActive(pathname, item.href);
-          const Icon = ICONS[item.href as keyof typeof ICONS] ?? Wrench;
+      {open ? (
+        <div className="mt-1.5 space-y-2.5">
+          {groups.map((group) => (
+            <div key={group.group}>
+              <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{group.label}</p>
+              <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                {group.items.map((item) => {
+                  const active = isNavItemActive(pathname, item.href);
+                  const Icon = NAV_ICONS[item.href] ?? Wrench;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              onClick={() => setOpen(false)}
-              className={`box ${active ? "hot" : ""} flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.04em] text-white transition sm:text-xs`}
-            >
-              <Icon className="h-3.5 w-3.5 shrink-0 text-[var(--saber)]" />
-              <span className="truncate">{item.shortLabel}</span>
-            </Link>
-          );
-        })}
-      </div>
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => setOpen(false)}
+                      className={`box ${active ? "hot" : ""} flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.04em] text-white transition sm:text-xs`}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0 text-[var(--saber)]" />
+                      <span className="truncate">{item.shortLabel}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </nav>
   );
 }

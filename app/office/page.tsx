@@ -10,7 +10,7 @@ import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { getInvoiceCenterData } from "@/lib/chillbros/billing-queries";
 import { getActiveTechnicians, getDispatchJobs } from "@/lib/chillbros/operations-queries";
-import { getCustomers, getRevenueRadarPulse } from "@/lib/chillbros/queries";
+import { getCustomers, getRevenueRadarPulse, getTopRevenueRadarProspects } from "@/lib/chillbros/queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
@@ -67,7 +67,7 @@ function centralTime(value: string) {
 
 function invoiceCard(invoice: OfficeInvoice) {
   return (
-    <div key={invoice.id} className="rounded-xl border border-[#2d7dff]/15 bg-zinc-950/75 p-2.5">
+    <div key={invoice.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-2.5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-white">{invoice.customerName}</p>
@@ -93,13 +93,15 @@ export default async function OfficePage() {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
 
-  const [jobs, customers, technicians, invoices, invoiceCenter, revenueRadarPulse] = await Promise.all([
+  const salespersonScope = profile.role === "office" ? profile.id : undefined;
+  const [jobs, customers, technicians, invoices, invoiceCenter, revenueRadarPulse, topLeads] = await Promise.all([
     getDispatchJobs(100),
     getCustomers(),
     getActiveTechnicians(),
     getOfficeInvoices(),
     getInvoiceCenterData().catch(() => ({ rows: [], metrics: { outstandingValue: 0, dueToday: 0, overdueValue: 0, collectedThisMonth: 0, pendingApproval: 0, averageDaysToPay: 0 } })),
-    getRevenueRadarPulse(profile.role === "office" ? profile.id : undefined).catch(() => ({ newLeads: 0, highPriorityLeads: 0 })),
+    getRevenueRadarPulse(salespersonScope).catch(() => ({ newLeads: 0, highPriorityLeads: 0 })),
+    getTopRevenueRadarProspects(3, salespersonScope).catch(() => []),
   ]);
   const { metrics: billingMetrics } = invoiceCenter;
 
@@ -119,7 +121,12 @@ export default async function OfficePage() {
     >
       <LiveOfficeRefresh />
       <div className="space-y-4">
-        <SectionCard eyebrow="Today" title="Office operating pulse" description="Only the work that needs to move today stays visible.">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <MetricCard label="Open Calls" value={openJobs.length} href="/dispatch" size="lg" tone="cyan" />
+          <MetricCard label="Office Queue" value={awaitingApproval + unassignedJobs.length} href="#office-queue" size="lg" tone={awaitingApproval + unassignedJobs.length > 0 ? "amber" : "emerald"} />
+        </div>
+
+        <SectionCard id="office-queue" eyebrow="Today" title="Office operating pulse" description="Only the work that needs to move today stays visible.">
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
             <MetricCard label="Open calls" value={openJobs.length} href="/dispatch" tone="emerald" />
             <MetricCard label="In progress" value={inProgressJobs.length} href="/dispatch" />
@@ -136,15 +143,32 @@ export default async function OfficePage() {
           </div>
         </SectionCard>
 
+        {topLeads.length > 0 ? (
+          <SectionCard eyebrow="Sales" title="Revenue Radar — hot leads">
+            <div className="grid gap-2 md:grid-cols-3">
+              {topLeads.map((lead) => (
+                <Link key={lead.id} href={`/revenue-radar/${lead.id}`} className="rounded-lg border border-white/10 bg-white/[0.02] p-3 text-left transition hover:border-[var(--saber-soft)] hover:bg-white/[0.05]">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-lg font-bold text-[var(--saber)]">{Math.round(lead.score)}%</p>
+                    <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-amber-200">Hot lead</span>
+                  </div>
+                  <p className="mt-1 truncate text-sm font-semibold text-white">{lead.businessName}</p>
+                  <p className="mt-0.5 truncate text-xs text-zinc-500">{lead.category.replace(/_/g, " ")}{lead.city ? ` · ${lead.city}` : ""}</p>
+                </Link>
+              ))}
+            </div>
+          </SectionCard>
+        ) : null}
+
         <div className="grid gap-4 xl:grid-cols-[0.72fr_1.28fr]">
           <SectionCard eyebrow="Revenue path" title="Move the service call" description="One small set of screens covers intake through customer billing.">
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-              <Link href="/schedule" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4 text-[#8ffafa]" />Schedule</span><span className="text-xs text-zinc-500">Book call</span></Link>
-              <Link href="/dispatch" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><Route className="h-4 w-4 text-[#8ffafa]" />Dispatch</span><span className="text-xs text-zinc-500">{openJobs.length} open</span></Link>
-              <Link href="/customers" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><UsersRound className="h-4 w-4 text-[#8ffafa]" />Customers</span><span className="text-xs text-zinc-500">{customers.length}</span></Link>
-              <Link href="/invoices" className="flex items-center justify-between rounded-xl border border-[#2d7dff]/20 bg-black/40 p-3 text-white"><span className="inline-flex items-center gap-2"><Banknote className="h-4 w-4 text-[#8ffafa]" />Quotes & invoices</span><span className="text-xs text-zinc-500">Bill work</span></Link>
+              <Link href="/schedule" className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] p-3 text-white"><span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4 text-[var(--saber)]" />Schedule</span><span className="text-xs text-zinc-500">Book call</span></Link>
+              <Link href="/dispatch" className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] p-3 text-white"><span className="inline-flex items-center gap-2"><Route className="h-4 w-4 text-[var(--saber)]" />Dispatch</span><span className="text-xs text-zinc-500">{openJobs.length} open</span></Link>
+              <Link href="/customers" className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] p-3 text-white"><span className="inline-flex items-center gap-2"><UsersRound className="h-4 w-4 text-[var(--saber)]" />Customers</span><span className="text-xs text-zinc-500">{customers.length}</span></Link>
+              <Link href="/invoices" className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] p-3 text-white"><span className="inline-flex items-center gap-2"><Banknote className="h-4 w-4 text-[var(--saber)]" />Quotes & invoices</span><span className="text-xs text-zinc-500">Bill work</span></Link>
             </div>
-            <div className="mt-3 rounded-xl border border-[#2d7dff]/15 bg-zinc-950/70 p-3 text-sm text-zinc-400"><span className="font-medium text-white">{technicians.length}</span> active technician{technicians.length === 1 ? "" : "s"} available.</div>
+            <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm text-zinc-400"><span className="font-medium text-white">{technicians.length}</span> active technician{technicians.length === 1 ? "" : "s"} available.</div>
           </SectionCard>
 
           <SectionCard eyebrow="Customer documents" title="Estimate / invoice handoff queue" description="Five newest items stay visible. Older active documents remain in Billing.">
@@ -154,11 +178,11 @@ export default async function OfficePage() {
               <div className="space-y-2">
                 {visibleInvoices.map(invoiceCard)}
                 {extraInvoices.length > 0 ? (
-                  <details className="rounded-xl border border-[#2d7dff]/20 bg-black/35">
-                    <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-[#d9fbff]">
+                  <details className="rounded-lg border border-white/10 bg-black/20">
+                    <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-zinc-300">
                       Show {extraInvoices.length} more active document{extraInvoices.length === 1 ? "" : "s"}
                     </summary>
-                    <div className="space-y-2 border-t border-[#2d7dff]/15 p-2">{extraInvoices.map(invoiceCard)}</div>
+                    <div className="space-y-2 border-t border-white/10 p-2">{extraInvoices.map(invoiceCard)}</div>
                   </details>
                 ) : null}
               </div>
