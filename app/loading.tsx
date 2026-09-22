@@ -1,19 +1,21 @@
+import Image from "next/image";
+
 export default function Loading() {
   return (
     <main
-      className="fixed inset-0 z-[9999] min-h-dvh w-full overflow-hidden bg-black"
+      className="fixed inset-0 z-[9999] flex min-h-dvh w-full items-center justify-center overflow-hidden bg-[#0A1A33]"
       aria-live="polite"
       aria-busy="true"
-      aria-label="Chill Bros loading"
+      aria-label="Chill Pros loading"
     >
-      <div
-        role="img"
-        aria-label="Chill Bros loading screen"
-        className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage:
-            "url('/chill-bros-loader.png'), url('/chill-bros-loader.webp')",
-        }}
+      {/* Shown whole (no crop); navy fills any space on taller screens. */}
+      <Image
+        src="/brand/chill-pros-loading.webp"
+        alt="A Chill Pro"
+        fill
+        priority
+        sizes="100vw"
+        className="object-contain"
       />
     </main>
   );
