@@ -1,7 +1,14 @@
 :root {
-  --saber: #6fc9ff;
-  --saber-soft: rgba(111, 201, 255, 0.22);
-  --danger: #e24b4a;
+  /* Restricted brand palette, pulled directly from the approved blue camo
+     asset (public/brand/chill-pros-camo-blue.webp): white, light blue, and
+     mid blue are the only accent colors used anywhere in the app besides
+     the dark navy base and the chrome logo. */
+  --white: #ffffff;
+  --light-blue: #a9d6f5;
+  --mid-blue: #3194e0;
+
+  --saber: var(--mid-blue);
+  --saber-soft: rgba(169, 214, 245, 0.32);
   --ink: #05070c;
 }
 
@@ -31,42 +38,78 @@
 .box {
   border: 1px solid var(--saber-soft);
   border-radius: 10px;
-  background: rgba(111, 201, 255, 0.02);
+  background: rgba(169, 214, 245, 0.03);
   box-shadow: none;
 }
 .box.hot {
-  border-color: rgba(111, 201, 255, 0.6);
-  box-shadow: 0 0 0 1px rgba(111, 201, 255, 0.35);
+  border-color: rgba(49, 148, 224, 0.7);
+  box-shadow: 0 0 0 1px rgba(49, 148, 224, 0.4);
 }
+/* Alert/danger state uses an inverted white chip instead of a fourth hue —
+   it needs to read as distinct from plain white body text, so it inverts
+   rather than adding a new color. */
 .danger-box {
-  border: 1px solid rgba(226, 75, 74, 0.5);
+  border: 1px solid var(--white);
   box-shadow: none;
   border-radius: 10px;
-  background: rgba(226, 75, 74, 0.05);
+  background: var(--white);
 }
+.danger-box, .danger-box.txt, .danger-box .txt { color: var(--ink) !important; }
 
 /* Inner elements never inherit a wide legacy halo. */
 .panel .box { box-shadow: none !important; }
-.panel .box.hot { box-shadow: 0 0 0 1px rgba(111, 201, 255, 0.35) !important; }
+.panel .box.hot { box-shadow: 0 0 0 1px rgba(49, 148, 224, 0.4) !important; }
 .panel .danger-box { box-shadow: none !important; }
 .panel [class*="shadow-"]:not(.panel) { box-shadow: none !important; }
 
 .glo { color: #fff; }
 .txt { color: #fff; }
-.sub { color: #9fb3c8; }
+.sub { color: var(--light-blue); opacity: .75; }
 
-/* Last-loaded compatibility overrides: legacy app blues collapse to the saber variable. */
+/* Last-loaded compatibility overrides: every legacy/Tailwind accent color
+   used across existing pages collapses into the three-color palette above,
+   so no page needed a hand edit to fall in line.
+   - old app blues / cyan / "positive" tones     -> light blue
+   - amber / rose ("attention"/"danger" tones)   -> mid blue
+     (rose is almost always plain error/warning TEXT across ~20 files, not
+     a badge with its own background — an inverted white chip would have
+     rendered that text near-black on this dark background, i.e. invisible.
+     The one place danger genuinely is a badge, StatusPill's "rose" tone,
+     stays a deliberate white chip via .danger-box below instead of this
+     blanket class-based rule.)
+   - violet (legacy)                             -> light blue */
 .theme-starfield [class*="text-[#8ffafa]"],
 .theme-starfield [class*="text-[#d9fbff]"],
 .theme-starfield [class*="text-[#9ffcff]"],
-.theme-starfield [class*="text-[#a7f0ff]"] { color: var(--saber) !important; }
-.theme-starfield [class*="border-[#2d7dff]"],
-.theme-starfield [class*="border-[#8ffafa]"] { border-color: var(--saber-soft) !important; }
-.theme-starfield [class*="bg-[#2d7dff]"] { background-color: rgba(111, 201, 255, 0.06) !important; }
+.theme-starfield [class*="text-[#a7f0ff]"],
+.theme-starfield [class*="text-[#bafcfc]"],
+.theme-starfield [class*="text-[#e9ffff]"],
+.theme-starfield [class*="cyan-"],
+.theme-starfield [class*="emerald-"],
 .theme-starfield [class*="violet-"] {
-  border-color: var(--saber-soft) !important;
-  color: var(--saber) !important;
-  background-color: rgba(111, 201, 255, 0.02) !important;
+  color: var(--light-blue) !important;
+}
+.theme-starfield [class*="border-[#2d7dff]"],
+.theme-starfield [class*="border-[#8ffafa]"],
+.theme-starfield [class*="cyan-"],
+.theme-starfield [class*="emerald-"],
+.theme-starfield [class*="violet-"] {
+  border-color: rgba(169, 214, 245, 0.35) !important;
+}
+.theme-starfield [class*="bg-[#2d7dff]"],
+.theme-starfield [class*="bg-[#8ffafa]"],
+.theme-starfield [class*="cyan-"],
+.theme-starfield [class*="emerald-"],
+.theme-starfield [class*="violet-"] {
+  background-color: rgba(169, 214, 245, 0.08) !important;
+}
+
+.theme-starfield [class*="amber-"],
+.theme-starfield [class*="rose-"],
+.theme-starfield [class*="text-[#ff9b9b]"] {
+  color: var(--mid-blue) !important;
+  border-color: rgba(49, 148, 224, 0.4) !important;
+  background-color: rgba(49, 148, 224, 0.08) !important;
 }
 
 /* Preserve every image asset exactly. */
