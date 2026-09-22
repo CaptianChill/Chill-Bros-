@@ -121,15 +121,16 @@ export async function recordInvoiceAdjustmentAction(invoiceId: string, type: Inv
   return { ok: true, data: undefined };
 }
 
-export async function sendInvoiceCommunicationAction(invoiceId: string, channel: BillingDeliveryChannel, reminder = false): Promise<Result<{ status: string; recipient: string | null }>> {
+export async function sendInvoiceCommunicationAction(invoiceId: string, channel: BillingDeliveryChannel, reminder = false, overrideRecipient?: string): Promise<Result<{ status: string; recipient: string | null }>> {
   const guard = await requireOfficeOrManager();
   if (!guard.ok) return guard;
   if (channel !== "email" && channel !== "sms") return { ok: false, error: "Choose email or text delivery." };
+  const recipient = String(overrideRecipient ?? "").trim().slice(0, 320) || undefined;
   const invoice = await getInvoiceV2ById(invoiceId);
   if (!invoice) return { ok: false, error: "Active invoice was not found." };
   if (reminder && (invoice.status !== "approved" || invoice.paymentStatus === "paid")) return { ok: false, error: "Reminders are only for approved unpaid invoices." };
   const deliveryType = reminder ? "reminder" : invoice.paymentStatus === "paid" ? "receipt" : invoice.status === "approved" ? "invoice" : "estimate";
-  const result = await sendBillingDeliveryRecorded(invoiceId, deliveryType, channel);
+  const result = await sendBillingDeliveryRecorded(invoiceId, deliveryType, channel, recipient);
   if (result.status === "sent" && reminder) {
     const supabase = createServiceRoleClient();
     await supabase.from("chillbros_invoices").update({ last_reminder_at: new Date().toISOString(), reminder_count: invoice.reminderCount + 1, updated_at: new Date().toISOString() }).eq("id", invoiceId);
