@@ -6,6 +6,7 @@ import {
   Home,
   Radar,
   Route,
+  Search,
   StickyNote,
   UsersRound,
   Wrench,
@@ -88,4 +89,38 @@ export function groupNavItems(items: NavItem[]) {
   return GROUP_ORDER.map((group) => ({ group, label: GROUP_LABELS[group], items: items.filter((item) => item.group === group) })).filter(
     (entry) => entry.items.length > 0,
   );
+}
+
+// Phone tab bar / desktop sidebar primary items. Everything else in the
+// role's nav stays reachable from the "More" menu.
+export type PrimaryTab = { href: string; label: string; icon: LucideIcon; isActive: (pathname: string) => boolean };
+
+const isUnder = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
+export function getPrimaryTabs(role: StaffRole): PrimaryTab[] {
+  if (role === "technician") {
+    // Technicians can't open Dispatch or Billing, and "/" redirects them to
+    // their field workflow, so they get their own daily screens instead.
+    return [
+      { href: "/technician", label: "Job", icon: Wrench, isActive: (p) => p === "/" || p === "/technician" || p.startsWith("/jobs/") },
+      { href: "/field-notes", label: "Notes", icon: StickyNote, isActive: (p) => isUnder(p, "/field-notes") },
+      { href: "/timesheet", label: "Clock", icon: Clock3, isActive: (p) => isUnder(p, "/timesheet") },
+      { href: "/parts-lookup", label: "Parts", icon: Search, isActive: (p) => isUnder(p, "/parts-lookup") },
+    ];
+  }
+
+  const homeHref = role === "office" ? "/office" : "/";
+  // Office staff can't open the field workflow, so their job list is the schedule.
+  const jobHref = role === "office" ? "/schedule" : "/technician";
+
+  return [
+    { href: homeHref, label: "Home", icon: Home, isActive: (p) => p === "/" || p === "/office" },
+    { href: jobHref, label: "Job", icon: Wrench, isActive: (p) => isUnder(p, jobHref) || p.startsWith("/jobs/") },
+    { href: "/dispatch", label: "Dispatch", icon: Route, isActive: (p) => isUnder(p, "/dispatch") },
+    { href: "/invoices", label: "Billing", icon: Banknote, isActive: (p) => isUnder(p, "/invoices") },
+  ];
+}
+
+export function getHomeHref(role: StaffRole) {
+  return role === "office" ? "/office" : role === "technician" ? "/technician" : "/";
 }

@@ -26,9 +26,14 @@ const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/reports", "Reports"],
 ];
 
+/** Short screen name for a route, or null when the route has no fixed name. */
+export function titleForPath(pathname: string) {
+  return TITLES.find(([test]) => test(pathname))?.[1] ?? null;
+}
+
 export function PageTitle() {
   const pathname = usePathname();
-  const label = TITLES.find(([test]) => test(pathname))?.[1] ?? "Chill Bros";
+  const label = titleForPath(pathname) ?? "Chill Bros";
 
   return (
     <h1 className="glo w-full text-center font-serif text-[1.35rem] font-black italic uppercase leading-tight tracking-[0.015em] sm:text-[1.8rem]">
