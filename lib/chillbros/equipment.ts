@@ -1,6 +1,5 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
@@ -38,8 +37,23 @@ function clean(value: string | undefined, max: number) {
   return v ? v.slice(0, max) : null;
 }
 
-function generatedAssetTag() {
-  return `CB-${Date.now().toString(36).toUpperCase()}-${randomBytes(2).toString("hex").toUpperCase()}`;
+function tagSegment(value: string, maxLen: number) {
+  const cleaned = value.toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, maxLen);
+  return cleaned || "X";
+}
+
+// Chill Pros asset tag convention: CP-CLIENT-SITE-EQUIPMENTTYPE-###. There is
+// no separate "site" entity yet (one address per customer record), so SITE
+// is a fixed "MAIN" placeholder rather than fabricated location data.
+async function generatedAssetTag(supabase: ReturnType<typeof createServiceRoleClient>, customerId: string, equipmentType: string) {
+  const [{ data: customer }, { count }] = await Promise.all([
+    supabase.from("chillbros_customers").select("name").eq("id", customerId).maybeSingle(),
+    supabase.from("chillbros_equipment").select("id", { count: "exact", head: true }).eq("customer_id", customerId),
+  ]);
+  const clientCode = tagSegment(customer?.name ?? "CUST", 6);
+  const typeCode = tagSegment(equipmentType, 6);
+  const sequence = String((count ?? 0) + 1).padStart(3, "0");
+  return `CP-${clientCode}-MAIN-${typeCode}-${sequence}`;
 }
 
 function refreshEquipment(customerId?: string) {
@@ -57,7 +71,7 @@ export async function createEquipmentAction(input: EquipmentInput): Promise<Resu
   if (!input.customerId || !input.equipmentType.trim()) return { ok: false, error: "Customer and equipment type are required." };
 
   const supabase = createServiceRoleClient();
-  const assetTag = clean(input.assetTag, 120) ?? generatedAssetTag();
+  const assetTag = clean(input.assetTag, 120) ?? (await generatedAssetTag(supabase, input.customerId, input.equipmentType));
   const { error } = await supabase.from("chillbros_equipment").insert({
     customer_id: input.customerId,
     asset_tag: assetTag,
