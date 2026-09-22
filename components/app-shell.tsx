@@ -39,7 +39,15 @@ export async function AppShell({ children, description, highlight }: AppShellPro
   ) : null;
 
   return (
-    <div className="min-h-screen bg-transparent text-foreground">
+    <div
+      className="min-h-screen text-foreground"
+      style={{
+        backgroundImage: "linear-gradient(rgba(4,6,10,.87), rgba(4,6,10,.87)), url('/brand/chill-pros-camo-blue.webp')",
+        backgroundRepeat: "no-repeat, repeat",
+        backgroundSize: "cover, 460px auto",
+        backgroundPosition: "center top, top left",
+      }}
+    >
       {profile ? <LiveOfficeRefresh intervalMs={10000} /> : null}
       <a href="#main-content" className="box fixed left-3 top-3 z-[100] -translate-y-24 rounded-xl bg-[var(--saber)] px-4 py-2 text-center text-sm font-semibold text-black transition focus:translate-y-0">
         Skip to content

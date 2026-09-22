@@ -12,7 +12,15 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
   const usableToken = typeof token === "string" && token.length > 20 ? token : "";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-transparent px-4 text-foreground">
+    <div
+      className="flex min-h-screen items-center justify-center px-4 text-foreground"
+      style={{
+        backgroundImage: "linear-gradient(rgba(4,6,10,.87), rgba(4,6,10,.87)), url('/brand/chill-pros-camo-blue.webp')",
+        backgroundRepeat: "no-repeat, repeat",
+        backgroundSize: "cover, 460px auto",
+        backgroundPosition: "center top, top left",
+      }}
+    >
       <div className="panel w-full max-w-sm space-y-6 neon-frame sign-surface rounded-3xl p-6">
         <div className="flex flex-col items-center gap-3 text-center">
           <LogoBadge variant="full" className="w-16" />
