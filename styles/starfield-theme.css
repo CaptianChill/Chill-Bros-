@@ -1,8 +1,8 @@
 :root {
-  --saber: #7ec8ff;
-  --saber-soft: rgba(126, 200, 255, 0.26);
+  --saber: #6fc9ff;
+  --saber-soft: rgba(111, 201, 255, 0.22);
   --danger: #e24b4a;
-  --ink: #03060d;
+  --ink: #05070c;
 }
 
 .theme-starfield {
@@ -12,47 +12,13 @@
   min-height: 100vh;
 }
 
-.starfield-sky {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-.theme-starfield > * { position: relative; z-index: 1; }
-
-.starfield-sky .st {
-  position: absolute;
-  border-radius: 50%;
-  animation: sf-twinkle 3s ease-in-out infinite;
-}
-@keyframes sf-twinkle {
-  0%, 100% { opacity: 0.12; transform: scale(0.55); }
-  50% { opacity: 1; transform: scale(1.25); }
-}
-
-.starfield-sky .cm {
-  position: absolute;
-  height: 1.2px;
-  border-radius: 2px;
-  opacity: 0;
-  animation: sf-fly 6s linear infinite;
-}
-@keyframes sf-fly {
-  0% { transform: translate(0, 0) rotate(var(--r)); opacity: 0; }
-  8% { opacity: 0.9; }
-  62% { opacity: 0.75; }
-  78% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; }
-  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; }
-}
-
 .panel {
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  box-shadow: 0 0 1px rgba(255,255,255,.9), 0 0 4px rgba(126,200,255,.5), 0 0 11px rgba(126,200,255,.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  background: rgba(6, 14, 30, 0.1);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: rgba(10, 14, 22, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   padding: 14px;
 }
 
@@ -65,29 +31,29 @@
 .box {
   border: 1px solid var(--saber-soft);
   border-radius: 10px;
-  background: rgba(126, 200, 255, 0.02);
+  background: rgba(111, 201, 255, 0.02);
   box-shadow: none;
 }
 .box.hot {
-  border-color: rgba(126, 200, 255, 0.6);
-  box-shadow: 0 0 2px rgba(126, 200, 255, 0.55);
+  border-color: rgba(111, 201, 255, 0.6);
+  box-shadow: 0 0 0 1px rgba(111, 201, 255, 0.35);
 }
 .danger-box {
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 0 2px rgba(226, 75, 74, 0.7);
+  border: 1px solid rgba(226, 75, 74, 0.5);
+  box-shadow: none;
   border-radius: 10px;
   background: rgba(226, 75, 74, 0.05);
 }
 
 /* Inner elements never inherit a wide legacy halo. */
 .panel .box { box-shadow: none !important; }
-.panel .box.hot { box-shadow: 0 0 2px rgba(126, 200, 255, 0.55) !important; }
-.panel .danger-box { box-shadow: 0 0 2px rgba(226, 75, 74, 0.7) !important; }
+.panel .box.hot { box-shadow: 0 0 0 1px rgba(111, 201, 255, 0.35) !important; }
+.panel .danger-box { box-shadow: none !important; }
 .panel [class*="shadow-"]:not(.panel) { box-shadow: none !important; }
 
-.glo { color:#fff; text-shadow:0 0 2px rgba(255,255,255,.75),0 0 7px rgba(126,200,255,.45),0 1px 3px rgba(0,0,0,.9); }
-.txt { color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.95); }
-.sub { color:#cfe2fb; text-shadow:0 1px 3px rgba(0,0,0,.95); }
+.glo { color: #fff; }
+.txt { color: #fff; }
+.sub { color: #9fb3c8; }
 
 /* Last-loaded compatibility overrides: legacy app blues collapse to the saber variable. */
 .theme-starfield [class*="text-[#8ffafa]"],
@@ -96,38 +62,16 @@
 .theme-starfield [class*="text-[#a7f0ff]"] { color: var(--saber) !important; }
 .theme-starfield [class*="border-[#2d7dff]"],
 .theme-starfield [class*="border-[#8ffafa]"] { border-color: var(--saber-soft) !important; }
-.theme-starfield [class*="bg-[#2d7dff]"] { background-color: rgba(126,200,255,.08) !important; }
+.theme-starfield [class*="bg-[#2d7dff]"] { background-color: rgba(111, 201, 255, 0.06) !important; }
 .theme-starfield [class*="violet-"] {
   border-color: var(--saber-soft) !important;
   color: var(--saber) !important;
-  background-color: rgba(126,200,255,.02) !important;
+  background-color: rgba(111, 201, 255, 0.02) !important;
 }
 
 /* Preserve every image asset exactly. */
 .theme-starfield img {
-  filter:none !important;
-  opacity:1 !important;
-  mix-blend-mode:normal !important;
-}
-
-/* Keep the star layer fixed to the full viewport. The earlier child rule makes
-   normal app content relative/z-indexed, so this more-specific late override
-   prevents the sky itself from being converted into a short relative element. */
-.theme-starfield > .starfield-sky {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100dvh;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-}
-
-@supports not (height: 100dvh) {
-  .theme-starfield > .starfield-sky { height: 100vh; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .starfield-sky .st, .starfield-sky .cm { animation:none; }
-  .starfield-sky .cm { opacity:0; }
+  filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
 }

@@ -13,5 +13,5 @@ const toneMap = {
 };
 
 export function StatusPill({ children, tone = "cyan" }: StatusPillProps) {
-  return <span className={`inline-flex rounded-full px-3 py-1 font-brand text-xs font-medium uppercase tracking-[0.08em] ${toneMap[tone]}`}>{children}</span>;
+  return <span className={`inline-flex rounded-md px-2.5 py-1 font-brand text-xs font-medium uppercase tracking-[0.06em] ${toneMap[tone]}`}>{children}</span>;
 }

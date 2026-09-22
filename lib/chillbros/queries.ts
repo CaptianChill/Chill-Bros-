@@ -151,3 +151,28 @@ export async function getRevenueRadarPulse(assignedSalespersonId?: string): Prom
   const [{ count: newLeads }, { count: highPriorityLeads }] = await Promise.all([newQuery, highPriorityQuery]);
   return { newLeads: newLeads ?? 0, highPriorityLeads: highPriorityLeads ?? 0 };
 }
+
+export type TopRevenueRadarProspect = {
+  id: string;
+  businessName: string;
+  city: string | null;
+  category: string;
+  score: number;
+};
+
+// Same scoping as getRevenueRadarPulse: office only ever sees its own
+// assigned leads on /revenue-radar, so a dashboard preview must match.
+export async function getTopRevenueRadarProspects(limit = 3, assignedSalespersonId?: string): Promise<TopRevenueRadarProspect[]> {
+  const supabase = createServiceRoleClient();
+  let query = supabase
+    .from("chillbros_revenue_prospects")
+    .select("id,business_name,city,category,score")
+    .gte("score", 65)
+    .order("score", { ascending: false })
+    .order("id", { ascending: true })
+    .limit(limit);
+  if (assignedSalespersonId) query = query.eq("assigned_salesperson", assignedSalespersonId);
+  const { data, error } = await query;
+  if (error || !data) return [];
+  return data.map((row) => ({ id: row.id, businessName: row.business_name, city: row.city, category: row.category, score: Number(row.score) }));
+}
