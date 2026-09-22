@@ -4,6 +4,7 @@ import { DocumentSignatureForm } from "@/components/document-signature-form";
 import { DocumentToolbar } from "@/components/document-toolbar";
 import { LogoBadge } from "@/components/logo-badge";
 import { getServiceAgreementByToken } from "@/lib/chillbros/service-agreement-queries";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ token: string }> };
@@ -12,12 +13,12 @@ const date = (value: string | null) => value ? new Date(`${value}T12:00:00`).toL
 
 export default async function AgreementDocumentPage({ params }: Props) {
   const { token } = await params;
-  const agreement = await getServiceAgreementByToken(token);
+  const [agreement, staffProfile] = await Promise.all([getServiceAgreementByToken(token), getCurrentStaffProfile()]);
   if (!agreement) notFound();
 
   return <main className="min-h-screen bg-white px-3 py-4 text-zinc-950 sm:px-6 sm:py-8 print:p-0">
     <div className="mx-auto max-w-4xl">
-      <DocumentToolbar invoiceNumber={agreement.agreementNumber} returnHref={`/agreement/${agreement.portalToken}`} backLabel="Back" />
+      <DocumentToolbar invoiceNumber={agreement.agreementNumber} returnHref={staffProfile ? "/agreements" : `/agreement/${agreement.portalToken}`} backLabel="Back" homeHref={staffProfile ? "/" : undefined} />
       <article className="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-xl print:rounded-none print:border-0 print:shadow-none">
         <header className="border-b border-zinc-200 bg-[#020407] px-6 py-5 text-white sm:px-8"><div className="flex flex-wrap items-center justify-between gap-5"><div className="flex items-center gap-3"><LogoBadge variant="full" className="w-14" /><div><p className="text-2xl font-bold tracking-wide">CHILL PROS</p><p className="text-xs uppercase tracking-[0.24em] text-cyan-100">Monthly Service Agreement</p></div></div><div className="text-right"><p className="text-sm font-semibold tracking-[0.18em] text-cyan-100">SERVICE PLAN</p><p className="mt-1 text-lg font-bold">{agreement.agreementNumber}</p><p className="mt-1 text-xs uppercase text-zinc-300">{agreement.status}</p></div></div></header>
 

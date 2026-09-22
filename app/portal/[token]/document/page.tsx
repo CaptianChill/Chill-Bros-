@@ -56,7 +56,7 @@ export default async function DocumentPage({ params }: Props) {
 
   return <main className="min-h-screen overflow-x-hidden bg-white px-3 py-4 text-zinc-950 sm:px-6 sm:py-8 print:p-0">
     <div className="mx-auto w-full max-w-4xl">
-      <DocumentToolbar invoiceNumber={invoice.invoiceNumber} returnHref={`/portal/${token}`} backLabel="Back" />
+      <DocumentToolbar invoiceNumber={invoice.invoiceNumber} returnHref={staffProfile ? `/invoices?focus=${invoice.id}` : `/portal/${token}`} backLabel="Back" homeHref={staffProfile ? "/" : undefined} />
 
       {canEditHere ? <div className="mb-4 print:hidden"><OwnerEstimateEditor key={invoice.id} invoice={invoice} /></div> : null}
 

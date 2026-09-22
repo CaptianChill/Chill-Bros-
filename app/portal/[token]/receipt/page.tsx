@@ -5,6 +5,7 @@ import { FileDown } from "lucide-react";
 import { DocumentToolbar } from "@/components/document-toolbar";
 import { LogoBadge } from "@/components/logo-badge";
 import { getReceiptByInvoiceToken } from "@/lib/chillbros/billing-queries";
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { PAYMENT_METHOD_LABELS, type PaymentMethod } from "@/lib/chillbros/types";
 
 export const dynamic = "force-dynamic";
@@ -15,13 +16,13 @@ const EXTRA_PAYMENT_LABELS: Record<string, string> = { cash: "Cash", check: "Che
 
 export default async function ReceiptPage({ params }: Props) {
   const { token } = await params;
-  const receipt = await getReceiptByInvoiceToken(token);
+  const [receipt, staffProfile] = await Promise.all([getReceiptByInvoiceToken(token), getCurrentStaffProfile()]);
   if (!receipt) notFound();
   const rawMethod = receipt.payment_method as string | null;
   const methodLabel = rawMethod ? EXTRA_PAYMENT_LABELS[rawMethod] ?? PAYMENT_METHOD_LABELS[rawMethod as PaymentMethod] ?? rawMethod.replace(/_/g, " ") : "Payment method recorded by manager";
   return <main className="min-h-screen bg-white px-3 py-4 text-zinc-950 sm:px-6 sm:py-8 print:p-0">
     <div className="mx-auto max-w-3xl">
-      <DocumentToolbar invoiceNumber={receipt.invoiceNumber} returnHref={`/portal/${token}`} backLabel="Back to invoice" />
+      <DocumentToolbar invoiceNumber={receipt.invoiceNumber} returnHref={staffProfile ? "/invoices" : `/portal/${token}`} backLabel="Back to invoice" homeHref={staffProfile ? "/" : undefined} />
       <article className="overflow-hidden rounded-2xl border border-zinc-300 bg-white shadow-xl print:rounded-none print:border-0 print:shadow-none">
         <header className="bg-[#020407] px-6 py-6 text-white"><div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3"><LogoBadge variant="full" className="w-14" /><div><p className="text-2xl font-bold">CHILL PROS</p><p className="text-xs uppercase tracking-[0.24em] text-cyan-100">Payment Receipt</p></div></div><div className="text-right"><p className="text-xs text-cyan-100">RECEIPT</p><p className="mt-1 text-lg font-bold">{receipt.receipt_number}</p></div></div></header>
         <div className="space-y-6 p-6 sm:p-8">
