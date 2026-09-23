@@ -31,9 +31,9 @@ function displayTime(value: string) {
 }
 
 function attentionMeta(stage: string, status: string) {
-  if (stage === "approved_needs_action" || stage === "approved") return { priority: 1, label: "Approved · choose work or return visit", tone: "text-[#1D7A4C]", icon: CheckCircle2 };
-  if (stage === "payment_method_selected") return { priority: 2, label: "Manual payment needs verification", tone: "text-[#B4531A]", icon: CreditCard };
-  if (stage === "invoice_issued") return { priority: 3, label: "Invoice issued · awaiting payment", tone: "text-[#B4531A]", icon: CreditCard };
+  if (stage === "approved_needs_action" || stage === "approved") return { priority: 1, label: "Approved · choose work or return visit", tone: "text-[#0A7FC2]", icon: CheckCircle2 };
+  if (stage === "payment_method_selected") return { priority: 2, label: "Manual payment needs verification", tone: "text-[#0B5CD5]", icon: CreditCard };
+  if (stage === "invoice_issued") return { priority: 3, label: "Invoice issued · awaiting payment", tone: "text-[#0B5CD5]", icon: CreditCard };
   if (stage === "estimate_published" || stage === "awaiting_approval") return { priority: 4, label: "Estimate awaiting customer approval", tone: "text-[#1557B0]", icon: ClipboardList };
   if (stage === "return_scheduled") return { priority: 5, label: "Return visit scheduled", tone: "text-[#1557B0]", icon: CalendarDays };
   if (stage === "approved_work_now") return { priority: 6, label: "Approved work in progress", tone: "text-[#1557B0]", icon: ClipboardList };
@@ -89,7 +89,7 @@ export default async function HomePage() {
             href="/dispatch"
             label="Unassigned"
             value={String(unassignedCount)}
-            valueClass={unassignedCount > 0 ? "text-[#B4531A]" : "text-[#0A1A33]"}
+            valueClass={unassignedCount > 0 ? "text-[#0B5CD5]" : "text-[#0A1A33]"}
             hint={unassignedCount > 0 ? "Assign now" : "All assigned"}
             hintClass={unassignedCount > 0 ? "text-[#1557B0] font-semibold" : "text-[#4A5D78]"}
           />
@@ -97,7 +97,7 @@ export default async function HomePage() {
             href="/invoices?status=overdue"
             label="Overdue"
             value={money.format(billingMetrics.overdueValue)}
-            valueClass={overdueCount > 0 ? "text-[#B4531A]" : "text-[#0A1A33]"}
+            valueClass={overdueCount > 0 ? "text-[#0B5CD5]" : "text-[#0A1A33]"}
             hint={`${overdueCount} invoice${overdueCount === 1 ? "" : "s"}`}
           />
           <StatCard href="/invoices" label="Collected this month" value={money.format(billingMetrics.collectedThisMonth)} hint="Paid invoices" />
@@ -142,7 +142,7 @@ export default async function HomePage() {
         <section id="needs-attention" className="cb-card scroll-mt-4 overflow-hidden" aria-labelledby="needs-attention-title">
           <h2 id="needs-attention-title" className="border-b border-[#0A1A33]/10 px-3.5 py-3 text-[28px] leading-none">Needs attention</h2>
           {attention.length === 0 ? (
-            <p className="flex items-center gap-2 px-3.5 py-5 text-sm text-[#1D7A4C]">
+            <p className="flex items-center gap-2 px-3.5 py-5 text-sm text-[#0A7FC2]">
               <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
               No workflow handoffs are waiting on you.
             </p>

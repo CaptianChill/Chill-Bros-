@@ -76,7 +76,7 @@ export function StaffHeader({
               <div className="flex shrink-0 items-center gap-2">
                 <Link href={notificationHref} aria-label={notificationCount > 0 ? `${notificationCount} items need attention` : "Notifications"} className={`${roundNavButton} relative`}>
                   <Bell className="h-5 w-5" aria-hidden="true" />
-                  {notificationCount > 0 ? <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-[#F5A524] ring-2 ring-[#13284A]" aria-hidden="true" /> : null}
+                  {notificationCount > 0 ? <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-[#38B6FF] ring-2 ring-[#13284A]" aria-hidden="true" /> : null}
                 </Link>
                 <button
                   type="button"

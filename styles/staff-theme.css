@@ -15,8 +15,8 @@
   --cb-text: #0a1a33;
   --cb-text-2: #4a5d78;
   --cb-input-border: #c7d3e2;
-  --cb-needs-action: #b4531a;
-  --cb-success: #1d7a4c;
+  --cb-needs-action: #0b5cd5; /* all accents are shades of blue */
+  --cb-success: #0a7fc2;
   --cb-tile: rgba(238, 244, 251, 0.7);
   /* Frosted ice-brick wall behind cards, the header and the tab bar. One
      brick size everywhere (the wall repeats instead of stretching). */
@@ -179,20 +179,20 @@
   text-shadow: none !important;
 }
 .cb-staff .cb-page :is([class*="bg-emerald-"], [class*="bg-green-"]):not(.fixed):not(.cb-new, .cb-new *) {
-  background-color: #e6f4ec !important;
-  border-color: #b7dcc6 !important;
+  background-color: #e3f3ff !important;
+  border-color: #b3dcf7 !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
 .cb-staff .cb-page :is([class*="bg-amber-"], [class*="bg-yellow-"], [class*="bg-orange-"]):not(.fixed):not(.cb-new, .cb-new *) {
-  background-color: #fff1de !important;
-  border-color: #f0cfa5 !important;
+  background-color: #dcecff !important;
+  border-color: #a9cdf5 !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
 .cb-staff .cb-page :is([class*="bg-rose-"], [class*="bg-red-"]):not(.fixed):not(.cb-new, .cb-new *) {
-  background-color: #fdebe4 !important;
-  border-color: #efc2ae !important;
+  background-color: #d6e6ff !important;
+  border-color: #9fc0ef !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }

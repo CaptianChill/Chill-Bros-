@@ -8,9 +8,9 @@ type ChipTone = "onSite" | "enRoute" | "scheduled" | "needsAction";
 
 const TONES: Record<ChipTone, string> = {
   onSite: "bg-[#DDEEFF] text-[#0E3F82]",
-  enRoute: "bg-[#FFF1DE] text-[#8A4A10]",
-  scheduled: "bg-[#EEF2F7] text-[#4A5D78]",
-  needsAction: "bg-[#B4531A] text-white",
+  enRoute: "bg-[#C6ECFF] text-[#075985]",
+  scheduled: "bg-[#E8EEF6] text-[#3A5A85]",
+  needsAction: "bg-[#0B5CD5] text-white",
 };
 
 export function jobChip(status: JobStatus, assigned: boolean): { label: string; tone: ChipTone } {
