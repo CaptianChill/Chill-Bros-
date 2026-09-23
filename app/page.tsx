@@ -1,19 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertCircle, Banknote, CalendarDays, CheckCircle2, ClipboardList, CreditCard, Route, UsersRound } from "lucide-react";
+import { AlertCircle, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, CreditCard, Plus } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
-import { MetricCard } from "@/components/metric-card";
-import { SectionCard } from "@/components/section-card";
+import { EN_ROUTE_STATUSES, JobStatusChip, ON_SITE_STATUSES } from "@/components/job-status-chip";
 import { getInvoiceCenterData } from "@/lib/chillbros/billing-queries";
 import { getDispatchJobs } from "@/lib/chillbros/operations-queries";
-import { getCustomers, getRevenueRadarPulse, getTopRevenueRadarProspects } from "@/lib/chillbros/queries";
 import { getCalendarJobs } from "@/lib/chillbros/schedule-queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const CLOSED_STATUSES = ["paid", "completed", "cancelled"];
 
 function ctToday() {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
@@ -31,25 +30,25 @@ function displayTime(value: string) {
   return new Date(Date.UTC(2026, 0, 1, h, m)).toLocaleTimeString("en-US", { timeZone: "UTC", hour: "numeric", minute: "2-digit" });
 }
 
-function uniqueCustomers<T extends { name: string }>(rows: T[]) {
-  const seen = new Set<string>();
-  return rows.filter((row) => {
-    const key = row.name.trim().toLowerCase().replace(/\s+/g, " ");
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+function attentionMeta(stage: string, status: string) {
+  if (stage === "approved_needs_action" || stage === "approved") return { priority: 1, label: "Approved · choose work or return visit", tone: "text-[#0A7FC2]", icon: CheckCircle2 };
+  if (stage === "payment_method_selected") return { priority: 2, label: "Manual payment needs verification", tone: "text-[#0B5CD5]", icon: CreditCard };
+  if (stage === "invoice_issued") return { priority: 3, label: "Invoice issued · awaiting payment", tone: "text-[#0B5CD5]", icon: CreditCard };
+  if (stage === "estimate_published" || stage === "awaiting_approval") return { priority: 4, label: "Estimate awaiting customer approval", tone: "text-[#1557B0]", icon: ClipboardList };
+  if (stage === "return_scheduled") return { priority: 5, label: "Return visit scheduled", tone: "text-[#1557B0]", icon: CalendarDays };
+  if (stage === "approved_work_now") return { priority: 6, label: "Approved work in progress", tone: "text-[#1557B0]", icon: ClipboardList };
+  if (status === "completed" && stage === "completed") return { priority: 7, label: "Completed call · review billing", tone: "text-[#4A5D78]", icon: AlertCircle };
+  return null;
 }
 
-function attentionMeta(stage: string, status: string) {
-  if (stage === "approved_needs_action" || stage === "approved") return { priority: 1, label: "Approved · choose work or return visit", tone: "text-emerald-200", icon: CheckCircle2 };
-  if (stage === "payment_method_selected") return { priority: 2, label: "Manual payment needs verification", tone: "text-amber-200", icon: CreditCard };
-  if (stage === "invoice_issued") return { priority: 3, label: "Invoice issued · awaiting payment", tone: "text-amber-200", icon: CreditCard };
-  if (stage === "estimate_published" || stage === "awaiting_approval") return { priority: 4, label: "Estimate awaiting customer approval", tone: "text-cyan-100", icon: ClipboardList };
-  if (stage === "return_scheduled") return { priority: 5, label: "Return visit scheduled", tone: "text-[var(--saber)]", icon: CalendarDays };
-  if (stage === "approved_work_now") return { priority: 6, label: "Approved work in progress", tone: "text-[var(--saber)]", icon: ClipboardList };
-  if (status === "completed" && stage === "completed") return { priority: 7, label: "Completed call · review billing", tone: "text-zinc-200", icon: AlertCircle };
-  return null;
+function StatCard({ href, label, value, valueClass = "text-[#0A1A33]", hint, hintClass = "text-[#4A5D78]" }: { href: string; label: string; value: string; valueClass?: string; hint: string; hintClass?: string }) {
+  return (
+    <Link href={href} className="cb-card block min-h-[112px] p-3.5 transition hover:border-[#1557B0]">
+      <p className="text-[13px] font-medium text-[#4A5D78]">{label}</p>
+      <p className={`cb-display mt-1 text-[34px] leading-none ${valueClass}`}>{value}</p>
+      <p className={`mt-1.5 text-[13px] font-medium ${hintClass}`}>{hint}</p>
+    </Link>
+  );
 }
 
 export default async function HomePage() {
@@ -58,24 +57,22 @@ export default async function HomePage() {
   if (profile.role === "technician") redirect("/technician");
   if (profile.role === "office") redirect("/office");
 
-  const [rawCustomers, jobs, lifecycleJobs, invoiceCenter, revenueRadarPulse, topLeads] = await Promise.all([
-    getCustomers(),
+  const [jobs, lifecycleJobs, invoiceCenter] = await Promise.all([
     getCalendarJobs(),
     getDispatchJobs(150),
     getInvoiceCenterData().catch(() => ({ rows: [], metrics: { outstandingValue: 0, dueToday: 0, overdueValue: 0, collectedThisMonth: 0, pendingApproval: 0, averageDaysToPay: 0 } })),
-    getRevenueRadarPulse().catch(() => ({ newLeads: 0, highPriorityLeads: 0 })),
-    getTopRevenueRadarProspects(3).catch(() => []),
   ]);
-  const { metrics: billingMetrics } = invoiceCenter;
+  const { metrics: billingMetrics, rows: invoiceRows } = invoiceCenter;
 
-  const customers = uniqueCustomers(rawCustomers.filter((customer) => customer.name !== "Chill Pros Team"));
   const today = ctToday();
   const todaySchedule = jobs
     .map((job) => ({ job, slot: parseWindow(job.scheduledWindow) }))
     .filter((entry) => entry.slot?.date === today)
     .sort((a, b) => (a.slot?.start ?? "").localeCompare(b.slot?.start ?? ""));
-  const visibleToday = todaySchedule.slice(0, 14);
-  const extraToday = todaySchedule.slice(14);
+  const inProgressToday = todaySchedule.filter(({ job }) => ON_SITE_STATUSES.includes(job.status) || EN_ROUTE_STATUSES.includes(job.status)).length;
+  // Same rule as the Dispatch board: any open job with no technician.
+  const unassignedCount = lifecycleJobs.filter((job) => !CLOSED_STATUSES.includes(job.status) && !job.assignedTechId).length;
+  const overdueCount = invoiceRows.filter((row) => row.daysOverdue > 0).length;
 
   const attention = lifecycleJobs
     .map((job) => ({ job, meta: attentionMeta(job.workflowStage, job.status) }))
@@ -83,84 +80,92 @@ export default async function HomePage() {
     .sort((a, b) => a.meta.priority - b.meta.priority)
     .slice(0, 12);
 
-  const scheduleTile = ({ job, slot }: (typeof todaySchedule)[number]) => (
-    <Link key={job.id} href={`/jobs/${job.id}`} className="min-w-0 rounded-lg border border-white/10 bg-white/[0.02] p-2 transition hover:border-[var(--saber-soft)] hover:bg-white/[0.05]">
-      <p className="truncate text-[11px] font-semibold text-[var(--saber)]">{displayTime(slot!.start)}</p>
-      <p className="mt-0.5 truncate text-[11px] font-semibold text-white">{job.customerName}</p>
-      <p className="mt-0.5 truncate text-[10px] text-zinc-400">{job.location || "No location"}</p>
-      <p className="truncate text-[10px] text-zinc-500">{job.assignedTechName || "Unassigned"}</p>
-    </Link>
-  );
-
   return (
     <AppShell title="Home" description="One service call record from intake through payment." notificationCount={attention.length}>
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <MetricCard label="Today's Jobs" value={todaySchedule.length} href="/schedule" size="lg" tone="cyan" />
-          <MetricCard label="Office Queue" value={attention.length} href="#needs-attention" size="lg" tone={attention.length > 0 ? "amber" : "emerald"} />
+      <div className="cb-new space-y-3.5">
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard href="/technician" label="Jobs today" value={String(todaySchedule.length)} hint={`${inProgressToday} in progress`} />
+          <StatCard
+            href="/dispatch"
+            label="Unassigned"
+            value={String(unassignedCount)}
+            valueClass={unassignedCount > 0 ? "text-[#0B5CD5]" : "text-[#0A1A33]"}
+            hint={unassignedCount > 0 ? "Assign now" : "All assigned"}
+            hintClass={unassignedCount > 0 ? "text-[#1557B0] font-semibold" : "text-[#4A5D78]"}
+          />
+          <StatCard
+            href="/invoices?status=overdue"
+            label="Overdue"
+            value={money.format(billingMetrics.overdueValue)}
+            valueClass={overdueCount > 0 ? "text-[#0B5CD5]" : "text-[#0A1A33]"}
+            hint={`${overdueCount} invoice${overdueCount === 1 ? "" : "s"}`}
+          />
+          <StatCard href="/invoices" label="Collected this month" value={money.format(billingMetrics.collectedThisMonth)} hint="Paid invoices" />
         </div>
 
-        <SectionCard eyebrow="Owner snapshot" title="Revenue & pipeline">
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <MetricCard label="Outstanding" value={money.format(billingMetrics.outstandingValue)} href="/invoices" tone="amber" />
-            <MetricCard label="Overdue" value={money.format(billingMetrics.overdueValue)} href="/invoices" tone={billingMetrics.overdueValue > 0 ? "rose" : "default"} />
-            <MetricCard label="Collected this month" value={money.format(billingMetrics.collectedThisMonth)} href="/payments" tone="emerald" />
-            <MetricCard label="Hot leads (65+)" value={revenueRadarPulse.highPriorityLeads} href="/revenue-radar" tone="cyan" />
+        <section className="cb-card overflow-hidden" aria-labelledby="todays-schedule">
+          <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
+            <h2 id="todays-schedule" className="text-[28px] leading-none">Today&apos;s schedule</h2>
+            <Link href="/schedule" className="inline-flex min-h-11 items-center gap-0.5 px-1 text-sm font-semibold text-[#1557B0] hover:text-[#0E3F82]">
+              View all
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
           </div>
-        </SectionCard>
-
-        <SectionCard title="Today's run">
-          <div className="mb-2 flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-sm text-zinc-300"><CalendarDays className="h-4 w-4 text-[var(--saber)]" /><span>{todaySchedule.length} scheduled</span></div><Link href="/schedule" className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-zinc-200">Open Schedule</Link></div>
-          {todaySchedule.length === 0 ? <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-zinc-500">Nothing scheduled for today.</p> : <><div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-7">{visibleToday.map(scheduleTile)}</div>{extraToday.length > 0 ? <details className="mt-2 rounded-lg border border-white/10 bg-black/20"><summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold text-zinc-300">Show {extraToday.length} more today</summary><div className="grid grid-cols-2 gap-1.5 border-t border-white/10 p-2 sm:grid-cols-4 lg:grid-cols-7">{extraToday.map(scheduleTile)}</div></details> : null}</>}
-        </SectionCard>
-
-        {topLeads.length > 0 ? (
-          <SectionCard eyebrow="Sales" title="Revenue Radar — hot leads">
-            <div className="grid gap-2 md:grid-cols-3">
-              {topLeads.map((lead) => (
-                <Link key={lead.id} href={`/revenue-radar/${lead.id}`} className="rounded-lg border border-white/10 bg-white/[0.02] p-3 text-left transition hover:border-[var(--saber-soft)] hover:bg-white/[0.05]">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-lg font-bold text-[var(--saber)]">{Math.round(lead.score)}%</p>
-                    <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-amber-200">Hot lead</span>
-                  </div>
-                  <p className="mt-1 truncate text-sm font-semibold text-white">{lead.businessName}</p>
-                  <p className="mt-0.5 truncate text-xs text-zinc-500">{lead.category.replace(/_/g, " ")}{lead.city ? ` · ${lead.city}` : ""}</p>
-                </Link>
-              ))}
-            </div>
-            <Link href="/revenue-radar" className="mt-3 inline-flex text-xs font-semibold text-zinc-300 underline decoration-white/20 underline-offset-4">Open Revenue Radar →</Link>
-          </SectionCard>
-        ) : null}
-
-        <SectionCard id="needs-attention" title="Needs attention">
-          {attention.length === 0 ? (
-            <div className="flex items-center justify-center gap-3 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.05] p-4 text-sm text-emerald-100"><CheckCircle2 className="h-5 w-5" />No workflow handoffs are waiting on you.</div>
+          {todaySchedule.length === 0 ? (
+            <p className="px-3.5 py-5 text-sm text-[#4A5D78]">Nothing scheduled for today.</p>
           ) : (
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            <ul className="divide-y divide-[#0A1A33]/10">
+              {todaySchedule.map(({ job, slot }) => (
+                <li key={job.id}>
+                  <Link href={`/jobs/${job.id}`} className="flex min-h-[64px] items-center gap-3 px-3.5 py-2.5 transition hover:bg-[#F5F8FC]">
+                    <span className="w-[62px] shrink-0 text-sm font-semibold text-[#0A1A33]">{displayTime(slot!.start)}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-[#0A1A33]">{job.customerName}</span>
+                      <span className="block truncate text-[13px] text-[#4A5D78]">{job.scope?.trim() || "No complaint recorded"}</span>
+                    </span>
+                    <JobStatusChip status={job.status} assigned={Boolean(job.assignedTechId)} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <Link
+          href="/create?mode=job"
+          className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition [text-shadow:none] hover:bg-[#0E3F82]"
+        >
+          <Plus className="h-5 w-5" aria-hidden="true" />
+          New service call
+        </Link>
+
+        <section id="needs-attention" className="cb-card scroll-mt-4 overflow-hidden" aria-labelledby="needs-attention-title">
+          <h2 id="needs-attention-title" className="border-b border-[#0A1A33]/10 px-3.5 py-3 text-[28px] leading-none">Needs attention</h2>
+          {attention.length === 0 ? (
+            <p className="flex items-center gap-2 px-3.5 py-5 text-sm text-[#0A7FC2]">
+              <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+              No workflow handoffs are waiting on you.
+            </p>
+          ) : (
+            <ul className="divide-y divide-[#0A1A33]/10">
               {attention.map(({ job, meta }) => {
                 const Icon = meta.icon;
-                return <Link key={job.id} href={`/jobs/${job.id}`} className="rounded-lg border border-white/10 bg-white/[0.02] p-3 transition hover:border-[var(--saber-soft)] hover:bg-white/[0.05]"><div className="flex items-start gap-3"><Icon className={`mt-0.5 h-4 w-4 shrink-0 ${meta.tone}`} /><div className="min-w-0"><p className="truncate text-sm font-semibold text-white">{job.customerName}</p><p className={`mt-1 text-xs font-medium ${meta.tone}`}>{meta.label}</p><p className="mt-1 truncate text-[11px] text-zinc-500">{job.location || "No location"} · {job.assignedTechName || "Unassigned"}</p></div></div></Link>;
+                return (
+                  <li key={job.id}>
+                    <Link href={`/jobs/${job.id}`} className="flex min-h-[64px] items-start gap-3 px-3.5 py-2.5 transition hover:bg-[#F5F8FC]">
+                      <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${meta.tone}`} aria-hidden="true" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold text-[#0A1A33]">{job.customerName}</span>
+                        <span className={`block text-[13px] font-medium ${meta.tone}`}>{meta.label}</span>
+                        <span className="block truncate text-[13px] text-[#4A5D78]">{job.location || "No location"} · {job.assignedTechName || "Unassigned"}</span>
+                      </span>
+                    </Link>
+                  </li>
+                );
               })}
-            </div>
+            </ul>
           )}
-        </SectionCard>
-
-        <SectionCard eyebrow="Core workflow" title="One path from call to cash" description="These are the operating screens. Everything else stays out of the way until the core system is stable.">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-            <Link href="/schedule" className="rounded-lg border border-white/10 bg-white/[0.02] p-3 transition hover:border-[var(--saber-soft)] hover:bg-white/[0.05]"><CalendarDays className="mx-auto h-4 w-4 text-[var(--saber)]" /><p className="mt-2 text-sm font-semibold text-white">1. Schedule</p><p className="mt-1 text-[11px] text-zinc-500">Book the call</p></Link>
-            <Link href="/dispatch" className="rounded-lg border border-white/10 bg-white/[0.02] p-3 transition hover:border-[var(--saber-soft)] hover:bg-white/[0.05]"><Route className="mx-auto h-4 w-4 text-[var(--saber)]" /><p className="mt-2 text-sm font-semibold text-white">2. Dispatch / Job</p><p className="mt-1 text-[11px] text-zinc-500">Assign and work it</p></Link>
-            <Link href="/customers" className="rounded-lg border border-white/10 bg-white/[0.02] p-3 transition hover:border-[var(--saber-soft)] hover:bg-white/[0.05]"><UsersRound className="mx-auto h-4 w-4 text-[var(--saber)]" /><p className="mt-2 text-sm font-semibold text-white">3. Customer</p><p className="mt-1 text-[11px] text-zinc-500">Keep one record</p></Link>
-            <Link href="/invoices" className="rounded-lg border border-white/10 bg-white/[0.02] p-3 transition hover:border-[var(--saber-soft)] hover:bg-white/[0.05]"><Banknote className="mx-auto h-4 w-4 text-[var(--saber)]" /><p className="mt-2 text-sm font-semibold text-white">4. Quote / Invoice</p><p className="mt-1 text-[11px] text-zinc-500">Approve and bill</p></Link>
-            <Link href="/payments" className="rounded-lg border border-white/10 bg-white/[0.02] p-3 transition hover:border-[var(--saber-soft)] hover:bg-white/[0.05]"><CreditCard className="mx-auto h-4 w-4 text-[var(--saber)]" /><p className="mt-2 text-sm font-semibold text-white">5. Payment</p><p className="mt-1 text-[11px] text-zinc-500">Close the loop</p></Link>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Customers">
-          <details className="rounded-lg border border-white/10 bg-white/[0.02]">
-            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-white">Customer directory <span className="ml-2 text-xs font-normal text-zinc-500">{customers.length} customers</span></summary>
-            <div className="max-h-72 overflow-y-auto border-t border-white/10 p-2">{customers.length === 0 ? <p className="p-2 text-sm text-zinc-500">No customers yet.</p> : customers.map((customer) => <Link key={customer.id} href={`/customers/${customer.id}`} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition hover:bg-white/[0.05]"><span className="truncate text-white">{customer.name}</span><span className="truncate text-xs text-zinc-500">{customer.address ?? "No address"}</span></Link>)}</div>
-          </details>
-        </SectionCard>
+        </section>
       </div>
     </AppShell>
   );

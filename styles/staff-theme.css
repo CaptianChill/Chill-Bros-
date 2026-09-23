@@ -9,22 +9,26 @@
   --cb-blue: #1557b0;
   --cb-blue-hover: #0e3f82;
   --cb-icy: #9fd3ff;
-  --cb-card: #ffffff;
-  --cb-card-border: #dce4ee;
+  --cb-card: rgba(255, 255, 255, 0.78); /* frosted see-through white */
+  --cb-card-border: rgba(255, 255, 255, 0.9);
   --cb-divider: #eef2f7;
   --cb-text: #0a1a33;
   --cb-text-2: #4a5d78;
   --cb-input-border: #c7d3e2;
-  --cb-needs-action: #b4531a;
-  --cb-success: #1d7a4c;
-  --cb-tile: #f5f8fc;
+  --cb-needs-action: #0b5cd5; /* all accents are shades of blue */
+  --cb-success: #0a7fc2;
+  --cb-tile: rgba(238, 244, 251, 0.7);
+  /* Frosted ice-brick wall behind cards, the header and the tab bar. One
+     brick size everywhere (the wall repeats instead of stretching). */
+  --cb-ice-bricks: url("/brand/chill-pros-ice-bricks.webp");
+  --cb-ice-size: 380px auto;
+  --cb-card-frost: rgba(255, 255, 255, 0.3);
+  --cb-card-glow: 0 0 0 1px rgba(159, 211, 255, 0.55), 0 0 14px rgba(255, 255, 255, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
   font-family: var(--font-barlow), "Segoe UI", Arial, sans-serif;
   color: #fff;
 }
 
-.cb-staff h1,
-.cb-staff h2,
 .cb-staff h3,
 .cb-staff .cb-display {
   font-family: var(--font-barlow-condensed), "Arial Narrow", sans-serif;
@@ -32,20 +36,68 @@
   letter-spacing: 0.01em;
 }
 
-/* Camo bands: header, tab bar, desktop sidebar. */
-.cb-camo-band {
-  background-color: var(--cb-navy);
-  background-image: linear-gradient(rgba(8, 20, 42, 0.62), rgba(8, 20, 42, 0.78)), url("/brand/chill-pros-camo-blue.webp");
-  background-repeat: repeat;
-  background-size: auto, 380px auto;
+/* Page titles and section headings: graffiti bubble lettering traced from
+   the owner's alphabet sheet. It's a color font, so the outline, shadow,
+   fill and shine come from the font itself; letter spacing is built in so
+   letters tuck together. Characters the sheet doesn't have (digits,
+   punctuation) fall back to Barlow Condensed in the fill blue. The
+   :not(#cb-bubble) lifts this above the legacy-page color remaps below. */
+.cb-staff :is(h1, h2):not(#cb-bubble) {
+  font-family: var(--font-chill-bubble), var(--font-barlow-condensed), "Arial Narrow", sans-serif;
+  font-weight: 400 !important;
+  letter-spacing: 0;
+  color: #0191fb !important;
+  text-shadow: none !important;
+}
+/* Older pages size their section headings small; the bubble lettering needs
+   a little more room to read. */
+.cb-staff .cb-page h2:not(.cb-new *):not(#cb-bubble) {
+  font-size: 26px;
+  line-height: 1.25;
 }
 
-/* Page background: camo under a light wash. */
+/* Header, tab bar and desktop sidebar: frosted "foggy glass" over the page
+   camo, which shows through softly blurred. */
+.cb-camo-band {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(214, 230, 248, 0.42)), var(--cb-ice-bricks) 0 0 / var(--cb-ice-size) repeat;
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  backdrop-filter: blur(18px) saturate(135%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .cb-camo-band {
+    background: linear-gradient(rgba(226, 237, 250, 0.7), rgba(226, 237, 250, 0.7)), var(--cb-ice-bricks) 0 0 / var(--cb-ice-size) repeat;
+  }
+}
+
+/* Page background: the original camo at full color, no wash. The image isn't
+   a seamless tile, so instead of repeating it we pin one full copy behind
+   the page (cover, fixed) and let content scroll over it. */
 .cb-camo-page {
-  background-color: #e6eef8;
-  background-image: linear-gradient(rgba(230, 238, 248, 0.3), rgba(230, 238, 248, 0.3)), url("/brand/chill-pros-camo-blue.webp");
-  background-repeat: repeat;
-  background-size: auto, 420px auto;
+  position: relative;
+  isolation: isolate;
+  background-color: #6fb3ee;
+}
+.cb-camo-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url("/brand/chill-pros-camo-blue.webp") center / cover no-repeat;
+  pointer-events: none;
+}
+
+/* globals.css sets an unlayered `a { color: inherit }`, which beats Tailwind's
+   text-* utilities on links. Let the shell and new-design links use their
+   own color classes again. */
+.cb-staff :is(header, nav, [role="dialog"], .cb-new) a {
+  color: revert-layer;
+}
+
+/* Text sitting on the frosted glass bands. */
+.cb-glass-text {
+  color: var(--cb-navy);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .cb-on-camo {
@@ -54,7 +106,10 @@
 }
 
 .cb-card {
-  background: var(--cb-card);
+  background: linear-gradient(var(--cb-card-frost), var(--cb-card-frost)), var(--cb-ice-bricks) 0 0 / var(--cb-ice-size) repeat;
+  box-shadow: var(--cb-card-glow);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  backdrop-filter: blur(12px) saturate(120%);
   border: 1px solid var(--cb-card-border);
   border-radius: 12px;
   color: var(--cb-text);
@@ -65,19 +120,22 @@
    Readability layer for existing staff pages.
 
    The legacy pages were written as white text on dark translucent panels.
-   Inside .cb-page every one of those panels becomes a solid white card
-   (no blur, no transparency) and the text inside it becomes navy. Text that
+   Inside .cb-page every one of those panels becomes a frosted white card
+   and the text inside it becomes navy. Text that
    sits directly on the page background stays pure white with a shadow.
    Selectors use !important because styles/starfield-theme.css forces its
    old palette with !important.
    ------------------------------------------------------------------------ */
+
+/* New-design screens mark their content with .cb-new; the compatibility
+   rules below only restyle legacy markup and never touch .cb-new. */
 
 /* Text directly on the page background. */
 .cb-staff .cb-page {
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
-.cb-staff .cb-page :is([class*="text-zinc-"], [class*="text-white"], [class*="text-[#"], .glo, .txt, .sub, [class*="cyan-"], [class*="emerald-"], [class*="amber-"], [class*="rose-"], [class*="violet-"]) {
+.cb-staff .cb-page :is([class*="text-zinc-"], [class*="text-white"], [class*="text-[#"], .glo, .txt, .sub, [class*="cyan-"], [class*="emerald-"], [class*="amber-"], [class*="rose-"], [class*="violet-"]):not(.cb-new, .cb-new *) {
   color: #fff !important;
   opacity: 1;
 }
@@ -85,119 +143,126 @@
 /* starfield-theme.css paints a translucent tint behind anything whose class
    mentions an accent color, including plain colored text. Only elements
    that actually set a background keep one. */
-.cb-staff .cb-page :is([class*="cyan-"], [class*="emerald-"], [class*="violet-"], [class*="amber-"], [class*="rose-"]):not([class*="bg-"]) {
+.cb-staff .cb-page :is([class*="cyan-"], [class*="emerald-"], [class*="violet-"], [class*="amber-"], [class*="rose-"]):not([class*="bg-"]):not(.cb-new, .cb-new *) {
   background-color: transparent !important;
 }
 
-/* Every dark or translucent panel becomes a solid white card. Fixed
+/* Every dark or translucent panel becomes a frosted ice-brick card. Fixed
    full-screen overlays (modals, lightboxes) keep their dark backdrop. */
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"], [class*="bg-background"]):not(.fixed) {
-  background-color: var(--cb-card) !important;
-  background-image: none !important;
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"], [class*="bg-background"]):not(.fixed):not(.cb-new, .cb-new *) {
+  background-color: transparent !important;
+  background-image: linear-gradient(var(--cb-card-frost), var(--cb-card-frost)), var(--cb-ice-bricks) !important;
+  background-size: auto, var(--cb-ice-size) !important;
+  background-repeat: repeat !important;
+  background-position: 0 0 !important;
   border-color: var(--cb-card-border) !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  box-shadow: var(--cb-card-glow) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+  backdrop-filter: blur(12px) saturate(120%) !important;
 }
 /* Cards nested inside cards read as light tiles. */
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed) :is(.panel, .sign-surface, .box, [class*="bg-black/"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed) :is(.panel, .sign-surface, .box, [class*="bg-black/"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: var(--cb-tile) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* Tinted callouts become opaque light tints. */
-.cb-staff .cb-page :is([class*="bg-[#2d7dff]/"], [class*="bg-[#8ffafa]/"], [class*="bg-cyan-"], [class*="bg-sky-"], [class*="bg-blue-"]):not(.fixed) {
+.cb-staff .cb-page :is([class*="bg-[#2d7dff]/"], [class*="bg-[#8ffafa]/"], [class*="bg-cyan-"], [class*="bg-sky-"], [class*="bg-blue-"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: #e8f1fc !important;
   border-color: #b9d3f2 !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
-.cb-staff .cb-page :is([class*="bg-emerald-"], [class*="bg-green-"]):not(.fixed) {
-  background-color: #e6f4ec !important;
-  border-color: #b7dcc6 !important;
+.cb-staff .cb-page :is([class*="bg-emerald-"], [class*="bg-green-"]):not(.fixed):not(.cb-new, .cb-new *) {
+  background-color: #e3f3ff !important;
+  border-color: #b3dcf7 !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
-.cb-staff .cb-page :is([class*="bg-amber-"], [class*="bg-yellow-"], [class*="bg-orange-"]):not(.fixed) {
-  background-color: #fff1de !important;
-  border-color: #f0cfa5 !important;
+.cb-staff .cb-page :is([class*="bg-amber-"], [class*="bg-yellow-"], [class*="bg-orange-"]):not(.fixed):not(.cb-new, .cb-new *) {
+  background-color: #dcecff !important;
+  border-color: #a9cdf5 !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
-.cb-staff .cb-page :is([class*="bg-rose-"], [class*="bg-red-"]):not(.fixed) {
-  background-color: #fdebe4 !important;
-  border-color: #efc2ae !important;
+.cb-staff .cb-page :is([class*="bg-rose-"], [class*="bg-red-"]):not(.fixed):not(.cb-new, .cb-new *) {
+  background-color: #d6e6ff !important;
+  border-color: #9fc0ef !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
 
 /* Text inside any card: navy primary, slate secondary, blue accents. */
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-white"], .text-zinc-100, .text-zinc-200, .text-zinc-300, .glo, .txt, .neon-text, [class*="text-[#d9fbff]"], [class*="text-[#e9ffff]"], [class*="text-[#bafcfc]"]),
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed):is([class*="text-white"], .text-zinc-100, .text-zinc-200, .text-zinc-300, .glo, .txt, [class*="text-[#d9fbff]"]) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-white"], .text-zinc-100, .text-zinc-200, .text-zinc-300, .glo, .txt, .neon-text, [class*="text-[#d9fbff]"], [class*="text-[#e9ffff]"], [class*="text-[#bafcfc]"]):not(.cb-new, .cb-new *),
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed):is([class*="text-white"], .text-zinc-100, .text-zinc-200, .text-zinc-300, .glo, .txt, [class*="text-[#d9fbff]"]):not(.cb-new, .cb-new *) {
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is(.text-zinc-400, .text-zinc-500, .text-zinc-600, .sub),
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed):is(.text-zinc-400, .text-zinc-500, .text-zinc-600, .sub) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is(.text-zinc-400, .text-zinc-500, .text-zinc-600, .sub):not(.cb-new, .cb-new *),
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed):is(.text-zinc-400, .text-zinc-500, .text-zinc-600, .sub):not(.cb-new, .cb-new *) {
   color: var(--cb-text-2) !important;
   opacity: 1 !important;
 }
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-[var(--saber)]"], [class*="text-[#2d7dff]"], [class*="text-[#8ffafa]"], [class*="text-[#9ffcff]"], [class*="text-[#a7f0ff]"], [class*="text-cyan-"], [class*="text-sky-"], [class*="text-blue-"], [class*="text-violet-"]) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-[var(--saber)]"], [class*="text-[#2d7dff]"], [class*="text-[#8ffafa]"], [class*="text-[#9ffcff]"], [class*="text-[#a7f0ff]"], [class*="text-cyan-"], [class*="text-sky-"], [class*="text-blue-"], [class*="text-violet-"]):not(.cb-new, .cb-new *) {
   color: var(--cb-blue) !important;
 }
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-emerald-"], [class*="text-green-"]) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-emerald-"], [class*="text-green-"]):not(.cb-new, .cb-new *) {
   color: var(--cb-success) !important;
 }
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-amber-"], [class*="text-yellow-"], [class*="text-orange-"], [class*="text-rose-"], [class*="text-red-"], [class*="text-[#ff9b9b]"]) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-amber-"], [class*="text-yellow-"], [class*="text-orange-"], [class*="text-rose-"], [class*="text-red-"], [class*="text-[#ff9b9b]"]):not(.cb-new, .cb-new *) {
   color: var(--cb-needs-action) !important;
 }
 
 /* Borders and dividers inside cards. */
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]) :is([class*="border-white/"], [class*="border-[#2d7dff]"], [class*="border-[#8ffafa]"], [class*="border-[var(--saber"], [class*="border-cyan-"], [class*="border-zinc-7"], [class*="border-zinc-8"], [class*="border-zinc-9"], .neon-frame, .neon-tube) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]) :is([class*="border-white/"], [class*="border-[#2d7dff]"], [class*="border-[#8ffafa]"], [class*="border-[var(--saber"], [class*="border-cyan-"], [class*="border-zinc-7"], [class*="border-zinc-8"], [class*="border-zinc-9"], .neon-frame, .neon-tube):not(.cb-new, .cb-new *) {
   border-color: var(--cb-card-border) !important;
 }
-.cb-staff .cb-page :is(.divide-white\/5, .divide-white\/10) > * + * {
+.cb-staff .cb-page :is(.divide-white\/5, .divide-white\/10) > * + *:not(.cb-new, .cb-new *) {
   border-color: var(--cb-divider) !important;
 }
 
 /* Form controls. */
-.cb-staff .cb-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea) {
+.cb-staff .cb-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea):not(.cb-new, .cb-new *) {
   background-color: #fff !important;
   border-color: var(--cb-input-border) !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
-.cb-staff .cb-page :is(input, textarea)::placeholder {
+.cb-staff .cb-page :is(input, textarea):not(.cb-new, .cb-new *)::placeholder {
   color: #7a8ba3 !important;
   opacity: 1;
 }
-.cb-staff .cb-page option {
+.cb-staff .cb-page option:not(.cb-new, .cb-new *) {
   background: #fff;
   color: var(--cb-text);
 }
 
 /* Solid action buttons: primary blue with white text. */
-.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-cyan-300"], [class~="bg-cyan-400"], [class~="bg-[#2d7dff]"], [class~="bg-[#8ffafa]"], [class~="bg-[var(--saber)]"], [class~="bg-blue-600"], [class~="bg-blue-700"]):not(.fixed) {
+.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-cyan-300"], [class~="bg-cyan-400"], [class~="bg-[#2d7dff]"], [class~="bg-[#8ffafa]"], [class~="bg-[var(--saber)]"], [class~="bg-blue-600"], [class~="bg-blue-700"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: var(--cb-blue) !important;
   border-color: var(--cb-blue) !important;
   color: #fff !important;
   text-shadow: none !important;
 }
-.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-cyan-300"], [class~="bg-cyan-400"], [class~="bg-[#2d7dff]"], [class~="bg-[#8ffafa]"], [class~="bg-[var(--saber)]"], [class~="bg-blue-600"], [class~="bg-blue-700"]):not(.fixed) * {
+.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-cyan-300"], [class~="bg-cyan-400"], [class~="bg-[#2d7dff]"], [class~="bg-[#8ffafa]"], [class~="bg-[var(--saber)]"], [class~="bg-blue-600"], [class~="bg-blue-700"]):not(.fixed) *:not(.cb-new, .cb-new *) {
   color: #fff !important;
 }
-.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-emerald-300"], [class~="bg-emerald-400"], [class~="bg-emerald-500"]):not(.fixed) {
+.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-emerald-300"], [class~="bg-emerald-400"], [class~="bg-emerald-500"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: var(--cb-success) !important;
   border-color: var(--cb-success) !important;
   color: #fff !important;
 }
-.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-emerald-300"], [class~="bg-emerald-400"], [class~="bg-emerald-500"]):not(.fixed) * {
+.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-emerald-300"], [class~="bg-emerald-400"], [class~="bg-emerald-500"]):not(.fixed) *:not(.cb-new, .cb-new *) {
   color: #fff !important;
 }
 
 /* Light documents that were already white stay as authored. */
-.cb-staff .cb-page :is([class~="bg-white"], [class~="bg-zinc-50"]) {
+.cb-staff .cb-page :is([class~="bg-white"], [class~="bg-zinc-50"]):not(.cb-new, .cb-new *) {
   text-shadow: none;
 }
 
