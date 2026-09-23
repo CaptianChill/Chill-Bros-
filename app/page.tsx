@@ -7,28 +7,13 @@ import { EN_ROUTE_STATUSES, JobStatusChip, ON_SITE_STATUSES } from "@/components
 import { getInvoiceCenterData } from "@/lib/chillbros/billing-queries";
 import { getDispatchJobs } from "@/lib/chillbros/operations-queries";
 import { getCalendarJobs } from "@/lib/chillbros/schedule-queries";
+import { ctToday, displayTime, parseWindow } from "@/lib/chillbros/schedule-window";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const CLOSED_STATUSES = ["paid", "completed", "cancelled"];
-
-function ctToday() {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-  return `${map.year}-${map.month}-${map.day}`;
-}
-
-function parseWindow(value: string | null) {
-  const match = String(value ?? "").match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})-(\d{2}:\d{2}) CT$/);
-  return match ? { date: match[1], start: match[2], end: match[3] } : null;
-}
-
-function displayTime(value: string) {
-  const [h, m] = value.split(":").map(Number);
-  return new Date(Date.UTC(2026, 0, 1, h, m)).toLocaleTimeString("en-US", { timeZone: "UTC", hour: "numeric", minute: "2-digit" });
-}
 
 function attentionMeta(stage: string, status: string) {
   if (stage === "approved_needs_action" || stage === "approved") return { priority: 1, label: "Approved · choose work or return visit", tone: "text-[#0A7FC2]", icon: CheckCircle2 };
