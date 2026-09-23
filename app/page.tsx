@@ -104,7 +104,7 @@ export default async function HomePage() {
         </div>
 
         <section className="cb-card overflow-hidden" aria-labelledby="todays-schedule">
-          <div className="flex items-center justify-between gap-3 border-b border-[#EEF2F7] px-3.5 py-3">
+          <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
             <h2 id="todays-schedule" className="text-[28px] leading-none">Today&apos;s schedule</h2>
             <Link href="/schedule" className="inline-flex min-h-11 items-center gap-0.5 px-1 text-sm font-semibold text-[#1557B0] hover:text-[#0E3F82]">
               View all
@@ -114,7 +114,7 @@ export default async function HomePage() {
           {todaySchedule.length === 0 ? (
             <p className="px-3.5 py-5 text-sm text-[#4A5D78]">Nothing scheduled for today.</p>
           ) : (
-            <ul className="divide-y divide-[#EEF2F7]">
+            <ul className="divide-y divide-[#0A1A33]/10">
               {todaySchedule.map(({ job, slot }) => (
                 <li key={job.id}>
                   <Link href={`/jobs/${job.id}`} className="flex min-h-[64px] items-center gap-3 px-3.5 py-2.5 transition hover:bg-[#F5F8FC]">
@@ -140,14 +140,14 @@ export default async function HomePage() {
         </Link>
 
         <section id="needs-attention" className="cb-card scroll-mt-4 overflow-hidden" aria-labelledby="needs-attention-title">
-          <h2 id="needs-attention-title" className="border-b border-[#EEF2F7] px-3.5 py-3 text-[28px] leading-none">Needs attention</h2>
+          <h2 id="needs-attention-title" className="border-b border-[#0A1A33]/10 px-3.5 py-3 text-[28px] leading-none">Needs attention</h2>
           {attention.length === 0 ? (
             <p className="flex items-center gap-2 px-3.5 py-5 text-sm text-[#1D7A4C]">
               <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
               No workflow handoffs are waiting on you.
             </p>
           ) : (
-            <ul className="divide-y divide-[#EEF2F7]">
+            <ul className="divide-y divide-[#0A1A33]/10">
               {attention.map(({ job, meta }) => {
                 const Icon = meta.icon;
                 return (

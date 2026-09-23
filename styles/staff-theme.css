@@ -9,15 +9,21 @@
   --cb-blue: #1557b0;
   --cb-blue-hover: #0e3f82;
   --cb-icy: #9fd3ff;
-  --cb-card: #ffffff;
-  --cb-card-border: #dce4ee;
+  --cb-card: rgba(255, 255, 255, 0.78); /* frosted see-through white */
+  --cb-card-border: rgba(255, 255, 255, 0.9);
   --cb-divider: #eef2f7;
   --cb-text: #0a1a33;
   --cb-text-2: #4a5d78;
   --cb-input-border: #c7d3e2;
   --cb-needs-action: #b4531a;
   --cb-success: #1d7a4c;
-  --cb-tile: #f5f8fc;
+  --cb-tile: rgba(238, 244, 251, 0.7);
+  /* Frosted ice-brick wall behind cards, the header and the tab bar. One
+     brick size everywhere (the wall repeats instead of stretching). */
+  --cb-ice-bricks: url("/brand/chill-pros-ice-bricks.webp");
+  --cb-ice-size: 380px auto;
+  --cb-card-frost: rgba(255, 255, 255, 0.3);
+  --cb-card-glow: 0 0 0 1px rgba(159, 211, 255, 0.55), 0 0 14px rgba(255, 255, 255, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
   font-family: var(--font-barlow), "Segoe UI", Arial, sans-serif;
   color: #fff;
@@ -53,14 +59,14 @@
 /* Header, tab bar and desktop sidebar: frosted "foggy glass" over the page
    camo, which shows through softly blurred. */
 .cb-camo-band {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(214, 230, 248, 0.42));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(214, 230, 248, 0.42)), var(--cb-ice-bricks) 0 0 / var(--cb-ice-size) repeat;
   -webkit-backdrop-filter: blur(18px) saturate(135%);
   backdrop-filter: blur(18px) saturate(135%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .cb-camo-band {
-    background: rgba(226, 237, 250, 0.92);
+    background: linear-gradient(rgba(226, 237, 250, 0.7), rgba(226, 237, 250, 0.7)), var(--cb-ice-bricks) 0 0 / var(--cb-ice-size) repeat;
   }
 }
 
@@ -100,7 +106,10 @@
 }
 
 .cb-card {
-  background: var(--cb-card);
+  background: linear-gradient(var(--cb-card-frost), var(--cb-card-frost)), var(--cb-ice-bricks) 0 0 / var(--cb-ice-size) repeat;
+  box-shadow: var(--cb-card-glow);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  backdrop-filter: blur(12px) saturate(120%);
   border: 1px solid var(--cb-card-border);
   border-radius: 12px;
   color: var(--cb-text);
@@ -111,8 +120,8 @@
    Readability layer for existing staff pages.
 
    The legacy pages were written as white text on dark translucent panels.
-   Inside .cb-page every one of those panels becomes a solid white card
-   (no blur, no transparency) and the text inside it becomes navy. Text that
+   Inside .cb-page every one of those panels becomes a frosted white card
+   and the text inside it becomes navy. Text that
    sits directly on the page background stays pure white with a shadow.
    Selectors use !important because styles/starfield-theme.css forces its
    old palette with !important.
@@ -138,21 +147,28 @@
   background-color: transparent !important;
 }
 
-/* Every dark or translucent panel becomes a solid white card. Fixed
+/* Every dark or translucent panel becomes a frosted ice-brick card. Fixed
    full-screen overlays (modals, lightboxes) keep their dark backdrop. */
 .cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"], [class*="bg-background"]):not(.fixed):not(.cb-new, .cb-new *) {
-  background-color: var(--cb-card) !important;
-  background-image: none !important;
+  background-color: transparent !important;
+  background-image: linear-gradient(var(--cb-card-frost), var(--cb-card-frost)), var(--cb-ice-bricks) !important;
+  background-size: auto, var(--cb-ice-size) !important;
+  background-repeat: repeat !important;
+  background-position: 0 0 !important;
   border-color: var(--cb-card-border) !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  box-shadow: var(--cb-card-glow) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+  backdrop-filter: blur(12px) saturate(120%) !important;
 }
 /* Cards nested inside cards read as light tiles. */
 .cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed) :is(.panel, .sign-surface, .box, [class*="bg-black/"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: var(--cb-tile) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* Tinted callouts become opaque light tints. */
