@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import "../styles/starfield-theme.css";
 import "../styles/staff-theme.css";
@@ -8,6 +9,9 @@ import "../styles/staff-theme.css";
 // the staff shell so customer-facing pages keep their current type.
 const barlow = Barlow({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-barlow", display: "swap" });
 const barlowCondensed = Barlow_Condensed({ subsets: ["latin"], weight: ["700"], variable: "--font-barlow-condensed", display: "swap" });
+// Graffiti drip lettering traced from the owner's alphabet sheet (A-Z; lowercase
+// maps to the same letters). Used for staff page titles and section headings.
+const chillDrip = localFont({ src: "./fonts/chill-drip.woff2", variable: "--font-chill-drip", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Chill Bros Operational Command Center",
@@ -44,7 +48,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable} h-full bg-background antialiased`}>
+    <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable} ${chillDrip.variable} h-full bg-background antialiased`}>
       <body className="min-h-full bg-background font-sans text-foreground">
         <div className="theme-starfield min-h-screen">{children}</div>
       </body>

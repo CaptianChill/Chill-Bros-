@@ -23,13 +23,30 @@
   color: #fff;
 }
 
-.cb-staff h1,
-.cb-staff h2,
 .cb-staff h3,
 .cb-staff .cb-display {
   font-family: var(--font-barlow-condensed), "Arial Narrow", sans-serif;
   font-weight: 700;
   letter-spacing: 0.01em;
+}
+
+/* Page titles and section headings: graffiti drip lettering in the ink
+   blue of the owner's alphabet sheet. Characters the sheet doesn't have
+   (digits, punctuation) fall back to Barlow Condensed. The :not(#cb-drip)
+   lifts this above the legacy-page color remaps further down. */
+.cb-staff :is(h1, h2):not(#cb-drip) {
+  font-family: var(--font-chill-drip), var(--font-barlow-condensed), "Arial Narrow", sans-serif;
+  font-weight: 400 !important;
+  letter-spacing: 0.02em;
+  color: #0482f1 !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0.4px #0482f1;
+}
+/* Older pages size their section headings small; the drip lettering needs
+   a little more room to read. */
+.cb-staff .cb-page h2:not(.cb-new *):not(#cb-drip) {
+  font-size: 24px;
+  line-height: 1.2;
 }
 
 /* Header, tab bar and desktop sidebar: frosted "foggy glass" over the page
@@ -46,12 +63,21 @@
   }
 }
 
-/* Page background: camo under a light wash. */
+/* Page background: the original camo at full color, no wash. The image isn't
+   a seamless tile, so instead of repeating it we pin one full copy behind
+   the page (cover, fixed) and let content scroll over it. */
 .cb-camo-page {
-  background-color: #e6eef8;
-  background-image: linear-gradient(rgba(230, 238, 248, 0.3), rgba(230, 238, 248, 0.3)), url("/brand/chill-pros-camo-blue.webp");
-  background-repeat: repeat;
-  background-size: auto, 420px auto;
+  position: relative;
+  isolation: isolate;
+  background-color: #6fb3ee;
+}
+.cb-camo-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url("/brand/chill-pros-camo-blue.webp") center / cover no-repeat;
+  pointer-events: none;
 }
 
 /* globals.css sets an unlayered `a { color: inherit }`, which beats Tailwind's

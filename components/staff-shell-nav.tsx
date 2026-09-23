@@ -103,7 +103,7 @@ export function StaffHeader({
                 <Ellipsis className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
-            <h1 className="mt-2 text-center text-[28px] leading-tight text-[#0A1A33] lg:mt-0">{screenTitle}</h1>
+            <h1 className="mt-2 text-center text-[40px] leading-tight lg:mt-0">{screenTitle}</h1>
             {subtitle ? <p className="mt-0.5 truncate text-center text-sm font-medium text-[#13284A]">{subtitle}</p> : null}
           </>
         )}
