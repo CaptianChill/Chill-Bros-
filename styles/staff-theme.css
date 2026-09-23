@@ -72,12 +72,15 @@
    old palette with !important.
    ------------------------------------------------------------------------ */
 
+/* New-design screens mark their content with .cb-new; the compatibility
+   rules below only restyle legacy markup and never touch .cb-new. */
+
 /* Text directly on the page background. */
 .cb-staff .cb-page {
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
-.cb-staff .cb-page :is([class*="text-zinc-"], [class*="text-white"], [class*="text-[#"], .glo, .txt, .sub, [class*="cyan-"], [class*="emerald-"], [class*="amber-"], [class*="rose-"], [class*="violet-"]) {
+.cb-staff .cb-page :is([class*="text-zinc-"], [class*="text-white"], [class*="text-[#"], .glo, .txt, .sub, [class*="cyan-"], [class*="emerald-"], [class*="amber-"], [class*="rose-"], [class*="violet-"]):not(.cb-new, .cb-new *) {
   color: #fff !important;
   opacity: 1;
 }
@@ -85,13 +88,13 @@
 /* starfield-theme.css paints a translucent tint behind anything whose class
    mentions an accent color, including plain colored text. Only elements
    that actually set a background keep one. */
-.cb-staff .cb-page :is([class*="cyan-"], [class*="emerald-"], [class*="violet-"], [class*="amber-"], [class*="rose-"]):not([class*="bg-"]) {
+.cb-staff .cb-page :is([class*="cyan-"], [class*="emerald-"], [class*="violet-"], [class*="amber-"], [class*="rose-"]):not([class*="bg-"]):not(.cb-new, .cb-new *) {
   background-color: transparent !important;
 }
 
 /* Every dark or translucent panel becomes a solid white card. Fixed
    full-screen overlays (modals, lightboxes) keep their dark backdrop. */
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"], [class*="bg-background"]):not(.fixed) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"], [class*="bg-background"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: var(--cb-card) !important;
   background-image: none !important;
   border-color: var(--cb-card-border) !important;
@@ -102,30 +105,30 @@
   -webkit-backdrop-filter: none !important;
 }
 /* Cards nested inside cards read as light tiles. */
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed) :is(.panel, .sign-surface, .box, [class*="bg-black/"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed) :is(.panel, .sign-surface, .box, [class*="bg-black/"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: var(--cb-tile) !important;
 }
 
 /* Tinted callouts become opaque light tints. */
-.cb-staff .cb-page :is([class*="bg-[#2d7dff]/"], [class*="bg-[#8ffafa]/"], [class*="bg-cyan-"], [class*="bg-sky-"], [class*="bg-blue-"]):not(.fixed) {
+.cb-staff .cb-page :is([class*="bg-[#2d7dff]/"], [class*="bg-[#8ffafa]/"], [class*="bg-cyan-"], [class*="bg-sky-"], [class*="bg-blue-"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: #e8f1fc !important;
   border-color: #b9d3f2 !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
-.cb-staff .cb-page :is([class*="bg-emerald-"], [class*="bg-green-"]):not(.fixed) {
+.cb-staff .cb-page :is([class*="bg-emerald-"], [class*="bg-green-"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: #e6f4ec !important;
   border-color: #b7dcc6 !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
-.cb-staff .cb-page :is([class*="bg-amber-"], [class*="bg-yellow-"], [class*="bg-orange-"]):not(.fixed) {
+.cb-staff .cb-page :is([class*="bg-amber-"], [class*="bg-yellow-"], [class*="bg-orange-"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: #fff1de !important;
   border-color: #f0cfa5 !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
-.cb-staff .cb-page :is([class*="bg-rose-"], [class*="bg-red-"]):not(.fixed) {
+.cb-staff .cb-page :is([class*="bg-rose-"], [class*="bg-red-"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: #fdebe4 !important;
   border-color: #efc2ae !important;
   color: var(--cb-text) !important;
@@ -133,71 +136,71 @@
 }
 
 /* Text inside any card: navy primary, slate secondary, blue accents. */
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-white"], .text-zinc-100, .text-zinc-200, .text-zinc-300, .glo, .txt, .neon-text, [class*="text-[#d9fbff]"], [class*="text-[#e9ffff]"], [class*="text-[#bafcfc]"]),
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed):is([class*="text-white"], .text-zinc-100, .text-zinc-200, .text-zinc-300, .glo, .txt, [class*="text-[#d9fbff]"]) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-white"], .text-zinc-100, .text-zinc-200, .text-zinc-300, .glo, .txt, .neon-text, [class*="text-[#d9fbff]"], [class*="text-[#e9ffff]"], [class*="text-[#bafcfc]"]):not(.cb-new, .cb-new *),
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed):is([class*="text-white"], .text-zinc-100, .text-zinc-200, .text-zinc-300, .glo, .txt, [class*="text-[#d9fbff]"]):not(.cb-new, .cb-new *) {
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is(.text-zinc-400, .text-zinc-500, .text-zinc-600, .sub),
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed):is(.text-zinc-400, .text-zinc-500, .text-zinc-600, .sub) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is(.text-zinc-400, .text-zinc-500, .text-zinc-600, .sub):not(.cb-new, .cb-new *),
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed):is(.text-zinc-400, .text-zinc-500, .text-zinc-600, .sub):not(.cb-new, .cb-new *) {
   color: var(--cb-text-2) !important;
   opacity: 1 !important;
 }
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-[var(--saber)]"], [class*="text-[#2d7dff]"], [class*="text-[#8ffafa]"], [class*="text-[#9ffcff]"], [class*="text-[#a7f0ff]"], [class*="text-cyan-"], [class*="text-sky-"], [class*="text-blue-"], [class*="text-violet-"]) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-[var(--saber)]"], [class*="text-[#2d7dff]"], [class*="text-[#8ffafa]"], [class*="text-[#9ffcff]"], [class*="text-[#a7f0ff]"], [class*="text-cyan-"], [class*="text-sky-"], [class*="text-blue-"], [class*="text-violet-"]):not(.cb-new, .cb-new *) {
   color: var(--cb-blue) !important;
 }
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-emerald-"], [class*="text-green-"]) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-emerald-"], [class*="text-green-"]):not(.cb-new, .cb-new *) {
   color: var(--cb-success) !important;
 }
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-amber-"], [class*="text-yellow-"], [class*="text-orange-"], [class*="text-rose-"], [class*="text-red-"], [class*="text-[#ff9b9b]"]) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]):not(.fixed) :is([class*="text-amber-"], [class*="text-yellow-"], [class*="text-orange-"], [class*="text-rose-"], [class*="text-red-"], [class*="text-[#ff9b9b]"]):not(.cb-new, .cb-new *) {
   color: var(--cb-needs-action) !important;
 }
 
 /* Borders and dividers inside cards. */
-.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]) :is([class*="border-white/"], [class*="border-[#2d7dff]"], [class*="border-[#8ffafa]"], [class*="border-[var(--saber"], [class*="border-cyan-"], [class*="border-zinc-7"], [class*="border-zinc-8"], [class*="border-zinc-9"], .neon-frame, .neon-tube) {
+.cb-staff .cb-page :is(.panel, .sign-surface, .box, .cb-card, [class*="bg-"]) :is([class*="border-white/"], [class*="border-[#2d7dff]"], [class*="border-[#8ffafa]"], [class*="border-[var(--saber"], [class*="border-cyan-"], [class*="border-zinc-7"], [class*="border-zinc-8"], [class*="border-zinc-9"], .neon-frame, .neon-tube):not(.cb-new, .cb-new *) {
   border-color: var(--cb-card-border) !important;
 }
-.cb-staff .cb-page :is(.divide-white\/5, .divide-white\/10) > * + * {
+.cb-staff .cb-page :is(.divide-white\/5, .divide-white\/10) > * + *:not(.cb-new, .cb-new *) {
   border-color: var(--cb-divider) !important;
 }
 
 /* Form controls. */
-.cb-staff .cb-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea) {
+.cb-staff .cb-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea):not(.cb-new, .cb-new *) {
   background-color: #fff !important;
   border-color: var(--cb-input-border) !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
-.cb-staff .cb-page :is(input, textarea)::placeholder {
+.cb-staff .cb-page :is(input, textarea):not(.cb-new, .cb-new *)::placeholder {
   color: #7a8ba3 !important;
   opacity: 1;
 }
-.cb-staff .cb-page option {
+.cb-staff .cb-page option:not(.cb-new, .cb-new *) {
   background: #fff;
   color: var(--cb-text);
 }
 
 /* Solid action buttons: primary blue with white text. */
-.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-cyan-300"], [class~="bg-cyan-400"], [class~="bg-[#2d7dff]"], [class~="bg-[#8ffafa]"], [class~="bg-[var(--saber)]"], [class~="bg-blue-600"], [class~="bg-blue-700"]):not(.fixed) {
+.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-cyan-300"], [class~="bg-cyan-400"], [class~="bg-[#2d7dff]"], [class~="bg-[#8ffafa]"], [class~="bg-[var(--saber)]"], [class~="bg-blue-600"], [class~="bg-blue-700"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: var(--cb-blue) !important;
   border-color: var(--cb-blue) !important;
   color: #fff !important;
   text-shadow: none !important;
 }
-.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-cyan-300"], [class~="bg-cyan-400"], [class~="bg-[#2d7dff]"], [class~="bg-[#8ffafa]"], [class~="bg-[var(--saber)]"], [class~="bg-blue-600"], [class~="bg-blue-700"]):not(.fixed) * {
+.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-cyan-300"], [class~="bg-cyan-400"], [class~="bg-[#2d7dff]"], [class~="bg-[#8ffafa]"], [class~="bg-[var(--saber)]"], [class~="bg-blue-600"], [class~="bg-blue-700"]):not(.fixed) *:not(.cb-new, .cb-new *) {
   color: #fff !important;
 }
-.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-emerald-300"], [class~="bg-emerald-400"], [class~="bg-emerald-500"]):not(.fixed) {
+.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-emerald-300"], [class~="bg-emerald-400"], [class~="bg-emerald-500"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: var(--cb-success) !important;
   border-color: var(--cb-success) !important;
   color: #fff !important;
 }
-.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-emerald-300"], [class~="bg-emerald-400"], [class~="bg-emerald-500"]):not(.fixed) * {
+.cb-staff.cb-staff.cb-staff .cb-page :is([class~="bg-emerald-300"], [class~="bg-emerald-400"], [class~="bg-emerald-500"]):not(.fixed) *:not(.cb-new, .cb-new *) {
   color: #fff !important;
 }
 
 /* Light documents that were already white stay as authored. */
-.cb-staff .cb-page :is([class~="bg-white"], [class~="bg-zinc-50"]) {
+.cb-staff .cb-page :is([class~="bg-white"], [class~="bg-zinc-50"]):not(.cb-new, .cb-new *) {
   text-shadow: none;
 }
 
