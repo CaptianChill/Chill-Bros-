@@ -105,7 +105,7 @@ export default async function HomePage() {
 
         <section className="cb-card overflow-hidden" aria-labelledby="todays-schedule">
           <div className="flex items-center justify-between gap-3 border-b border-[#EEF2F7] px-3.5 py-3">
-            <h2 id="todays-schedule" className="text-[26px] leading-none">Today&apos;s schedule</h2>
+            <h2 id="todays-schedule" className="text-[28px] leading-none">Today&apos;s schedule</h2>
             <Link href="/schedule" className="inline-flex min-h-11 items-center gap-0.5 px-1 text-sm font-semibold text-[#1557B0] hover:text-[#0E3F82]">
               View all
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -140,7 +140,7 @@ export default async function HomePage() {
         </Link>
 
         <section id="needs-attention" className="cb-card scroll-mt-4 overflow-hidden" aria-labelledby="needs-attention-title">
-          <h2 id="needs-attention-title" className="border-b border-[#EEF2F7] px-3.5 py-3 text-[26px] leading-none">Needs attention</h2>
+          <h2 id="needs-attention-title" className="border-b border-[#EEF2F7] px-3.5 py-3 text-[28px] leading-none">Needs attention</h2>
           {attention.length === 0 ? (
             <p className="flex items-center gap-2 px-3.5 py-5 text-sm text-[#1D7A4C]">
               <CheckCircle2 className="h-5 w-5" aria-hidden="true" />

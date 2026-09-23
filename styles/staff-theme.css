@@ -30,23 +30,24 @@
   letter-spacing: 0.01em;
 }
 
-/* Page titles and section headings: graffiti drip lettering in the ink
-   blue of the owner's alphabet sheet. Characters the sheet doesn't have
-   (digits, punctuation) fall back to Barlow Condensed. The :not(#cb-drip)
-   lifts this above the legacy-page color remaps further down. */
-.cb-staff :is(h1, h2):not(#cb-drip) {
-  font-family: var(--font-chill-drip), var(--font-barlow-condensed), "Arial Narrow", sans-serif;
+/* Page titles and section headings: graffiti bubble lettering traced from
+   the owner's alphabet sheet. It's a color font, so the outline, shadow,
+   fill and shine come from the font itself; letter spacing is built in so
+   letters tuck together. Characters the sheet doesn't have (digits,
+   punctuation) fall back to Barlow Condensed in the fill blue. The
+   :not(#cb-bubble) lifts this above the legacy-page color remaps below. */
+.cb-staff :is(h1, h2):not(#cb-bubble) {
+  font-family: var(--font-chill-bubble), var(--font-barlow-condensed), "Arial Narrow", sans-serif;
   font-weight: 400 !important;
-  letter-spacing: 0.02em;
-  color: #0482f1 !important;
+  letter-spacing: 0;
+  color: #0191fb !important;
   text-shadow: none !important;
-  -webkit-text-stroke: 0.4px #0482f1;
 }
-/* Older pages size their section headings small; the drip lettering needs
+/* Older pages size their section headings small; the bubble lettering needs
    a little more room to read. */
-.cb-staff .cb-page h2:not(.cb-new *):not(#cb-drip) {
-  font-size: 24px;
-  line-height: 1.2;
+.cb-staff .cb-page h2:not(.cb-new *):not(#cb-bubble) {
+  font-size: 26px;
+  line-height: 1.25;
 }
 
 /* Header, tab bar and desktop sidebar: frosted "foggy glass" over the page
