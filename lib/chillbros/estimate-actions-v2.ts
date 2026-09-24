@@ -76,7 +76,7 @@ async function canEditEstimateJob(jobId: string) {
   return { ok: true as const, profile };
 }
 
-export async function createEstimateV2Action(jobId: string, lines: EstimateDraftLine[], notes: string, adjustments: EstimateAdjustments): Promise<Result<{ estimateId: string; estimateNumber: string; portalToken: string }>> {
+export async function createEstimateV2Action(jobId: string, lines: EstimateDraftLine[], notes: string, adjustments: EstimateAdjustments, options: { sendToCustomer?: boolean } = {}): Promise<Result<{ estimateId: string; estimateNumber: string; portalToken: string }>> {
   const allowed = await canEditEstimateJob(jobId);
   if (!allowed.ok) return allowed;
   const checked = validateLines(lines);
@@ -111,8 +111,9 @@ export async function createEstimateV2Action(jobId: string, lines: EstimateDraft
 
   const row = data as unknown as EstimateRpcRow;
   const supabase = createServiceRoleClient();
-  await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: row.estimate_id, actor_id: allowed.profile.id, stage: "estimate_published", message: "Estimate published. Customer approval is the next step." });
-  await sendBillingDeliveryRecorded(row.estimate_id, "estimate", "email");
+  const sendToCustomer = options.sendToCustomer !== false;
+  await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: row.estimate_id, actor_id: allowed.profile.id, stage: "estimate_published", message: sendToCustomer ? "Estimate published. Customer approval is the next step." : "Estimate published without emailing the customer (verbal approval)." });
+  if (sendToCustomer) await sendBillingDeliveryRecorded(row.estimate_id, "estimate", "email");
   refresh(["/technician", "/manager", "/dispatch", "/office", "/invoices", "/"]);
   return { ok: true, data: { estimateId: row.estimate_id, estimateNumber: row.estimate_number, portalToken: row.estimate_token } };
 }

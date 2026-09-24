@@ -2,10 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Save, Sparkles } from "lucide-react";
 
 import { createEquipmentLinkedJobAction } from "@/lib/chillbros/equipment-job-intake";
 import { createCustomerAction } from "@/lib/chillbros/operations";
+import { partsProHref } from "@/lib/chillbros/parts-pro";
 import { displayTime } from "@/lib/chillbros/schedule-window";
 
 type CustomerOption = { id: string; name: string; address: string | null };
@@ -40,8 +42,10 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
   const customerUnits = useMemo(() => units.filter((unit) => unit.customerId === customerId), [units, customerId]);
   const selectedCustomer = customers.find((c) => c.id === customerId);
 
-  const submit = (event: React.FormEvent) => {
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // Which button was tapped: save and go to Open work, or save and add parts.
+    const addParts = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value === "parts";
     setError(null);
     if (!newCustomer && !customerId) return setError("Choose a customer.");
     if (newCustomer && !customer.name.trim()) return setError("Enter the new customer's name.");
@@ -65,7 +69,7 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
         scheduledWindow: scheduleNow ? `${date} ${start}-${end} CT` : undefined,
       });
       if (!result.ok) return setError(result.error);
-      router.push(`/jobs/${result.jobId}?success=${encodeURIComponent("Service call created. Add parts below.")}#parts`);
+      router.push(addParts ? `/jobs/${result.jobId}?success=${encodeURIComponent("Service call saved. Add parts below.")}#parts` : `/work?saved=${encodeURIComponent(result.jobId)}`);
     });
   };
 
@@ -121,6 +125,10 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
           <input type="checkbox" checked={approved} onChange={(e) => setApproved(e.target.checked)} className="h-5 w-5 accent-[#1557B0]" />
           Customer approved this repair verbally
         </label>
+        <Link href={partsProHref({ details: scope })} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#1557B0]">
+          <Sparkles className="h-4 w-4" aria-hidden="true" />
+          Find the OEM part # with Parts Pro
+        </Link>
       </section>
 
       <section className="cb-card space-y-3 p-3.5">
@@ -149,8 +157,12 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
       </section>
 
       {error ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#0B5CD5]">{error}</p> : null}
-      <button type="submit" disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82] disabled:opacity-60">
-        {pending ? "Creating…" : "Create call & add parts"}
+      <button type="submit" name="next" value="save" disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82] disabled:opacity-60">
+        <Save className="h-5 w-5" aria-hidden="true" />
+        {pending ? "Saving…" : "Save call"}
+      </button>
+      <button type="submit" name="next" value="parts" disabled={pending} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1557B0] bg-[#F8FAFD] font-bold text-[#1557B0] disabled:opacity-60">
+        Save &amp; add parts
         <ArrowRight className="h-5 w-5" aria-hidden="true" />
       </button>
     </form>

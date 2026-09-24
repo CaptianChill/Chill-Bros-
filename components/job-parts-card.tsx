@@ -1,19 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState, useTransition } from "react";
-import { PackagePlus, Trash2 } from "lucide-react";
+import { PackagePlus, Sparkles, Trash2 } from "lucide-react";
 
 import { addJobPartAtomicAction, removeJobPartAtomicAction } from "@/lib/chillbros/job-parts";
+import { addCustomJobPartAction } from "@/lib/chillbros/quote-actions";
 
 type JobPart = { id: string; name: string; partNumber: string; retailPrice: number; quantity: number };
 type CatalogPart = { id: string; name: string; partNumber: string; retailPrice: number; stock: number; trackInventory: boolean };
 
+const fieldClass = "mt-1 min-h-11 w-full rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 font-medium text-[#0A1A33] placeholder:text-[#5B6B82]";
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 // Parts on a job, using the existing atomic parts actions (inventory stock is
-// adjusted the same way as on the technician screen).
-export function JobPartsCard({ jobId, parts, catalog, canEdit }: { jobId: string; parts: JobPart[]; catalog: CatalogPart[]; canEdit: boolean }) {
+// adjusted the same way as on the technician screen). "Bought part" is for a
+// part priced from an online or local supplier that isn't normally stocked.
+export function JobPartsCard({ jobId, parts, catalog, canEdit, canAddCustom = false, partsProHref }: { jobId: string; parts: JobPart[]; catalog: CatalogPart[]; canEdit: boolean; canAddCustom?: boolean; partsProHref?: string }) {
   const router = useRouter();
   const searchId = useId();
   const partId = useId();
@@ -23,6 +27,8 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit }: { jobId: string
   const [quantity, setQuantity] = useState("1");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [mode, setMode] = useState<"stock" | "custom">("stock");
+  const [custom, setCustom] = useState({ name: "", partNumber: "", cost: "", price: "", quantity: "1" });
 
   const available = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -52,6 +58,18 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit }: { jobId: string
         setQuantity("1");
         setSearch("");
       }
+      return result;
+    });
+  };
+
+  const addCustom = () => {
+    const qty = Number(custom.quantity);
+    if (!custom.name.trim()) return setError("Enter the part name.");
+    if (custom.price === "" || !(Number(custom.price) >= 0)) return setError("Enter the price you're charging.");
+    if (!Number.isInteger(qty) || qty < 1) return setError("Quantity must be 1 or more.");
+    run(async () => {
+      const result = await addCustomJobPartAction({ jobId, name: custom.name, partNumber: custom.partNumber, cost: Number(custom.cost || 0), price: Number(custom.price), quantity: qty });
+      if (result.ok) setCustom({ name: "", partNumber: "", cost: "", price: "", quantity: "1" });
       return result;
     });
   };
@@ -88,6 +106,30 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit }: { jobId: string
       )}
       {canEdit ? (
         <div className="space-y-2 border-t border-[#0A1A33]/10 px-3.5 py-3">
+          {canAddCustom ? (
+            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Where the part comes from">
+              {([["stock", "From stock"], ["custom", "Bought part"]] as const).map(([value, text]) => (
+                <button key={value} type="button" role="radio" aria-checked={mode === value} onClick={() => { setMode(value); setError(null); }} className={`min-h-11 rounded-xl border font-semibold ${mode === value ? "border-[#1557B0] bg-[#1557B0] text-white" : "border-[#C7D3E2] bg-[#F8FAFD] text-[#0A1A33]"}`}>
+                  {text}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {mode === "custom" && canAddCustom ? (
+            <div className="grid grid-cols-2 gap-2">
+              <p className="col-span-2 text-[13px] font-medium text-[#2B3F5C]">A part you priced online or from a local supply house.</p>
+              <label className="col-span-2 text-sm font-semibold text-[#0A1A33]">Part name<input value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })} placeholder="e.g. Condenser fan motor 1/3 HP" className={fieldClass} /></label>
+              <label className="col-span-2 text-sm font-semibold text-[#0A1A33]">OEM part # (optional)<input value={custom.partNumber} onChange={(e) => setCustom({ ...custom, partNumber: e.target.value })} className={fieldClass} /></label>
+              <label className="text-sm font-semibold text-[#0A1A33]">Your cost<input type="number" inputMode="decimal" min={0} step="0.01" value={custom.cost} onChange={(e) => setCustom({ ...custom, cost: e.target.value })} placeholder="$0.00" className={fieldClass} /></label>
+              <label className="text-sm font-semibold text-[#0A1A33]">Price to customer<input type="number" inputMode="decimal" min={0} step="0.01" value={custom.price} onChange={(e) => setCustom({ ...custom, price: e.target.value })} placeholder="$0.00" className={fieldClass} /></label>
+              <label className="text-sm font-semibold text-[#0A1A33]">Qty<input type="number" inputMode="numeric" min={1} value={custom.quantity} onChange={(e) => setCustom({ ...custom, quantity: e.target.value })} className={`${fieldClass} text-center`} /></label>
+              <button type="button" onClick={addCustom} disabled={pending} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#1557B0] px-4 font-semibold text-white disabled:opacity-60">
+                <PackagePlus className="h-5 w-5" aria-hidden="true" />
+                {pending ? "Saving…" : "Add part"}
+              </button>
+            </div>
+          ) : (
+          <>
           <label htmlFor={searchId} className="text-sm font-semibold text-[#0A1A33]">
             Add a part
           </label>
@@ -115,6 +157,14 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit }: { jobId: string
               {pending ? "Saving…" : "Add part"}
             </button>
           </div>
+          </>
+          )}
+          {partsProHref ? (
+            <Link href={partsProHref} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#1557B0]">
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              Find the OEM part # with Parts Pro
+            </Link>
+          ) : null}
         </div>
       ) : null}
       {error ? <p role="alert" className="px-3.5 pb-3 text-sm font-semibold text-[#0B5CD5]">{error}</p> : null}
