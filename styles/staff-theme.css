@@ -95,6 +95,12 @@
   color: revert-layer;
 }
 
+/* New-design content never uses the old page-level text shadow (it's meant
+   for legacy white text sitting directly on the camo). */
+.cb-staff .cb-new {
+  text-shadow: none;
+}
+
 /* Text sitting on the frosted glass bands. */
 .cb-glass-text {
   color: var(--cb-navy);
