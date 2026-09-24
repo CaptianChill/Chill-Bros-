@@ -1,6 +1,7 @@
 import {
   Banknote,
   CalendarDays,
+  ClipboardList,
   Clock3,
   CreditCard,
   Home,
@@ -42,13 +43,14 @@ export const GROUP_LABELS: Record<NavGroup, string> = {
 export const navItems: NavItem[] = [
   { href: "/", label: "Home", shortLabel: "Home", roles: ["manager"], group: "command" },
   { href: "/office", label: "Office", shortLabel: "Office", roles: ["office"], group: "command" },
+  { href: "/work", label: "Open Work", shortLabel: "Work", roles: ["manager", "office"], group: "command" },
   { href: "/schedule", label: "Schedule", shortLabel: "Schedule", roles: ["manager", "office"], group: "command" },
   { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"], group: "command" },
   { href: "/customers", label: "Customers", shortLabel: "Customers", roles: ["manager", "office"], group: "crm" },
   { href: "/technician", label: "Field Jobs", shortLabel: "Field", roles: ["manager", "technician"], group: "operations" },
   { href: "/field-notes", label: "Field Notes", shortLabel: "Notes", roles: ["manager", "technician"], group: "operations" },
   { href: "/timesheet", label: "Clock", shortLabel: "Clock", roles: ["manager", "technician"], group: "operations" },
-  { href: "/parts-lookup", label: "Parts Lookup", shortLabel: "Parts", roles: ["manager", "technician", "office"], group: "operations" },
+  { href: "/parts-lookup", label: "Parts Pro", shortLabel: "Parts Pro", roles: ["manager", "technician", "office"], group: "operations" },
   { href: "/revenue-radar", label: "Revenue Radar", shortLabel: "Radar", roles: ["manager", "office"], group: "sales" },
   { href: "/revenue-radar/tasks", label: "Sales Tasks", shortLabel: "Sales", roles: ["office"], group: "sales" },
   { href: "/revenue-radar/handoffs", label: "Tech Requests", shortLabel: "Requests", roles: ["technician"], group: "sales" },
@@ -64,6 +66,7 @@ export const ownerNavItem: NavItem = { href: "/owner", label: "Owner Access", sh
 export const NAV_ICONS: Partial<Record<string, LucideIcon>> = {
   "/": Home,
   "/office": Home,
+  "/work": ClipboardList,
   "/schedule": CalendarDays,
   "/dispatch": Route,
   "/customers": UsersRound,
@@ -105,17 +108,16 @@ export function getPrimaryTabs(role: StaffRole): PrimaryTab[] {
       { href: "/technician", label: "Job", icon: Wrench, isActive: (p) => p === "/" || p === "/technician" || p.startsWith("/jobs/") },
       { href: "/field-notes", label: "Notes", icon: StickyNote, isActive: (p) => isUnder(p, "/field-notes") },
       { href: "/timesheet", label: "Clock", icon: Clock3, isActive: (p) => isUnder(p, "/timesheet") },
-      { href: "/parts-lookup", label: "Parts", icon: Search, isActive: (p) => isUnder(p, "/parts-lookup") },
+      { href: "/parts-lookup", label: "Parts Pro", icon: Search, isActive: (p) => isUnder(p, "/parts-lookup") },
     ];
   }
 
   const homeHref = role === "office" ? "/office" : "/";
-  // Office staff can't open the field workflow, so their job list is the schedule.
-  const jobHref = role === "office" ? "/schedule" : "/technician";
 
   return [
     { href: homeHref, label: "Home", icon: Home, isActive: (p) => p === "/" || p === "/office" },
-    { href: jobHref, label: "Job", icon: Wrench, isActive: (p) => isUnder(p, jobHref) || p.startsWith("/jobs/") },
+    // Open work: saved calls, quotes and invoices still to finish.
+    { href: "/work", label: "Work", icon: ClipboardList, isActive: (p) => isUnder(p, "/work") || p.startsWith("/jobs/") },
     { href: "/dispatch", label: "Dispatch", icon: Route, isActive: (p) => isUnder(p, "/dispatch") },
     { href: "/invoices", label: "Billing", icon: Banknote, isActive: (p) => isUnder(p, "/invoices") },
   ];

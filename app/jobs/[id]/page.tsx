@@ -11,6 +11,7 @@ import { getActiveTechnicians } from "@/lib/chillbros/operations-queries";
 import { getJobLifecycle } from "@/lib/chillbros/job-lifecycle-queries";
 import { issueInvoiceForCompletedWorkAction, scheduleReturnVisitAction, startApprovedWorkAction } from "@/lib/chillbros/job-lifecycle-actions";
 import { invoiceTotals } from "@/lib/chillbros/invoice-v2";
+import { partsProHref } from "@/lib/chillbros/parts-pro";
 import { ctToday, displayTime, parseWindow } from "@/lib/chillbros/schedule-window";
 import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS, type JobStatus } from "@/lib/chillbros/types";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -74,7 +75,8 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   const step = currentStep(job.status, invoiceIssued);
   const slot = parseWindow(job.scheduledWindow);
   const fieldJob = { id: job.id, workPerformed: job.workPerformed, laborHours: job.laborHours, driveHours: job.driveHours };
-  const quoteHref = `/technician?job=${encodeURIComponent(job.id)}`;
+  const quoteHref = `/jobs/${encodeURIComponent(job.id)}/quote`;
+  const partsPro = partsProHref({ details: job.scope, back: `/jobs/${job.id}` });
   const fieldNext = FIELD_NEXT[step];
 
   // The one primary action for the job's next step.
@@ -223,7 +225,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
           </ul>
         </section>
 
-        <JobPartsCard jobId={job.id} parts={job.parts} catalog={partsCatalog} canEdit={canEditParts && active} />
+        <JobPartsCard jobId={job.id} parts={job.parts} catalog={partsCatalog} canEdit={canEditParts && active} canAddCustom={profile.role === "manager"} partsProHref={partsPro} />
 
         <section className="cb-card p-3.5">
           <TechNotes job={fieldJob} canEdit={isField && active} />
@@ -234,7 +236,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
             {isField ? (
               <Link href={quoteHref} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#1557B0] bg-[#F8FAFD] px-3 font-semibold text-[#1557B0] ${isOffice && active ? "" : "col-span-2"}`}>
                 <FileText className="h-4 w-4" aria-hidden="true" />
-                Build quote
+                {invoice ? "View quote" : "Build quote"}
               </Link>
             ) : null}
             {isOffice && active ? (

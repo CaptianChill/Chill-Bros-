@@ -9,7 +9,9 @@ const link = "inline-flex min-h-11 items-center gap-2 text-sm font-semibold text
 function SourceLink({ url, children }: { url: string; children: React.ReactNode }) {
   return <a href={url} target="_blank" rel="noopener noreferrer" className={link}>{children} <span aria-hidden="true">↗</span></a>;
 }
-export function PartsLookupForm() {
+export type PartsLookupPrefill = { brand?: string; model?: string; serial?: string; details?: string };
+
+export function PartsLookupForm({ prefill = {} }: { prefill?: PartsLookupPrefill } = {}) {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<Extract<PartsLookupResult, { ok: true }> | null>(null);
   const [error, setError] = useState("");
@@ -40,10 +42,10 @@ export function PartsLookupForm() {
     <form onSubmit={onSubmit} className="space-y-4">
       <fieldset disabled={pending} className="grid gap-3 sm:grid-cols-2 disabled:opacity-60">
         <legend className="sr-only">Equipment to research</legend>
-        <label className={label}>Brand / manufacturer<input name="brand" required maxLength={120} placeholder="e.g. Carrier, True, Hoshizaki" className={`${input} mt-1.5`} /></label>
-        <label className={label}>Model number<input name="model" required maxLength={120} placeholder="Enter the complete model" className={`${input} mt-1.5`} /></label>
-        <label className={label}>Serial number (optional)<input name="serial" maxLength={120} placeholder="Used to check serial breaks" className={`${input} mt-1.5`} /></label>
-        <label className={label}>Part needed / symptom<input name="details" maxLength={1000} placeholder="e.g. water inlet valve" className={`${input} mt-1.5`} /></label>
+        <label className={label}>Brand / manufacturer<input name="brand" defaultValue={prefill.brand} required maxLength={120} placeholder="e.g. Carrier, True, Hoshizaki" className={`${input} mt-1.5`} /></label>
+        <label className={label}>Model number<input name="model" defaultValue={prefill.model} required maxLength={120} placeholder="Enter the complete model" className={`${input} mt-1.5`} /></label>
+        <label className={label}>Serial number (optional)<input name="serial" defaultValue={prefill.serial} maxLength={120} placeholder="Used to check serial breaks" className={`${input} mt-1.5`} /></label>
+        <label className={label}>Part needed / symptom<input name="details" defaultValue={prefill.details} maxLength={1000} placeholder="e.g. water inlet valve" className={`${input} mt-1.5`} /></label>
       </fieldset>
       <div className="flex flex-col gap-3 sm:flex-row">
         <button name="mode" value="parts" disabled={pending} className="min-h-12 rounded-xl border border-[#8ffafa]/50 bg-[#2d7dff]/25 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50">{pending && mode === "parts" ? "Researching parts…" : "Research this part"}</button>
