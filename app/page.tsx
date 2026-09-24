@@ -124,7 +124,7 @@ export default async function HomePage() {
           New service call
         </Link>
 
-        <section id="needs-attention" className="cb-card scroll-mt-4 overflow-hidden" aria-labelledby="needs-attention-title">
+        <section id="needs-attention" className="cb-card hidden scroll-mt-4 overflow-hidden target:block" aria-labelledby="needs-attention-title">
           <h2 id="needs-attention-title" className="border-b border-[#0A1A33]/10 px-3.5 py-3 text-[28px] leading-none">Needs attention</h2>
           {attention.length === 0 ? (
             <p className="flex items-center gap-2 px-3.5 py-5 text-sm text-[#0A7FC2]">
