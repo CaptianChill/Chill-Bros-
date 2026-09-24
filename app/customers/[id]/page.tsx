@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Archive, ChevronRight, FilePenLine, FileText, Wrench } from "lucide-react";
+import { Archive, ChevronRight, FilePenLine, FileText, Plus, Wrench } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -36,6 +36,10 @@ export default async function CustomerProfilePage({ params }: Props) {
   >
     <div className="space-y-4">
       <SectionCard eyebrow="Customer record" title="Contact & service history" description="Edit the customer record here. All equipment, documents, calls, and plans remain tied to this customer ID."><CustomerEditor customer={data.customer} /></SectionCard>
+      <Link href={`/jobs/new?customer=${data.customer.id}`} className="cb-new flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82]">
+        <Plus className="h-5 w-5" aria-hidden="true" />
+        New call for this customer
+      </Link>
       <section aria-labelledby="customer-equipment-title" className="cb-new cb-card overflow-hidden">
         <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
           <h2 id="customer-equipment-title" className="text-[28px] leading-none">Equipment</h2>

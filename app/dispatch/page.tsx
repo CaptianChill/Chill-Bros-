@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { DispatchAssignRow } from "@/components/dispatch-assign-row";
@@ -74,6 +74,10 @@ export default async function DispatchPage({ searchParams }: Props) {
     <AppShell title="Dispatch" description="Assign calls and balance technician workload.">
       <LiveOfficeRefresh />
       <div className="cb-new space-y-3.5">
+        <Link href="/jobs/new" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82]">
+          <Plus className="h-5 w-5" aria-hidden="true" />
+          New service call
+        </Link>
         <nav aria-label="Choose day" className="grid grid-cols-5 gap-2">
           {days.map((date, i) => {
             const { weekday, day, label } = dayParts(date);

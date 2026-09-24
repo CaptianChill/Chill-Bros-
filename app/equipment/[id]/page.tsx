@@ -7,6 +7,7 @@ import { JobStatusChip } from "@/components/job-status-chip";
 import { LinkJobToUnit } from "@/components/link-job-to-unit";
 import { getCustomerProfile } from "@/lib/chillbros/customer-profile";
 import { getEquipmentServiceRecord } from "@/lib/chillbros/equipment-service-record";
+import { getJob } from "@/lib/chillbros/queries";
 import { displayTime, parseWindow } from "@/lib/chillbros/schedule-window";
 import type { JobStatus } from "@/lib/chillbros/types";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -36,8 +37,10 @@ export default async function EquipmentServiceRecordPage({ params }: Props) {
   const { equipment, jobs, events } = record;
   const canLink = profile.role === "manager" || profile.role === "office";
 
+  // Parts replaced on each visit, from the existing job record.
+  const partsByJob = new Map((await Promise.all(jobs.map(async (job) => [job.id, (await getJob(job.id))?.parts ?? []] as const))));
   const history = jobs
-    .map((job) => ({ job, visit: visitDate(job.scheduledWindow, job.createdAt) }))
+    .map((job) => ({ job, visit: visitDate(job.scheduledWindow, job.createdAt), parts: partsByJob.get(job.id) ?? [] }))
     .sort((a, b) => b.visit.sortKey.localeCompare(a.visit.sortKey));
 
   const linkedIds = new Set(jobs.map((job) => job.id));
@@ -94,7 +97,7 @@ export default async function EquipmentServiceRecordPage({ params }: Props) {
             </p>
           ) : (
             <ol className="divide-y divide-[#0A1A33]/10">
-              {history.map(({ job, visit }) => (
+              {history.map(({ job, visit, parts }) => (
                 <li key={job.id}>
                   <Link href={`/jobs/${job.id}`} className="block bg-[#F8FAFD] px-3.5 py-3 transition hover:bg-white">
                     <div className="flex items-start justify-between gap-3">
@@ -106,6 +109,19 @@ export default async function EquipmentServiceRecordPage({ params }: Props) {
                     </div>
                     <p className="mt-1.5 font-semibold text-[#0A1A33]">{job.scope || "Service call"}</p>
                     {job.workPerformed ? <p className="mt-1 text-sm font-medium text-[#0A1A33]">{job.workPerformed}</p> : null}
+                    {parts.length ? (
+                      <ul aria-label="Parts replaced" className="mt-2 space-y-1 rounded-lg border border-[#C7D3E2] bg-white px-2.5 py-2">
+                        {parts.map((part) => (
+                          <li key={part.id} className="flex items-baseline justify-between gap-2 text-sm">
+                            <span className="min-w-0 font-semibold text-[#0A1A33]">
+                              {part.name}
+                              {part.partNumber ? <span className="font-medium text-[#2B3F5C]"> · Part # {part.partNumber}</span> : null}
+                            </span>
+                            <span className="shrink-0 font-semibold text-[#0A1A33]">× {part.quantity}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] font-medium text-[#2B3F5C]">
                       <span className="inline-flex items-center gap-1"><UserRound className="h-3.5 w-3.5" aria-hidden="true" />{job.technicianName ?? "Unassigned"}</span>
                       <span className="inline-flex items-center gap-1"><Wrench className="h-3.5 w-3.5" aria-hidden="true" />{job.laborHours} hr labor · {job.driveHours} hr drive</span>
