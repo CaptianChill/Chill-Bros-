@@ -22,14 +22,14 @@ function attentionMeta(stage: string, status: string) {
   if (stage === "estimate_published" || stage === "awaiting_approval") return { priority: 4, label: "Estimate awaiting customer approval", tone: "text-[#1557B0]", icon: ClipboardList };
   if (stage === "return_scheduled") return { priority: 5, label: "Return visit scheduled", tone: "text-[#1557B0]", icon: CalendarDays };
   if (stage === "approved_work_now") return { priority: 6, label: "Approved work in progress", tone: "text-[#1557B0]", icon: ClipboardList };
-  if (status === "completed" && stage === "completed") return { priority: 7, label: "Completed call · review billing", tone: "text-[#4A5D78]", icon: AlertCircle };
+  if (status === "completed" && stage === "completed") return { priority: 7, label: "Completed call · review billing", tone: "text-[#2B3F5C]", icon: AlertCircle };
   return null;
 }
 
-function StatCard({ href, label, value, valueClass = "text-[#0A1A33]", hint, hintClass = "text-[#4A5D78]" }: { href: string; label: string; value: string; valueClass?: string; hint: string; hintClass?: string }) {
+function StatCard({ href, label, value, valueClass = "text-[#0A1A33]", hint, hintClass = "text-[#2B3F5C]" }: { href: string; label: string; value: string; valueClass?: string; hint: string; hintClass?: string }) {
   return (
     <Link href={href} className="cb-card block min-h-[112px] p-3.5 transition hover:border-[#1557B0]">
-      <p className="text-[13px] font-medium text-[#4A5D78]">{label}</p>
+      <p className="text-[13px] font-medium text-[#2B3F5C]">{label}</p>
       <p className={`cb-display mt-1 text-[34px] leading-none ${valueClass}`}>{value}</p>
       <p className={`mt-1.5 text-[13px] font-medium ${hintClass}`}>{hint}</p>
     </Link>
@@ -76,7 +76,7 @@ export default async function HomePage() {
             value={String(unassignedCount)}
             valueClass={unassignedCount > 0 ? "text-[#0B5CD5]" : "text-[#0A1A33]"}
             hint={unassignedCount > 0 ? "Assign now" : "All assigned"}
-            hintClass={unassignedCount > 0 ? "text-[#1557B0] font-semibold" : "text-[#4A5D78]"}
+            hintClass={unassignedCount > 0 ? "text-[#1557B0] font-semibold" : "text-[#2B3F5C]"}
           />
           <StatCard
             href="/invoices?status=overdue"
@@ -97,7 +97,7 @@ export default async function HomePage() {
             </Link>
           </div>
           {todaySchedule.length === 0 ? (
-            <p className="px-3.5 py-5 text-sm text-[#4A5D78]">Nothing scheduled for today.</p>
+            <p className="px-3.5 py-5 text-sm text-[#2B3F5C]">Nothing scheduled for today.</p>
           ) : (
             <ul className="divide-y divide-[#0A1A33]/10">
               {todaySchedule.map(({ job, slot }) => (
@@ -106,7 +106,7 @@ export default async function HomePage() {
                     <span className="w-[62px] shrink-0 text-sm font-semibold text-[#0A1A33]">{displayTime(slot!.start)}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold text-[#0A1A33]">{job.customerName}</span>
-                      <span className="block truncate text-[13px] text-[#4A5D78]">{job.scope?.trim() || "No complaint recorded"}</span>
+                      <span className="block truncate text-[13px] text-[#2B3F5C]">{job.scope?.trim() || "No complaint recorded"}</span>
                     </span>
                     <JobStatusChip status={job.status} assigned={Boolean(job.assignedTechId)} />
                   </Link>
@@ -142,7 +142,7 @@ export default async function HomePage() {
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-semibold text-[#0A1A33]">{job.customerName}</span>
                         <span className={`block text-[13px] font-medium ${meta.tone}`}>{meta.label}</span>
-                        <span className="block truncate text-[13px] text-[#4A5D78]">{job.location || "No location"} · {job.assignedTechName || "Unassigned"}</span>
+                        <span className="block truncate text-[13px] text-[#2B3F5C]">{job.location || "No location"} · {job.assignedTechName || "Unassigned"}</span>
                       </span>
                     </Link>
                   </li>

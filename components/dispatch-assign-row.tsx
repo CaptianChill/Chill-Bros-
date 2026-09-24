@@ -38,7 +38,7 @@ export function DispatchAssignRow({ jobId, customerName, technicians }: { jobId:
           value={techId}
           onChange={(event) => setTechId(event.target.value)}
           disabled={pending}
-          className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#C7D3E2] bg-white px-3 text-sm text-[#0A1A33] disabled:opacity-60"
+          className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 text-sm font-medium text-[#0A1A33] disabled:opacity-60"
         >
           <option value="">Choose technician</option>
           {technicians.map((tech) => (

@@ -145,7 +145,7 @@ function MoreSheet({ user, items, onClose }: { user: StaffShellUser; items: NavI
             <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#9FD3FF] text-sm font-bold">{user.initials}</span>
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.fullName}</p>
-              <p className="truncate text-sm text-[#4A5D78]">{user.roleLabel}</p>
+              <p className="truncate text-sm text-[#2B3F5C]">{user.roleLabel}</p>
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Close menu" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#DCE4EE]">
@@ -192,7 +192,7 @@ export function MoreLinks({ items, onNavigate, tone }: { items: NavItem[]; onNav
   const pathname = usePathname();
   if (!items.length) return null;
 
-  const heading = tone === "light" ? "text-[#4A5D78]" : "text-white/80";
+  const heading = tone === "light" ? "text-[#2B3F5C]" : "text-white/80";
   const idle = tone === "light" ? "text-[#0A1A33] hover:bg-[#EEF2F7]" : "text-white hover:bg-white/10";
   const active = tone === "light" ? "bg-[#DDEEFF] text-[#0E3F82]" : "bg-white/15 text-white";
 
