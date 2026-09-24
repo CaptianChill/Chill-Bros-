@@ -13,11 +13,12 @@
   --cb-card-border: rgba(255, 255, 255, 0.9);
   --cb-divider: #eef2f7;
   --cb-text: #0a1a33;
-  --cb-text-2: #4a5d78;
+  --cb-text-2: #2b3f5c; /* darker secondary text for field readability */
   --cb-input-border: #c7d3e2;
   --cb-needs-action: #0b5cd5; /* all accents are shades of blue */
   --cb-success: #0a7fc2;
-  --cb-tile: rgba(238, 244, 251, 0.7);
+  --cb-tile: rgba(250, 251, 253, 0.95); /* off-white inner boxes, easy to read */
+  --cb-field: #f8fafd; /* off-white text inputs */
   /* Frosted ice-brick wall behind cards, the header and the tab bar. One
      brick size everywhere (the wall repeats instead of stretching). */
   --cb-ice-bricks: url("/brand/chill-pros-ice-bricks.webp");
@@ -162,7 +163,13 @@
   -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
   backdrop-filter: blur(12px) saturate(120%) !important;
 }
-/* Cards nested inside cards read as light tiles. */
+/* Text on every card is a step heavier so it reads easily outdoors. */
+.cb-staff .cb-page :is(.cb-card, .panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed) {
+  font-weight: 500;
+}
+
+/* Cards nested inside cards read as solid off-white boxes (no bricks), so
+   the text inside them is easy to read. */
 .cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed) :is(.panel, .sign-surface, .box, [class*="bg-black/"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed):not(.cb-new, .cb-new *) {
   background-color: var(--cb-tile) !important;
   background-image: none !important;
@@ -228,13 +235,18 @@
 
 /* Form controls. */
 .cb-staff .cb-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea):not(.cb-new, .cb-new *) {
-  background-color: #fff !important;
+  background-color: var(--cb-field) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  font-weight: 500;
   border-color: var(--cb-input-border) !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
 }
 .cb-staff .cb-page :is(input, textarea):not(.cb-new, .cb-new *)::placeholder {
-  color: #7a8ba3 !important;
+  color: #5b6b82 !important;
   opacity: 1;
 }
 .cb-staff .cb-page option:not(.cb-new, .cb-new *) {

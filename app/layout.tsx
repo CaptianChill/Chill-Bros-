@@ -7,7 +7,7 @@ import "../styles/staff-theme.css";
 
 // Exposed as CSS variables only; styles/staff-theme.css applies them inside
 // the staff shell so customer-facing pages keep their current type.
-const barlow = Barlow({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-barlow", display: "swap" });
+const barlow = Barlow({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-barlow", display: "swap" });
 const barlowCondensed = Barlow_Condensed({ subsets: ["latin"], weight: ["700"], variable: "--font-barlow-condensed", display: "swap" });
 // Graffiti bubble lettering traced from the owner's alphabet sheet: a color
 // font (black outline + shadow, blue fill, light-blue shine) with A-Z;

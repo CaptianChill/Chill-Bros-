@@ -91,9 +91,9 @@ export default async function DispatchPage({ searchParams }: Props) {
                     : "cb-card text-[#0A1A33] hover:border-[#1557B0]"
                 }`}
               >
-                <span className={`text-xs font-semibold uppercase ${selected ? "text-white" : "text-[#4A5D78]"}`}>{i === 0 ? "Today" : weekday}</span>
+                <span className={`text-xs font-semibold uppercase ${selected ? "text-white" : "text-[#2B3F5C]"}`}>{i === 0 ? "Today" : weekday}</span>
                 <span className="cb-display text-[26px] leading-none">{day}</span>
-                <span className={`text-[11px] font-medium ${selected ? "text-white" : "text-[#4A5D78]"}`}>{count} job{count === 1 ? "" : "s"}</span>
+                <span className={`text-[11px] font-medium ${selected ? "text-white" : "text-[#2B3F5C]"}`}>{count} job{count === 1 ? "" : "s"}</span>
               </Link>
             );
           })}
@@ -105,7 +105,7 @@ export default async function DispatchPage({ searchParams }: Props) {
             <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#0B5CD5] px-2.5 py-1 text-sm font-bold text-white">{unassigned.length}</span>
           </div>
           {unassigned.length === 0 ? (
-            <p className="px-3.5 py-5 text-sm text-[#4A5D78]">Every call for {dayParts(selectedDay).label} has a technician.</p>
+            <p className="px-3.5 py-5 text-sm text-[#2B3F5C]">Every call for {dayParts(selectedDay).label} has a technician.</p>
           ) : (
             <ul className="divide-y divide-[#0A1A33]/10">
               {unassigned.map((job) => {
@@ -115,10 +115,10 @@ export default async function DispatchPage({ searchParams }: Props) {
                     <div className="flex items-start justify-between gap-3">
                       <Link href={`/jobs/${job.id}`} className="min-w-0 flex-1">
                         <span className="block truncate font-semibold text-[#0A1A33]">{job.customerName}</span>
-                        <span className="block truncate text-[13px] text-[#4A5D78]">{job.scope?.trim() || "No complaint recorded"}</span>
+                        <span className="block truncate text-[13px] text-[#2B3F5C]">{job.scope?.trim() || "No complaint recorded"}</span>
                       </Link>
                       <span className="shrink-0 text-right text-sm font-semibold text-[#0A1A33]">
-                        {slot ? `${displayTime(slot.start)}–${displayTime(slot.end)}` : <span className="text-[13px] font-medium text-[#4A5D78]">No time requested</span>}
+                        {slot ? `${displayTime(slot.start)}–${displayTime(slot.end)}` : <span className="text-[13px] font-medium text-[#2B3F5C]">No time requested</span>}
                       </span>
                     </div>
                     <DispatchAssignRow jobId={job.id} customerName={job.customerName} technicians={techOptions} />
@@ -132,10 +132,10 @@ export default async function DispatchPage({ searchParams }: Props) {
         <section aria-labelledby="technicians-title" className="cb-card overflow-hidden">
           <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
             <h2 id="technicians-title" className="text-[28px] leading-none">Technicians</h2>
-            <span className="text-sm font-medium text-[#4A5D78]">{dayParts(selectedDay).weekday} {dayParts(selectedDay).day}</span>
+            <span className="text-sm font-medium text-[#2B3F5C]">{dayParts(selectedDay).weekday} {dayParts(selectedDay).day}</span>
           </div>
           {techRows.length === 0 ? (
-            <p className="px-3.5 py-5 text-sm text-[#4A5D78]">No active technicians.</p>
+            <p className="px-3.5 py-5 text-sm text-[#2B3F5C]">No active technicians.</p>
           ) : (
             <ul className="divide-y divide-[#0A1A33]/10">
               {techRows.map(({ tech, count, status, busy }) => (
@@ -160,7 +160,7 @@ export default async function DispatchPage({ searchParams }: Props) {
                     >
                       <div className="h-full rounded-full bg-[#1557B0]" style={{ width: `${Math.round((count / barMax) * 100)}%` }} />
                     </div>
-                    <p className={`mt-1 truncate text-[13px] ${busy ? "font-semibold text-[#0E3F82]" : "text-[#4A5D78]"}`}>{status}</p>
+                    <p className={`mt-1 truncate text-[13px] ${busy ? "font-semibold text-[#0E3F82]" : "text-[#2B3F5C]"}`}>{status}</p>
                   </div>
                 </li>
               ))}
