@@ -3,6 +3,7 @@ import { ExternalLink, FileText } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { ClockCard } from "@/components/clock-card";
 import { ClientPortalActions } from "@/components/client-portal-actions";
 import { EstimateAdjustmentsEditor } from "@/components/estimate-adjustments-editor";
 import { EstimateComposer } from "@/components/estimate-composer";
@@ -13,7 +14,7 @@ import { StatusPill } from "@/components/status-pill";
 import { TechnicianJobEditor } from "@/components/technician-job-editor";
 import { getEquipmentByCustomer } from "@/lib/chillbros/equipment-queries";
 import { getInvoiceV2ByJobId, invoiceTotals } from "@/lib/chillbros/invoice-v2";
-import { getDispatchJobs } from "@/lib/chillbros/operations-queries";
+import { getDispatchJobs, getOpenTimesheet } from "@/lib/chillbros/operations-queries";
 import { getPaymentSettings } from "@/lib/chillbros/payment-settings";
 import { getFeeSettings, getJob, getPartsCatalog } from "@/lib/chillbros/queries";
 import { getAssignedFieldJobsForTechnician } from "@/lib/chillbros/technician-assignment";
@@ -62,7 +63,7 @@ export default async function TechnicianPage({ searchParams }: Props) {
   const [invoice, feeSettings, partsCatalog, equipment] = job
     ? await Promise.all([getInvoiceV2ByJobId(job.id), getFeeSettings(), getPartsCatalog(), getEquipmentByCustomer(job.customerId)])
     : [null, [], [], []];
-  const paymentSettings = await getPaymentSettings();
+  const [paymentSettings, openTimesheet] = await Promise.all([getPaymentSettings(), getOpenTimesheet(profile.id)]);
   const totals = invoice ? invoiceTotals(invoice) : null;
   const suggestedItems = job ? [
     ...feeSettings.map((fee) => ({ label: fee.label, description: "Service fee", quantity: 1, unitPrice: fee.amount })),
@@ -70,6 +71,7 @@ export default async function TechnicianPage({ searchParams }: Props) {
   ].slice(0, 20) : [];
 
   return <AppShell
+    lead={<ClockCard open={openTimesheet ? { id: openTimesheet.id, clockInAt: openTimesheet.clockInAt, location: openTimesheet.location } : null} />}
     title={isManager ? "Owner field command: run your calls or step into any active technician job." : "Technician Today: work the next call from dispatch through completion."}
     description={isManager ? "Every live field stage is visible here. Owner updates stay in the same service record and audit trail." : "One service record follows the call from dispatch to driving, arrival, diagnosis, approval, repair, and invoice handoff."}
     highlight={job ? <div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">{isManager ? "Owner field override" : "Current call"}</p><p className="text-2xl font-semibold text-white">{job.customerName}</p><p className="text-sm text-zinc-300">{job.location ?? "No location tagged"}</p><StatusPill tone="emerald">{JOB_STATUS_LABELS[job.status]}</StatusPill>{job.scheduledWindow ? <StatusPill>{job.scheduledWindow}</StatusPill> : null}{isManager ? <StatusPill>{job.assignedTechName ? `Assigned: ${job.assignedTechName}` : "Unassigned call"}</StatusPill> : null}</div> : <div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Field queue</p><p className="text-sm text-zinc-300">No active field jobs available.</p></div>}

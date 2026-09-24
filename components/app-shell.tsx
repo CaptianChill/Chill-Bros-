@@ -11,6 +11,8 @@ type AppShellProps = {
   title: string;
   description?: string;
   highlight?: ReactNode;
+  /** Shown first, above the highlight (e.g. the technician clock card). */
+  lead?: ReactNode;
   /** Home only: how many items need attention (drives the bell's dot). */
   notificationCount?: number;
 };
@@ -31,7 +33,7 @@ function greetingFor(now: Date) {
   return "Good evening";
 }
 
-export async function AppShell({ children, title, description, highlight, notificationCount = 0 }: AppShellProps) {
+export async function AppShell({ children, title, description, highlight, lead, notificationCount = 0 }: AppShellProps) {
   const profile = await getCurrentStaffProfile();
   const isOwner = profile?.role === "manager" && profile.email.trim().toLowerCase() === OWNER_EMAIL;
   const visibleNavItems = profile
@@ -77,6 +79,7 @@ export async function AppShell({ children, title, description, highlight, notifi
           ) : null}
 
           <div className="cb-page flex-1 px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-4 lg:px-0 lg:pb-8">
+            {lead ? <div className="mb-3.5">{lead}</div> : null}
             {highlight ? <div className="mb-3.5">{highlight}</div> : null}
             <main id="main-content" className="relative isolate min-w-0">
               {children}

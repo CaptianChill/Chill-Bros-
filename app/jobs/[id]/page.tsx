@@ -4,6 +4,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { ChangeTechnician, CloseCallButton, NextStepButton, TechNotes } from "@/components/job-screen-actions";
+import { JobPartsCard } from "@/components/job-parts-card";
+import { getPartsCatalog } from "@/lib/chillbros/queries";
 import { SectionCard } from "@/components/section-card";
 import { getActiveTechnicians } from "@/lib/chillbros/operations-queries";
 import { getJobLifecycle } from "@/lib/chillbros/job-lifecycle-queries";
@@ -57,7 +59,11 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   if (!lifecycle) notFound();
   if (profile.role === "technician" && lifecycle.job.assignedTechId !== profile.id) redirect("/technician");
 
-  const technicians = profile.role === "technician" ? [] : await getActiveTechnicians();
+  const canEditParts = profile.role === "manager" || (profile.role === "technician" && lifecycle.job.assignedTechId === profile.id);
+  const [technicians, partsCatalog] = await Promise.all([
+    profile.role === "technician" ? Promise.resolve([]) : getActiveTechnicians(),
+    canEditParts ? getPartsCatalog() : Promise.resolve([]),
+  ]);
   const { job, invoice, events, stage, nextAction } = lifecycle;
   const totals = invoice ? invoiceTotals(invoice) : null;
   const isOffice = profile.role === "manager" || profile.role === "office";
@@ -216,6 +222,8 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
             </li>
           </ul>
         </section>
+
+        <JobPartsCard jobId={job.id} parts={job.parts} catalog={partsCatalog} canEdit={canEditParts && active} />
 
         <section className="cb-card p-3.5">
           <TechNotes job={fieldJob} canEdit={isField && active} />

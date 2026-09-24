@@ -117,7 +117,7 @@ export default async function HomePage() {
         </section>
 
         <Link
-          href="/create?mode=job"
+          href="/jobs/new"
           className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition [text-shadow:none] hover:bg-[#0E3F82]"
         >
           <Plus className="h-5 w-5" aria-hidden="true" />
