@@ -16,7 +16,7 @@ function text(fd: FormData, key: string) { return String(fd.get(key) ?? "").trim
 function money(fd: FormData, key: string) { const n = Number(text(fd, key) || 0); return Number.isFinite(n) ? n : 0; }
 function documentNumber(type: DocumentType) { return simpleDocumentNumber(type); }
 function dueAt(terms: string, custom: string) { if (terms === "custom" && custom) { const d = new Date(`${custom}T23:59:59`); return Number.isNaN(d.getTime()) ? null : d.toISOString(); } const days = terms === "net_7" ? 7 : terms === "net_15" ? 15 : terms === "net_30" ? 30 : 0; const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString(); }
-function fail(message: string, type: DocumentType): never { redirect(`/invoices/new?type=${type}&error=${encodeURIComponent(message)}`); }
+function fail(message: string, type: DocumentType): never { redirect(`/invoices/new?type=${type}&error=${encodeURIComponent(message)}&t=${Date.now()}`); }
 function norm(value: string | null | undefined) { return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " "); }
 function phoneKey(value: string | null | undefined) { return String(value ?? "").replace(/\D/g, ""); }
 
