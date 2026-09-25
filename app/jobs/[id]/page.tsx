@@ -5,6 +5,8 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ChangeTechnician, CloseCallButton, NextStepButton, TechNotes } from "@/components/job-screen-actions";
 import { JobPartsCard } from "@/components/job-parts-card";
+import { EquipmentLinker } from "@/components/work-page/equipment-linker";
+import { MediaAccordion } from "@/components/media-accordion";
 import { getPartsCatalog } from "@/lib/chillbros/queries";
 import { SectionCard } from "@/components/section-card";
 import { getActiveTechnicians } from "@/lib/chillbros/operations-queries";
@@ -223,6 +225,12 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
               ) : null}
             </li>
           </ul>
+        </section>
+
+        <EquipmentLinker jobId={job.id} />
+
+        <section className="cb-card p-3.5">
+          <MediaAccordion jobId={job.id} beforePhotos={job.beforePhotos} afterPhotos={job.afterPhotos} />
         </section>
 
         <JobPartsCard jobId={job.id} parts={job.parts} catalog={partsCatalog} canEdit={canEditParts && active} canAddCustom={profile.role === "manager"} partsProHref={partsPro} />
