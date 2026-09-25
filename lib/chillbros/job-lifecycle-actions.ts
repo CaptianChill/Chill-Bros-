@@ -169,7 +169,8 @@ export async function issueInvoiceForCompletedWorkAction(formData: FormData): Pr
   if (readError) jobMessage(jobId, "error", readError.message);
   if (!invoice || invoice.status !== "approved") jobMessage(jobId, "error", "Finalize the invoice first", invoiceId);
   if (invoice.payment_status === "paid") jobMessage(jobId, "error", "This invoice is already paid.", invoiceId);
-  if (invoice.issued_at) redirect(`/invoices?focus=${encodeURIComponent(invoiceId)}`);
+  const isTech = allowed.profile.role === "technician";
+  if (invoice.issued_at) redirect(isTech ? `/technician?submitted=${encodeURIComponent(jobId)}` : `/invoices?focus=${encodeURIComponent(invoiceId)}`);
   const now = new Date();
   const { data: issued, error } = await supabase.from("chillbros_invoices").update({ issued_at: now.toISOString(), due_at: dueAtFor(invoice.payment_terms ?? "due_on_receipt", invoice.due_at, now), updated_at: now.toISOString() })
     .eq("id", invoiceId).eq("status", "approved").is("revoked_at", null).neq("payment_status", "paid").is("issued_at", null).select("id").maybeSingle();
@@ -178,8 +179,10 @@ export async function issueInvoiceForCompletedWorkAction(formData: FormData): Pr
   const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: invoiceId, actor_id: allowed.profile.id, stage: "invoice_issued", message: "Work completed. Final invoice issued and held for office review before it is sent to the customer." });
   try { await captureCompletedJobKnowledge(jobId, invoiceId, allowed.profile.id); } catch (error) { console.error("[tech-assist] completed job capture failed", error); }
   refresh(jobId, invoice.portal_token);
-  const query = new URLSearchParams({ focus: invoiceId });
   const failure = [closeError?.message, eventError?.message].filter(Boolean).join("; ");
+  // Technicians can't open Billing; the office reviews and sends the invoice.
+  if (isTech) redirect(`/technician?${new URLSearchParams(failure ? { submitted: jobId, error: `Invoice issued. ${failure}` } : { submitted: jobId, success: "Job submitted. The office will review and send the invoice." })}`);
+  const query = new URLSearchParams({ focus: invoiceId });
   if (failure) query.set("error", `Invoice issued. ${failure}`);
   else query.set("success", "Invoice issued. Review the document below, then Email or Text it to the customer.");
   redirect(`/invoices?${query.toString()}`);

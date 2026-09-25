@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import type { StaffRole } from "./types";
+import { FIELD_EDIT_STATUSES } from "./work-page";
 
 type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 const STAFF_ROLES = new Set<StaffRole>(["manager", "technician", "office"]);
@@ -287,7 +288,8 @@ export async function uploadJobPhotoAction(jobId: string, phase: "before" | "aft
 
   const supabase = createServiceRoleClient();
   let jobQuery = supabase.from("chillbros_jobs").select("id").eq("id", jobId).is("archived_at", null);
-  if (profile.role === "technician") jobQuery = jobQuery.eq("assigned_tech_id", profile.id).in("status", ["scheduled", "in_progress"]);
+  // Technicians upload for their own job at any field stage, not only before arrival.
+  if (profile.role === "technician") jobQuery = jobQuery.eq("assigned_tech_id", profile.id).in("status", FIELD_EDIT_STATUSES);
   const { data: job } = await jobQuery.maybeSingle();
   if (!job) return { ok: false, error: "This call is unavailable for photo uploads." };
 
@@ -304,5 +306,6 @@ export async function uploadJobPhotoAction(jobId: string, phase: "before" | "aft
   revalidatePath("/technician");
   revalidatePath("/dispatch");
   revalidatePath("/manager");
+  revalidatePath(`/jobs/${jobId}`);
   return { ok: true, data: undefined };
 }

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { JOB_ACTIVE_STATUSES } from "@/lib/chillbros/types";
+import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS, type JobStatus } from "@/lib/chillbros/types";
+import { isRescheduleReason, RESCHEDULE_REASONS, technicianRescheduleStatus } from "@/lib/chillbros/work-page";
 
 import { sendTechnicianAssignmentEmail, verifyTechnicianAssignment } from "@/lib/chillbros/assignment-notifications";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -242,7 +243,7 @@ export async function rescheduleJobAction(formData: FormData): Promise<never> {
 
   const supabase = createServiceRoleClient();
   const { data: current, error: readError } = await supabase.from("chillbros_jobs")
-    .select("status,assigned_tech_id,updated_at").eq("id", jobId).is("archived_at", null).maybeSingle();
+    .select("status,assigned_tech_id,updated_at,scheduled_window").eq("id", jobId).is("archived_at", null).maybeSingle();
   if (readError || !current) go(readError?.message ?? "Call not found.", "error", date);
   if (["completed", "paid", "cancelled"].includes(current.status)) go(`Cannot reschedule a call with current status "${current.status}".`, "error", date);
   assignedTechId = assignedTechId || current.assigned_tech_id || "";
@@ -270,6 +271,7 @@ export async function rescheduleJobAction(formData: FormData): Promise<never> {
     go("Schedule update did not persist. Please retry.", "error", date);
   }
   if (data.assigned_tech_id !== (assignedTechId || null)) go("Schedule saved, but technician assignment did not persist.", "error", date);
+  await logReschedule({ jobId, actor: profile, from: current.scheduled_window, to: scheduledWindow, reason: null, statusBefore: current.status, statusAfter: status });
 
   if (assignedTechId) {
     const verified = await verifyTechnicianAssignment(jobId, assignedTechId);
@@ -303,4 +305,88 @@ export async function deleteCalendarItemAction(formData: FormData): Promise<neve
 
   refreshScheduleViews();
   go("Schedule item removed.", "success", week);
+}
+
+function describeWindow(value: string | null) {
+  const slot = parseWindow(value);
+  return slot ? `${slot.date} ${slot.start}-${slot.end}` : value?.trim() || "no time set";
+}
+
+// History entry so the owner sees who moved a call, from/to, and why.
+async function logReschedule(input: { jobId: string; actor: { id: string; fullName: string; role: string }; from: string | null; to: string; reason: string | null; statusBefore: string; statusAfter: string }) {
+  const supabase = createServiceRoleClient();
+  const statusNote = input.statusBefore !== input.statusAfter
+    ? ` Status ${JOB_STATUS_LABELS[input.statusBefore as JobStatus] ?? input.statusBefore} → ${JOB_STATUS_LABELS[input.statusAfter as JobStatus] ?? input.statusAfter}.`
+    : "";
+  const message = `Rescheduled by ${input.actor.fullName} (${input.actor.role}): ${describeWindow(input.from)} → ${describeWindow(input.to)}.${input.reason ? ` Reason: ${input.reason}.` : ""}${statusNote}`;
+  const { error } = await supabase.from("chillbros_workflow_events").insert({ job_id: input.jobId, actor_id: input.actor.id, stage: "rescheduled", message });
+  if (error) console.error(`[schedule] reschedule history failed job=${input.jobId}`, error);
+  const { data: job } = await supabase.from("chillbros_jobs").select("customer_id").eq("id", input.jobId).maybeSingle();
+  if (job?.customer_id) await supabase.from("chillbros_customer_service_history").insert({ customer_id: job.customer_id, note: message });
+}
+
+function techGo(jobId: string, type: "success" | "error", message: string): never {
+  if (type === "success") redirect(`/technician?${new URLSearchParams({ rescheduled: jobId, success: message })}`);
+  redirect(`/jobs/${encodeURIComponent(jobId)}?${new URLSearchParams({ error: message, reschedule: "1" })}`);
+}
+
+/**
+ * The assigned technician moves their own call (customer not ready, no
+ * access, out of time, waiting on parts...). Same job row, same validation and
+ * conflict check as the office reschedule; the technician can never change
+ * who the job is assigned to. Status follows technicianRescheduleStatus.
+ */
+export async function rescheduleOwnJobAction(formData: FormData): Promise<never> {
+  const profile = await getCurrentStaffProfile();
+  if (!profile) redirect("/sign-in");
+  if (profile.role !== "technician" && profile.role !== "manager") redirect("/");
+
+  const jobId = text(formData, "jobId");
+  const date = text(formData, "date");
+  const start = text(formData, "start");
+  const end = text(formData, "end");
+  const reasonKey = text(formData, "reason");
+  const note = text(formData, "note").slice(0, 300);
+  if (!jobId) redirect("/technician");
+  if (!validDate(date) || !validTime(start) || !validTime(end) || end <= start) techGo(jobId, "error", "Choose a valid date and time range.");
+  if (!isRescheduleReason(reasonKey)) techGo(jobId, "error", "Choose why the call is being rescheduled.");
+  if (reasonKey === "other" && !note) techGo(jobId, "error", "Add a short note for \"Other\".");
+
+  const supabase = createServiceRoleClient();
+  let read = supabase.from("chillbros_jobs")
+    .select("status,assigned_tech_id,updated_at,scheduled_window").eq("id", jobId).is("archived_at", null);
+  if (profile.role === "technician") read = read.eq("assigned_tech_id", profile.id);
+  const { data: current, error: readError } = await read.maybeSingle();
+  if (readError) techGo(jobId, "error", readError.message);
+  if (!current) redirect("/technician");
+
+  const nextStatus = technicianRescheduleStatus(current.status as JobStatus, reasonKey);
+  if (!nextStatus) techGo(jobId, "error", `A call that is ${JOB_STATUS_LABELS[current.status as JobStatus] ?? current.status} can't be rescheduled from the field. Ask the office.`);
+
+  // Keep whoever is assigned now; form input is never used for assignment here.
+  const assignedTechId: string | null = current.assigned_tech_id;
+  if (assignedTechId) {
+    const conflict = await technicianConflict(assignedTechId, date, start, end, jobId);
+    if (conflict) techGo(jobId, "error", "error" in conflict ? conflict.error : `You're already scheduled ${conflict.start}-${conflict.end} on ${date}.`);
+  }
+
+  const scheduledWindow = scheduleWindow(date, start, end);
+  let update = supabase
+    .from("chillbros_jobs")
+    .update({ scheduled_window: scheduledWindow, status: nextStatus, updated_at: new Date().toISOString() })
+    .eq("id", jobId)
+    .eq("status", current.status)
+    .eq("updated_at", current.updated_at)
+    .is("archived_at", null);
+  if (profile.role === "technician") update = update.eq("assigned_tech_id", profile.id);
+  const { data, error } = await update.select("id,scheduled_window,assigned_tech_id").maybeSingle();
+  if (error || !data) techGo(jobId, "error", error?.message ?? "This call changed while you were editing. Refresh and try again.");
+  if (data.scheduled_window !== scheduledWindow && !(await verifySchedule(jobId, scheduledWindow))) techGo(jobId, "error", "The new time did not save. Please retry.");
+
+  const reason = `${RESCHEDULE_REASONS[reasonKey]}${note ? ` — ${note}` : ""}`;
+  await logReschedule({ jobId, actor: profile, from: current.scheduled_window, to: scheduledWindow, reason, statusBefore: current.status, statusAfter: nextStatus });
+  refreshScheduleViews();
+  revalidatePath(`/jobs/${jobId}`);
+  const slot = parseWindow(scheduledWindow)!;
+  techGo(jobId, "success", `Rescheduled to ${slot.date} ${slot.start}-${slot.end}. Notes, photos and parts stay on the job.`);
 }

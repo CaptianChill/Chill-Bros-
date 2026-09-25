@@ -1,5 +1,16 @@
 import type { NextConfig } from "next";
 
+// Job photos and receipts are served from the private Supabase bucket through
+// short-lived signed URLs, so the browser must be allowed to load images from
+// this project's own Supabase origin (and nothing else new).
+const supabaseOrigin = (() => {
+  try {
+    return process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).origin : "";
+  } catch {
+    return "";
+  }
+})();
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -8,7 +19,7 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   "script-src 'self' 'unsafe-inline' https://ajax.googleapis.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://upload.wikimedia.org",
+  `img-src 'self' data: blob: https://upload.wikimedia.org${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
   "font-src 'self' data:",
   "connect-src 'self'",
   "media-src 'self' blob:",
@@ -43,6 +54,11 @@ const internalArtworkHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Field photos/receipts are downscaled on the phone first; this leaves
+    // room for a full-size receipt PDF. Stays under Vercel's 4.5MB body cap.
+    serverActions: { bodySizeLimit: "4mb" },
+  },
   images: {
     remotePatterns: [
       {
