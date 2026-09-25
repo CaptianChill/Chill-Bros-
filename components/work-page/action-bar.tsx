@@ -82,8 +82,12 @@ export function WorkActionBar({ jobId, status, mode, invoice, quoteHref, canSend
       buttons = (
         <>
           <button type="button" className={secondary} disabled={pending} onClick={() => save(true)}>Save &amp; exit</button>
-          {status !== "en_route" ? <button type="button" className={middle} disabled={pending} onClick={() => moveTo("en_route", "On my way.")}>On my way</button> : null}
-          <button type="button" className={primary} disabled={pending} onClick={() => moveTo("arrived", "Arrived.")}>Arrived</button>
+          {/* Owner's transitions: Scheduled → On my way → Arrived. */}
+          {status === "en_route" ? (
+            <button type="button" className={primary} disabled={pending} onClick={() => moveTo("arrived", "Arrived.")}>Arrived</button>
+          ) : (
+            <button type="button" className={primary} disabled={pending} onClick={() => moveTo("en_route", "On my way.")}>On my way</button>
+          )}
         </>
       );
       break;

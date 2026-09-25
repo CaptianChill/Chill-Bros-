@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { DiagnosticReadingsPanel } from "@/components/diagnostic-readings-panel";
 import { ChangeTechnician, CloseCallButton } from "@/components/job-screen-actions";
 import { JobPartsCard } from "@/components/job-parts-card";
+import { EquipmentLinker } from "@/components/work-page/equipment-linker";
 import { SectionCard } from "@/components/section-card";
 import { WorkActionBar } from "@/components/work-page/action-bar";
 import { DiagnosticNotes } from "@/components/work-page/diagnostic-notes";
@@ -240,6 +241,9 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
             </li>
           </ul>
         </section>
+
+        {/* Owner's equipment linker: find this customer's unit by serial or add it, and attach it to the job. */}
+        {active ? <EquipmentLinker jobId={job.id} /> : null}
 
         {/* 2. Diagnosis */}
         <section aria-label="Diagnosis" className="cb-work-card space-y-3 p-3.5">

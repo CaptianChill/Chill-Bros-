@@ -297,6 +297,10 @@ test('field status transitions only allow valid next steps', async () => {
   assert.equal(canFieldSetStatus('scheduled', 'paid'), false);
   assert.equal(canFieldSetStatus('arrived', 'invoice_sent'), false);
   assert.deepEqual(fieldNextStatuses('paid'), []);
+  // Owner's transition map: no jumping straight from Scheduled to Arrived.
+  assert.equal(canFieldSetStatus('scheduled', 'arrived'), false);
+  assert.equal(canFieldSetStatus('en_route', 'arrived'), true);
+  assert.equal(canFieldSetStatus('work_complete', 'ready_to_invoice'), true);
   const h = harness({ chillbros_jobs: [job('scheduled')] });
   const result = await h.load('lib/chillbros/job-workflow-v2.ts').updateTechnicianJobV2Action({ jobId: 'job', status: 'paid' });
   assert.equal(result.ok, false);

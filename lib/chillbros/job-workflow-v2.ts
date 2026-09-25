@@ -83,6 +83,7 @@ export async function updateTechnicianJobV2Action(input: {
   }
 
   refreshJobs();
+  revalidatePath(`/jobs/${input.jobId}`);
   return { ok: true };
 }
 

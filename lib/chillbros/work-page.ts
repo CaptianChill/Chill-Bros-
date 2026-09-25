@@ -5,28 +5,29 @@ import { JOB_ACTIVE_STATUSES, type JobStatus } from "./types";
 // ---------------------------------------------------------------------------
 // Status changes a field user (assigned technician or manager) may make.
 
-/** Always allowed from any active status: the original three field steps. */
-const LEGACY_FIELD_STATUSES: JobStatus[] = ["en_route", "arrived", "work_complete"];
-
-/** Extra field steps, keyed by the job's current status. */
+/**
+ * Owner-defined field moves (from the owner's "Expand technician field
+ * workflow transitions" commit), keyed by the job's current status. The only
+ * addition is work_complete, so the Work Page can hand a finished job to the
+ * office (ready_to_invoice) or reopen it for more repair.
+ */
 const FIELD_TRANSITIONS: Partial<Record<JobStatus, JobStatus[]>> = {
-  arrived: ["diagnosing", "parts_required", "repairing"],
-  in_progress: ["diagnosing", "parts_required", "repairing"],
-  diagnosing: ["parts_required", "return_visit_needed", "repairing"],
-  awaiting_approval: ["parts_required", "return_visit_needed"],
-  approved: ["repairing", "parts_required", "return_visit_needed"],
-  parts_required: ["repairing", "return_visit_needed"],
-  return_visit_needed: ["repairing", "parts_required"],
-  repairing: ["parts_required", "return_visit_needed"],
-  work_complete: ["repairing", "ready_to_invoice"],
+  new: ["en_route"], needs_scheduling: ["en_route"], scheduled: ["en_route"], dispatched: ["en_route"],
+  en_route: ["arrived", "scheduled"],
+  arrived: ["diagnosing", "parts_required", "repairing", "work_complete", "scheduled"],
+  in_progress: ["diagnosing", "parts_required", "repairing", "work_complete", "scheduled"],
+  diagnosing: ["parts_required", "repairing", "work_complete", "scheduled"],
+  awaiting_approval: ["approved", "parts_required", "return_visit_needed"],
+  approved: ["repairing", "parts_required", "return_visit_needed", "work_complete"],
+  parts_required: ["return_visit_needed", "repairing", "work_complete"],
+  return_visit_needed: ["en_route", "repairing", "work_complete"],
+  repairing: ["parts_required", "return_visit_needed", "work_complete"],
+  work_complete: ["ready_to_invoice", "repairing"],
 };
 
 export function fieldNextStatuses(current: JobStatus): JobStatus[] {
   if (!JOB_ACTIVE_STATUSES.includes(current)) return [];
-  if (current === "ready_to_invoice" || current === "invoice_sent") return [];
-  const next = new Set<JobStatus>([...LEGACY_FIELD_STATUSES, ...(FIELD_TRANSITIONS[current] ?? [])]);
-  next.delete(current);
-  return Array.from(next);
+  return (FIELD_TRANSITIONS[current] ?? []).filter((next) => next !== current);
 }
 
 export function canFieldSetStatus(current: JobStatus, next: JobStatus) {

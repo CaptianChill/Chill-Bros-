@@ -73,7 +73,24 @@ Live database checked read-only (Supabase `xespxlqcjvhompsxranc`, per
     `node --test scripts/*.test.cjs` with an in-memory Data API double
     (`scripts/core-workflow.test.cjs`). New tests will follow that harness.
 
-## Proposed migrations (NOT applied — awaiting approval)
+## Owner decisions (2026-09-25)
+
+- Migrations 1–3: **approved and applied** to `xespxlqcjvhompsxranc` (verified:
+  the 3 existing `chillbros_job_parts` rows kept `field_status = NULL`; new rows
+  default to `on_truck`; both new tables have RLS on and are empty).
+- Reschedule status mapping: **approved** as proposed below.
+- Customer portal photos: **keep** — customers see before and after photos.
+  Receipts and on-site signatures stay staff-only.
+- "Need to order" parts: **option (a)** — the assigned tech adds them as a
+  non-stock-tracked part marked Need to order.
+- Tech RETURN VISIT: **approved** — opens the tech reschedule sheet (reason
+  "Waiting on parts"); the office return-visit form is unchanged.
+- The owner also pushed field transitions and an equipment linker to this
+  branch; they were merged in and the owner's transition map is now the single
+  source in `lib/chillbros/work-page.ts` (plus `work_complete → ready_to_invoice
+  / repairing`).
+
+## Migrations (applied after approval)
 
 | File | What |
 |---|---|
@@ -84,7 +101,7 @@ Live database checked read-only (Supabase `xespxlqcjvhompsxranc`, per
 Each file has a commented ROLLBACK section. Job FKs use `on delete restrict` so a
 hard job delete can't silently wipe receipts/signatures.
 
-## Proposed reschedule → status mapping (awaiting approval)
+## Reschedule → status mapping (approved)
 
 Same job row, `scheduled_window` changes, notes/photos/parts untouched.
 
