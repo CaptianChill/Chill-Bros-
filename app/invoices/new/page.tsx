@@ -7,10 +7,11 @@ import { TextareaWithAI } from "@/components/textarea-with-ai";
 import { getCustomers, getFeeSettings, getPartsCatalog, getPriceBookEntries } from "@/lib/chillbros/queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createDirectInvoiceAction } from "./actions";
+import { CreateDocumentButton } from "./create-button";
 import { LineItemsEditor } from "./line-items-editor";
 
 export const dynamic = "force-dynamic";
-type Props = { searchParams: Promise<{ type?: string; success?: string; error?: string; token?: string; invoice?: string; customer?: string }> };
+type Props = { searchParams: Promise<{ type?: string; success?: string; error?: string; token?: string; invoice?: string; customer?: string; t?: string }> };
 
 const input = "min-h-12 w-full rounded-xl border border-[#2d7dff]/25 bg-black px-3 py-2.5 text-white placeholder:text-zinc-600";
 const label = "text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400";
@@ -93,7 +94,9 @@ export default async function NewInvoicePage({ searchParams }: Props) {
           <p className="mt-3 text-xs text-zinc-500">Debit/credit cards and Apple Pay are intentionally hidden until online card processing is configured.</p>
         </section> : null}
 
-        <button type="submit" className="min-h-14 w-full rounded-2xl border border-[#8ffafa]/60 bg-[#2d7dff]/20 px-5 py-3 text-lg font-semibold text-white shadow-[0_0_20px_rgba(45,125,255,0.18)]">Create {isQuote ? "Quote" : "Invoice"}</button>
+        {/* Repeat the error right above the button: the top-of-page copy is off screen on a phone. */}
+        {params.error ? <div role="alert" className="rounded-2xl border border-rose-500/35 bg-rose-500/10 p-4 text-sm font-semibold text-rose-200">Not created: {params.error}</div> : null}
+        <CreateDocumentButton key={`${params.error ?? "ready"}-${params.t ?? ""}`} label={isQuote ? "Quote" : "Invoice"} />
       </form>
     </div>
   </AppShell>;
