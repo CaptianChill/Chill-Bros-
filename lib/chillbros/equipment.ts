@@ -121,3 +121,50 @@ export async function deleteEquipmentAction(id: string): Promise<Result> {
   refreshEquipment(equipment?.customer_id ?? undefined);
   return { ok: true };
 }
+
+
+export async function findOrCreateAndAttachEquipmentAction(input: {
+  jobId: string;
+  equipmentType: string;
+  manufacturer: string;
+  model: string;
+  serialNumber: string;
+  refrigerant?: string;
+}): Promise<Result & { equipmentId?: string }> {
+  const guard = await requireStaff();
+  if (!guard.ok) return guard;
+  const manufacturer = String(input.manufacturer ?? "").trim().slice(0,160);
+  const model = String(input.model ?? "").trim().slice(0,160);
+  const serialNumber = String(input.serialNumber ?? "").trim().slice(0,160);
+  const equipmentType = String(input.equipmentType ?? "").trim().slice(0,120);
+  if (!manufacturer || !model || !serialNumber || !equipmentType) return { ok:false, error:"Brand, equipment type, model, and serial are required." };
+
+  const supabase = createServiceRoleClient();
+  let jobQuery = supabase.from("chillbros_jobs").select("id,customer_id,assigned_tech_id").eq("id",input.jobId);
+  if (guard.profile.role === "technician") jobQuery = jobQuery.eq("assigned_tech_id",guard.profile.id);
+  const {data:job}=await jobQuery.maybeSingle();
+  if(!job) return {ok:false,error:"This service call is not available to you."};
+
+  const {data:matches,error:matchError}=await supabase.from("chillbros_equipment")
+    .select("id,manufacturer,model,serial_number").eq("customer_id",job.customer_id)
+    .ilike("serial_number",serialNumber).limit(10);
+  if(matchError) return {ok:false,error:matchError.message};
+  let equipmentId=(matches??[]).find((row)=>String(row.serial_number??"").trim().toLowerCase()===serialNumber.toLowerCase())?.id as string|undefined;
+
+  if(!equipmentId){
+    const assetTag=await generatedAssetTag(supabase,job.customer_id,equipmentType);
+    const {data:created,error}=await supabase.from("chillbros_equipment").insert({
+      customer_id:job.customer_id, asset_tag:assetTag, equipment_type:equipmentType,
+      manufacturer, model, serial_number:serialNumber, refrigerant:clean(input.refrigerant,80)
+    }).select("id").single();
+    if(error||!created) return {ok:false,error:error?.message??"Could not save equipment."};
+    equipmentId=created.id;
+  }
+  const {error:attachError}=await supabase.from("chillbros_jobs").update({equipment_id:equipmentId,updated_at:new Date().toISOString()}).eq("id",input.jobId);
+  if(attachError) return {ok:false,error:attachError.message};
+  await supabase.from("chillbros_workflow_events").insert({job_id:input.jobId,actor_id:guard.profile.id,stage:"equipment_linked",message:`Equipment linked: ${manufacturer} ${model}, serial ${serialNumber}.`});
+  refreshEquipment(job.customer_id);
+  revalidatePath(`/jobs/${input.jobId}`);
+  revalidatePath(`/equipment/${equipmentId}`);
+  return {ok:true,equipmentId};
+}
