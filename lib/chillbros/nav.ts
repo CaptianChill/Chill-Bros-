@@ -1,13 +1,14 @@
 import {
   Banknote,
   CalendarDays,
+  CircleUserRound,
   ClipboardList,
   Clock3,
   CreditCard,
+  History,
   Home,
   Radar,
   Route,
-  Search,
   StickyNote,
   UsersRound,
   Wrench,
@@ -102,13 +103,13 @@ const isUnder = (pathname: string, href: string) => pathname === href || pathnam
 
 export function getPrimaryTabs(role: StaffRole): PrimaryTab[] {
   if (role === "technician") {
-    // Technicians can't open Dispatch or Billing, and "/" redirects them to
-    // their field workflow, so they get their own daily screens instead.
+    // Technicians get their own four tabs. Field Notes, Clock, Parts Pro and
+    // Tech Requests stay one tap away under "More", on Home and on Account.
     return [
-      { href: "/technician", label: "Job", icon: Wrench, isActive: (p) => p === "/" || p === "/technician" || p.startsWith("/jobs/") },
-      { href: "/field-notes", label: "Notes", icon: StickyNote, isActive: (p) => isUnder(p, "/field-notes") },
-      { href: "/timesheet", label: "Clock", icon: Clock3, isActive: (p) => isUnder(p, "/timesheet") },
-      { href: "/parts-lookup", label: "Parts Pro", icon: Search, isActive: (p) => isUnder(p, "/parts-lookup") },
+      { href: "/technician", label: "Home", icon: Home, isActive: (p) => p === "/" || p === "/technician" },
+      { href: "/technician/current", label: "My Work", icon: Wrench, isActive: (p) => p === "/technician/current" || p.startsWith("/jobs/") },
+      { href: "/technician/history", label: "History", icon: History, isActive: (p) => isUnder(p, "/technician/history") },
+      { href: "/account", label: "Account", icon: CircleUserRound, isActive: (p) => isUnder(p, "/account") },
     ];
   }
 

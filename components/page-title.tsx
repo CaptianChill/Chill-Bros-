@@ -17,6 +17,8 @@ const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/manager", "Manager Hub"],
   [(p) => p === "/security", "Security"],
   [(p) => p === "/technician", "Field Workflow"],
+  [(p) => p === "/technician/history", "Job History"],
+  [(p) => p === "/account", "Account"],
   [(p) => p === "/training", "Tech Assist"],
   [(p) => p.startsWith("/training/model/"), "Tech Training Model"],
   [(p) => p === "/timesheet", "Timesheets"],

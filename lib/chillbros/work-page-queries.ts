@@ -127,3 +127,53 @@ export async function getRepairReports(jobId: string): Promise<RepairReport[]> {
     }
   });
 }
+
+// ---------------------------------------------------------------------------
+// Technician landing / history lists.
+
+export type JobListExtras = { equipmentLabel: string | null; invoice: { id: string; number: string; status: string; paymentStatus: string; issued: boolean } | null };
+
+/** Equipment label and current quote/invoice for each job, in two queries. */
+export async function getJobListExtras(jobIds: string[]): Promise<Record<string, JobListExtras>> {
+  if (!jobIds.length) return {};
+  const supabase = createServiceRoleClient();
+  const [{ data: jobs }, { data: invoices }] = await Promise.all([
+    supabase.from("chillbros_jobs").select("id, equipment:chillbros_equipment(asset_tag,equipment_type,manufacturer)").in("id", jobIds),
+    supabase
+      .from("chillbros_invoices")
+      .select("id, job_id, invoice_number, status, payment_status, issued_at, updated_at")
+      .in("job_id", jobIds)
+      .is("revoked_at", null)
+      .neq("status", "void")
+      .order("updated_at", { ascending: false }),
+  ]);
+  const result: Record<string, JobListExtras> = {};
+  for (const row of jobs ?? []) {
+    const unit = Array.isArray(row.equipment) ? row.equipment[0] : row.equipment;
+    result[row.id] = { equipmentLabel: unit ? [unit.asset_tag, unit.manufacturer, unit.equipment_type].filter(Boolean).join(" · ") || null : null, invoice: null };
+  }
+  for (const row of invoices ?? []) {
+    const entry = (result[row.job_id] ??= { equipmentLabel: null, invoice: null });
+    if (!entry.invoice) entry.invoice = { id: row.id, number: row.invoice_number, status: row.status, paymentStatus: row.payment_status, issued: Boolean(row.issued_at) };
+  }
+  return result;
+}
+
+export type HistoryJob = { id: string; customerName: string; status: string; scope: string | null; scheduledWindow: string | null; updatedAt: string };
+
+/** Finished jobs (paid / closed) assigned to this technician, newest first. */
+export async function getTechnicianJobHistory(technicianId: string, limit = 100): Promise<HistoryJob[]> {
+  const supabase = createServiceRoleClient();
+  const { data } = await supabase
+    .from("chillbros_jobs")
+    .select("id, status, scope, scheduled_window, updated_at, customer:chillbros_customers(name)")
+    .eq("assigned_tech_id", technicianId)
+    .in("status", ["paid", "completed", "invoice_sent"])
+    .is("archived_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((row) => {
+    const customer = Array.isArray(row.customer) ? row.customer[0] : row.customer;
+    return { id: row.id, customerName: customer?.name ?? "Unknown customer", status: row.status, scope: row.scope, scheduledWindow: row.scheduled_window, updatedAt: row.updated_at };
+  });
+}

@@ -1,112 +1,158 @@
 import Link from "next/link";
-import { ExternalLink, FileText } from "lucide-react";
 import { redirect } from "next/navigation";
+import { CheckCircle2, ChevronDown, ChevronRight, Clock3, Search, StickyNote, Radar } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { ClockCard } from "@/components/clock-card";
-import { ClientPortalActions } from "@/components/client-portal-actions";
-import { EstimateAdjustmentsEditor } from "@/components/estimate-adjustments-editor";
-import { EstimateComposer } from "@/components/estimate-composer";
-import { MediaAccordion } from "@/components/media-accordion";
-import { OwnerEstimateEditor } from "@/components/owner-estimate-editor";
-import { SectionCard } from "@/components/section-card";
-import { StatusPill } from "@/components/status-pill";
-import { TechnicianJobEditor } from "@/components/technician-job-editor";
-import { getEquipmentByCustomer } from "@/lib/chillbros/equipment-queries";
-import { getInvoiceV2ByJobId, invoiceTotals } from "@/lib/chillbros/invoice-v2";
-import { getDispatchJobs, getOpenTimesheet } from "@/lib/chillbros/operations-queries";
-import { getPaymentSettings } from "@/lib/chillbros/payment-settings";
-import { getFeeSettings, getJob, getPartsCatalog } from "@/lib/chillbros/queries";
+import { JobStatusChip } from "@/components/job-status-chip";
+import { getDispatchJobs, getOpenTimesheet, type DispatchJob } from "@/lib/chillbros/operations-queries";
+import { ctToday, displayTime, parseWindow } from "@/lib/chillbros/schedule-window";
 import { getAssignedFieldJobsForTechnician } from "@/lib/chillbros/technician-assignment";
-import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS } from "@/lib/chillbros/types";
+import { JOB_ACTIVE_STATUSES } from "@/lib/chillbros/types";
+import { landingBucket } from "@/lib/chillbros/work-page";
+import { getJobListExtras, type JobListExtras } from "@/lib/chillbros/work-page-queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
-type Props = { searchParams: Promise<{ job?: string }> };
-const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+type Props = { searchParams: Promise<{ saved?: string; rescheduled?: string; submitted?: string; success?: string; error?: string }> };
 
-const FIELD_VISIBLE = new Set([
-  "scheduled",
-  "in_progress",
-  "dispatched",
-  "en_route",
-  "arrived",
-  "diagnosing",
-  "awaiting_approval",
-  "approved",
-  "parts_required",
-  "return_visit_needed",
-  "repairing",
-  "work_complete",
-  "ready_to_invoice",
-]);
+const FIELD_VISIBLE = new Set(["scheduled", "in_progress", "dispatched", "en_route", "arrived", "diagnosing", "awaiting_approval", "approved", "parts_required", "return_visit_needed", "repairing", "work_complete", "ready_to_invoice"]);
 
+function when(scheduledWindow: string | null, today: string) {
+  const slot = parseWindow(scheduledWindow);
+  if (!slot) return scheduledWindow?.trim() || "No time set";
+  const day = slot.date === today ? "Today" : new Date(`${slot.date}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
+  return `${day} · ${displayTime(slot.start)}–${displayTime(slot.end)}`;
+}
+
+function byTime(a: DispatchJob, b: DispatchJob) {
+  const sa = parseWindow(a.scheduledWindow), sb = parseWindow(b.scheduledWindow);
+  return `${sa?.date ?? "9999"}${sa?.start ?? ""}`.localeCompare(`${sb?.date ?? "9999"}${sb?.start ?? ""}`);
+}
+
+function Section({ id, title, count, open, empty, children }: { id: string; title: string; count: number; open?: boolean; empty: string; children: React.ReactNode }) {
+  return (
+    <details id={id} open={open || undefined} className="cb-work-card group overflow-hidden">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 [&::-webkit-details-marker]:hidden">
+        <h2 className="text-xl font-bold">{title}</h2>
+        <span className="flex items-center gap-2">
+          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1557B0] px-2.5 py-1 text-sm font-bold text-white">{count}</span>
+          <ChevronDown className="h-5 w-5 transition group-open:rotate-180" aria-hidden="true" />
+        </span>
+      </summary>
+      {count === 0 ? <p className="border-t border-[#0A1A33]/10 px-3.5 py-3 text-sm font-medium text-[#2B3F5C]">{empty}</p> : <ul className="divide-y divide-[#0A1A33]/10 border-t border-[#0A1A33]/10">{children}</ul>}
+    </details>
+  );
+}
+
+function JobCard({ job, extras, today, showTech, highlight, note }: { job: DispatchJob; extras?: JobListExtras; today: string; showTech: boolean; highlight: boolean; note?: string }) {
+  return (
+    <li className={highlight ? "bg-[#DCEBFF]" : "bg-white"}>
+      <div className="px-3.5 py-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className="min-w-0 font-bold leading-tight">{job.customerName}</p>
+          <JobStatusChip status={job.status} assigned={Boolean(job.assignedTechId)} />
+        </div>
+        <p className="mt-1 text-sm font-semibold">{when(job.scheduledWindow, today)}</p>
+        <p className="truncate text-[13px] font-medium text-[#2B3F5C]">{extras?.equipmentLabel ?? "No unit linked"}{job.location ? ` · ${job.location}` : ""}</p>
+        {note ? <p className="text-[13px] font-semibold text-[#1557B0]">{note}</p> : null}
+        {showTech ? <p className="text-[12px] font-medium text-[#5B6B82]">{job.assignedTechName ?? "Unassigned"}</p> : null}
+        <Link href={`/jobs/${job.id}`} className="mt-2 flex min-h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-[#1557B0] font-semibold text-white">
+          Open Work Page
+          <ChevronRight className="h-5 w-5" aria-hidden="true" />
+        </Link>
+      </div>
+    </li>
+  );
+}
+
+function savedNote(extras: JobListExtras | undefined) {
+  const invoice = extras?.invoice;
+  if (!invoice) return "Saved call · no quote yet";
+  if (invoice.issued) return `Invoice ${invoice.number} · ${invoice.paymentStatus === "paid" ? "paid" : "sent for payment"}`;
+  if (invoice.status === "approved") return `Quote ${invoice.number} approved · invoice when work is done`;
+  return `Quote ${invoice.number} · ${invoice.status === "draft" ? "draft" : "waiting on customer"}`;
+}
+
+// Technician landing: today's calls first, then active and saved work, each
+// card opening the single Work Page. Managers see every field job here.
 export default async function TechnicianPage({ searchParams }: Props) {
   const profile = await getCurrentStaffProfile();
   if (!profile) redirect("/sign-in");
   if (!["technician", "manager"].includes(profile.role)) redirect("/dispatch");
   const isManager = profile.role === "manager";
 
-  const allJobs = isManager
-    ? await getDispatchJobs(250)
-    : await getAssignedFieldJobsForTechnician({ id: profile.id, email: profile.email, fullName: profile.fullName }, 250);
-  const fieldJobs = allJobs.filter((job) =>
-    JOB_ACTIVE_STATUSES.includes(job.status) && FIELD_VISIBLE.has(job.status),
-  );
+  const [params, allJobs, openTimesheet] = await Promise.all([
+    searchParams,
+    isManager ? getDispatchJobs(250) : getAssignedFieldJobsForTechnician({ id: profile.id, email: profile.email, fullName: profile.fullName }, 250),
+    getOpenTimesheet(profile.id),
+  ]);
+  // A technician only sees jobs assigned to their own profile — the same rule
+  // the Work Page enforces — so every card here opens.
+  const fieldJobs = allJobs
+    .filter((job) => JOB_ACTIVE_STATUSES.includes(job.status) && FIELD_VISIBLE.has(job.status))
+    .filter((job) => isManager || job.assignedTechId === profile.id)
+    .sort(byTime);
+  const extras = await getJobListExtras(fieldJobs.map((job) => job.id));
+  const today = ctToday();
 
-  const params = await searchParams;
-  const requestedId = fieldJobs.some((item) => item.id === params.job) ? params.job! : null;
-  const managerOwnJob = isManager ? fieldJobs.find((item) => item.assignedTechId === profile.id)?.id : null;
-  const selectedId = requestedId ?? managerOwnJob ?? fieldJobs[0]?.id;
-  const job = selectedId ? await getJob(selectedId) : null;
+  const buckets = { today: [] as DispatchJob[], active: [] as DispatchJob[], saved: [] as DispatchJob[] };
+  for (const job of fieldJobs) buckets[landingBucket({ status: job.status, scheduledDate: parseWindow(job.scheduledWindow)?.date ?? null }, today)].push(job);
 
-  const [invoice, feeSettings, partsCatalog, equipment] = job
-    ? await Promise.all([getInvoiceV2ByJobId(job.id), getFeeSettings(), getPartsCatalog(), getEquipmentByCustomer(job.customerId)])
-    : [null, [], [], []];
-  const [paymentSettings, openTimesheet] = await Promise.all([getPaymentSettings(), getOpenTimesheet(profile.id)]);
-  const totals = invoice ? invoiceTotals(invoice) : null;
-  const suggestedItems = job ? [
-    ...feeSettings.map((fee) => ({ label: fee.label, description: "Service fee", quantity: 1, unitPrice: fee.amount })),
-    ...job.parts.map((part) => ({ label: part.name, description: part.partNumber || "Inventory part", quantity: part.quantity, unitPrice: part.retailPrice })),
-  ].slice(0, 20) : [];
+  const focusId = params.saved ?? params.rescheduled ?? params.submitted;
+  const focusJob = focusId ? allJobs.find((job) => job.id === focusId) : undefined;
+  const banner = params.error
+    ? { tone: "error", text: params.error }
+    : params.success
+      ? { tone: "ok", text: `${focusJob ? `${focusJob.customerName}: ` : ""}${params.success}` }
+      : params.saved && focusJob
+        ? { tone: "ok", text: `Saved ${focusJob.customerName}. Everything you entered is on the job.` }
+        : params.submitted
+          ? { tone: "ok", text: "Job submitted to the office." }
+          : null;
 
-  return <AppShell
-    lead={<ClockCard open={openTimesheet ? { id: openTimesheet.id, clockInAt: openTimesheet.clockInAt, location: openTimesheet.location } : null} />}
-    title={isManager ? "Owner field command: run your calls or step into any active technician job." : "Technician Today: work the next call from dispatch through completion."}
-    description={isManager ? "Every live field stage is visible here. Owner updates stay in the same service record and audit trail." : "One service record follows the call from dispatch to driving, arrival, diagnosis, approval, repair, and invoice handoff."}
-    highlight={job ? <div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">{isManager ? "Owner field override" : "Current call"}</p><p className="text-2xl font-semibold text-white">{job.customerName}</p><p className="text-sm text-zinc-300">{job.location ?? "No location tagged"}</p><StatusPill tone="emerald">{JOB_STATUS_LABELS[job.status]}</StatusPill>{job.scheduledWindow ? <StatusPill>{job.scheduledWindow}</StatusPill> : null}{isManager ? <StatusPill>{job.assignedTechName ? `Assigned: ${job.assignedTechName}` : "Unassigned call"}</StatusPill> : null}</div> : <div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Field queue</p><p className="text-sm text-zinc-300">No active field jobs available.</p></div>}
-  >
-    {fieldJobs.length > 0 ? <SectionCard eyebrow={isManager ? "Field command" : "My day"} title={`${fieldJobs.length} active field job${fieldJobs.length === 1 ? "" : "s"}`} description={isManager ? "Open any live technician call without creating another work order." : "Your assigned jobs stay here through the full field lifecycle."}>
-      <div className="flex gap-2 overflow-x-auto pb-1">{fieldJobs.map((item) => <Link key={item.id} href={`/technician?job=${item.id}`} className={`min-w-[230px] rounded-2xl border p-3 text-sm transition ${item.id === selectedId ? "border-[#2d7dff] bg-[#2d7dff]/12" : "border-[#2d7dff]/20 bg-black/40 hover:border-[#2d7dff]/45"}`}><div className="flex items-start justify-between gap-2"><p className="font-medium text-white">{item.customerName}</p><span className="text-[10px] uppercase tracking-[0.12em] text-[#bafcfc]">{JOB_STATUS_LABELS[item.status]}</span></div><p className="mt-1 text-xs text-zinc-400">{item.scheduledWindow ?? "No time window"}</p><p className="mt-1 truncate text-xs text-zinc-300">{item.location ?? "No location"}</p>{isManager ? <p className="mt-2 truncate text-[10px] uppercase tracking-[0.12em] text-zinc-500">{item.assignedTechName ?? "Unassigned"}</p> : null}</Link>)}</div>
-    </SectionCard> : null}
+  const tools = [
+    { href: "/field-notes", label: "Field Notes", icon: StickyNote },
+    { href: "/timesheet", label: "Clock", icon: Clock3 },
+    { href: "/parts-lookup", label: "Parts Pro", icon: Search },
+    ...(isManager ? [] : [{ href: "/revenue-radar/handoffs", label: "Tech Requests", icon: Radar }]),
+  ];
 
-    {!job ? <SectionCard title="No active field job" description={isManager ? "Create or assign a call from Dispatch." : "Assigned calls appear here automatically and remain visible through the field workflow."}><p className="text-sm text-zinc-400">Nothing to work on right now.</p></SectionCard> : <div className="mt-4 grid gap-4 xl:grid-cols-2">
-      <div className="space-y-4">
-        <SectionCard eyebrow="Service workflow" title="Run this call" description="Use the large stage action first. Notes and time autosave underneath.">
-          <div className="mb-4 grid gap-3 md:grid-cols-2"><div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3"><p className="text-sm text-zinc-400">Customer</p><p className="mt-1 text-lg font-medium text-white">{job.customerName}</p><p className="mt-1 text-sm text-zinc-300">{job.location ?? "No location tagged"}</p>{job.scheduledWindow ? <p className="mt-2 text-xs text-[#bafcfc]">{job.scheduledWindow}</p> : null}</div><div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3"><p className="text-sm text-zinc-400">Dispatch complaint / scope</p><p className="mt-1 text-sm leading-6 text-white">{job.scope ?? "No scope notes yet."}</p></div></div>
-          <TechnicianJobEditor job={job} partsCatalog={partsCatalog} />
-        </SectionCard>
+  return (
+    <AppShell
+      lead={<ClockCard open={openTimesheet ? { id: openTimesheet.id, clockInAt: openTimesheet.clockInAt, location: openTimesheet.location } : null} />}
+      title={isManager ? "Field jobs" : "My work"}
+      description={isManager ? "Every live field call. Open one to work it or step in." : "Today's calls, active calls and saved work. Tap a call to open its Work Page."}
+    >
+      <div className="cb-new space-y-3.5">
+        {banner ? (
+          <p role={banner.tone === "error" ? "alert" : "status"} className={`cb-work-card flex items-center gap-2 p-3.5 font-semibold ${banner.tone === "error" ? "text-[#B42318]" : ""}`}>
+            {banner.tone === "ok" ? <CheckCircle2 className="h-5 w-5 shrink-0 text-[#0A7FC2]" aria-hidden="true" /> : null}
+            {banner.text}
+          </p>
+        ) : null}
 
-        <SectionCard eyebrow="Customer equipment" title={`${equipment.length} registered asset${equipment.length === 1 ? "" : "s"}`} description="Model, serial, refrigerant, and stored field notes stay beside the active service call.">
-          {equipment.length === 0 ? <p className="text-sm text-zinc-500">No equipment records on file.</p> : <div className="space-y-3">{equipment.map((asset) => <div key={asset.id} className="rounded-2xl border border-[#2d7dff]/15 bg-black/40 p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-medium text-white">{asset.equipmentType}</p><p className="mt-1 text-sm text-zinc-300">{[asset.manufacturer, asset.model].filter(Boolean).join(" • ") || "Manufacturer/model not recorded"}</p></div>{asset.refrigerant ? <StatusPill>{asset.refrigerant}</StatusPill> : null}</div><p className="mt-2 text-xs text-zinc-400">Serial: {asset.serialNumber ?? "not recorded"}</p>{asset.notes ? <p className="mt-2 text-sm leading-6 text-zinc-300">{asset.notes}</p> : null}</div>)}</div>}
-        </SectionCard>
+        <Section id="today" title="Today's jobs" count={buckets.today.length} open empty="Nothing scheduled for you today.">
+          {buckets.today.map((job) => <JobCard key={job.id} job={job} extras={extras[job.id]} today={today} showTech={isManager} highlight={job.id === focusId} />)}
+        </Section>
 
-        <SectionCard eyebrow="Proof of work" title="Before / after media" description="Capture field proof against the same job record."><MediaAccordion jobId={job.id} beforePhotos={job.beforePhotos} afterPhotos={job.afterPhotos} /></SectionCard>
+        <Section id="active" title="Active calls" count={buckets.active.length} open={buckets.today.length === 0 && buckets.active.length > 0} empty="No other active or upcoming calls.">
+          {buckets.active.map((job) => <JobCard key={job.id} job={job} extras={extras[job.id]} today={today} showTech={isManager} highlight={job.id === focusId} />)}
+        </Section>
+
+        <Section id="saved" title="Saved calls · quotes · invoices" count={buckets.saved.length} empty="No calls waiting on parts, approval or invoicing.">
+          {buckets.saved.map((job) => <JobCard key={job.id} job={job} extras={extras[job.id]} today={today} showTech={isManager} highlight={job.id === focusId} note={savedNote(extras[job.id])} />)}
+        </Section>
+
+        <nav aria-label="Field tools" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {tools.map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href} className="cb-work-card flex min-h-12 items-center justify-center gap-2 px-2 font-semibold text-[#1557B0]">
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {label}
+            </Link>
+          ))}
+        </nav>
       </div>
-
-      <SectionCard eyebrow={isManager ? "Owner pricing" : "Customer approval"} title="Estimate → approval → invoice" description={isManager ? "Create, revise, approve, and hand the completed call into billing without leaving the service record." : "Build the estimate, send the customer view, and continue the job after approval."}>
-        {invoice ? <div className="space-y-4">
-          <div className="space-y-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2d7dff]/20 pb-3"><div><p className="text-xs uppercase tracking-[0.2em] text-zinc-500">{invoice.status === "approved" ? "Approved invoice" : "Estimate"}</p><p className="mt-1 font-medium text-white">{invoice.invoiceNumber}</p></div><StatusPill tone={invoice.status === "approved" ? "emerald" : "amber"}>{invoice.status === "approved" ? "Approved" : "Awaiting approval"}</StatusPill></div>
-            {invoice.lineItems.map((item) => <div key={item.id} className="border-b border-[#2d7dff]/10 pb-3 last:border-none"><div className="flex items-start justify-between gap-3"><div><p className="text-zinc-200">{item.label}</p>{item.description ? <p className="mt-1 text-xs leading-5 text-zinc-500">{item.description}</p> : null}<p className="mt-1 text-xs text-[#bafcfc]">Qty {item.quantity} × {money(item.unitPrice)}{item.taxable ? " • taxable" : ""}</p></div><p className="font-medium text-white">{money(item.amount)}</p></div></div>)}
-            {totals ? <div className="space-y-2 border-t border-[#2d7dff]/20 pt-3 text-sm"><div className="flex justify-between"><span className="text-zinc-400">Subtotal</span><span>{money(totals.subtotal)}</span></div>{invoice.discountAmount > 0 ? <div className="flex justify-between text-emerald-200"><span>Discount</span><span>−{money(invoice.discountAmount)}</span></div> : null}{invoice.taxAmount > 0 ? <div className="flex justify-between"><span className="text-zinc-400">Tax</span><span>{money(invoice.taxAmount)}</span></div> : null}<div className="flex justify-between text-lg font-medium text-white"><span>Total</span><span className="text-[#bafcfc]">{money(totals.total)}</span></div>{invoice.downPaymentAmount > 0 ? <><div className="flex justify-between text-amber-100"><span>Down payment required</span><span>{money(invoice.downPaymentAmount)}</span></div><div className="flex justify-between"><span className="text-zinc-400">Balance after down payment</span><span>{money(totals.balanceAfterDownPayment)}</span></div></> : null}</div> : null}
-          </div>
-          {isManager && invoice.status !== "approved" ? <OwnerEstimateEditor invoice={invoice} /> : null}
-          <EstimateAdjustmentsEditor invoice={invoice} />
-          {isManager && invoice.status === "approved" ? <div className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-3 text-sm text-amber-100"><p className="font-medium">Customer-approved pricing</p><p className="mt-1 text-xs leading-5 text-zinc-400">Approved pricing remains locked from silent rewrites. Use Invoice Center for audited corrections.</p><Link href="/invoices" className="mt-2 inline-flex rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]">Open Invoice Center</Link></div> : null}
-          <ClientPortalActions invoice={invoice} paymentSettings={paymentSettings} />
-          <div className="grid gap-2 sm:grid-cols-2"><Link href={`/portal/${invoice.portalToken}`} target="_blank" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-sm text-[#d9fbff]"><ExternalLink className="h-4 w-4" />Open customer view</Link><Link href={`/portal/${invoice.portalToken}/document`} target="_blank" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-sm text-[#d9fbff]"><FileText className="h-4 w-4" />Fullscreen document</Link></div>
-        </div> : <EstimateComposer key={job.id} jobId={job.id} profileId={profile.id} suggestedItems={suggestedItems} />}
-      </SectionCard>
-    </div>}
-  </AppShell>;
+    </AppShell>
+  );
 }
