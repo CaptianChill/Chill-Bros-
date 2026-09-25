@@ -5,11 +5,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Camera, Maximize2, Upload, X } from "lucide-react";
 
+import { downscaleImage } from "@/lib/chillbros/client-image";
 import { uploadJobPhotoAction } from "@/lib/chillbros/mutations";
 import { StatusPill } from "@/components/status-pill";
 
 type Photo = { id: string; caption: string | null; url: string | null };
-type PreviewPhoto = { url: string; alt: string };
+export type PreviewPhoto = { url: string; alt: string };
 
 function PhotoColumn({ jobId, phase, photos, label, readOnly, onOpen }: { jobId: string; phase: "before" | "after"; photos: Photo[]; label: string; readOnly?: boolean; onOpen: (photo: PreviewPhoto) => void }) {
   const router = useRouter();
@@ -21,7 +22,7 @@ function PhotoColumn({ jobId, phase, photos, label, readOnly, onOpen }: { jobId:
     if (!file) return;
     setError(null);
     startTransition(async () => {
-      const result = await uploadJobPhotoAction(jobId, phase, file);
+      const result = await uploadJobPhotoAction(jobId, phase, await downscaleImage(file));
       if (!result.ok) {
         setError(result.error);
       } else {
@@ -55,20 +56,31 @@ function PhotoColumn({ jobId, phase, photos, label, readOnly, onOpen }: { jobId:
   );
 }
 
-export function MediaAccordion({ jobId, beforePhotos, afterPhotos, readOnly }: { jobId: string; beforePhotos: Photo[]; afterPhotos: Photo[]; readOnly?: boolean }) {
-  const [preview, setPreview] = useState<PreviewPhoto | null>(null);
-
+/** Full-screen photo viewer shared with the technician Work Page. */
+export function PhotoPreview({ preview, onClose }: { preview: PreviewPhoto | null; onClose: () => void }) {
   useEffect(() => {
     if (!preview) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setPreview(null); };
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     window.addEventListener("keydown", close);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", close);
     };
-  }, [preview]);
+  }, [preview, onClose]);
+
+  if (!preview) return null;
+  return <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/90 p-3 backdrop-blur-md sm:p-6" role="dialog" aria-modal="true" aria-label="Field photo preview" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
+    <div className="relative h-[82dvh] w-full max-w-5xl overflow-hidden rounded-3xl border border-[#2d7dff]/40 bg-black shadow-[0_0_40px_rgba(45,125,255,0.24)]">
+      <Image src={preview.url} alt={preview.alt} fill className="object-contain" unoptimized priority />
+      <button type="button" onClick={onClose} className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/70 text-white backdrop-blur transition hover:bg-black" aria-label="Close photo preview"><X className="h-5 w-5" /></button>
+    </div>
+  </div>;
+}
+
+export function MediaAccordion({ jobId, beforePhotos, afterPhotos, readOnly }: { jobId: string; beforePhotos: Photo[]; afterPhotos: Photo[]; readOnly?: boolean }) {
+  const [preview, setPreview] = useState<PreviewPhoto | null>(null);
 
   return (
     <>
@@ -83,12 +95,7 @@ export function MediaAccordion({ jobId, beforePhotos, afterPhotos, readOnly }: {
         </div>
       </details>
 
-      {preview ? <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/90 p-3 backdrop-blur-md sm:p-6" role="dialog" aria-modal="true" aria-label="Field photo preview" onMouseDown={(event) => { if (event.currentTarget === event.target) setPreview(null); }}>
-        <div className="relative h-[82dvh] w-full max-w-5xl overflow-hidden rounded-3xl border border-[#2d7dff]/40 bg-black shadow-[0_0_40px_rgba(45,125,255,0.24)]">
-          <Image src={preview.url} alt={preview.alt} fill className="object-contain" unoptimized priority />
-          <button type="button" onClick={() => setPreview(null)} className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/70 text-white backdrop-blur transition hover:bg-black" aria-label="Close photo preview"><X className="h-5 w-5" /></button>
-        </div>
-      </div> : null}
+      <PhotoPreview preview={preview} onClose={() => setPreview(null)} />
     </>
   );
 }

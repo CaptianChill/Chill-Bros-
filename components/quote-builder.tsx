@@ -25,11 +25,11 @@ const newLine = (item?: Partial<QuoteSuggestion>): Line => ({
 // One quote for one service call. Lines start from the job's parts and the
 // fee settings; anything else (a part priced online or locally, labor) is a
 // free line. The draft is kept on this device until the quote is sent.
-export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProHref }: { jobId: string; suggestions: QuoteSuggestion[]; canApproveVerbally: boolean; partsProHref: string }) {
+export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProHref, initialNotes = "" }: { jobId: string; suggestions: QuoteSuggestion[]; canApproveVerbally: boolean; partsProHref: string; initialNotes?: string }) {
   const router = useRouter();
   const storageKey = `chillbros-quote-draft-${jobId}`;
   const [lines, setLines] = useState<Line[]>(() => (suggestions.length ? suggestions.slice(0, 20).map(newLine) : [newLine()]));
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(initialNotes.slice(0, 2000));
   const [taxRate, setTaxRate] = useState("8.25");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();

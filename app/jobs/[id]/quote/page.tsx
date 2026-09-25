@@ -7,7 +7,8 @@ import { QuoteBuilder } from "@/components/quote-builder";
 import { getJobLifecycle } from "@/lib/chillbros/job-lifecycle-queries";
 import { invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { partsProHref } from "@/lib/chillbros/parts-pro";
-import { getFeeSettings } from "@/lib/chillbros/queries";
+import { getFeeSettings, getPartsCatalog } from "@/lib/chillbros/queries";
+import { getRepairReports } from "@/lib/chillbros/work-page-queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
@@ -90,16 +91,23 @@ export default async function JobQuotePage({ params }: Props) {
     );
   }
 
-  const fees = await getFeeSettings();
+  const [fees, catalog, repairReports] = await Promise.all([getFeeSettings(), getPartsCatalog(), getRepairReports(job.id)]);
+  // Pre-fill from the job: parts used, labor/drive hours the tech logged, and
+  // the work performed. Everything stays editable before it is sent.
+  const laborRate = catalog.find((part) => part.name.trim().toLowerCase() === "labor")?.retailPrice ?? 0;
+  const hasLaborLine = job.parts.some((part) => part.name.trim().toLowerCase() === "labor");
   const suggestions = [
     ...job.parts.map((part) => ({ label: part.name, description: part.partNumber ? `Part # ${part.partNumber}` : "", quantity: part.quantity, unitPrice: part.retailPrice })),
+    ...(job.laborHours > 0 && !hasLaborLine ? [{ label: "Labor", description: `${job.laborHours} hr on site`, quantity: job.laborHours, unitPrice: laborRate }] : []),
+    ...(job.driveHours > 0 ? [{ label: "Drive time", description: `${job.driveHours} hr`, quantity: job.driveHours, unitPrice: 0 }] : []),
     ...fees.map((fee) => ({ label: fee.label, description: "Service fee", quantity: 1, unitPrice: fee.amount })),
   ].slice(0, 20);
+  const initialNotes = repairReports[0]?.workPerformed || job.workPerformed || "";
 
   return (
     <AppShell title="Build quote" description={`${job.customerName}${job.scope ? ` · ${job.scope}` : ""}`}>
       <div className="cb-new mb-3.5">{backLink}</div>
-      <QuoteBuilder jobId={job.id} suggestions={suggestions} canApproveVerbally={profile.role === "manager"} partsProHref={partsProHref({ details: job.scope, back: `/jobs/${job.id}/quote` })} />
+      <QuoteBuilder jobId={job.id} suggestions={suggestions} canApproveVerbally={profile.role === "manager"} partsProHref={partsProHref({ details: job.scope, back: `/jobs/${job.id}/quote` })} initialNotes={initialNotes} />
     </AppShell>
   );
 }
