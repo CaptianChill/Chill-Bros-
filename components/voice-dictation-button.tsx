@@ -1,7 +1,7 @@
 "use client";
 
 import { Mic, MicOff } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 type SpeechRecognitionResultLike = { isFinal: boolean; 0: { transcript: string } };
 type SpeechRecognitionEventLike = { resultIndex: number; results: ArrayLike<SpeechRecognitionResultLike> };
@@ -33,10 +33,14 @@ const ERROR_MESSAGES: Record<string, string> = {
   aborted: "",
 };
 
-export function VoiceDictationButton({ getValue, setValue, disabled }: { getValue: () => string; setValue: (next: string) => void; disabled?: boolean }) {
+const noSubscribe = () => () => {};
+
+export function VoiceDictationButton({ getValue, setValue, disabled, tone = "dark" }: { getValue: () => string; setValue: (next: string) => void; disabled?: boolean; tone?: "dark" | "light" }) {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [supported] = useState(() => Boolean(getSpeechRecognitionCtor()));
+  // Read after hydration: the server can't know, so reading it during render
+  // made server and client HTML disagree (hydration error).
+  const supported = useSyncExternalStore(noSubscribe, () => Boolean(getSpeechRecognitionCtor()), () => false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const baseTextRef = useRef("");
   const getValueRef = useRef(getValue);
@@ -104,12 +108,12 @@ export function VoiceDictationButton({ getValue, setValue, disabled }: { getValu
         type="button"
         onClick={toggle}
         disabled={disabled}
-        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition disabled:opacity-40 ${listening ? "border-rose-400/50 bg-rose-500/10 text-rose-100" : "border-[#2d7dff]/25 text-[#d9fbff] hover:border-[#8ffafa]/45"}`}
+        className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition disabled:opacity-40 ${tone === "light" ? (listening ? "border-[#B42318] bg-[#FDECEA] font-semibold text-[#B42318]" : "border-[#1557B0] bg-white font-semibold text-[#1557B0]") : listening ? "border-rose-400/50 bg-rose-500/10 text-rose-100" : "border-[#2d7dff]/25 text-[#d9fbff] hover:border-[#8ffafa]/45"}`}
       >
         {listening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
         {listening ? "Stop dictation" : "Dictate"}
       </button>
-      {error ? <span className="text-xs text-rose-300">{error}</span> : null}
+      {error ? <span className={tone === "light" ? "text-xs font-semibold text-[#B42318]" : "text-xs text-rose-300"}>{error}</span> : null}
     </div>
   );
 }

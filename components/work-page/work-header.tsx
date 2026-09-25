@@ -66,9 +66,9 @@ export function WorkHeader({ jobId, backHref, customer, location, status, nextSt
             ) : null}
             {links.map((link) =>
               link.external ? (
-                <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="flex min-h-12 items-center px-4 font-semibold hover:bg-[#F0F5FC]">{link.label}</a>
+                <a key={`${link.label}-${link.href}`} href={link.href} target="_blank" rel="noreferrer" className="flex min-h-12 items-center px-4 font-semibold hover:bg-[#F0F5FC]">{link.label}</a>
               ) : (
-                <Link key={link.href} href={link.href} className="flex min-h-12 items-center px-4 font-semibold hover:bg-[#F0F5FC]">{link.label}</Link>
+                <Link key={`${link.label}-${link.href}`} href={link.href} className="flex min-h-12 items-center px-4 font-semibold hover:bg-[#F0F5FC]">{link.label}</Link>
               ),
             )}
           </div>

@@ -305,3 +305,16 @@
   color: #ffffff;
   box-shadow: 0 2px 10px rgba(10, 26, 51, 0.35);
 }
+/* globals.css resets button fonts (font: inherit), which drops Tailwind's
+   weight utilities; the action bar needs heavy labels to read at a glance. */
+.cb-work-sticky :is(button, a) {
+  font-weight: 800;
+}
+/* Brand bubble headings need more size than body text to stay legible. */
+.cb-staff .cb-work-card h2:not(#cb-bubble) {
+  font-size: 26px;
+  line-height: 1.2;
+}
+.cb-work-card :is(input[type="radio"], input[type="checkbox"]) {
+  accent-color: #1557b0;
+}

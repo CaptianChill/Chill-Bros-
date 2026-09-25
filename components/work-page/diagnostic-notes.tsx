@@ -162,7 +162,7 @@ export function DiagnosticNotes({ jobId, initialNotes, canEdit, lastSavedLabel }
       />
       {canEdit ? (
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <VoiceDictationButton getValue={() => latest.current} setValue={change} />
+          <VoiceDictationButton tone="light" getValue={() => latest.current} setValue={change} />
           <button type="button" onClick={() => document.getElementById("before-photos-input")?.click()} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-[#1557B0] bg-white px-3 text-sm font-semibold text-[#1557B0]">
             <Camera className="h-4 w-4" aria-hidden="true" />
             Add photo
