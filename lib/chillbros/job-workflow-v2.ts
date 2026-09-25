@@ -7,7 +7,18 @@ import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS, type JobStatus } from "./types"
 
 type Result = { ok: true } | { ok: false; error: string };
 
-const TECHNICIAN_STATUSES: JobStatus[] = ["en_route", "arrived", "work_complete"];
+const TECH_TRANSITIONS: Partial<Record<JobStatus, JobStatus[]>> = {
+  new: ["en_route"], needs_scheduling: ["en_route"], scheduled: ["en_route"], dispatched: ["en_route"],
+  en_route: ["arrived", "scheduled"],
+  arrived: ["diagnosing", "parts_required", "repairing", "work_complete", "scheduled"],
+  in_progress: ["diagnosing", "parts_required", "repairing", "work_complete", "scheduled"],
+  diagnosing: ["parts_required", "repairing", "work_complete", "scheduled"],
+  awaiting_approval: ["approved", "parts_required", "return_visit_needed"],
+  approved: ["repairing", "parts_required", "return_visit_needed", "work_complete"],
+  parts_required: ["return_visit_needed", "repairing", "work_complete"],
+  return_visit_needed: ["en_route", "repairing", "work_complete"],
+  repairing: ["parts_required", "return_visit_needed", "work_complete"],
+};
 
 const clean = (value: string | null | undefined, max: number) => {
   const s = String(value ?? "").trim();
@@ -46,7 +57,9 @@ export async function updateTechnicianJobV2Action(input: {
   if (!JOB_ACTIVE_STATUSES.includes(job.status as JobStatus)) return { ok: false, error: "This job is closed and locked from field edits." };
 
   const nextStatus = input.status ?? job.status as JobStatus;
-  if (nextStatus !== job.status && !TECHNICIAN_STATUSES.includes(nextStatus)) return { ok: false, error: "Choose On my way, On site, or Work done." };
+  if (nextStatus !== job.status && !(TECH_TRANSITIONS[job.status as JobStatus] ?? []).includes(nextStatus)) {
+    return { ok: false, error: `That field move is not available from ${JOB_STATUS_LABELS[job.status as JobStatus]}.` };
+  }
   const work = clean(input.workPerformed, 6000);
   let updateQuery = supabase
     .from("chillbros_jobs")
@@ -80,6 +93,7 @@ export async function updateTechnicianJobV2Action(input: {
   }
 
   refreshJobs();
+  revalidatePath(`/jobs/${input.jobId}`);
   return { ok: true };
 }
 
