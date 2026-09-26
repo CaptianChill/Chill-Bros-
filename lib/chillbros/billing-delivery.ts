@@ -88,26 +88,35 @@ function formatDue(value: string | null) {
 
 export async function sendBillingDelivery(invoiceId: string, deliveryType: BillingDeliveryType, channel: BillingDeliveryChannel, overrideRecipient?: string): Promise<DeliveryResult> {
   const supabase = createServiceRoleClient();
-  const { data: invoice } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,due_at,customer:chillbros_customers(name,email,phone)").eq("id", invoiceId).maybeSingle();
+  const { data: invoice } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,due_at,customer:chillbros_customers(name,email,phone),job:chillbros_jobs(location)").eq("id", invoiceId).maybeSingle();
   if (!invoice) return { channel, recipient: null, status: "failed", error: "Invoice was not found." };
 
   const effectiveType: BillingDeliveryType = (invoice.invoice_number.startsWith("I-") || invoice.invoice_number.startsWith("INV-")) && deliveryType === "estimate" ? "invoice" : deliveryType;
   const customer = Array.isArray(invoice.customer) ? invoice.customer[0] : invoice.customer;
+  const job = Array.isArray(invoice.job) ? invoice.job[0] : invoice.job;
   const customerName = customer?.name ?? "Customer";
+  const location = String(job?.location ?? "").trim();
   const base = appBaseUrl();
   const portalUrl = `${base}/portal/${invoice.portal_token}`;
-  const documentUrl = `${portalUrl}/document`;
   const receiptUrl = `${portalUrl}/receipt`;
   const due = formatDue(invoice.due_at);
-  const label = effectiveType === "estimate" ? "estimate" : effectiveType === "receipt" ? "receipt" : "invoice";
-  const subject = effectiveType === "reminder" ? `Reminder · Chill Pros invoice ${invoice.invoice_number}` : `Chill Pros ${label} ${invoice.invoice_number}`;
-  const link = effectiveType === "receipt" ? receiptUrl : documentUrl;
-  const intro = effectiveType === "estimate" ? "Your Chill Pros estimate is ready for review and approval."
-    : effectiveType === "invoice" ? "Your Chill Pros invoice is ready to review and pay."
-    : effectiveType === "reminder" ? `This is a reminder that Chill Pros invoice ${invoice.invoice_number}${due ? ` is due ${due}` : " is still outstanding"}.`
-    : `Payment for ${invoice.invoice_number} has been recorded. Your receipt is ready.`;
-  const text = [customerName + ",", "", intro, "", `Open document: ${link}`, due && effectiveType !== "receipt" ? `Due: ${due}` : null, "", "Chill Pros"].filter(Boolean).join("\n");
-  const html = `<!doctype html><html><body style="margin:0;background:#05070a;font-family:Arial,sans-serif;color:#fff"><div style="max-width:640px;margin:0 auto;padding:28px"><div style="border:1px solid #2d7dff;border-radius:18px;padding:24px;background:#07111b"><div style="font-size:22px;font-weight:700;margin-bottom:16px">Chill Pros</div><p style="font-size:16px;line-height:1.6;color:#e5eef8">${esc(customerName)},</p><p style="font-size:16px;line-height:1.6;color:#e5eef8">${esc(intro)}</p>${due && effectiveType !== "receipt" ? `<p style="color:#b9c9d8">Due: ${esc(due)}</p>` : ""}<p style="margin:26px 0"><a href="${esc(link)}" style="display:inline-block;background:#1677ff;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:12px">Open ${esc(label)}</a></p><p style="font-size:12px;color:#91a4b5;word-break:break-all">${esc(link)}</p></div></div></body></html>`;
+  // Plain, professional wording. Corporate mail filters tend to hold
+  // messages that read like payment demands ("invoice ... pay now") from an
+  // unfamiliar sender, so the subject names the service and the customer.
+  const where = location ? ` at ${location}` : "";
+  const subject = effectiveType === "estimate" ? `Chill Pros estimate ${invoice.invoice_number} for ${customerName}`
+    : effectiveType === "reminder" ? `Friendly reminder: Chill Pros ${invoice.invoice_number}`
+    : effectiveType === "receipt" ? `Thank you – receipt for ${invoice.invoice_number}`
+    : `Service completed – ${customerName} (${invoice.invoice_number})`;
+  const link = effectiveType === "receipt" ? receiptUrl : portalUrl;
+  const intro = effectiveType === "estimate" ? `Thank you for the opportunity to help${where}. Your estimate is ready to review. You can approve it online with one click.`
+    : effectiveType === "invoice" ? `Thank you for choosing Chill Pros. Our service visit${where} is complete, and the invoice for this visit is ready to view along with the work performed and photos.`
+    : effectiveType === "reminder" ? `A friendly reminder that ${invoice.invoice_number}${due ? ` was due ${due}` : " is still open"}. If you've already taken care of it, thank you, and please disregard this note.`
+    : `Thank you. We've recorded your payment for ${invoice.invoice_number}. Your receipt is ready.`;
+  const button = effectiveType === "estimate" ? "Review estimate" : effectiveType === "receipt" ? "View receipt" : "View invoice";
+  const signoff = ["Chill Pros", "Chill Professionals LLC · San Antonio, Texas", "Questions? Just reply to this email."];
+  const text = [`Hello ${customerName},`, "", intro, "", `${button}: ${link}`, due && effectiveType === "invoice" ? `Due: ${due}` : null, "", ...signoff].filter((line) => line !== null).join("\n");
+  const html = `<!doctype html><html><body style="margin:0;background:#eef4fb;font-family:Arial,Helvetica,sans-serif;color:#0a1a33"><div style="max-width:600px;margin:0 auto;padding:24px 16px"><div style="background:#05070a;border-radius:14px 14px 0 0;padding:14px 24px;border-bottom:3px solid #1f6feb"><img src="${esc(base)}/brand/chill-pros-ice-logo-240.png" alt="Chill Pros" width="84" height="84" style="display:block;border:0"></div><div style="background:#ffffff;border:1px solid #d5deea;border-top:0;border-radius:0 0 14px 14px;padding:24px"><p style="font-size:16px;line-height:1.6;margin:0 0 12px">Hello ${esc(customerName)},</p><p style="font-size:16px;line-height:1.6;margin:0 0 16px">${esc(intro)}</p>${due && effectiveType === "invoice" ? `<p style="font-size:14px;color:#4a5b74;margin:0 0 16px">Due: ${esc(due)}</p>` : ""}<p style="margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#1f6feb;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:10px">${esc(button)}</a></p><p style="font-size:12px;color:#4a5b74;word-break:break-all;margin:0 0 20px">${esc(link)}</p><p style="font-size:14px;line-height:1.6;color:#3d5170;margin:0">Chill Pros<br>Chill Professionals LLC · San Antonio, Texas<br>Questions? Just reply to this email.</p></div></div></body></html>`;
 
   if (channel === "email") {
     const override = String(overrideRecipient || "").trim().toLowerCase();

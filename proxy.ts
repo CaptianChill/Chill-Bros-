@@ -17,6 +17,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/auth",
   "/api/health",
   "/api/portal",
+  "/api/payments/square/webhook",
   "/api/cron",
   "/api/3d-project-builder/blender-self-test",
 ];

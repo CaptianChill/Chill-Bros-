@@ -163,3 +163,12 @@ a {
     min-height: 100dvh;
   }
 }
+
+/* Customer portal: clean professional type (no display/brand faces). */
+.cb-portal {
+  font-family: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+}
+.cb-portal :is(h1, h2, h3) {
+  font-family: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+}
