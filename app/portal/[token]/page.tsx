@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BadgeCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { DocumentPaymentMethods } from "@/components/document-payment-methods";
@@ -7,6 +8,7 @@ import { PortalFrame } from "@/components/customer-portal/portal-frame";
 import { PortalView, type PortalTab, type PortalViewData } from "@/components/customer-portal/portal-view";
 import { getInvoiceV2ByToken, invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { getPaymentSettings } from "@/lib/chillbros/payment-settings";
+import { squareCheckoutConfigured } from "@/lib/chillbros/square-checkout";
 import { getPortalEquipmentHistory } from "@/lib/chillbros/portal-queries";
 import { getJob } from "@/lib/chillbros/queries";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
@@ -82,7 +84,15 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   };
 
   // Approve / pay reuse the same actions as the printable document page.
-  const actions = !approved ? (
+  const actions = paid ? (
+    <div className="flex items-start gap-3 rounded-xl border border-[#B7E3C8] bg-[#E6F6EC] p-4 text-[#11663A]">
+      <BadgeCheck className="mt-0.5 h-6 w-6 shrink-0" aria-hidden="true" />
+      <div>
+        <h2 className="text-lg font-bold">Payment received — thank you!</h2>
+        <p className="mt-0.5 text-sm">{invoice.invoiceNumber} is paid in full. Your receipt is below.</p>
+      </div>
+    </div>
+  ) : !approved ? (
     <div className="space-y-2">
       <h2 className="text-lg font-bold">Approve this estimate</h2>
       <DocumentSignatureForm kind="estimate" token={token} initialSignature={invoice.signatureName} initialSignedAt={invoice.signedAt} alreadyApproved={false} />
@@ -90,12 +100,12 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   ) : issued && !paid ? (
     <div className="space-y-2">
       <h2 className="text-lg font-bold">Pay your invoice</h2>
-      <DocumentPaymentMethods token={token} initialMethod={invoice.paymentMethod} paymentStatus={invoice.paymentStatus} amountDue={totals.amountDueNow} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} />
+      <DocumentPaymentMethods token={token} initialMethod={invoice.paymentMethod} paymentStatus={invoice.paymentStatus} amountDue={totals.amountDueNow} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} squareCheckout={squareCheckoutConfigured()} />
     </div>
   ) : downPaymentDue ? (
     <div className="space-y-2">
       <h2 className="text-lg font-bold">Pay your down payment</h2>
-      <DocumentPaymentMethods token={token} initialMethod={invoice.downPaymentMethod} paymentStatus={invoice.downPaymentStatus} amountDue={invoice.downPaymentAmount} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} kind="down_payment" />
+      <DocumentPaymentMethods token={token} initialMethod={invoice.downPaymentMethod} paymentStatus={invoice.downPaymentStatus} amountDue={invoice.downPaymentAmount} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} kind="down_payment" squareCheckout={squareCheckoutConfigured()} />
     </div>
   ) : (
     <DocumentSignatureForm kind="estimate" token={token} initialSignature={invoice.signatureName} initialSignedAt={invoice.signedAt} alreadyApproved />

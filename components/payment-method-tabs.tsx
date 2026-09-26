@@ -23,7 +23,7 @@ const TABS: { key: PaymentMethod; label: string }[] = [
   { key: "cash", label: "Cash" },
 ];
 
-export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStatus, initialMethod, settings, document: printable = false, kind = "invoice" }: {
+export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStatus, initialMethod, settings, document: printable = false, kind = "invoice", squareCheckout = false }: {
   token: string;
   amountDue: number;
   invoiceNumber: string;
@@ -32,6 +32,8 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
   settings: ManualPaymentSettings;
   document?: boolean;
   kind?: "invoice" | "down_payment";
+  /** Square Checkout API configured: one-tap card checkout with the amount filled in. */
+  squareCheckout?: boolean;
 }) {
   const isDownPayment = kind === "down_payment";
   const documentLabel = isDownPayment ? "Quote" : "Invoice";
@@ -60,11 +62,11 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
     });
   }
 
-  const shell = printable ? "space-y-4 rounded-2xl border-2 border-zinc-900 bg-white p-4 text-zinc-900 sm:p-5" : "space-y-4 rounded-3xl border border-[#8ffafa]/30 bg-[#06111b]/70 p-5 text-white";
-  const tabIdle = printable ? "border-zinc-300 text-zinc-600" : "border-[#2d7dff]/25 text-zinc-400";
-  const tabActive = printable ? "border-zinc-900 bg-zinc-900 text-white" : "border-[#8ffafa]/60 bg-[#2d7dff]/20 text-white";
-  const panel = printable ? "rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-6" : "rounded-2xl border border-white/10 bg-black/30 p-4 text-sm leading-6";
-  const buttonIdle = printable ? "border-zinc-900 text-zinc-900" : "border-[#8ffafa]/50 text-white";
+  const shell = printable ? "space-y-4 rounded-2xl border border-[#C7D3E2] bg-white p-4 text-[#0A1A33] sm:p-5" : "space-y-4 rounded-3xl border border-[#8ffafa]/30 bg-[#06111b]/70 p-5 text-white";
+  const tabIdle = printable ? "border-[#C7D3E2] text-[#3D5170]" : "border-[#2d7dff]/25 text-zinc-400";
+  const tabActive = printable ? "border-[#0A1A33] bg-[#0A1A33] text-white" : "border-[#8ffafa]/60 bg-[#2d7dff]/20 text-white";
+  const panel = printable ? "rounded-xl border border-[#E3EAF3] bg-[#F8FAFD] p-4 text-sm leading-6" : "rounded-2xl border border-white/10 bg-black/30 p-4 text-sm leading-6";
+  const buttonIdle = printable ? "border-[#1557B0] text-[#1557B0]" : "border-[#8ffafa]/50 text-white";
 
   function manualPanel(label: string, method: PaymentMethod, configured: boolean, instructions: string) {
     if (!configured) return <p>{label} isn&apos;t set up yet. Contact Chill Pros directly, or choose another option above.</p>;
@@ -83,7 +85,7 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
     </div>
 
     <div className="flex flex-wrap gap-2" role="tablist">
-      {TABS.map((tab) => <button key={tab.key} type="button" role="tab" aria-selected={active === tab.key} onClick={() => setActive(tab.key)} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${active === tab.key ? tabActive : tabIdle}`}>
+      {TABS.map((tab) => <button key={tab.key} type="button" role="tab" aria-selected={active === tab.key} onClick={() => setActive(tab.key)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold ${active === tab.key ? tabActive : tabIdle}`}>
         {tab.label}{selected === tab.key ? " ✓" : ""}
       </button>)}
     </div>
@@ -93,7 +95,10 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
 
     <div className={panel}>
       {active === "card" ? (
-        squarePaymentAvailable(amountDue) ? <div className="space-y-3">
+        squareCheckout ? <div className="space-y-3">
+          <a href={`/api/portal/${encodeURIComponent(token)}/square-checkout${isDownPayment ? "?kind=down_payment" : ""}`} style={{ color: "#ffffff" }} className={`print:hidden inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-base font-bold ${printable ? "bg-[#1557B0] hover:bg-[#0E3F82]" : "bg-[#2d7dff]"}`}>Pay {money} by card</a>
+          <p className="text-xs opacity-80">Secure checkout by Square — your card details go straight to Square, never to us. Apple Pay and Google Pay work too on supported phones. Your {isDownPayment ? "down payment" : "invoice"} is marked paid and your receipt is emailed as soon as Square confirms it.</p>
+        </div> : squarePaymentAvailable(amountDue) ? <div className="space-y-3">
           <p>Enter {money} in Square and use the name and email from your {isDownPayment ? "quote" : "invoice"} so we can match your payment.</p>
           <a href={SQUARE_PAYMENT_URL} target="_blank" rel="noopener noreferrer" className="print:hidden inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#2d7dff] px-4 py-3 font-bold text-white">Pay with Square<span className="sr-only"> (opens in a new tab)</span></a>
           <p className="hidden break-all text-sm print:block">Pay online: {SQUARE_PAYMENT_URL}</p>

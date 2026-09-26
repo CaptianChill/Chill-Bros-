@@ -1,7 +1,7 @@
 import type { PaymentMethod } from "@/lib/chillbros/types";
 import { PaymentMethodTabs, type ManualPaymentSettings } from "@/components/payment-method-tabs";
 
-export function DocumentPaymentMethods({ paymentStatus, amountDue, invoiceNumber, token, initialMethod, settings, kind = "invoice" }: {
+export function DocumentPaymentMethods({ paymentStatus, amountDue, invoiceNumber, token, initialMethod, settings, kind = "invoice", squareCheckout = false }: {
   token: string;
   initialMethod: PaymentMethod | null;
   paymentStatus: string;
@@ -9,6 +9,7 @@ export function DocumentPaymentMethods({ paymentStatus, amountDue, invoiceNumber
   invoiceNumber: string;
   settings: ManualPaymentSettings;
   kind?: "invoice" | "down_payment";
+  squareCheckout?: boolean;
 }) {
-  return <PaymentMethodTabs document token={token} amountDue={amountDue} invoiceNumber={invoiceNumber} paymentStatus={paymentStatus} initialMethod={initialMethod} settings={settings} kind={kind} />;
+  return <PaymentMethodTabs document token={token} amountDue={amountDue} invoiceNumber={invoiceNumber} paymentStatus={paymentStatus} initialMethod={initialMethod} settings={settings} kind={kind} squareCheckout={squareCheckout} />;
 }

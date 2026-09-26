@@ -12,6 +12,7 @@ import { sendInvoiceViewedNotification } from "@/lib/chillbros/approval-notifica
 import { getInvoiceV2ByToken, invoiceTotals, recordInvoiceFirstView } from "@/lib/chillbros/invoice-v2";
 import { getJob } from "@/lib/chillbros/queries";
 import { getPaymentSettings } from "@/lib/chillbros/payment-settings";
+import { squareCheckoutConfigured } from "@/lib/chillbros/square-checkout";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
 
@@ -90,8 +91,8 @@ export default async function DocumentPage({ params }: Props) {
             <div className="text-center sm:text-right"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">{invoiceIssued ? "Payment method" : "Document stage"}</p><p className="mt-2 break-words text-sm font-semibold [overflow-wrap:anywhere]">{invoiceIssued ? paid ? invoice.paymentMethod ? invoice.paymentMethod.replace(/_/g, " ") : "Recorded by office" : invoice.paymentMethod === "cash" ? "Cash (awaiting confirmation)" : invoice.paymentMethod === "check" ? "Check (awaiting confirmation)" : "Square" : invoice.status === "approved" ? "Signed estimate" : "Estimate awaiting signature"}</p>{invoice.status === "approved" ? <Link href={`/api/portal/${token}/pdf?stage=${paid ? "paid" : "approved"}`} target="_blank" className="mt-4 inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-xs"><FileDown className="h-3.5 w-3.5" />Archived PDF</Link> : null}</div>
           </section>
 
-          {invoiceIssued && invoice.status === "approved" ? <DocumentPaymentMethods token={token} initialMethod={invoice.paymentMethod} paymentStatus={invoice.paymentStatus} amountDue={totals.amountDueNow} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} />
-          : invoice.status === "approved" && downPaymentRequired && !downPaymentPaid ? <DocumentPaymentMethods token={token} initialMethod={invoice.downPaymentMethod} paymentStatus={invoice.downPaymentStatus} amountDue={invoice.downPaymentAmount} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} kind="down_payment" />
+          {invoiceIssued && invoice.status === "approved" ? <DocumentPaymentMethods token={token} initialMethod={invoice.paymentMethod} paymentStatus={invoice.paymentStatus} amountDue={totals.amountDueNow} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} squareCheckout={squareCheckoutConfigured()} />
+          : invoice.status === "approved" && downPaymentRequired && !downPaymentPaid ? <DocumentPaymentMethods token={token} initialMethod={invoice.downPaymentMethod} paymentStatus={invoice.downPaymentStatus} amountDue={invoice.downPaymentAmount} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} kind="down_payment" squareCheckout={squareCheckoutConfigured()} />
           : invoice.status === "approved" && downPaymentRequired ? <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900"><strong>Down payment received.</strong> Chill Pros completes the approved work. This same document becomes the final invoice — with the down payment already subtracted — when the job is finished.</section>
           : invoice.status === "approved" ? <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900"><strong>Next step:</strong> Chill Pros completes the approved work. This same document becomes the final invoice when the job is finished. No final payment is due yet.</section>
           : <section className="rounded-xl border border-zinc-300 bg-zinc-50 p-4 text-sm leading-6 text-zinc-700"><strong>Next step:</strong> Sign and approve the estimate above.</section>}
