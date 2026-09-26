@@ -64,9 +64,9 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
 
   const shell = printable ? "space-y-4 rounded-2xl border border-[#C7D3E2] bg-white p-4 text-[#0A1A33] sm:p-5" : "space-y-4 rounded-3xl border border-[#8ffafa]/30 bg-[#06111b]/70 p-5 text-white";
   const tabIdle = printable ? "border-[#C7D3E2] text-[#3D5170]" : "border-[#2d7dff]/25 text-zinc-400";
-  const tabActive = printable ? "border-[#0A1A33] bg-[#0A1A33] text-white" : "border-[#8ffafa]/60 bg-[#2d7dff]/20 text-white";
+  const tabActive = printable ? "border-[#05070A] bg-[#05070A] text-white" : "border-[#8ffafa]/60 bg-[#2d7dff]/20 text-white";
   const panel = printable ? "rounded-xl border border-[#E3EAF3] bg-[#F8FAFD] p-4 text-sm leading-6" : "rounded-2xl border border-white/10 bg-black/30 p-4 text-sm leading-6";
-  const buttonIdle = printable ? "border-[#1557B0] text-[#1557B0]" : "border-[#8ffafa]/50 text-white";
+  const buttonIdle = printable ? "border-[#1F6FEB] text-[#1F6FEB]" : "border-[#8ffafa]/50 text-white";
 
   function manualPanel(label: string, method: PaymentMethod, configured: boolean, instructions: string) {
     if (!configured) return <p>{label} isn&apos;t set up yet. Contact Chill Pros directly, or choose another option above.</p>;
@@ -96,7 +96,7 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
     <div className={panel}>
       {active === "card" ? (
         squareCheckout ? <div className="space-y-3">
-          <a href={`/api/portal/${encodeURIComponent(token)}/square-checkout${isDownPayment ? "?kind=down_payment" : ""}`} style={{ color: "#ffffff" }} className={`print:hidden inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-base font-bold ${printable ? "bg-[#1557B0] hover:bg-[#0E3F82]" : "bg-[#2d7dff]"}`}>Pay {money} by card</a>
+          <a href={`/api/portal/${encodeURIComponent(token)}/square-checkout${isDownPayment ? "?kind=down_payment" : ""}`} style={{ color: "#ffffff" }} className={`print:hidden inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-base font-bold ${printable ? "bg-[#1F6FEB] hover:bg-[#1858C4] shadow-[0_0_16px_rgba(31,111,235,0.35)]" : "bg-[#2d7dff]"}`}>Pay {money} by card</a>
           <p className="text-xs opacity-80">Secure checkout by Square — your card details go straight to Square, never to us. Apple Pay and Google Pay work too on supported phones. Your {isDownPayment ? "down payment" : "invoice"} is marked paid and your receipt is emailed as soon as Square confirms it.</p>
         </div> : squarePaymentAvailable(amountDue) ? <div className="space-y-3">
           <p>Enter {money} in Square and use the name and email from your {isDownPayment ? "quote" : "invoice"} so we can match your payment.</p>

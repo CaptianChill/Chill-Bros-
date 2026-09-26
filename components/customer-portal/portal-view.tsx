@@ -47,14 +47,15 @@ function Tabs({ token, active, photoCount, hasEquipment }: { token: string; acti
     { key: "equipment", label: hasEquipment ? "Equipment history" : "Equipment", icon: History },
   ];
   return (
-    <nav aria-label="Document sections" className="grid grid-cols-3 gap-1 rounded-xl bg-[#E3EAF3] p-1">
+    <nav aria-label="Document sections" className="grid grid-cols-3 gap-1 rounded-xl bg-[#05070A] p-1 shadow-[0_2px_10px_rgba(5,7,10,0.18)]">
       {tabs.map(({ key, label, icon: Icon }) => (
         <Link
           key={key}
           href={key === "overview" ? `/portal/${token}` : `/portal/${token}?tab=${key}`}
           aria-current={active === key ? "page" : undefined}
           scroll={false}
-          className={`flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 text-center text-[13px] font-semibold leading-tight sm:text-sm ${active === key ? "bg-white text-[#0A1A33] shadow-sm" : "text-[#3D5170] hover:text-[#0A1A33]"}`}
+          style={{ color: active === key ? "#ffffff" : "#9CCBFF" }}
+          className={`flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 text-center text-[13px] font-semibold leading-tight sm:text-sm ${active === key ? "bg-[#1F6FEB] shadow-[0_0_12px_rgba(31,111,235,0.5)]" : "hover:bg-white/10"}`}
         >
           <Icon className="hidden h-4 w-4 shrink-0 sm:block" aria-hidden="true" />
           {label}
@@ -93,7 +94,7 @@ function EquipmentHistory({ history }: { history: PortalEquipmentHistory }) {
     return (
       <PortalCard className="p-5">
         <div className="flex items-start gap-3">
-          <Wrench className="mt-0.5 h-5 w-5 shrink-0 text-[#1557B0]" aria-hidden="true" />
+          <Wrench className="mt-0.5 h-5 w-5 shrink-0 text-[#1F6FEB]" aria-hidden="true" />
           <div>
             <h2 className="text-lg font-bold">Equipment history</h2>
             <p className="mt-1 text-sm leading-6 text-[#4A5B74]">No unit is linked to this service yet. Once your technician records the unit&apos;s model and serial number, every visit on it will appear here.</p>
@@ -112,7 +113,7 @@ function EquipmentHistory({ history }: { history: PortalEquipmentHistory }) {
   return (
     <div className="space-y-4">
       <PortalCard className="p-5">
-        <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#1557B0]">Your unit</p>
+        <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#1F6FEB]">Your unit</p>
         <h2 className="mt-1 text-xl font-bold">{unit.label}</h2>
         <dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {specs.map(([label, value]) => (
@@ -129,9 +130,9 @@ function EquipmentHistory({ history }: { history: PortalEquipmentHistory }) {
           {history.visits.map((visit, index) => (
             <li key={visit.jobId} className="relative pl-6 pb-5 last:pb-0">
               {index < history.visits.length - 1 ? <span className="absolute left-[7px] top-4 h-full w-0.5 bg-[#D5DEEA]" aria-hidden="true" /> : null}
-              <span className={`absolute left-0 top-1.5 h-4 w-4 rounded-full ring-4 ring-white ${visit.isCurrent ? "bg-[#1557B0]" : "bg-[#9FB3CC]"}`} aria-hidden="true" />
+              <span className={`absolute left-0 top-1.5 h-4 w-4 rounded-full ring-4 ring-white ${visit.isCurrent ? "bg-[#1F6FEB]" : "bg-[#9FB3CC]"}`} aria-hidden="true" />
               <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <p className="font-bold">{day(visit.date)}{visit.isCurrent ? <span className="ml-2 rounded-full bg-[#DCEBFF] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#1557B0]">This visit</span> : null}</p>
+                <p className="font-bold">{day(visit.date)}{visit.isCurrent ? <span className="ml-2 rounded-full bg-[#DCEAFF] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#1F6FEB]">This visit</span> : null}</p>
                 {visit.documentNumber || visit.jobNumber ? <p className="text-[13px] text-[#4A5B74]">{visit.documentNumber ?? `Job ${visit.jobNumber}`}</p> : null}
               </div>
               <p className="mt-0.5 text-sm font-semibold">{visit.summary}</p>
@@ -155,10 +156,10 @@ export function PortalView({ data, tab, actions, banner }: { data: PortalViewDat
     <div className="space-y-4">
       {banner}
 
-      <PortalCard className="overflow-hidden">
+      <PortalCard className="overflow-hidden border-t-4 border-t-[#1F6FEB]">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#EDF1F6] px-5 py-4">
           <div className="min-w-0">
-            <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#1557B0]">{data.documentLabel} {data.documentNumber}</p>
+            <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#1F6FEB]">{data.documentLabel} {data.documentNumber}</p>
             <h1 className="mt-1 text-2xl font-bold leading-tight sm:text-[28px]">{data.customerName}</h1>
             {data.serviceAddress ? <p className="mt-1 flex items-start gap-1.5 text-sm text-[#4A5B74]"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{data.serviceAddress}</p> : null}
           </div>
@@ -171,12 +172,12 @@ export function PortalView({ data, tab, actions, banner }: { data: PortalViewDat
           <div>
             <p className="text-lg font-semibold">{data.headline}</p>
             <p className="mt-1 text-sm leading-6 text-[#4A5B74]">{data.subline}</p>
-            {data.scheduledLabel ? <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[#1557B0]"><CalendarClock className="h-4 w-4" aria-hidden="true" />{data.scheduledLabel}</p> : null}
+            {data.scheduledLabel ? <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[#1F6FEB]"><CalendarClock className="h-4 w-4" aria-hidden="true" />{data.scheduledLabel}</p> : null}
           </div>
-          <div className="rounded-xl bg-[#0A1A33] px-5 py-3 text-white sm:text-right">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9FD3FF]">{data.amountLabel}</p>
+          <div className="rounded-xl bg-[#05070A] px-5 py-3 text-white ring-1 ring-[#1F6FEB] shadow-[0_0_22px_rgba(31,111,235,0.35)] sm:text-right">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9CCBFF]">{data.amountLabel}</p>
             <p className="text-3xl font-bold tabular-nums">{money(data.amount)}</p>
-            {data.dueLabel ? <p className="text-[13px] text-[#C9DCF5]">{data.dueLabel}</p> : null}
+            {data.dueLabel ? <p className="text-[13px] text-white/75">{data.dueLabel}</p> : null}
           </div>
         </div>
       </PortalCard>
@@ -213,8 +214,8 @@ export function PortalView({ data, tab, actions, banner }: { data: PortalViewDat
           </PortalCard>
 
           <div className="grid gap-2 sm:grid-cols-3">
-            <Link href={`/portal/${data.token}/document`} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#C7D3E2] bg-white px-3 text-sm font-semibold text-[#0A1A33] hover:border-[#1557B0]"><FileText className="h-4 w-4" aria-hidden="true" />Printable {data.documentLabel.toLowerCase()}</Link>
-            {data.canOpenPdf ? <Link href={`/api/portal/${data.token}/pdf?stage=${data.canOpenPdf}`} target="_blank" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#C7D3E2] bg-white px-3 text-sm font-semibold text-[#0A1A33] hover:border-[#1557B0]"><FileDown className="h-4 w-4" aria-hidden="true" />Download PDF</Link> : null}
+            <Link href={`/portal/${data.token}/document`} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#C7D3E2] bg-white px-3 text-sm font-semibold text-[#0B1220] hover:border-[#1F6FEB]"><FileText className="h-4 w-4" aria-hidden="true" />Printable {data.documentLabel.toLowerCase()}</Link>
+            {data.canOpenPdf ? <Link href={`/api/portal/${data.token}/pdf?stage=${data.canOpenPdf}`} target="_blank" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#C7D3E2] bg-white px-3 text-sm font-semibold text-[#0B1220] hover:border-[#1F6FEB]"><FileDown className="h-4 w-4" aria-hidden="true" />Download PDF</Link> : null}
             {data.hasReceipt ? <Link href={`/portal/${data.token}/receipt`} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#B7E3C8] bg-[#E6F6EC] px-3 text-sm font-semibold text-[#11663A]"><ReceiptText className="h-4 w-4" aria-hidden="true" />Payment receipt</Link> : null}
           </div>
         </>
