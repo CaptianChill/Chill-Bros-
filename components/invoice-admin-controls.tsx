@@ -50,7 +50,7 @@ export function InvoiceAdminControls(props: Props) {
   const [sendToPhone, setSendToPhone] = useState("");
   const taxLocked = props.status === "approved";
   const isAwaitingApproval = props.status === "awaiting_approval";
-  const isQuote = !props.issuedAt;
+  const isQuote = props.invoiceNumber.toUpperCase().startsWith("Q-") || !props.issuedAt;
   const documentLabel = isQuote ? "quote" : "invoice";
 
   const run = async (task: () => Promise<{ ok: boolean; error?: string; status?: string; data?: { recipient?: string | null; status?: string } }>, success: string, keepVisible = false) => {
