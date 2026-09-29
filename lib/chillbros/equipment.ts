@@ -5,6 +5,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 type Result = { ok: true } | { ok: false; error: string };
+type CreateResult = { ok: true; data: { equipmentId: string } } | { ok: false; error: string };
 
 async function requireStaff() {
   const profile = await getCurrentStaffProfile();
@@ -65,14 +66,14 @@ function refreshEquipment(customerId?: string) {
   if (customerId) revalidatePath(`/customers/${customerId}`);
 }
 
-export async function createEquipmentAction(input: EquipmentInput): Promise<Result> {
+export async function createEquipmentAction(input: EquipmentInput): Promise<CreateResult> {
   const guard = await requireStaff();
   if (!guard.ok) return guard;
   if (!input.customerId || !input.equipmentType.trim()) return { ok: false, error: "Customer and equipment type are required." };
 
   const supabase = createServiceRoleClient();
   const assetTag = clean(input.assetTag, 120) ?? (await generatedAssetTag(supabase, input.customerId, input.equipmentType));
-  const { error } = await supabase.from("chillbros_equipment").insert({
+  const { data, error } = await supabase.from("chillbros_equipment").insert({
     customer_id: input.customerId,
     asset_tag: assetTag,
     equipment_type: input.equipmentType.trim().slice(0, 120),
@@ -81,10 +82,10 @@ export async function createEquipmentAction(input: EquipmentInput): Promise<Resu
     serial_number: clean(input.serialNumber, 160),
     refrigerant: clean(input.refrigerant, 80),
     notes: clean(input.notes, 4000),
-  });
-  if (error) return { ok: false, error: error.code === "23505" ? "That asset tag is already in use." : error.message };
+  }).select("id").single();
+  if (error || !data) return { ok: false, error: error?.code === "23505" ? "That asset tag is already in use." : error?.message ?? "Equipment could not be created." };
   refreshEquipment(input.customerId);
-  return { ok: true };
+  return { ok: true, data: { equipmentId: data.id } };
 }
 
 export async function updateEquipmentAction(input: EquipmentInput & { id: string }): Promise<Result> {
