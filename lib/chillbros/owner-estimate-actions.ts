@@ -40,7 +40,7 @@ function refresh(token?: string | null) {
   }
 }
 
-export async function replaceEstimateLinesForManagerAction(invoiceId: string, lines: OwnerEstimateRevisionLine[], notes: string): Promise<Result> {
+export async function replaceEstimateLinesForManagerAction(invoiceId: string, lines: OwnerEstimateRevisionLine[], notes: string, equipmentId?: string | null): Promise<Result> {
   const profile = await getCurrentStaffProfile();
   if (!profile || profile.role !== "manager") return { ok: false, error: "Manager access required." };
   if (!invoiceId) return { ok: false, error: "Estimate is required." };
@@ -60,6 +60,17 @@ export async function replaceEstimateLinesForManagerAction(invoiceId: string, li
   if (invoice.payment_status === "paid") return { ok: false, error: "Paid invoices are locked. Use a credit/refund." };
   if (invoice.status === "approved") return { ok: false, error: "Reopen the unpaid invoice before editing its prices. Paid invoices require credits/refunds." };
   if (!["draft", "awaiting_approval"].includes(invoice.status)) return { ok: false, error: "This estimate is not editable." };
+
+  if (equipmentId !== undefined && invoice.job_id) {
+    const { data: job } = await supabase.from("chillbros_jobs").select("customer_id").eq("id", invoice.job_id).maybeSingle();
+    if (!job) return { ok: false, error: "Service call was not found." };
+    if (equipmentId) {
+      const { data: unit } = await supabase.from("chillbros_equipment").select("id,customer_id").eq("id", equipmentId).maybeSingle();
+      if (!unit || unit.customer_id !== job.customer_id) return { ok: false, error: "Selected equipment does not belong to this customer." };
+    }
+    const { error: equipmentError } = await supabase.from("chillbros_jobs").update({ equipment_id: equipmentId || null, updated_at: new Date().toISOString() }).eq("id", invoice.job_id);
+    if (equipmentError) return { ok: false, error: equipmentError.message };
+  }
 
   const { error } = await supabase.rpc("chillbros_manager_replace_estimate_lines", {
     p_invoice_id: invoiceId,
