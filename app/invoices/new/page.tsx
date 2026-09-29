@@ -55,19 +55,19 @@ export default async function NewInvoicePage({ searchParams }: Props) {
               <label className={label}>Service location<input name="jobLocation" placeholder="Optional" className={`${input} mt-1`} /></label>
               <label className={label}>Description<input name="jobDescription" placeholder={isQuote ? "Quoted work / scope" : "Service performed / invoice description"} className={`${input} mt-1`} /></label>
             </div>
-            <label className={label}>Work / scope notes<TextareaWithAI name="workPerformed" rows={3} placeholder="Optional internal or customer-facing summary" className={`${input} mt-1 resize-y`} /></label>
+            <label className={label}>Internal work notes<TextareaWithAI name="workPerformed" rows={3} placeholder="Office / technician context. This is internal and is not the customer note." className={`${input} mt-1 resize-y`} /></label>
           </div>
         </section>
 
         <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4 sm:p-5">
-          <h2 className="text-xl font-semibold text-white">2. Items</h2>
-          <p className="mt-1 text-sm text-zinc-400">Start with one line item. Add more only when you need them.</p>
+          <h2 className="text-xl font-semibold text-white">2. Labor, Parts & Charges</h2>
+          <p className="mt-1 text-sm text-zinc-400">Use the same item workflow for quotes and invoices. Choose an inventory part, service fee, price-book item, or enter a manual labor/part line.</p>
           <LineItemsEditor parts={parts} fees={fees} priceBook={priceBook} />
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className={label}>Discount $<input name="discount" type="number" min="0" step="0.01" defaultValue="0" className={`${input} mt-1`} /></label>
             <label className={label}>Sales tax %<input name="taxRate" type="number" min="0" max="25" step="0.001" defaultValue="8.25" className={`${input} mt-1`} /></label>
           </div>
-          <label className={`${label} mt-3 block`}>Customer notes<TextareaWithAI name="notes" rows={3} placeholder="Warranty, terms, thank-you note, exclusions, etc." className={`${input} mt-1 resize-y`} /></label>
+          <label className={`${label} mt-3 block`}>Customer notes (shown on quote / invoice)<TextareaWithAI name="notes" rows={3} placeholder="Customer-facing work summary, warranty, terms, exclusions, or thank-you note." className={`${input} mt-1 resize-y`} /></label>
         </section>
 
         <section className="rounded-3xl border border-amber-400/25 bg-amber-500/[0.04] p-4 sm:p-5">
