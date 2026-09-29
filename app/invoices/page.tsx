@@ -51,12 +51,12 @@ export default async function InvoicesPage({ searchParams }: Props) {
 
   const renderCard = (row: InvoiceCenterRow, simple = false) => {
     const paid = row.paymentStatus === "paid"; const approved = row.status === "approved"; const isQuote = row.invoiceNumber.toUpperCase().startsWith("Q-") || !row.issuedAt; const documentLabel = isQuote ? "Quote" : "Invoice";
-    const tone = paid ? "emerald" : row.daysOverdue > 0 ? "amber" : approved ? "emerald" : row.status === "void" ? undefined : "amber";
+    const tone = paid ? "emerald" : row.daysOverdue > 0 ? "amber" : approved ? "emerald" : row.status === "void" ? undefined : "amber"; const displayStatus = paid ? "Paid" : !isQuote && row.paymentStatus !== "paid" ? (row.daysOverdue > 0 ? "Payment overdue" : "Waiting for payment") : row.status.replace(/_/g," ");
     const equipmentLabel = row.equipment.length ? row.equipment.slice(0, 2).join(" · ") : row.jobScope?.trim() || "No equipment linked";
     return <article key={row.id} className={`rounded-2xl border ${simple ? "border-[#8ffafa]/40 bg-[#06111b]/95" : "border-[#2d7dff]/20 bg-zinc-950/75"} p-4`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">{documentLabel} · {row.invoiceNumber}</p><h3 className="mt-1 truncate text-lg font-semibold text-white">{row.customerName}</h3><p className="mt-1 line-clamp-2 text-sm text-zinc-300">{equipmentLabel}</p></div>
-        <div className="shrink-0 text-right"><p className="text-2xl font-semibold text-[#bafcfc]">{money.format(row.total)}</p><div className="mt-1"><StatusPill tone={tone}>{paid ? "Paid" : row.status.replace(/_/g," ")}</StatusPill></div></div>
+        <div className="shrink-0 text-right"><p className="text-2xl font-semibold text-[#bafcfc]">{money.format(row.total)}</p><div className="mt-1"><StatusPill tone={tone}>{displayStatus}</StatusPill></div></div>
       </div>
       <details className="group mt-3 rounded-xl border border-[#2d7dff]/15 bg-black/25">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-semibold text-[#d9fbff]"><span>Details & actions</span><span className="text-xs text-zinc-500 group-open:hidden">Open</span><span className="hidden text-xs text-zinc-500 group-open:inline">Close</span></summary>
