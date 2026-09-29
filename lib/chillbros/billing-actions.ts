@@ -129,7 +129,7 @@ export async function sendInvoiceCommunicationAction(invoiceId: string, channel:
   const invoice = await getInvoiceV2ById(invoiceId);
   if (!invoice) return { ok: false, error: "Active invoice was not found." };
   if (reminder && (invoice.status !== "approved" || invoice.paymentStatus === "paid")) return { ok: false, error: "Reminders are only for approved unpaid invoices." };
-  const deliveryType = reminder ? "reminder" : invoice.paymentStatus === "paid" ? "receipt" : invoice.status === "approved" ? "invoice" : "estimate";
+  const deliveryType = reminder ? "reminder" : invoice.paymentStatus === "paid" ? "receipt" : invoice.issuedAt ? "invoice" : "estimate";
   const result = await sendBillingDeliveryRecorded(invoiceId, deliveryType, channel, recipient);
   if (result.status === "sent" && reminder) {
     const supabase = createServiceRoleClient();
