@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { CustomerFields } from "@/components/customer-fields";
 import { TextareaWithAI } from "@/components/textarea-with-ai";
 import { getCustomers, getFeeSettings, getPartsCatalog, getPriceBookEntries } from "@/lib/chillbros/queries";
+import { getEquipment } from "@/lib/chillbros/equipment-queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createDirectInvoiceAction } from "./actions";
 import { CreateDocumentButton } from "./create-button";
@@ -23,7 +24,7 @@ export default async function NewInvoicePage({ searchParams }: Props) {
   const params = await searchParams;
   const documentType = params.type === "quote" ? "quote" : "invoice";
   const isQuote = documentType === "quote";
-  const [customers, parts, fees, priceBook] = await Promise.all([getCustomers(), getPartsCatalog(), getFeeSettings(), getPriceBookEntries()]);
+  const [customers, parts, fees, priceBook, equipment] = await Promise.all([getCustomers(), getPartsCatalog(), getFeeSettings(), getPriceBookEntries(), getEquipment(1000)]);
   const selectedCustomerId = customers.some((customer) => customer.id === params.customer) ? String(params.customer) : "";
 
   return <AppShell title={isQuote ? "New Quote" : "New Invoice"} description="Create billing documents immediately. No open job or scheduled service call is required.">
@@ -55,6 +56,8 @@ export default async function NewInvoicePage({ searchParams }: Props) {
               <label className={label}>Service location<input name="jobLocation" placeholder="Optional" className={`${input} mt-1`} /></label>
               <label className={label}>Description<input name="jobDescription" placeholder={isQuote ? "Quoted work / scope" : "Service performed / invoice description"} className={`${input} mt-1`} /></label>
             </div>
+            <label className={label}>Equipment being serviced<select name="equipmentId" className={`${input} mt-1`}><option value="">Choose saved equipment (optional)</option>{equipment.map((unit) => <option key={unit.id} value={unit.id}>{unit.customerName} · {[unit.manufacturer, unit.model].filter(Boolean).join(" ") || unit.equipmentType}{unit.serialNumber ? ` · S/N ${unit.serialNumber}` : ""}</option>)}</select></label>
+            <details className="rounded-xl border border-[#2d7dff]/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-[#d9fbff]">+ Add new equipment information</summary><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className={label}>Equipment type<input name="equipmentType" placeholder="RTU, walk-in freezer, ice machine..." className={`${input} mt-1`} /></label><label className={label}>Manufacturer<input name="equipmentManufacturer" className={`${input} mt-1`} /></label><label className={label}>Model<input name="equipmentModel" className={`${input} mt-1`} /></label><label className={label}>Serial number<input name="equipmentSerial" className={`${input} mt-1`} /></label><label className={label}>Refrigerant<input name="equipmentRefrigerant" className={`${input} mt-1`} /></label><label className={label}>Equipment notes<input name="equipmentNotes" placeholder="Customer-visible unit context / service notes" className={`${input} mt-1`} /></label></div></details>
             <label className={label}>Internal work notes<TextareaWithAI name="workPerformed" rows={3} placeholder="Office / technician context. This is internal and is not the customer note." className={`${input} mt-1 resize-y`} /></label>
           </div>
         </section>

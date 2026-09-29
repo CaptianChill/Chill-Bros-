@@ -56,8 +56,25 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const subtotal = lines.reduce((sum, row) => sum + row.quantity * row.unit_price, 0); if (subtotal <= 0 || subtotal > 250000) fail(`${type === "quote" ? "Quote" : "Invoice"} subtotal must be between $0.01 and $250,000.`, type);
   const discount = Math.max(0, Math.min(money(formData, "discount"), subtotal)); const taxRate = Math.max(0, Math.min(money(formData, "taxRate"), 25)); const taxableSubtotal = lines.filter((row) => row.taxable).reduce((sum, row) => sum + row.quantity * row.unit_price, 0); const taxableAfterDiscount = subtotal > 0 ? Math.max(0, taxableSubtotal - discount * (taxableSubtotal / subtotal)) : 0; const taxAmount = Math.round(taxableAfterDiscount * taxRate) / 100;
   const downPaymentTypeInput = text(formData, "downPaymentType"); const downPaymentType = downPaymentTypeInput === "percent" || downPaymentTypeInput === "dollar" ? downPaymentTypeInput : null; const downPaymentValueRaw = Math.max(0, money(formData, "downPaymentValue")); const downPaymentValue = downPaymentType === "percent" ? Math.min(downPaymentValueRaw, 100) : downPaymentType === "dollar" ? Math.min(downPaymentValueRaw, 250000) : 0;
+  let equipmentId = text(formData, "equipmentId");
+  if (equipmentId) {
+    const { data: unit } = await supabase.from("chillbros_equipment").select("id,customer_id").eq("id", equipmentId).maybeSingle();
+    if (!unit || unit.customer_id !== customerId) fail("Selected equipment does not belong to this customer.", type);
+  } else if (text(formData, "equipmentType")) {
+    const { data: unit, error: unitError } = await supabase.from("chillbros_equipment").insert({
+      customer_id: customerId,
+      equipment_type: text(formData, "equipmentType").slice(0,120),
+      manufacturer: text(formData, "equipmentManufacturer").slice(0,160) || null,
+      model: text(formData, "equipmentModel").slice(0,160) || null,
+      serial_number: text(formData, "equipmentSerial").slice(0,160) || null,
+      refrigerant: text(formData, "equipmentRefrigerant").slice(0,80) || null,
+      notes: text(formData, "equipmentNotes").slice(0,4000) || null,
+    }).select("id").single();
+    if (unitError || !unit) fail(unitError?.message ?? "Could not save equipment.", type);
+    equipmentId = unit.id;
+  }
   const jobLocation = text(formData, "jobLocation") || text(formData, "customerAddress") || null; const scope = text(formData, "jobDescription") || `Standalone ${type}`; const now = new Date().toISOString();
-  const { data: job, error: jobError } = await supabase.from("chillbros_jobs").insert({ customer_id: customerId, assigned_tech_id: profile.id, status: "scheduled", location: jobLocation, scope: scope.slice(0,4000), work_performed: text(formData,"workPerformed").slice(0,4000) || null, scheduled_window: `Standalone ${type} · internal billing record` }).select("id").single();
+  const { data: job, error: jobError } = await supabase.from("chillbros_jobs").insert({ customer_id: customerId, equipment_id: equipmentId || null, assigned_tech_id: profile.id, status: "scheduled", location: jobLocation, scope: scope.slice(0,4000), work_performed: text(formData,"workPerformed").slice(0,4000) || null, scheduled_window: `Standalone ${type} · internal billing record` }).select("id").single();
   if (jobError || !job) fail(jobError?.message ?? `Could not create standalone ${type}.`, type);
   const inventoryByPart = new Map<string, number>(); if (type === "invoice") for (const row of lines) if (row.inventoryPartId) inventoryByPart.set(row.inventoryPartId, (inventoryByPart.get(row.inventoryPartId) ?? 0) + row.quantity);
   const allocatedJobPartIds: string[] = []; const rollbackInventory = async () => { for (const jobPartId of allocatedJobPartIds.reverse()) { try { await supabase.rpc("chillbros_set_job_part_quantity", { p_job_part_id: jobPartId, p_quantity: 0 }); } catch {} } };

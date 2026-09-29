@@ -7,6 +7,7 @@ import { ArrowRight, Save, Sparkles } from "lucide-react";
 
 import { createEquipmentLinkedJobAction } from "@/lib/chillbros/equipment-job-intake";
 import { createCustomerAction } from "@/lib/chillbros/operations";
+import { createEquipmentAction } from "@/lib/chillbros/equipment";
 import { partsProHref } from "@/lib/chillbros/parts-pro";
 import { displayTime } from "@/lib/chillbros/schedule-window";
 
@@ -30,6 +31,8 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
   const [customerId, setCustomerId] = useState(initialCustomerId ?? "");
   const [customer, setCustomer] = useState({ name: "", phone: "", email: "", address: "" });
   const [equipmentId, setEquipmentId] = useState("");
+  const [addEquipment, setAddEquipment] = useState(false);
+  const [equipment, setEquipment] = useState({ equipmentType: "", manufacturer: "", model: "", serialNumber: "", refrigerant: "" });
   const [location, setLocation] = useState("");
   const [scope, setScope] = useState("");
   const [approved, setApproved] = useState(false);
@@ -59,10 +62,24 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
         if (!created.ok) return setError(created.error);
         id = created.data.customerId;
       }
+      let unitId = newCustomer ? "" : equipmentId;
+      if (addEquipment) {
+        if (!equipment.equipmentType.trim()) return setError("Enter the equipment type.");
+        const createdUnit = await createEquipmentAction({
+          customerId: id,
+          equipmentType: equipment.equipmentType,
+          manufacturer: equipment.manufacturer,
+          model: equipment.model,
+          serialNumber: equipment.serialNumber,
+          refrigerant: equipment.refrigerant,
+        });
+        if (!createdUnit.ok) return setError(createdUnit.error);
+        unitId = createdUnit.data.equipmentId;
+      }
       const fullScope = approved ? `${scope.trim()}\nRepair approved verbally by customer.` : scope.trim();
       const result = await createEquipmentLinkedJobAction({
         customerId: id,
-        equipmentId: newCustomer ? null : equipmentId || null,
+        equipmentId: unitId || null,
         assignedTechId: techId || null,
         location: location.trim() || (newCustomer ? customer.address : ""),
         scope: fullScope,
@@ -99,16 +116,30 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
               </select>
             </label>
             {customerId ? (
-              <label className={labelClass}>
-                Unit (optional)
-                <select value={equipmentId} onChange={(e) => setEquipmentId(e.target.value)} className={field}>
-                  <option value="">{customerUnits.length ? "No specific unit" : "No saved units for this customer"}</option>
-                  {customerUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.label}</option>)}
-                </select>
-              </label>
+              <>
+                <label className={labelClass}>
+                  Unit being serviced
+                  <select value={equipmentId} onChange={(e) => { setEquipmentId(e.target.value); setAddEquipment(false); }} className={field}>
+                    <option value="">{customerUnits.length ? "Choose saved unit or add new below" : "No saved units yet"}</option>
+                    {customerUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.label}</option>)}
+                  </select>
+                </label>
+                <button type="button" onClick={() => { setAddEquipment((value) => !value); setEquipmentId(""); }} className="min-h-11 w-full rounded-xl border border-[#1557B0] bg-[#F8FAFD] px-3 font-semibold text-[#1557B0]">{addEquipment ? "Use saved equipment" : "+ Add equipment information"}</button>
+              </>
             ) : null}
           </>
         )}
+        {(addEquipment || newCustomer) ? <div className="rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] p-3">
+          <p className="mb-2 text-sm font-bold text-[#0A1A33]">Equipment information</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className={labelClass}>Equipment type<input value={equipment.equipmentType} onChange={(e) => setEquipment({ ...equipment, equipmentType: e.target.value })} placeholder="Walk-in freezer, RTU, ice machine..." className={field} /></label>
+            <label className={labelClass}>Manufacturer<input value={equipment.manufacturer} onChange={(e) => setEquipment({ ...equipment, manufacturer: e.target.value })} placeholder="True, Carrier, Hoshizaki..." className={field} /></label>
+            <label className={labelClass}>Model<input value={equipment.model} onChange={(e) => setEquipment({ ...equipment, model: e.target.value })} className={field} /></label>
+            <label className={labelClass}>Serial number<input value={equipment.serialNumber} onChange={(e) => setEquipment({ ...equipment, serialNumber: e.target.value })} className={field} /></label>
+            <label className={labelClass}>Refrigerant<input value={equipment.refrigerant} onChange={(e) => setEquipment({ ...equipment, refrigerant: e.target.value })} placeholder="R-404A, R-290, R-410A..." className={field} /></label>
+          </div>
+          <p className="mt-2 text-xs text-[#2B3F5C]">Saving the call creates this unit once and links the call to it, so future service visits build the unit&apos;s permanent history.</p>
+        </div> : null}
         <label className={labelClass}>
           Service address
           <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={selectedCustomer?.address ? `Uses ${selectedCustomer.address}` : "Uses the customer's address"} className={field} />
