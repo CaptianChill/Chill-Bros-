@@ -95,8 +95,8 @@ export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProH
       } catch {
         // Nothing to clean up.
       }
-      const message = verbal ? "Quote approved (verbal). Ready for the work." : "Quote sent to the customer for approval.";
-      router.push(`/jobs/${jobId}?success=${encodeURIComponent(message)}`);
+      if (verbal) { router.push(`/jobs/${jobId}?success=${encodeURIComponent("Customer verbal approval recorded. Continue the work, then create the invoice.")}`); } else { router.push(`/jobs/${jobId}?success=${encodeURIComponent("Quote sent to the customer for approval.")}`); }
+      router.refresh();
     });
   };
 
