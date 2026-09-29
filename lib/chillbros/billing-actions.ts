@@ -209,3 +209,30 @@ export async function ensureInvoiceArchiveAction(invoiceId: string, stage: Archi
   refreshInvoicePaths(invoice.portalToken);
   return { ok: true, data: undefined };
 }
+
+
+export async function convertQuoteToInvoiceAction(invoiceId: string): Promise<Result> {
+  const guard = await requireOfficeOrManager();
+  if (!guard.ok) return guard;
+  const supabase = createServiceRoleClient();
+  const { data: invoice, error: readError } = await supabase.from("chillbros_invoices")
+    .select("id,job_id,status,payment_status,issued_at,payment_terms,due_at,portal_token,revoked_at")
+    .eq("id", invoiceId).maybeSingle();
+  if (readError || !invoice) return { ok: false, error: readError?.message ?? "Quote not found." };
+  if (invoice.revoked_at || invoice.status === "void") return { ok: false, error: "Quote is not active." };
+  if (invoice.payment_status === "paid") return { ok: false, error: "Paid documents cannot be converted." };
+  if (invoice.issued_at) return { ok: false, error: "This document is already an invoice." };
+  const now = new Date();
+  const terms = (invoice.payment_terms ?? "due_on_receipt") as PaymentTerms;
+  const dueAt = approvalDueAt(terms, invoice.due_at, now);
+  const { data: updated, error } = await supabase.from("chillbros_invoices")
+    .update({ issued_at: now.toISOString(), due_at: dueAt, updated_at: now.toISOString() })
+    .eq("id", invoiceId).is("issued_at", null).is("revoked_at", null).select("id").maybeSingle();
+  if (error || !updated) return { ok: false, error: error?.message ?? "Quote changed. Refresh and try again." };
+  await supabase.from("chillbros_workflow_events").insert({
+    job_id: invoice.job_id, invoice_id: invoiceId, actor_id: guard.profile.id,
+    stage: "invoice_issued", message: "Quote converted to invoice by office/manager. Existing customer notes and line items were preserved."
+  });
+  refreshInvoicePaths(invoice.portal_token);
+  return { ok: true, data: undefined };
+}
