@@ -15,8 +15,12 @@ type SquareEvent = { event_id?: string; type?: string; data?: { object?: { payme
 // invoice or down payment paid once Square reports the payment COMPLETED.
 export async function POST(request: Request) {
   const raw = await request.text();
-  const notificationUrl = String(process.env.SQUARE_WEBHOOK_URL || "").trim() || request.url;
-  if (!verifySquareSignature(raw, request.headers.get("x-square-hmacsha256-signature"), notificationUrl)) {
+  const signature = request.headers.get("x-square-hmacsha256-signature");
+  const configuredUrl = String(process.env.SQUARE_WEBHOOK_URL || "").trim();
+  const canonicalUrl = "https://chill-bros.vercel.app/api/payments/square/webhook";
+  const candidates = Array.from(new Set([configuredUrl, request.url, canonicalUrl].filter(Boolean)));
+  if (!candidates.some((url) => verifySquareSignature(raw, signature, url))) {
+    console.error("[square-webhook] invalid signature", { configured: Boolean(configuredUrl), requestUrl: request.url });
     return new NextResponse("Invalid signature", { status: 401 });
   }
   const event = JSON.parse(raw) as SquareEvent;

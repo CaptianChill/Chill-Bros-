@@ -29,6 +29,7 @@ export type DiscoveredRevenueLead = {
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
 ] as const;
 
 async function fetchOverpass(query: string): Promise<OverpassPayload> {
@@ -42,7 +43,7 @@ async function fetchOverpass(query: string): Promise<OverpassPayload> {
         },
         body: new URLSearchParams({ data: query }),
         cache: "no-store",
-        signal: AbortSignal.timeout(12000),
+        signal: AbortSignal.timeout(20000),
       });
       if (!response.ok) continue;
       const payload = (await response.json()) as OverpassPayload;
@@ -52,7 +53,7 @@ async function fetchOverpass(query: string): Promise<OverpassPayload> {
       // Try the next global instance before surfacing a failure to the user.
     }
   }
-  throw new Error("Lead discovery sources are temporarily unavailable. Revenue Radar tried its backup source too; try the scan again shortly.");
+  throw new Error("Lead discovery sources are temporarily unavailable. Revenue Radar tried all configured discovery sources; try the scan again shortly.");
 }
 
 function serviceFit(tags: Record<string, string>) {

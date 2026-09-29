@@ -162,8 +162,13 @@ export async function finalizeInvoiceAction(invoiceId: string): Promise<Result> 
   }).eq("id", invoiceId).eq("status", invoice.status).eq("updated_at", invoice.updated_at).is("revoked_at", null).neq("payment_status", "paid").select("id").maybeSingle();
   if (error || !updated) return { ok: false, error: error?.message ?? "Invoice changed. Refresh before finalizing." };
   const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.job_id, invoice_id: invoiceId, actor_id: guard.profile.id, stage: "invoice_finalized", message: "Approved by Chill Bros office. Finalized and held for review before it is sent to the customer." });
-  refreshInvoicePaths(invoice.portal_token);
   if (eventError) return { ok: false, error: `Invoice finalized, but audit logging failed: ${eventError.message}` };
+  try {
+    await archiveInvoicePdf(invoiceId, "approved", guard.profile.id);
+  } catch (archiveError) {
+    return { ok: false, error: `Invoice finalized, but its permanent PDF could not be created: ${archiveError instanceof Error ? archiveError.message : "PDF archive failed."}` };
+  }
+  refreshInvoicePaths(invoice.portal_token);
   return { ok: true, data: undefined };
 }
 
