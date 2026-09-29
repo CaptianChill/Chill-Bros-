@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createEstimateV2Action, type EstimateAdjustments, type EstimateDraftLine } from "@/lib/chillbros/estimate-actions-v2";
 import { addJobPartAtomicAction } from "@/lib/chillbros/job-parts";
-import { approveEstimateLifecycleAction } from "@/lib/chillbros/job-lifecycle-actions";
+
 import { createPartAction, updatePartAction } from "@/lib/chillbros/operations";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
@@ -21,9 +21,23 @@ export async function approveQuoteVerballyAction(jobId: string, lines: EstimateD
   if (profile?.role !== "manager") return { ok: false, error: "Only the owner can record a verbal approval." };
   const created = await createEstimateV2Action(jobId, lines, notes, adjustments, { sendToCustomer: false });
   if (!created.ok) return created;
-  const approved = await approveEstimateLifecycleAction(created.data.portalToken, `Verbal approval, taken by ${profile.fullName}`.slice(0, 200));
-  if (!approved.ok) return { ok: false, error: `Quote saved, but the approval didn't record: ${approved.error}` };
+  // Verbal approval is an authenticated owner action. Do not route it through
+  // the public portal approval path, which can trigger auth/key verification.
+  const supabase = createServiceRoleClient();
+  const now = new Date().toISOString();
+  const signature = `Verbal approval, taken by ${profile.fullName}`.slice(0, 200);
+  const { data: approved, error: approvalError } = await supabase
+    .from("chillbros_invoices")
+    .update({ status: "approved", signature_name: signature, signed_at: now, issued_at: null, due_at: null, updated_at: now })
+    .eq("id", created.data.estimateId)
+    .eq("status", "awaiting_approval")
+    .is("revoked_at", null)
+    .select("id")
+    .maybeSingle();
+  if (approvalError || !approved) return { ok: false, error: `Quote saved, but verbal approval could not be recorded: ${approvalError?.message ?? "Approval update failed."}` };
+  await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: created.data.estimateId, actor_id: profile.id, stage: "approved_needs_action", message: `Customer approved quote verbally. Recorded by ${profile.fullName}. Work is sold; proceed with work and issue the invoice when complete.` });
   revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/invoices");
   return { ok: true, data: { estimateId: created.data.estimateId } };
 }
 
