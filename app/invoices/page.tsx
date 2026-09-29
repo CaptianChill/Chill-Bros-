@@ -11,6 +11,8 @@ import { StatusPill } from "@/components/status-pill";
 import { getInvoiceCenterData, type InvoiceCenterRow } from "@/lib/chillbros/billing-queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
+import { getEquipmentByCustomer } from "@/lib/chillbros/equipment-queries";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ q?: string; status?: string; focus?: string; edit?: string; success?: string; error?: string; missingEmail?: string; created?: string }> };
@@ -36,6 +38,8 @@ export default async function InvoicesPage({ searchParams }: Props) {
   const profile = await getCurrentStaffProfile(); if (!profile || !["manager","office"].includes(profile.role)) redirect("/");
   const params = await searchParams;
   const editInvoice = profile.role === "manager" && params.focus && params.edit === "1" ? await getInvoiceV2ById(params.focus) : null;
+  const editEquipment = editInvoice ? await getEquipmentByCustomer(editInvoice.customerId) : [];
+  const editJobEquipmentId = editInvoice?.jobId ? (await createServiceRoleClient().from("chillbros_jobs").select("equipment_id").eq("id", editInvoice.jobId).maybeSingle()).data?.equipment_id ?? null : null;
   const filter = FILTERS.some(([value]) => value === params.status) ? String(params.status) : "active";
   const query = String(params.q || "").trim().toLowerCase();
   const { rows, metrics } = await getInvoiceCenterData();
@@ -60,7 +64,7 @@ export default async function InvoicesPage({ searchParams }: Props) {
     <div className="space-y-5">
       {params.success ? <p className="text-sm text-emerald-200">{params.success}</p> : null}
       {params.error ? <p className="text-sm text-rose-200">{params.error}</p> : null}
-      {editInvoice && ["draft", "awaiting_approval"].includes(editInvoice.status) && editInvoice.paymentStatus !== "paid" ? <OwnerEstimateEditor key={editInvoice.id} invoice={editInvoice} /> : null}
+      {editInvoice && ["draft", "awaiting_approval"].includes(editInvoice.status) && editInvoice.paymentStatus !== "paid" ? <OwnerEstimateEditor key={editInvoice.id} invoice={editInvoice} equipment={editEquipment.map((unit) => ({ id: unit.id, label: [[unit.manufacturer, unit.model].filter(Boolean).join(" ") || unit.equipmentType, unit.serialNumber ? `S/N ${unit.serialNumber}` : null].filter(Boolean).join(" · ") }))} currentEquipmentId={editJobEquipmentId} /> : null}
       {focused ? <><section role="status" className="rounded-3xl border border-emerald-400/30 bg-emerald-500/[0.06] p-4"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">{params.created ? `${focused.invoiceNumber} created — saved` : "Document ready"}</p><h2 className="mt-1 text-2xl font-semibold text-white">{params.created ? "Now send it to the customer" : "Open and send"}</h2>{params.created ? <p className="mt-1 text-sm text-zinc-300">It is not sent yet. Use Email or Text below. Don&apos;t create it again.</p> : null}</section>{renderCard(focused,true)}<div className="flex gap-2"><Link href="/invoices/new?type=invoice" className="rounded-xl border border-[#8ffafa]/35 px-4 py-3 text-sm text-white"><Plus className="mr-1 inline h-4 w-4"/>New invoice</Link><Link href="/invoices" className="rounded-xl border border-[#2d7dff]/25 px-4 py-3 text-sm text-zinc-300">Back</Link></div></> : <>
         <div className="grid grid-cols-2 gap-3"><Link href="/invoices/new?type=invoice" className="rounded-2xl border border-[#8ffafa]/45 bg-[#2d7dff]/15 p-3 text-center text-sm font-semibold text-white sm:p-4 sm:text-base">+ New Invoice</Link><Link href="/invoices/new?type=quote" className="rounded-2xl border border-[#2d7dff]/25 p-3 text-center text-sm font-semibold text-[#d9fbff] sm:p-4 sm:text-base">+ New Quote</Link></div>
         <SectionCard eyebrow="Receivables" title="Billing dashboard" description="Only active work stays in your face."><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[["Active",String(activeCount)],["Outstanding",money.format(metrics.outstandingValue)],["Overdue",money.format(metrics.overdueValue)],["Archived",String(archiveCount)]].map(([l,v]) => <div key={l} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3"><p className="text-xs text-zinc-500">{l}</p><p className="mt-2 text-xl font-semibold text-white">{v}</p></div>)}</div></SectionCard>
