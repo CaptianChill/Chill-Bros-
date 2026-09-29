@@ -50,6 +50,8 @@ export function InvoiceAdminControls(props: Props) {
   const [sendToPhone, setSendToPhone] = useState("");
   const taxLocked = props.status === "approved";
   const isAwaitingApproval = props.status === "awaiting_approval";
+  const isQuote = !props.issuedAt;
+  const documentLabel = isQuote ? "quote" : "invoice";
 
   const run = async (task: () => Promise<{ ok: boolean; error?: string; status?: string; data?: { recipient?: string | null; status?: string } }>, success: string, keepVisible = false) => {
     if (pending) return;
@@ -97,7 +99,7 @@ export function InvoiceAdminControls(props: Props) {
   };
 
   return <div className="space-y-3">
-    {pending ? <p className="rounded-xl border border-[#2d7dff]/30 bg-[#2d7dff]/10 px-3 py-2 text-xs text-[#d9fbff]">Sending invoice action…</p> : null}
+    {pending ? <p className="rounded-xl border border-[#2d7dff]/30 bg-[#2d7dff]/10 px-3 py-2 text-xs text-[#d9fbff]">Processing {documentLabel} action…</p> : null}
     {message ? <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">{message}</p> : null}
     {error ? <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</p> : null}
 
@@ -112,13 +114,13 @@ export function InvoiceAdminControls(props: Props) {
     <div className="flex flex-wrap gap-2">
       {["draft", "awaiting_approval"].includes(props.status) && props.paymentStatus !== "paid" ? <>
         {props.canManage ? <Link href={"/invoices?focus=" + props.invoiceId + "&edit=1"} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]">Edit document</Link> : null}
-        <button type="button" disabled={pending} onClick={() => void run(() => finalizeInvoiceAction(props.invoiceId), "Invoice finalized. Review the Document link below, then Email or Text it to the customer.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Finalize (review before sending)</button>
+        <button type="button" disabled={pending} onClick={() => void run(() => finalizeInvoiceAction(props.invoiceId), "Invoice finalized. Review the Document link below, then Email or Text it to the customer.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Finalize invoice (review before sending)</button>
       </> : null}
       {props.canManage && !props.issuedAt && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void run(() => convertQuoteToInvoiceAction(props.invoiceId), "Quote converted to invoice. Review it, then send it to the customer.")} className="rounded-xl border border-[#8ffafa]/45 bg-[#2d7dff]/10 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">Convert quote to invoice</button> : null}
       {props.canManage && props.status === "approved" && props.paymentStatus === "unpaid" ? <button type="button" disabled={pending} onClick={() => void run(() => reopenInvoiceAction(props.invoiceId), "Invoice reopened. Select Edit document to correct equipment, notes, or pricing, then Finalize & email.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Reopen to edit</button> : null}
       {props.canManage && props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void run(() => markInvoicePaidV2Action(props.invoiceId), "Payment recorded.", true)} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-xs text-emerald-100 disabled:opacity-40">Mark paid</button> : null}
-      <button type="button" disabled={pending} onClick={() => void send("email")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Mail className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Email receipt" : isAwaitingApproval ? "Email to customer" : props.status === "approved" ? "Email invoice" : "Email for customer approval"}</button>
-      <button type="button" disabled={pending} onClick={() => void send("sms")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><MessageSquareText className="h-3.5 w-3.5" />{isAwaitingApproval ? "Text to customer" : "Send text (auto)"}</button>
+      <button type="button" disabled={pending} onClick={() => void send("email")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Mail className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Email receipt" : isQuote ? "Email quote to customer" : "Email invoice to customer"}</button>
+      <button type="button" disabled={pending} onClick={() => void send("sms")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><MessageSquareText className="h-3.5 w-3.5" />{isQuote ? "Text quote to customer" : "Text invoice to customer"}</button>
       {props.customerPhone ? <button type="button" onClick={textFromMyPhone} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]"><MessageSquareText className="h-3.5 w-3.5" />Text from my phone</button> : null}
       {props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void send("email", true)} className="inline-flex items-center gap-2 rounded-xl border border-amber-400/25 px-3 py-2 text-xs text-amber-100 disabled:opacity-40"><Send className="h-3.5 w-3.5" />Email reminder</button> : null}
       {props.status === "approved" && !props.hasApprovedArchive ? <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await ensureInvoiceArchiveAction(props.invoiceId, "approved"); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Approved PDF archive created.")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Archive className="h-3.5 w-3.5" />Build approved PDF</button> : null}
