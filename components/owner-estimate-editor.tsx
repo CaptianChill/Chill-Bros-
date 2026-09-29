@@ -47,6 +47,13 @@ export function OwnerEstimateEditor({ invoice, equipment = [], currentEquipmentI
     const price = Number(line.unitPrice);
     return sum + (Number.isFinite(quantity) && Number.isFinite(price) ? quantity * price : 0);
   }, 0), [lines]);
+  const taxableSubtotal = useMemo(() => lines.reduce((sum, line) => {
+    if (!line.taxable) return sum;
+    const quantity = Number(line.quantity); const price = Number(line.unitPrice);
+    return sum + (Number.isFinite(quantity) && Number.isFinite(price) ? quantity * price : 0);
+  }, 0), [lines]);
+  const liveTax = taxableSubtotal * Math.max(0, Number(invoice.taxRate || 0)) / 100;
+  const liveTotal = Math.max(0, subtotal - Number(invoice.discountAmount || 0) + liveTax);
 
   const updateLine = (id: string, patch: Partial<Omit<DraftLine, "id">>) => setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
   const addLine = () => setLines((current) => current.length >= 20 ? current : [...current, makeLine()]);
@@ -78,7 +85,7 @@ export function OwnerEstimateEditor({ invoice, equipment = [], currentEquipmentI
     <summary className="cursor-pointer list-none">
       <div className="flex items-start justify-between gap-3">
         <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Edit document</p><p className="mt-1 font-medium text-white">Equipment, notes & pricing</p><p className="mt-1 text-xs text-zinc-400">Use this same editor for quotes and invoices. Save corrections, then finalize/send from the controls below.</p></div>
-        <p className="text-lg font-semibold text-[#bafcfc]">{money(subtotal)}</p>
+        <p className="text-lg font-semibold text-[#bafcfc]">{money(liveTotal)}</p>
       </div>
     </summary>
 
@@ -96,6 +103,8 @@ export function OwnerEstimateEditor({ invoice, equipment = [], currentEquipmentI
         <textarea value={line.description} onChange={(e) => updateLine(line.id, { description: e.target.value })} maxLength={1000} rows={2} placeholder="Description / scope" className="mt-2 w-full rounded-xl border border-[#2d7dff]/15 bg-zinc-950 px-3 py-2 text-sm text-zinc-300" />
         <label className="mt-2 inline-flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" checked={line.taxable} onChange={(e) => updateLine(line.id, { taxable: e.target.checked })} />Taxable line</label>
       </div>)}
+
+      <div className="rounded-xl border border-[#8ffafa]/25 bg-black/50 p-3 text-sm"><div className="flex justify-between text-zinc-300"><span>Subtotal</span><span>{money(subtotal)}</span></div>{invoice.discountAmount > 0 ? <div className="mt-1 flex justify-between text-emerald-200"><span>Discount</span><span>-{money(invoice.discountAmount)}</span></div> : null}<div className="mt-1 flex justify-between text-zinc-300"><span>Sales tax ({invoice.taxRate}%)</span><span>{money(liveTax)}</span></div><div className="mt-2 flex justify-between border-t border-[#2d7dff]/20 pt-2 text-lg font-bold text-white"><span>Total with tax</span><span className="text-[#bafcfc]">{money(liveTotal)}</span></div></div>
 
       <button type="button" onClick={addLine} disabled={pending || lines.length >= 20} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-sm text-[#d9fbff] disabled:opacity-40"><Plus className="h-4 w-4" />Add line item</button>
 

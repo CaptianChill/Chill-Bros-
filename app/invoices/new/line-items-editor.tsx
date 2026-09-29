@@ -41,6 +41,19 @@ function usd(value: number) {
 export function LineItemsEditor({ parts, fees, priceBook }: Props) {
   const [rowIds, setRowIds] = useState<number[]>([0]);
   const [nextId, setNextId] = useState(1);
+  const [previewSubtotal, setPreviewSubtotal] = useState(0);
+  const [previewTaxable, setPreviewTaxable] = useState(0);
+
+  function recalc(form: HTMLDivElement) {
+    let subtotal = 0, taxable = 0;
+    for (let i = 0; i < MAX_LINE_ITEMS; i++) {
+      const qty = Number((form.querySelector(`[name="itemQty${i}"]`) as HTMLInputElement | null)?.value || 0);
+      const price = Number((form.querySelector(`[name="itemPrice${i}"]`) as HTMLInputElement | null)?.value || 0);
+      const amount = qty * price; subtotal += amount;
+      if ((form.querySelector(`[name="itemTaxable${i}"]`) as HTMLInputElement | null)?.checked) taxable += amount;
+    }
+    setPreviewSubtotal(subtotal); setPreviewTaxable(taxable);
+  }
 
   function addLine() {
     if (rowIds.length >= MAX_LINE_ITEMS) return;
@@ -52,7 +65,7 @@ export function LineItemsEditor({ parts, fees, priceBook }: Props) {
     setRowIds((current) => current.length > 1 ? current.filter((rowId) => rowId !== id) : current);
   }
 
-  return <div className="mt-4 space-y-3">
+  return <div className="mt-4 space-y-3" onInput={(e) => recalc(e.currentTarget)} onChange={(e) => recalc(e.currentTarget)}>
     {rowIds.map((rowId, i) => <div key={rowId} className="rounded-2xl border border-[#2d7dff]/15 bg-zinc-950/65 p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Labor / Part / Charge {i + 1}</div>
@@ -74,6 +87,8 @@ export function LineItemsEditor({ parts, fees, priceBook }: Props) {
         <label className="flex min-h-12 items-center gap-2 rounded-xl border border-[#2d7dff]/20 px-3 text-sm text-zinc-300"><input name={`itemTaxable${i}`} type="checkbox" /> Taxable</label>
       </div>
     </div>)}
+
+    <div className="rounded-2xl border border-[#8ffafa]/25 bg-zinc-950/70 p-3 text-sm"><div className="flex justify-between text-zinc-300"><span>Parts / charges subtotal</span><span>{usd(previewSubtotal)}</span></div><div className="mt-1 flex justify-between text-zinc-400"><span>Taxable amount</span><span>{usd(previewTaxable)}</span></div><p className="mt-2 text-xs text-zinc-500">Sales tax and the final tax-included total update below with the document tax rate.</p></div>
 
     <button type="button" onClick={addLine} disabled={rowIds.length >= MAX_LINE_ITEMS} className="min-h-12 w-full rounded-2xl border border-[#8ffafa]/35 bg-[#2d7dff]/10 px-4 py-3 text-sm font-semibold text-[#d9fbff] disabled:cursor-not-allowed disabled:opacity-40">
       + Add labor / part / charge
