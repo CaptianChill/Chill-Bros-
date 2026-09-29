@@ -123,6 +123,14 @@ export default async function HomePage() {
           <Plus className="h-5 w-5" aria-hidden="true" />
           New service call
         </Link>
+        <div className="grid grid-cols-2 gap-2.5">
+          <Link href="/invoices/new?type=quote" className="flex min-h-[50px] items-center justify-center rounded-xl border-2 border-[#1557B0] bg-[#F8FAFD] px-3 text-center text-sm font-bold text-[#1557B0] transition hover:bg-[#EAF2FC]">
+            + New quote
+          </Link>
+          <Link href="/invoices/new?type=invoice" className="flex min-h-[50px] items-center justify-center rounded-xl border-2 border-[#1557B0] bg-[#F8FAFD] px-3 text-center text-sm font-bold text-[#1557B0] transition hover:bg-[#EAF2FC]">
+            + New invoice
+          </Link>
+        </div>
 
         <section id="needs-attention" className="cb-card hidden scroll-mt-4 overflow-hidden target:block" aria-labelledby="needs-attention-title">
           <h2 id="needs-attention-title" className="border-b border-[#0A1A33]/10 px-3.5 py-3 text-[28px] leading-none">Needs attention</h2>
