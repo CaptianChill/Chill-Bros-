@@ -68,7 +68,7 @@ export function OwnerEstimateEditor({ invoice, equipment = [], currentEquipmentI
         setError(result.error);
         return;
       }
-      setMessage("Owner revision saved. Customer view and invoice totals updated.");
+      setMessage("Document saved. Equipment, customer notes, and pricing are updated.");
       router.refresh();
       } catch (cause) { setError(cause instanceof Error ? cause.message : "Price changes could not be saved."); }
     });
@@ -77,7 +77,7 @@ export function OwnerEstimateEditor({ invoice, equipment = [], currentEquipmentI
   return <details className="rounded-2xl border border-[#8ffafa]/35 bg-[#08131a]/70 p-4" open>
     <summary className="cursor-pointer list-none">
       <div className="flex items-start justify-between gap-3">
-        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Owner override</p><p className="mt-1 font-medium text-white">Edit prices</p><p className="mt-1 text-xs text-zinc-400">Save corrections, then Finalize & email from the invoice controls.</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8ffafa]">Edit document</p><p className="mt-1 font-medium text-white">Equipment, notes & pricing</p><p className="mt-1 text-xs text-zinc-400">Use this same editor for quotes and invoices. Save corrections, then finalize/send from the controls below.</p></div>
         <p className="text-lg font-semibold text-[#bafcfc]">{money(subtotal)}</p>
       </div>
     </summary>
@@ -101,9 +101,9 @@ export function OwnerEstimateEditor({ invoice, equipment = [], currentEquipmentI
 
       {equipment.length ? <label className="block space-y-1"><span className="text-xs text-zinc-400">Equipment being serviced</span><select value={equipmentId} onChange={(e) => setEquipmentId(e.target.value)} className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white"><option value="">No specific unit</option>{equipment.map((unit) => <option key={unit.id} value={unit.id}>{unit.label}</option>)}</select></label> : null}
 
-      <label className="block space-y-1"><span className="text-xs text-zinc-400">Customer notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} rows={3} className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /><div className="flex flex-wrap items-center gap-2"><VoiceDictationButton getValue={() => notes} setValue={(next) => setNotes(next.slice(0, 2000))} /><AiTextAssist getValue={() => notes} setValue={(next) => setNotes(next.slice(0, 2000))} /></div></label>
+      <label className="block space-y-1"><span className="text-xs text-zinc-400">Customer notes (shown on quote / invoice)</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} rows={3} className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /><div className="flex flex-wrap items-center gap-2"><VoiceDictationButton getValue={() => notes} setValue={(next) => setNotes(next.slice(0, 2000))} /><AiTextAssist getValue={() => notes} setValue={(next) => setNotes(next.slice(0, 2000))} /></div></label>
 
-      <button type="button" onClick={save} disabled={pending || subtotal <= 0} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#8ffafa]/45 bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] disabled:opacity-50"><Save className="h-4 w-4" />{pending ? "Saving owner revision..." : "Save owner revision"}</button>
+      <button type="button" onClick={save} disabled={pending || subtotal <= 0} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#8ffafa]/45 bg-[#2d7dff]/10 px-4 py-3 font-medium text-[#d9fbff] disabled:opacity-50"><Save className="h-4 w-4" />{pending ? "Saving document..." : "Save document changes"}</button>
     </div>
   </details>;
 }
