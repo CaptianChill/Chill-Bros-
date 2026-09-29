@@ -34,6 +34,13 @@ async function resolveCanonicalTechnicianEmail(supabase:ReturnType<typeof create
 export async function sendTechnicianAssignmentEmail(jobId:string, kind:"assigned"|"updated"="assigned"){
   const supabase=createServiceRoleClient();
 
+  // Short server-side dedupe window protects against double submits and two mutation
+  // routes firing for the same user action. GET/render paths never call this function.
+  const dedupeStage = kind === "assigned" ? "technician_assignment_email_sent" : "technician_update_email_sent";
+  const cutoff = new Date(Date.now() - 30_000).toISOString();
+  const { data: recent } = await supabase.from("chillbros_workflow_events").select("id").eq("job_id", jobId).eq("stage", dedupeStage).gte("created_at", cutoff).limit(1);
+  if (recent?.length) return {sent:false as const,status:"deduplicated",recipient:null};
+
   const {data:job,error:jobError}=await supabase
     .from("chillbros_jobs")
     .select("id,customer_id,location,scope,scheduled_window,assigned_tech_id")
@@ -77,6 +84,9 @@ export async function sendTechnicianAssignmentEmail(jobId:string, kind:"assigned
   try{const result=await sendCompanyEmail(email,subject,text);status=result.sent?result.status:result.error;}catch(e){status=`failed: ${e instanceof Error?e.message.slice(0,160):"unknown"}`;}
   console.info(`[assignment-email] job=${jobId} assigned=${job.assigned_tech_id} recipient=${email} source=${resolved.source} status=${status}`);
   try{const {error}=await supabase.from("chillbros_email_log").insert({subject,recipients:email,status:status==="sent"?"sent":"failed"});if(error)console.error("[assignment-email] log insert failed",error);}catch(error){console.error("[assignment-email] log insert failed",error);}
+  if(status==="sent"){
+    try{await supabase.from("chillbros_workflow_events").insert({job_id:jobId,stage:dedupeStage,message:`Technician ${kind} email sent to ${email}.`});}catch(error){console.error("[assignment-email] dedupe event insert failed",error);}
+  }
   return {sent:status==="sent",status,recipient:email,profileId:resolved.profileId};
 }
 
