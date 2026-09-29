@@ -225,18 +225,24 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
           </ul>
         </section>
 
-        <JobPartsCard jobId={job.id} parts={job.parts} catalog={partsCatalog} canEdit={canEditParts && active} canAddCustom={profile.role === "manager"} partsProHref={partsPro} />
+        <section className="cb-card p-3.5">
+          <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 1</p><h2 className="text-xl font-bold text-[#0A1A33]">Parts & materials</h2><p className="mt-1 text-sm text-[#2B3F5C]">Add every part used or needed on this call here. These stay attached to the job for billing.</p></div>
+          <JobPartsCard jobId={job.id} parts={job.parts} catalog={partsCatalog} canEdit={canEditParts && active} canAddCustom={profile.role === "manager"} partsProHref={partsPro} />
+        </section>
 
         <section className="cb-card p-3.5">
+          <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 2</p><h2 className="text-xl font-bold text-[#0A1A33]">Technician notes</h2><p className="mt-1 text-sm text-[#2B3F5C]">Diagnosis, readings, work performed, and recommendations. Save before marking work done.</p></div>
           <TechNotes job={fieldJob} canEdit={isField && active} />
         </section>
 
         {isField || (isOffice && active) ? (
+          <section className="cb-card p-3.5">
+            <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 3</p><h2 className="text-xl font-bold text-[#0A1A33]">Quote / invoice</h2><p className="mt-1 text-sm text-[#2B3F5C]">Create the customer document from this same service call. Do not start a second call.</p></div>
           <div className="grid grid-cols-2 gap-2.5">
             {isField ? (
               <Link href={quoteHref} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#1557B0] bg-[#F8FAFD] px-3 font-semibold text-[#1557B0] ${isOffice && active ? "" : "col-span-2"}`}>
                 <FileText className="h-4 w-4" aria-hidden="true" />
-                {invoice ? "View quote" : "Build quote"}
+                {invoice ? (invoiceIssued ? "Open invoice" : "View / edit quote") : "Create quote"}
               </Link>
             ) : null}
             {isOffice && active ? (
@@ -245,6 +251,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
               </div>
             ) : null}
           </div>
+          </section>
         ) : null}
       </div>
 
