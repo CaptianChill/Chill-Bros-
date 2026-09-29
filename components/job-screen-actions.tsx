@@ -69,7 +69,7 @@ export function NextStepButton({ job, nextStatus, label }: { job: FieldJob; next
   );
 }
 
-// Tech notes: saves with the existing field-notes action. Hours are passed
+// Job notes: saves with the existing field-notes action. Hours are passed
 // through as they are so saving notes never resets them.
 export function TechNotes({ job, canEdit }: { job: FieldJob; canEdit: boolean }) {
   const id = useId();
@@ -86,7 +86,7 @@ export function TechNotes({ job, canEdit }: { job: FieldJob; canEdit: boolean })
         onChange={(event) => setNotes(event.target.value)}
         readOnly={!canEdit}
         rows={5}
-        placeholder="Diagnosis, readings, repair performed, recommendations…"
+        placeholder="Diagnosis, readings, work performed, recommendations. These notes become part of the customer equipment service history."
         className="mt-1.5 w-full rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] p-3 text-base font-medium text-[#0A1A33] placeholder:text-[#5B6B82] read-only:text-[#2B3F5C]"
       />
       {canEdit ? (
@@ -100,7 +100,7 @@ export function TechNotes({ job, canEdit }: { job: FieldJob; canEdit: boolean })
           {pending ? "Saving…" : "Save notes"}
         </button>
       ) : (
-        <p className="mt-1.5 text-[13px] text-[#2B3F5C]">The assigned technician writes these notes.</p>
+        <p className="mt-1.5 text-[13px] text-[#2B3F5C]">The assigned technician writes these job notes. Customers can see them in equipment service history.</p>
       )}
       <Feedback error={error} message={message} />
     </div>

@@ -231,7 +231,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
         </section>
 
         <section className="cb-card p-3.5">
-          <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 2</p><h2 className="text-xl font-bold text-[#0A1A33]">Technician notes</h2><p className="mt-1 text-sm text-[#2B3F5C]">Diagnosis, readings, work performed, and recommendations. Save before marking work done.</p></div>
+          <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 2</p><h2 className="text-xl font-bold text-[#0A1A33]">Job notes</h2><p className="mt-1 text-sm text-[#2B3F5C]">Technician diagnosis, readings, work performed, and recommendations. These notes are included in the customer equipment service history.</p></div>
           <TechNotes job={fieldJob} canEdit={isField && active} />
         </section>
 
