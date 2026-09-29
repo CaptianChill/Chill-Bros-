@@ -14,7 +14,16 @@ import { getJob } from "@/lib/chillbros/queries";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Chill Pros · Your service document" };
+export const metadata: Metadata = {
+  title: "Chill Pros · Your service document",
+  description: "View your Chill Pros service document.",
+  openGraph: {
+    title: "Chill Pros · Your service document",
+    description: "View your Chill Pros service document.",
+    images: [{ url: "/brand/chill-pros-texas-chrome.png", width: 1200, height: 1200, alt: "Chill Pros" }],
+  },
+  twitter: { card: "summary_large_image", title: "Chill Pros · Your service document", description: "View your Chill Pros service document.", images: ["/brand/chill-pros-texas-chrome.png"] },
+};
 type PortalPageProps = { params: Promise<{ token: string }>; searchParams: Promise<{ payment?: string; payment_error?: string; tab?: string }> };
 
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", year: "numeric" }) : null;
