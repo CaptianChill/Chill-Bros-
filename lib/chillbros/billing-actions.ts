@@ -129,7 +129,8 @@ export async function sendInvoiceCommunicationAction(invoiceId: string, channel:
   const invoice = await getInvoiceV2ById(invoiceId);
   if (!invoice) return { ok: false, error: "Active invoice was not found." };
   if (reminder && (invoice.status !== "approved" || invoice.paymentStatus === "paid")) return { ok: false, error: "Reminders are only for approved unpaid invoices." };
-  const deliveryType = reminder ? "reminder" : invoice.paymentStatus === "paid" ? "receipt" : invoice.issuedAt ? "invoice" : "estimate";
+  const isQuote = invoice.invoiceNumber.toUpperCase().startsWith("Q-") || !invoice.issuedAt;
+  const deliveryType = reminder ? "reminder" : invoice.paymentStatus === "paid" ? "receipt" : isQuote ? "estimate" : "invoice";
   const result = await sendBillingDeliveryRecorded(invoiceId, deliveryType, channel, recipient);
   if (result.status === "sent" && reminder) {
     const supabase = createServiceRoleClient();
@@ -152,8 +153,9 @@ export async function finalizeInvoiceAction(invoiceId: string): Promise<Result> 
   if (!guard.ok) return guard;
   const supabase = createServiceRoleClient();
   const { data: invoice, error: readError } = await supabase.from("chillbros_invoices")
-    .select("id,job_id,status,payment_status,payment_terms,due_at,issued_at,portal_token,revoked_at,updated_at").eq("id", invoiceId).maybeSingle();
+    .select("id,invoice_number,job_id,status,payment_status,payment_terms,due_at,issued_at,portal_token,revoked_at,updated_at").eq("id", invoiceId).maybeSingle();
   if (readError || !invoice) return { ok: false, error: readError?.message ?? "Invoice not found." };
+  if (invoice.invoice_number?.toUpperCase().startsWith("Q-")) return { ok: false, error: "This is a quote. Send it for customer approval or convert it to an invoice first." };
   if (invoice.revoked_at || !["draft", "awaiting_approval"].includes(invoice.status) || invoice.payment_status === "paid") return { ok: false, error: `Cannot finalize invoice with status "${invoice.status}" and payment status "${invoice.payment_status}".` };
   const now = new Date();
   const { data: updated, error } = await supabase.from("chillbros_invoices").update({
