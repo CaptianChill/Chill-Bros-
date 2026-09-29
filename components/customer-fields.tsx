@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 
 type CustomerOption = { id: string; name: string; phone: string | null; email: string | null; address: string | null };
 
@@ -30,7 +31,7 @@ export function CustomerFields({ customers, initialCustomerId, input, label }: {
         <label className={label}>Customer / business name<input name="customerName" value={fields.name} onChange={(event) => setFields({ ...fields, name: event.target.value })} placeholder="Required only for a new customer" className={`${input} mt-1`} /></label>
         <label className={label}>Phone<input name="customerPhone" inputMode="tel" value={fields.phone} onChange={(event) => setFields({ ...fields, phone: event.target.value })} placeholder="Phone" className={`${input} mt-1`} /></label>
         <label className={label}>Email<input name="customerEmail" type="email" value={fields.email} onChange={(event) => setFields({ ...fields, email: event.target.value })} placeholder="Email" className={`${input} mt-1`} /></label>
-        <label className={label}>Address<input name="customerAddress" value={fields.address} onChange={(event) => setFields({ ...fields, address: event.target.value })} placeholder="Billing / service address" className={`${input} mt-1`} /></label>
+        <label className={label}>Address<AddressAutocomplete name="customerAddress" value={fields.address} onChange={(address) => setFields({ ...fields, address })} placeholder="Start typing billing / service address" className={`${input} mt-1`} /></label>
       </div>
       {customerId ? <p className="text-xs text-zinc-500">Auto-filled from the customer database. Edit here if it needs updating for this document only — it won&apos;t change the saved customer record.</p> : null}
     </div>

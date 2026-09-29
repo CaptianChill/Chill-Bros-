@@ -10,6 +10,7 @@ import { createCustomerAction } from "@/lib/chillbros/operations";
 import { createEquipmentAction } from "@/lib/chillbros/equipment";
 import { partsProHref } from "@/lib/chillbros/parts-pro";
 import { displayTime } from "@/lib/chillbros/schedule-window";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 
 type CustomerOption = { id: string; name: string; address: string | null };
 type UnitOption = { id: string; customerId: string; label: string };
@@ -104,7 +105,7 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
             <label className={labelClass}>Name<input required value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className={field} /></label>
             <label className={labelClass}>Phone<input type="tel" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} className={field} /></label>
             <label className={labelClass}>Email<input type="email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} className={field} /></label>
-            <label className={labelClass}>Address<input value={customer.address} onChange={(e) => setCustomer({ ...customer, address: e.target.value })} className={field} /></label>
+            <label className={labelClass}>Address<AddressAutocomplete value={customer.address} onChange={(address) => setCustomer({ ...customer, address })} placeholder="Start typing the service address" className={field} /></label>
           </div>
         ) : (
           <>
@@ -142,7 +143,7 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
         </div> : null}
         <label className={labelClass}>
           Service address
-          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={selectedCustomer?.address ? `Uses ${selectedCustomer.address}` : "Uses the customer's address"} className={field} />
+          <AddressAutocomplete value={location} onChange={setLocation} placeholder={selectedCustomer?.address ? `Uses ${selectedCustomer.address}` : "Start typing the service address"} className={field} />
         </label>
       </section>
 

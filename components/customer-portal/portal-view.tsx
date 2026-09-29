@@ -138,6 +138,7 @@ function EquipmentHistory({ history }: { history: PortalEquipmentHistory }) {
               <p className="mt-0.5 text-sm font-semibold">{visit.summary}</p>
               {visit.workPerformed ? <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[#3D5170]">{visit.workPerformed}</p> : null}
               {visit.items.length ? <p className="mt-1 text-[13px] text-[#4A5B74]">Parts &amp; services: {visit.items.join(" · ")}</p> : null}
+              {(visit.beforePhotos.length || visit.afterPhotos.length) ? <div className="mt-3 grid gap-3 sm:grid-cols-2"><PhotoGrid title="Before photos" photos={visit.beforePhotos} /><PhotoGrid title="After photos" photos={visit.afterPhotos} /></div> : null}
             </li>
           ))}
         </ol>
