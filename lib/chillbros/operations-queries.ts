@@ -1,7 +1,6 @@
 import "server-only";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { reconcileTechnicianAssignmentsAndNotifications } from "./assignment-reconciliation";
 import type { JobStatus } from "./types";
 
 export type DispatchJob = { id: string; customerId: string; customerName: string; assignedTechId: string | null; assignedTechName: string | null; status: JobStatus; location: string | null; scope: string | null; workPerformed: string | null; scheduledWindow: string | null; createdAt: string; workflowStage: string };
@@ -28,7 +27,7 @@ export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
 }
 
 export async function getActiveTechnicians(): Promise<ActiveTechnician[]> {
-  await reconcileTechnicianAssignmentsAndNotifications();
+  // READ-ONLY: rendering technician pickers must never mutate assignments or send email.
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase.from("chillbros_profiles").select("id, full_name, email, role, status").in("role", ["technician", "manager"]).eq("status", "active").order("full_name", { ascending: true });
   if (error || !data) return [];
