@@ -61,7 +61,7 @@ export default async function HomePage() {
   const unassignedCount = lifecycleJobs.filter((job) => !CLOSED_STATUSES.includes(job.status) && !job.assignedTechId).length;
   const overdueCount = invoiceRows.filter((row) => row.daysOverdue > 0).length;
 
-  const invoiceByJob = new Map(invoiceRows.filter((row) => row.jobId).map((row) => [row.jobId as string, row]));
+  const invoiceByJob = new Map(invoiceRows.filter((row) => row.jobId && !row.convertedInvoiceId).map((row) => [row.jobId as string, row]));
   const approvedQuoteQueue = lifecycleJobs
     .map((job) => ({ job, invoice: invoiceByJob.get(job.id) }))
     .filter((entry) => {

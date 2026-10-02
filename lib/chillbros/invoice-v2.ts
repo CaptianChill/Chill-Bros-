@@ -17,7 +17,7 @@ async function adjustmentTotals(invoiceId: string) {
 
 export async function getInvoiceV2ByToken(token: string): Promise<DetailedInvoice | null> {
   const supabase = createServiceRoleClient();
-  const { data: invoice, error } = await supabase.from("chillbros_invoices").select("id, invoice_number, portal_token, status, customer_id, job_id, signature_name, signed_at, payment_method, payment_status, down_payment_status, down_payment_method, down_payment_paid_at, notes, discount_type, discount_value, discount_amount, down_payment_type, down_payment_value, down_payment_amount, tax_rate, taxable_subtotal, tax_amount, issued_at, payment_terms, due_at, last_reminder_at, reminder_count, first_viewed_at, customer:chillbros_customers(name)").eq("portal_token", token).is("revoked_at", null).neq("status", "void").maybeSingle();
+  const { data: invoice, error } = await supabase.from("chillbros_invoices").select("id, converted_invoice_id, invoice_number, portal_token, status, customer_id, job_id, signature_name, signed_at, payment_method, payment_status, down_payment_status, down_payment_method, down_payment_paid_at, notes, discount_type, discount_value, discount_amount, down_payment_type, down_payment_value, down_payment_amount, tax_rate, taxable_subtotal, tax_amount, issued_at, payment_terms, due_at, last_reminder_at, reminder_count, first_viewed_at, customer:chillbros_customers(name)").eq("portal_token", token).is("revoked_at", null).neq("status", "void").maybeSingle();
   if (error || !invoice) return null;
   const [{ data: lineItems }, adjustments] = await Promise.all([
     supabase.from("chillbros_invoice_line_items").select("id, label, description, quantity, unit_price, amount, taxable").eq("invoice_id", invoice.id).order("sort_order", { ascending: true }),
@@ -26,6 +26,7 @@ export async function getInvoiceV2ByToken(token: string): Promise<DetailedInvoic
   const customer = Array.isArray(invoice.customer) ? invoice.customer[0] : invoice.customer;
   return {
     id: invoice.id,
+    convertedInvoiceId: invoice.converted_invoice_id,
     invoiceNumber: invoice.invoice_number,
     portalToken: invoice.portal_token,
     status: invoice.status,
@@ -96,7 +97,7 @@ export async function recordDownPaymentReceived(invoiceId: string, input: { meth
 
 export async function getInvoiceV2ByJobId(jobId: string): Promise<DetailedInvoice | null> {
   const supabase = createServiceRoleClient();
-  const { data } = await supabase.from("chillbros_invoices").select("portal_token").eq("job_id", jobId).is("revoked_at", null).neq("status", "void").order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  const { data } = await supabase.from("chillbros_invoices").select("portal_token").eq("job_id", jobId).is("converted_invoice_id", null).is("revoked_at", null).neq("status", "void").order("updated_at", { ascending: false }).limit(1).maybeSingle();
   return data ? getInvoiceV2ByToken(data.portal_token) : null;
 }
 

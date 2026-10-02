@@ -54,6 +54,7 @@ export type SquareCheckoutKind = "invoice" | "down_payment";
 async function amountDue(token: string, kind: SquareCheckoutKind) {
   const invoice = await getInvoiceV2ByToken(token);
   if (!invoice) return { ok: false as const, error: "This payment link is no longer active." };
+  if (invoice.convertedInvoiceId) return { ok: false as const, error: "This quote has been converted. Use the new invoice payment link." };
   if (invoice.status !== "approved") return { ok: false as const, error: "Approve the estimate before paying." };
   const totals = invoiceTotals(invoice);
   if (kind === "down_payment") {
