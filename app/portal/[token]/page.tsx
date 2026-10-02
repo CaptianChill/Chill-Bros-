@@ -41,7 +41,7 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   const issued = Boolean(invoice.issuedAt);
   const paid = invoice.paymentStatus === "paid";
   const approved = invoice.status === "approved";
-  const downPaymentRequired = invoice.downPaymentAmount > 0;
+  const downPaymentRequired = !invoice.convertedInvoiceId && invoice.downPaymentAmount > 0;
   const downPaymentPaid = invoice.downPaymentStatus === "paid";
   const downPaymentDue = approved && !issued && downPaymentRequired && !downPaymentPaid;
   const tab: PortalTab = query.tab === "photos" || query.tab === "equipment" ? query.tab : "overview";

@@ -13,7 +13,7 @@ function harness(seed = {}, delivery = { status: 'sent', recipient: 'test@exampl
   const tables = structuredClone(seed);
   const calls = [];
   const profile = { id: 'tech', role, email: 'owner@example.com' };
-  const db = { from(table) {
+  const db = { async rpc(name, args) { calls.push({ rpc: name, args }); return { data: "converted-id", error: null }; }, from(table) {
     const filters = []; let operation = 'read', values, single = false;
     const query = {
       select() { return query; },
@@ -49,7 +49,7 @@ function harness(seed = {}, delivery = { status: 'sent', recipient: 'test@exampl
     'server-only': {},
     'next/cache': { revalidatePath() {} },
     'next/navigation': { redirect(location) { throw Object.assign(new Error('redirect'), { location }); } },
-    '@/lib/supabase/auth-server': { getCurrentStaffProfile: async () => profile },
+    '@/lib/supabase/auth-server': { getCurrentStaffProfile: async () => role === null ? null : profile },
     '@/lib/supabase/service-client': { createServiceRoleClient: () => db },
     '@/lib/chillbros/assignment-notifications': {
       verifyTechnicianAssignment: async () => ({ ok: true }),
@@ -64,7 +64,7 @@ function harness(seed = {}, delivery = { status: 'sent', recipient: 'test@exampl
     '@/lib/chillbros/invoice-v2': {
       getInvoiceV2ById: async id => {
         const row = tables.chillbros_invoices?.find(r => r.id === id && !r.revoked_at && r.status !== 'void');
-        return row ? { ...row, customerId: row.customer_id, jobId: row.job_id, paymentStatus: row.payment_status, portalToken: row.portal_token, reminderCount: 0 } : null;
+        return row ? { ...row, invoiceNumber: row.invoice_number || "I-TEST", issuedAt: row.issued_at, customerId: row.customer_id, jobId: row.job_id, paymentStatus: row.payment_status, portalToken: row.portal_token, reminderCount: 0 } : null;
       },
     },
   };
@@ -247,4 +247,22 @@ test('customer cash/check choices persist pending review and cannot change paid 
     assert.equal(h.tables.chillbros_invoices[0].payment_method, method);
     assert.equal((await action('token', 'venmo')).ok, false);
   }
+});
+
+
+test('owner document actions reject office, technician and unauthenticated roles before RPC', async () => {
+  for (const role of ['office', 'technician', null]) {
+    const h = harness({}, undefined, role);
+    const billing = h.load('lib/chillbros/billing-actions.ts');
+    assert.equal((await billing.convertQuoteToInvoiceAction('quote')).ok, false);
+    assert.equal((await billing.overrideQuoteToEstimateAction('quote')).ok, false);
+    assert.equal(h.calls.length, 0);
+  }
+});
+test('owner conversion returns invoice ID for immediate navigation and passes authenticated actor', async () => {
+  const h = harness();
+  const billing = h.load('lib/chillbros/billing-actions.ts');
+  const result = await billing.convertQuoteToInvoiceAction('quote');
+  assert.deepEqual(result, { ok: true, data: { invoiceId: 'converted-id' } });
+  assert.deepEqual(h.calls[0], { rpc: 'chillbros_owner_convert_quote', args: { p_quote_id: 'quote', p_actor_id: 'tech' } });
 });

@@ -116,7 +116,7 @@ export async function getInvoiceByToken(token: string): Promise<Invoice | null> 
 
 export async function getInvoiceByJobId(jobId: string): Promise<Invoice | null> {
   const supabase = createServiceRoleClient();
-  const { data } = await supabase.from("chillbros_invoices").select("portal_token").eq("job_id", jobId).is("revoked_at", null).neq("status", "void").order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  const { data } = await supabase.from("chillbros_invoices").select("portal_token").eq("job_id", jobId).is("converted_invoice_id", null).is("revoked_at", null).neq("status", "void").order("updated_at", { ascending: false }).limit(1).maybeSingle();
   if (!data) return null;
   return getInvoiceByToken(data.portal_token);
 }

@@ -48,7 +48,7 @@ export default async function DocumentPage({ params }: Props) {
     } catch (error) { console.error("[portal-document] view notification failed", error); }
   }
   const paid = invoice.paymentStatus === "paid";
-  const downPaymentRequired = invoice.downPaymentAmount > 0;
+  const downPaymentRequired = !invoice.convertedInvoiceId && invoice.downPaymentAmount > 0;
   const downPaymentPaid = invoice.downPaymentStatus === "paid";
   const documentName = invoiceIssued || paid ? "INVOICE" : "ESTIMATE";
   const workPerformed = polishedServiceCopy(job?.workPerformed);
