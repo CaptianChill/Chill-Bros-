@@ -6,7 +6,6 @@ import { AppShell } from "@/components/app-shell";
 import { DispatchAssignRow } from "@/components/dispatch-assign-row";
 import { DispatchPanel } from "@/components/dispatch-panel";
 import { DispatchIntelligence } from "@/components/dispatch-intelligence";
-import { EquipmentFirstIntake } from "@/components/equipment-first-intake";
 import { EN_ROUTE_STATUSES, ON_SITE_STATUSES } from "@/components/job-status-chip";
 import { JobAssetReturnPanel } from "@/components/job-asset-return-panel";
 import { LiveOfficeRefresh } from "@/components/live-office-refresh";
@@ -74,7 +73,7 @@ export default async function DispatchPage({ searchParams }: Props) {
     <AppShell title="Dispatch" description="Assign calls and balance technician workload.">
       <LiveOfficeRefresh />
       <div className="cb-new space-y-3.5">
-        <Link href="/jobs/new" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]">
+        <Link href={selectedDay === today ? "/jobs/new" : `/jobs/new?date=${selectedDay}`} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]">
           <Plus className="h-5 w-5" aria-hidden="true" />
           New service call
         </Link>
@@ -180,7 +179,6 @@ export default async function DispatchPage({ searchParams }: Props) {
         </summary>
         <div className="mt-3.5 space-y-3.5">
           <SectionCard eyebrow="Phase 6 · Intelligence" title="Dispatch recommendations" description="Balance active workload and surface the next assignment decision before opening individual calls."><DispatchIntelligence jobs={jobs} technicians={technicians} /></SectionCard>
-          <SectionCard eyebrow="Equipment-linked intake" title="Create service call" description="Start with the customer and exact unit so the permanent history begins correctly."><EquipmentFirstIntake customers={customers} technicians={technicians} equipment={equipment} /></SectionCard>
           <SectionCard eyebrow="Operations" title="Dispatch board" description="Assign work, balance technician workload, and follow jobs from scheduling through billing."><DispatchPanel customers={customers} technicians={technicians} jobs={jobs} /></SectionCard>
           <SectionCard eyebrow="Equipment & return visits" title="Asset and return controls" description="Correct the linked asset and schedule return trips without duplicate work orders."><JobAssetReturnPanel jobs={jobs} equipment={equipment} technicians={technicians} /></SectionCard>
         </div>
