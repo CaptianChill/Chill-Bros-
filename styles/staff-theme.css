@@ -37,19 +37,48 @@
   letter-spacing: 0.01em;
 }
 
-/* Page titles and section headings: graffiti bubble lettering traced from
-   the owner's alphabet sheet. It's a color font, so the outline, shadow,
-   fill and shine come from the font itself; letter spacing is built in so
-   letters tuck together. Characters the sheet doesn't have (digits,
-   punctuation) fall back to Barlow Condensed in the fill blue. The
-   :not(#cb-bubble) lifts this above the legacy-page color remaps below. */
+/* Titles and headings: varsity chenille-patch lettering matching the
+   CHILL PROS wordmark. Letters cycle red / royal blue / gold with black /
+   white / purple stitched outlines, plus a thin dark outer edge so every
+   letter stays readable on the camo, the frosted bands and white cards.
+   components/varsity-title.tsx colors each letter; plain h1/h2 elsewhere
+   get the same lettering in royal blue. The :not(#cb-bubble) lifts this
+   above the legacy-page color remaps below. */
+.varsity,
 .cb-staff :is(h1, h2):not(#cb-bubble) {
-  font-family: var(--font-chill-bubble), var(--font-barlow-condensed), "Arial Narrow", sans-serif;
+  font-family: var(--font-varsity), "Arial Black", Impact, sans-serif;
   font-weight: 400 !important;
-  letter-spacing: 0;
-  color: #0191fb !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+}
+.cb-staff :is(h1, h2):not(#cb-bubble):not(:has(.varsity)) {
+  --vl-line: #ffffff;
+  --vl-edge: #0b0d1a;
+  color: #1b3fd0 !important;
+  text-shadow: 0.035em 0.0em 0 var(--vl-line), -0.035em 0.0em 0 var(--vl-line), 0.0em 0.035em 0 var(--vl-line), 0.0em -0.035em 0 var(--vl-line), 0.025em 0.025em 0 var(--vl-line), -0.025em 0.025em 0 var(--vl-line), 0.025em -0.025em 0 var(--vl-line), -0.025em -0.025em 0 var(--vl-line), 0.065em 0.0em 0 var(--vl-edge), -0.065em 0.0em 0 var(--vl-edge), 0.0em 0.065em 0 var(--vl-edge), 0.0em -0.065em 0 var(--vl-edge), 0.045em 0.045em 0 var(--vl-edge), -0.045em 0.045em 0 var(--vl-edge), 0.045em -0.045em 0 var(--vl-edge), -0.045em -0.045em 0 var(--vl-edge), 0 0.1em 0 rgba(0, 0, 0, 0.4) !important;
+}
+.cb-staff :is(h1, h2):has(.varsity):not(#cb-bubble) {
+  color: inherit !important;
   text-shadow: none !important;
 }
+.varsity .vl {
+  display: inline-block;
+  text-shadow: 0.035em 0.0em 0 var(--vl-line), -0.035em 0.0em 0 var(--vl-line), 0.0em 0.035em 0 var(--vl-line), 0.0em -0.035em 0 var(--vl-line), 0.025em 0.025em 0 var(--vl-line), -0.025em 0.025em 0 var(--vl-line), 0.025em -0.025em 0 var(--vl-line), -0.025em -0.025em 0 var(--vl-line), 0.065em 0.0em 0 var(--vl-edge), -0.065em 0.0em 0 var(--vl-edge), 0.0em 0.065em 0 var(--vl-edge), 0.0em -0.065em 0 var(--vl-edge), 0.045em 0.045em 0 var(--vl-edge), -0.045em 0.045em 0 var(--vl-edge), 0.045em -0.045em 0 var(--vl-edge), -0.045em -0.045em 0 var(--vl-edge), 0 0.1em 0 rgba(0, 0, 0, 0.4);
+}
+.varsity .vl-plain {
+  display: inline-block;
+  min-width: 0.3em;
+  color: #0a1a33;
+}
+.varsity .vl-red { color: #e3261c; --vl-line: #0b0b0b; --vl-edge: #0b0b0b; }
+.varsity .vl-blue { color: #1b3fd0; --vl-line: #ffffff; --vl-edge: #0b0d1a; }
+.varsity .vl-gold { color: #ffb400; --vl-line: #4a1c9e; --vl-edge: #1a0b3a; }
+/* Big page titles get the fuzzy chenille edge; small headings stay crisp. */
+.varsity-fuzz .vl {
+  filter: url(#cb-chenille);
+}
+
 /* Older pages size their section headings small; the bubble lettering needs
    a little more room to read. */
 .cb-staff .cb-page h2:not(.cb-new *):not(#cb-bubble) {
