@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
 import { calculatePlanPricing } from "@/lib/chillbros/service-plan-pricing";
+import { generatePlanMonth } from "@/lib/chillbros/service-plan-generation";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { AgreementCalculationMode, AgreementDiscountType, ServiceAgreementStatus } from "./service-agreement-queries";
@@ -111,15 +112,26 @@ export async function updateServiceAgreementAction(input: ServiceAgreementInput 
   return { ok: true, data: undefined };
 }
 
-export async function setServiceAgreementStatusAction(id: string, status: Extract<ServiceAgreementStatus, "proposed" | "active" | "cancelled">): Promise<Result> {
+export async function setServiceAgreementStatusAction(id: string, status: Extract<ServiceAgreementStatus, "proposed" | "active" | "cancelled">): Promise<Result<{ message?: string }>> {
   const guard = await requireOfficeOrManager();
   if (!guard.ok) return guard;
   if (!["proposed", "active", "cancelled"].includes(status)) return { ok: false, error: "Invalid agreement status." };
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase.from("chillbros_service_agreements").update({ status, updated_at: new Date().toISOString() }).eq("id", id).select("customer_id,portal_token").maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "Agreement not found." };
+  let message: string | undefined;
+  if (status === "active") {
+    // Activating puts this month's visits in Open Work and drafts this month's invoice.
+    const generated = await generatePlanMonth(id, undefined, guard.profile.id);
+    message = !generated.ok
+      ? `Plan is active, but this month's work wasn't fully created: ${generated.error}`
+      : generated.created
+        ? `Plan is active. ${generated.visits} visit${generated.visits === 1 ? "" : "s"} added to Open Work${generated.invoiceNumber ? ` and invoice ${generated.invoiceNumber} is ready to review and send` : ""}.`
+        : `Plan is active. ${generated.reason ?? ""}`.trim();
+    for (const path of ["/work", "/dispatch", "/invoices", "/schedule"]) revalidatePath(path);
+  }
   refresh(data.customer_id, data.portal_token);
-  return { ok: true, data: undefined };
+  return { ok: true, data: { message } };
 }
 
 export async function acceptServiceAgreementAction(token: string, signatureName: string): Promise<Result> {

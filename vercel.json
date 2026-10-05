@@ -1,6 +1,9 @@
 {
   "crons": [
-    { "path": "/api/cron/field-notes", "schedule": "*/5 * * * *" },
+    {
+      "path": "/api/cron/field-notes",
+      "schedule": "*/5 * * * *"
+    },
     {
       "path": "/api/cron/revenue-radar",
       "schedule": "15 13 * * *"
@@ -8,6 +11,10 @@
     {
       "path": "/api/cron/invoice-reminders",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/service-plans",
+      "schedule": "0 12 * * *"
     }
   ]
 }
