@@ -2,6 +2,8 @@
 
 import { usePathname } from "next/navigation";
 
+import { VarsityTitle } from "@/components/varsity-title";
+
 // Screen names match the menu labels so people always know where they are.
 const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/", "Home"],
@@ -48,7 +50,7 @@ export function PageTitle() {
 
   return (
     <h1 className="glo w-full text-center font-serif text-[1.35rem] font-black italic uppercase leading-tight tracking-[0.015em] sm:text-[1.8rem]">
-      {label}
+      <VarsityTitle text={label} fuzz />
     </h1>
   );
 }

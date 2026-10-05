@@ -8,10 +8,11 @@ import { Bell, ChevronLeft, Ellipsis, LogOut, RefreshCw, Save, Wrench, X } from 
 
 import { signOutAction } from "@/app/sign-in/actions";
 import { titleForPath } from "@/components/page-title";
+import { VarsityTitle } from "@/components/varsity-title";
 import { getHomeHref, getPrimaryTabs, groupNavItems, isNavItemActive, NAV_ICONS, type NavItem } from "@/lib/chillbros/nav";
 import type { StaffRole } from "@/lib/chillbros/types";
 
-const WORDMARK = { src: "/brand/chill-pros-wordmark-chrome-600.webp", width: 600, height: 185 };
+const WORDMARK = { src: "/brand/chill-pros-varsity-900.webp", width: 900, height: 192 };
 const SAVE_ENABLED_PATHS = ["/technician", "/dispatch", "/manager"];
 
 const roundNavButton =
@@ -103,7 +104,7 @@ export function StaffHeader({
                 <Ellipsis className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
-            <h1 className="mt-2 text-center text-[40px] leading-tight lg:mt-0">{screenTitle}</h1>
+            <h1 className="mt-2 text-center text-[34px] leading-tight sm:text-[40px] lg:mt-0">{typeof screenTitle === "string" ? <VarsityTitle text={screenTitle} fuzz /> : screenTitle}</h1>
             {subtitle ? <p className="mt-0.5 truncate text-center text-sm font-medium text-[#13284A]">{subtitle}</p> : null}
           </>
         )}
