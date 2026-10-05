@@ -96,7 +96,7 @@ export function InvoiceAdminControls(props: Props) {
   const textFromMyPhone = () => {
     if (!props.customerPhone) return;
     const portalUrl = `${window.location.origin}/portal/${props.portalToken}`;
-    window.location.href = `sms:${props.customerPhone.replace(/[^+\d]/g, "")}?&body=${encodeURIComponent(`Chill Bros ${props.invoiceNumber}: ${portalUrl}`)}`;
+    window.location.href = `sms:${props.customerPhone.replace(/[^+\d]/g, "")}?&body=${encodeURIComponent(`Chill Pros ${props.invoiceNumber}: ${portalUrl}`)}`;
   };
 
   if (props.convertedInvoiceId) return <Link href={`/invoices?focus=${props.convertedInvoiceId}`} className="inline-flex rounded-xl border border-[#8ffafa]/45 px-3 py-2 text-sm text-white">Open converted invoice</Link>;

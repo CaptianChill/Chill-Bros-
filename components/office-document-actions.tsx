@@ -17,11 +17,11 @@ export function OfficeDocumentActions({ portalToken, invoiceNumber, customerEmai
   };
   const email = () => {
     if (!customerEmail) return;
-    window.location.href = `mailto:${encodeURIComponent(customerEmail)}?subject=${encodeURIComponent(`Chill Bros ${invoiceNumber}`)}&body=${encodeURIComponent(`Review your Chill Bros estimate/invoice here: ${portalUrl()}`)}`;
+    window.location.href = `mailto:${encodeURIComponent(customerEmail)}?subject=${encodeURIComponent(`Chill Pros ${invoiceNumber}`)}&body=${encodeURIComponent(`Review your Chill Pros estimate/invoice here: ${portalUrl()}`)}`;
   };
   const text = () => {
     if (!customerPhone) return;
-    window.location.href = `sms:${customerPhone.replace(/[^+\d]/g, "")}?&body=${encodeURIComponent(`Chill Bros ${invoiceNumber}: ${portalUrl()}`)}`;
+    window.location.href = `sms:${customerPhone.replace(/[^+\d]/g, "")}?&body=${encodeURIComponent(`Chill Pros ${invoiceNumber}: ${portalUrl()}`)}`;
   };
 
   return <div className="space-y-2">

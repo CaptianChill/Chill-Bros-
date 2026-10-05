@@ -22,7 +22,7 @@ function phoneKey(value: string | null | undefined) { return String(value ?? "")
 
 export async function createDirectInvoiceAction(formData: FormData): Promise<never> {
   const profile = await getCurrentStaffProfile();
-  if (!profile || profile.role !== "manager") redirect("/sign-in");
+  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/sign-in");
   const type: DocumentType = text(formData, "documentType") === "quote" ? "quote" : "invoice";
   const supabase = createServiceRoleClient();
   let customerId = text(formData, "customerId");
@@ -85,7 +85,7 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const { error: issueError } = await supabase.from("chillbros_invoices").update({ status: "awaiting_approval", issued_at: type === "invoice" ? now : null, due_at: computedDueAt, payment_terms: terms, payment_method: type === "invoice" ? method : null, payment_status: "unpaid", paid_at: null, paid_recorded_by: null, taxable_subtotal: taxableSubtotal, tax_amount: taxAmount, updated_at: now }).eq("id", invoice.estimate_id);
   if (issueError) { await rollbackInventory(); await supabase.from("chillbros_jobs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id); fail(issueError.message, type); }
   await supabase.from("chillbros_jobs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id);
-  await supabase.from("chillbros_workflow_events").insert({ job_id: job.id, invoice_id: invoice.estimate_id, actor_id: profile.id, stage: type === "quote" ? "estimate_created" : "invoice_issued", message: type === "invoice" && allocatedJobPartIds.length > 0 ? `Invoice issued directly by owner/manager. ${allocatedJobPartIds.length} inventory item group(s) allocated and deducted from stock.` : `${type === "quote" ? "Quote" : "Invoice"} issued directly by owner/manager without requiring an open service call.` });
+  await supabase.from("chillbros_workflow_events").insert({ job_id: job.id, invoice_id: invoice.estimate_id, actor_id: profile.id, stage: type === "quote" ? "estimate_created" : "invoice_issued", message: type === "invoice" && allocatedJobPartIds.length > 0 ? `Invoice issued directly by ${profile.role === "office" ? "office" : "owner/manager"}. ${allocatedJobPartIds.length} inventory item group(s) allocated and deducted from stock.` : `${type === "quote" ? "Quote" : "Invoice"} issued directly by ${profile.role === "office" ? "office" : "owner/manager"} without requiring an open service call.` });
   await supabase.from("chillbros_customer_service_history").insert({ customer_id: customerId, note: `${type === "quote" ? "Quote" : "Invoice"} ${number} created by owner.` });
   if (requestedPaid) { try { await supabase.from("chillbros_workflow_events").insert({ job_id: job.id, invoice_id: invoice.estimate_id, actor_id: profile.id, stage: "payment_pending_review", message: "Paid-now was requested during direct invoice creation; invoice was issued unpaid because payment posting currently requires an approved invoice." }); } catch {} }
   for (const path of ["/create","/invoices/new","/invoices","/inventory","/payments","/reports","/customers","/dispatch","/"]) revalidatePath(path);

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PortalShell } from "@/components/portal-shell";
@@ -7,6 +8,16 @@ import { StatusPill } from "@/components/status-pill";
 import { getServiceAgreementByToken } from "@/lib/chillbros/service-agreement-queries";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Chill Pros · Your service plan",
+  description: "Review and accept your Chill Pros monthly service plan.",
+  openGraph: {
+    title: "Chill Pros · Your service plan",
+    description: "Review and accept your Chill Pros monthly service plan.",
+    images: [{ url: "/brand/chill-pros-texas-chrome.png", width: 1200, height: 1200, alt: "Chill Pros" }],
+  },
+};
 type Props = { params: Promise<{ token: string }> };
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const date = (value: string | null) => value ? new Date(`${value}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Open-ended";

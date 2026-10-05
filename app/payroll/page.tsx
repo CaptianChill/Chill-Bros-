@@ -1,8 +1,16 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 const PAYROLL_APP_URL = "https://chill-pros-paystub-7t35dqu0p-chill-pros.vercel.app";
 
-export default function PayrollPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PayrollPage() {
+  const profile = await getCurrentStaffProfile();
+  if (!profile) redirect("/sign-in?next=%2Fpayroll");
+  if (profile.role !== "manager") redirect("/");
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <section className="rounded-2xl border border-[#2d7dff]/25 bg-black/35 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.35)]">

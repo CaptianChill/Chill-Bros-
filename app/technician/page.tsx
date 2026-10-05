@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, FileText } from "lucide-react";
+import { ExternalLink, FileText, Search, Sparkles, StickyNote } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -84,6 +84,11 @@ export default async function TechnicianPage({ searchParams }: Props) {
       <div className="space-y-4">
         <SectionCard eyebrow="Service workflow" title="Run this call" description="Use the large stage action first. Notes and time autosave underneath.">
           <div className="mb-4 grid gap-3 md:grid-cols-2"><div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3"><p className="text-sm text-zinc-400">Customer</p><p className="mt-1 text-lg font-medium text-white">{job.customerName}</p><p className="mt-1 text-sm text-zinc-300">{job.location ?? "No location tagged"}</p>{job.scheduledWindow ? <p className="mt-2 text-xs text-[#bafcfc]">{job.scheduledWindow}</p> : null}</div><div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3"><p className="text-sm text-zinc-400">Dispatch complaint / scope</p><p className="mt-1 text-sm leading-6 text-white">{job.scope ?? "No scope notes yet."}</p></div></div>
+          <div className="mb-4 grid grid-cols-3 gap-2">
+            <Link href={`/tech-assist/${job.id}`} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#8ffafa]/35 bg-[#2d7dff]/10 px-2 py-2.5 text-xs font-medium text-[#d9fbff]"><Sparkles className="h-4 w-4" aria-hidden="true" />Tech Assist</Link>
+            <Link href="/field-notes" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#2d7dff]/30 px-2 py-2.5 text-xs font-medium text-[#d9fbff]"><StickyNote className="h-4 w-4" aria-hidden="true" />Add note</Link>
+            <Link href="/parts-lookup" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#2d7dff]/30 px-2 py-2.5 text-xs font-medium text-[#d9fbff]"><Search className="h-4 w-4" aria-hidden="true" />Parts Pro</Link>
+          </div>
           <TechnicianJobEditor job={job} partsCatalog={partsCatalog} />
         </SectionCard>
 

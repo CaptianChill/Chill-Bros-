@@ -12,56 +12,44 @@ export const dynamic = "force-dynamic";
 
 const OWNER_EMAIL = "chillprostx@gmail.com";
 
-const ownerTools = [
+type OwnerTool = { href: string; title: string; description: string };
+
+// Daily screens (customers, schedule, invoices, payments) are already in the
+// main menu, so they are not repeated here. Owner Access holds only what the
+// owner needs occasionally, grouped so nothing is hunted for.
+const ownerToolGroups: { title: string; description: string; tools: OwnerTool[] }[] = [
   {
-    href: "/manager",
-    eyebrow: "Operations",
-    title: "Manager controls",
-    description: "Review active estimates and invoices, pricing adjustments, staff status, approvals, collections, and workflow activity.",
+    title: "Run the business",
+    description: "Money, pricing, staff, and reports.",
+    tools: [
+      { href: "/reports", title: "Reports", description: "Revenue, outstanding balances, jobs, technician time, and inventory value." },
+      { href: "/manager", title: "Manager controls", description: "Estimates, approvals, collections, and staff status." },
+      { href: "/inventory", title: "Parts, price book & fees", description: "Stock, cost, retail prices, and fee presets used in estimates." },
+      { href: "/payroll", title: "Payroll & paystubs", description: "Open the payroll workspace." },
+      { href: "/timesheet", title: "Clock & timesheets", description: "Clock in or out and review hours." },
+      { href: "/revenue-radar/opportunities", title: "Sales pipeline & closeout", description: "Full Revenue Radar pipeline, audit, and do-not-contact review." },
+    ],
   },
   {
-    href: "/inventory",
-    eyebrow: "Pricing",
-    title: "Parts, price book & service fees",
-    description: "Edit parts, stock, cost, retail pricing, service prices, descriptions, and the fee presets used in estimates.",
+    title: "Settings",
+    description: "Company setup and account safety.",
+    tools: [
+      { href: "/settings/payments", title: "Payments & email", description: "Square setup and a live company-email test." },
+      { href: "/security", title: "Security", description: "Review active sessions and sign out other devices." },
+    ],
   },
   {
-    href: "/customers",
-    eyebrow: "Customers",
-    title: "Customer records",
-    description: "Open the customer workspace to maintain customer information and review the records tied to service work.",
+    title: "Extras",
+    description: "Creative and training tools, kept out of the daily menus.",
+    tools: [
+      { href: "/training", title: "Training & Chill Bro Bible", description: "Equipment training and reference." },
+      { href: "/3d-studio", title: "3D Studio", description: "3D equipment and project models." },
+      { href: "/3d-project-builder", title: "3D Project Builder", description: "Build a 3D walkthrough for a project." },
+      { href: "/create", title: "Document Desk", description: "Create owner documents." },
+      { href: "/scan-send", title: "Scan & Send", description: "Scan a document and send it." },
+    ],
   },
-  {
-    href: "/settings/payments",
-    eyebrow: "Company setup",
-    title: "Payments & email",
-    description: "Review the Square payment setup and send a live company-email test from the signed-in owner account.",
-  },
-  {
-    href: "/schedule",
-    eyebrow: "Scheduling",
-    title: "Schedule & assignments",
-    description: "Create, move, and review scheduled calls and technician assignments without exposing owner controls to field staff.",
-  },
-  {
-    href: "/invoices",
-    eyebrow: "Billing",
-    title: "Quotes & invoices",
-    description: "Create and edit quotes or invoices, finalize documents, email customers, and manage payment status.",
-  },
-  {
-    href: "/payments",
-    eyebrow: "Billing",
-    title: "Record a payment",
-    description: "Log cash, check, ACH, or other manual payments against an approved invoice.",
-  },
-  {
-    href: "/revenue-radar/opportunities",
-    eyebrow: "Sales",
-    title: "Sales pipeline & closeout",
-    description: "The full Revenue Radar pipeline, follow-up tasks, technician handoffs, audit, and DNC review — for when you need to dig in.",
-  },
-] as const;
+];
 
 export default async function OwnerAccessPage() {
   const profile = await getCurrentStaffProfile();
@@ -83,28 +71,25 @@ export default async function OwnerAccessPage() {
           </Link>
         </SectionCard>
 
-        <SectionCard
-          eyebrow="Owner only"
-          title="Business controls"
-          description="The operating app stays simple for technicians and office staff. Owner-only and manager-level tools are collected here so you can edit the business without cluttering the field workflow."
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {ownerTools.map((tool) => (
-              <Link
-                key={tool.href}
-                href={tool.href}
-                className="box group flex min-h-40 flex-col justify-between rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-left transition hover:border-[#8ffafa]/50 hover:bg-[#2d7dff]/10"
-              >
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8ffafa]">{tool.eyebrow}</p>
-                  <h2 className="mt-2 text-lg font-semibold text-white">{tool.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">{tool.description}</p>
-                </div>
-                <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-[#bafcfc]">Open controls →</p>
-              </Link>
-            ))}
-          </div>
-        </SectionCard>
+        {ownerToolGroups.map((group) => (
+          <SectionCard key={group.title} eyebrow="Owner only" title={group.title} description={group.description}>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {group.tools.map((tool) => (
+                <Link
+                  key={tool.href}
+                  href={tool.href}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-left transition hover:border-[#8ffafa]/50 hover:bg-[#2d7dff]/10"
+                >
+                  <div className="min-w-0">
+                    <h2 className="font-semibold text-white">{tool.title}</h2>
+                    <p className="mt-1 text-sm leading-5 text-zinc-400">{tool.description}</p>
+                  </div>
+                  <span aria-hidden="true" className="text-[#bafcfc]">→</span>
+                </Link>
+              ))}
+            </div>
+          </SectionCard>
+        ))}
 
         <SectionCard
           eyebrow="Owner only"
