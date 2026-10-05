@@ -12,8 +12,10 @@ export type FieldNotesIntakeTheme = { heading: string; subheading: string; sendL
 const defaultTheme = { heading: "Field Notes", subheading: "Type your notes, add photos, and send them to the office for review.", sendLabel: "SEND TO OFFICE" };
 const inputClass = "w-full rounded-xl border border-cyan-800 bg-black/60 px-3 py-3 text-base text-white";
 
-export function FieldNotesIntakeForm({ technicianName, profileId, jobs, customers, equipment = [], theme = defaultTheme, onSubmitted }: {
+export function FieldNotesIntakeForm({ technicianName, profileId, jobs, customers, equipment = [], preselectedJobId, theme = defaultTheme, onSubmitted }: {
   technicianName: string; profileId: string; jobs: FieldJobOption[]; customers: CustomerOption[];
+  /** Job to start on (e.g. opened from the tech job screen). Ignored unless it is one of `jobs`. */
+  preselectedJobId?: string | null;
   equipment?: { id: string; customerId: string; label: string }[];
   theme?: FieldNotesIntakeTheme; onSubmitted?: (result: { customerLabel: string; photoCount: number }) => void;
 }) {
@@ -24,14 +26,17 @@ export function FieldNotesIntakeForm({ technicianName, profileId, jobs, customer
   const [busy, setBusy] = useState(false); const [progress, setProgress] = useState("");
   const [error, setError] = useState<string | null>(null); const [storageWarning, setStorageWarning] = useState(false);
   const [confirmation, setConfirmation] = useState(""); const [previews, setPreviews] = useState<string[]>([]);
-  const initialJobId = jobs[0]?.id ?? "";
+  const preselected = preselectedJobId && jobs.some(j => j.id === preselectedJobId) ? preselectedJobId : "";
+  const initialJobId = preselected || (jobs[0]?.id ?? "");
   const key = `draft:${profileId}`;
   useEffect(() => {
     let active = true;
     const fresh = () => ({ id: crypto.randomUUID(), jobId: initialJobId, otherCustomer: !initialJobId, customerName: "", note: "", files: [], locked: false });
-    readFieldNoteDraft(key).then(saved => { if (active) setDraft(saved ?? fresh()); }).catch(() => { if (active) { setDraft(fresh()); setStorageWarning(true); } });
+    // Opened for a specific job: point an empty saved draft at it, but never retarget notes/photos already in progress.
+    const pick = (saved: FieldNoteDraft | null): FieldNoteDraft => !saved ? fresh() : preselected && !saved.locked && !saved.note.trim() && saved.files.length === 0 ? { ...saved, jobId: preselected, otherCustomer: false, customerName: "", equipmentId: "" } : saved;
+    readFieldNoteDraft(key).then(saved => { if (active) setDraft(pick(saved)); }).catch(() => { if (active) { setDraft(fresh()); setStorageWarning(true); } });
     return () => { active = false; };
-  }, [key, initialJobId]);
+  }, [key, initialJobId, preselected]);
   useEffect(() => {
     if (!draft) return;
     void saveFieldNoteDraft(key, draft).catch(() => setStorageWarning(true));
