@@ -27,7 +27,7 @@ export default async function PartsLookupPage({ searchParams }: Props) {
   return <AppShell title="Parts Pro" description="AI help finding OEM part numbers, manuals and parts desks by model and serial.">
     <div className="mx-auto max-w-4xl space-y-4">
       {back ? (
-        <Link href={back} className="cb-new cb-card inline-flex min-h-11 items-center gap-1 px-3.5 font-semibold text-[#1557B0]">
+        <Link href={back} className="cb-new cb-card inline-flex min-h-11 items-center gap-1 px-3.5 font-semibold text-[#1B3FD0]">
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           Back
         </Link>

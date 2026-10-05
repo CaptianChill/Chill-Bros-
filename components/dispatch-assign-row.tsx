@@ -51,13 +51,13 @@ export function DispatchAssignRow({ jobId, customerName, technicians }: { jobId:
           type="button"
           onClick={assign}
           disabled={pending}
-          className="min-h-11 shrink-0 rounded-xl bg-[#1557B0] px-5 text-sm font-semibold text-white transition hover:bg-[#0E3F82] disabled:opacity-60"
+          className="min-h-11 shrink-0 rounded-xl bg-[#1B3FD0] px-5 text-sm font-semibold text-white transition hover:bg-[#1530A8] disabled:opacity-60"
         >
           {pending ? "Assigning…" : "Assign"}
         </button>
       </div>
       {error ? (
-        <p role="alert" className="mt-1.5 text-[13px] font-medium text-[#0B5CD5]">
+        <p role="alert" className="mt-1.5 text-[13px] font-medium text-[#1B3FD0]">
           {error}
         </p>
       ) : null}

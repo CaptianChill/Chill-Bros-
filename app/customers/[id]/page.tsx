@@ -36,14 +36,14 @@ export default async function CustomerProfilePage({ params }: Props) {
   >
     <div className="space-y-4">
       <SectionCard eyebrow="Customer record" title="Contact & service history" description="Edit the customer record here. All equipment, documents, calls, and plans remain tied to this customer ID."><CustomerEditor customer={data.customer} /></SectionCard>
-      <Link href={`/jobs/new?customer=${data.customer.id}`} className="cb-new flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82]">
+      <Link href={`/jobs/new?customer=${data.customer.id}`} className="cb-new flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]">
         <Plus className="h-5 w-5" aria-hidden="true" />
         New call for this customer
       </Link>
       <section aria-labelledby="customer-equipment-title" className="cb-new cb-card overflow-hidden">
         <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
           <h2 id="customer-equipment-title" className="text-[28px] leading-none">Equipment</h2>
-          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1557B0] px-2.5 py-1 text-sm font-bold text-white">{data.equipment.length}</span>
+          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1B3FD0] px-2.5 py-1 text-sm font-bold text-white">{data.equipment.length}</span>
         </div>
         {data.equipment.length === 0 ? (
           <p className="bg-[#F8FAFD] px-3.5 py-4 text-sm font-medium text-[#2B3F5C]">No equipment saved yet. Add units in the asset registry below.</p>
@@ -52,13 +52,13 @@ export default async function CustomerProfilePage({ params }: Props) {
             {data.equipment.map((unit) => (
               <li key={unit.id}>
                 <Link href={`/equipment/${unit.id}`} className="flex min-h-[64px] items-center gap-3 bg-[#F8FAFD] px-3.5 py-2.5 transition hover:bg-white">
-                  <Wrench className="h-5 w-5 shrink-0 text-[#1557B0]" aria-hidden="true" />
+                  <Wrench className="h-5 w-5 shrink-0 text-[#1B3FD0]" aria-hidden="true" />
                   <span className="min-w-0 flex-1 text-left">
                     <span className="block truncate font-bold text-[#0A1A33]">{[unit.manufacturer, unit.model].filter(Boolean).join(" ") || unit.equipmentType}</span>
                     <span className="block truncate text-[13px] font-medium text-[#2B3F5C]">{[unit.equipmentType, unit.serialNumber ? `S/N ${unit.serialNumber}` : null, unit.assetTag].filter(Boolean).join(" · ")}</span>
                   </span>
-                  <span className="shrink-0 text-[13px] font-semibold text-[#1557B0]">History</span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-[#1557B0]" aria-hidden="true" />
+                  <span className="shrink-0 text-[13px] font-semibold text-[#1B3FD0]">History</span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-[#1B3FD0]" aria-hidden="true" />
                 </Link>
               </li>
             ))}

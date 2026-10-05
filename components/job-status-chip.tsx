@@ -7,10 +7,10 @@ export const ON_SITE_STATUSES: JobStatus[] = ["arrived", "in_progress", "diagnos
 type ChipTone = "onSite" | "enRoute" | "scheduled" | "needsAction";
 
 const TONES: Record<ChipTone, string> = {
-  onSite: "bg-[#DDEEFF] text-[#0E3F82]",
+  onSite: "bg-[#DDEEFF] text-[#1530A8]",
   enRoute: "bg-[#C6ECFF] text-[#075985]",
   scheduled: "bg-[#E8EEF6] text-[#3A5A85]",
-  needsAction: "bg-[#0B5CD5] text-white",
+  needsAction: "bg-[#1B3FD0] text-white",
 };
 
 export function jobChip(status: JobStatus, assigned: boolean): { label: string; tone: ChipTone } {

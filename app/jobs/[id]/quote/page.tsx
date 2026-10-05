@@ -31,7 +31,7 @@ export default async function JobQuotePage({ params }: Props) {
   const back = `/jobs/${job.id}`;
   const canQuote = profile.role === "manager" || profile.role === "technician";
   const backLink = (
-    <Link href={back} className="cb-card inline-flex min-h-11 items-center gap-1 px-3.5 font-semibold text-[#1557B0]">
+    <Link href={back} className="cb-card inline-flex min-h-11 items-center gap-1 px-3.5 font-semibold text-[#1B3FD0]">
       <ChevronLeft className="h-4 w-4" aria-hidden="true" />
       Back to the call
     </Link>
@@ -47,7 +47,7 @@ export default async function JobQuotePage({ params }: Props) {
           <section className="cb-card overflow-hidden">
             <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
               <h2 className="text-[28px] leading-none">{invoice.issuedAt ? "Invoice" : "Quote"}</h2>
-              <span className="rounded-full bg-[#1557B0] px-3 py-1 text-sm font-bold text-white">{invoice.issuedAt ? "Invoiced" : STATUS_TEXT[invoice.status] ?? invoice.status}</span>
+              <span className="rounded-full bg-[#1B3FD0] px-3 py-1 text-sm font-bold text-white">{invoice.issuedAt ? "Invoiced" : STATUS_TEXT[invoice.status] ?? invoice.status}</span>
             </div>
             <ul className="divide-y divide-[#0A1A33]/10">
               {invoice.lineItems.map((item) => (
@@ -69,7 +69,7 @@ export default async function JobQuotePage({ params }: Props) {
             </p>
           </section>
           {profile.role !== "technician" ? (
-            <Link href={`/invoices?focus=${invoice.id}`} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-base font-semibold text-white">
+            <Link href={`/invoices?focus=${invoice.id}`} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white">
               <FileText className="h-5 w-5" aria-hidden="true" />
               {invoice.status === "awaiting_approval" ? "Send, remind or approve in Billing" : "Open in Billing"}
             </Link>

@@ -16,7 +16,7 @@ const WORDMARK = { src: "/brand/chill-pros-varsity-900.webp", width: 900, height
 const SAVE_ENABLED_PATHS = ["/technician", "/dispatch", "/manager"];
 
 const roundNavButton =
-  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#2A4468] bg-[#13284A] text-white transition hover:bg-[#1557B0]";
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#2A4468] bg-[#13284A] text-white transition hover:bg-[#1B3FD0]";
 
 export type StaffShellUser = {
   role: StaffRole;
@@ -84,7 +84,7 @@ export function StaffHeader({
                   onClick={() => setMenuOpen(true)}
                   aria-label={`Account and more pages for ${user.fullName}`}
                   aria-haspopup="dialog"
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#1557B0]/40 bg-[#9FD3FF] text-sm font-bold text-[#0A1A33] [text-shadow:none]"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#1B3FD0]/40 bg-[#9FD3FF] text-sm font-bold text-[#0A1A33] [text-shadow:none]"
                 >
                   {user.initials}
                 </button>
@@ -195,7 +195,7 @@ export function MoreLinks({ items, onNavigate, tone }: { items: NavItem[]; onNav
 
   const heading = tone === "light" ? "text-[#2B3F5C]" : "text-white/80";
   const idle = tone === "light" ? "text-[#0A1A33] hover:bg-[#EEF2F7]" : "text-white hover:bg-white/10";
-  const active = tone === "light" ? "bg-[#DDEEFF] text-[#0E3F82]" : "bg-white/15 text-white";
+  const active = tone === "light" ? "bg-[#DDEEFF] text-[#1530A8]" : "bg-white/15 text-white";
 
   return (
     <nav aria-label="More pages" className="mt-4 space-y-4">
@@ -239,7 +239,7 @@ function PrimaryTabLinks({ role, layout }: { role: StaffRole; layout: "bar" | "s
         ? "min-h-[56px] flex-col justify-center gap-1 px-1 text-xs"
         : "min-h-11 gap-3 px-3 text-sm";
     const tone = active
-      ? "border-[#1557B0] bg-[#9FD3FF] text-[#0A1A33] shadow-[0_4px_12px_rgba(10,26,51,0.25)]"
+      ? "border-[#1B3FD0] bg-[#9FD3FF] text-[#0A1A33] shadow-[0_4px_12px_rgba(10,26,51,0.25)]"
       : "border-white/80 bg-white/60 text-[#0A1A33] hover:bg-white/85";
 
     return (
@@ -281,7 +281,7 @@ export function StaffSidebar({ user, moreItems }: { user: StaffShellUser; moreIt
       <form action={signOutAction} className="mt-4 border-t border-[#0A1A33]/10 pt-4">
         <button
           type="submit"
-          className="inline-flex min-h-11 w-full items-center gap-3 rounded-xl border border-[#2A4468] bg-[#13284A] px-3 text-left text-sm font-medium text-white hover:bg-[#1557B0]"
+          className="inline-flex min-h-11 w-full items-center gap-3 rounded-xl border border-[#2A4468] bg-[#13284A] px-3 text-left text-sm font-medium text-white hover:bg-[#1B3FD0]"
         >
           <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#9FD3FF] text-[11px] font-bold text-[#0A1A33]">{user.initials}</span>
           <span className="min-w-0 flex-1 truncate">Sign out {user.firstName}</span>

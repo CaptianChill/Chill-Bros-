@@ -36,7 +36,7 @@ function useRun() {
 }
 
 function Feedback({ error, message }: { error: string | null; message: string | null }) {
-  if (error) return <p role="alert" className="mt-2 text-sm font-semibold text-[#0B5CD5]">{error}</p>;
+  if (error) return <p role="alert" className="mt-2 text-sm font-semibold text-[#1B3FD0]">{error}</p>;
   if (message) return <p role="status" className="mt-2 text-sm font-semibold text-[#0A7FC2]">{message}</p>;
   return null;
 }
@@ -59,7 +59,7 @@ export function NextStepButton({ job, nextStatus, label }: { job: FieldJob; next
             `Saved: ${label}.`,
           )
         }
-        className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82] disabled:opacity-60"
+        className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8] disabled:opacity-60"
       >
         <Icon className="h-5 w-5" aria-hidden="true" />
         {pending ? "Saving…" : label}
@@ -94,7 +94,7 @@ export function TechNotes({ job, canEdit }: { job: FieldJob; canEdit: boolean })
           type="button"
           disabled={pending || notes === (job.workPerformed ?? "")}
           onClick={() => run(() => updateTechnicianJobV2Action({ jobId: job.id, workPerformed: notes, laborHours: job.laborHours, driveHours: job.driveHours }), "Notes saved.")}
-          className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#1557B0] bg-[#F8FAFD] px-4 font-semibold text-[#1557B0] disabled:opacity-50"
+          className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] px-4 font-semibold text-[#1B3FD0] disabled:opacity-50"
         >
           <Save className="h-4 w-4" aria-hidden="true" />
           {pending ? "Saving…" : "Save notes"}
@@ -116,7 +116,7 @@ export function ChangeTechnician({ jobId, currentTechId, technicians }: { jobId:
   const { pending, error, message, run } = useRun();
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="min-h-11 shrink-0 px-2 text-sm font-semibold text-[#1557B0] hover:text-[#0E3F82]">
+      <button type="button" onClick={() => setOpen(true)} className="min-h-11 shrink-0 px-2 text-sm font-semibold text-[#1B3FD0] hover:text-[#1530A8]">
         Change
       </button>
     );
@@ -135,7 +135,7 @@ export function ChangeTechnician({ jobId, currentTechId, technicians }: { jobId:
             </option>
           ))}
         </select>
-        <button type="button" disabled={pending} onClick={() => run(() => reassignJobTechnicianAction(jobId, techId), "Technician updated.")} className="min-h-11 shrink-0 rounded-xl bg-[#1557B0] px-4 text-sm font-semibold text-white disabled:opacity-60">
+        <button type="button" disabled={pending} onClick={() => run(() => reassignJobTechnicianAction(jobId, techId), "Technician updated.")} className="min-h-11 shrink-0 rounded-xl bg-[#1B3FD0] px-4 text-sm font-semibold text-white disabled:opacity-60">
           {pending ? "Saving…" : "Save"}
         </button>
       </div>
@@ -152,7 +152,7 @@ export function CloseCallButton({ jobId }: { jobId: string }) {
     <div>
       {confirming ? (
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" disabled={pending} onClick={() => run(() => closeCallAction(jobId), "Call closed.")} className="min-h-12 rounded-xl bg-[#0B5CD5] px-3 font-semibold text-white disabled:opacity-60">
+          <button type="button" disabled={pending} onClick={() => run(() => closeCallAction(jobId), "Call closed.")} className="min-h-12 rounded-xl bg-[#1B3FD0] px-3 font-semibold text-white disabled:opacity-60">
             {pending ? "Closing…" : "Yes, close call"}
           </button>
           <button type="button" disabled={pending} onClick={() => setConfirming(false)} className="min-h-12 rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 font-semibold text-[#0A1A33]">
@@ -160,7 +160,7 @@ export function CloseCallButton({ jobId }: { jobId: string }) {
           </button>
         </div>
       ) : (
-        <button type="button" onClick={() => setConfirming(true)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#1557B0] bg-[#F8FAFD] px-3 font-semibold text-[#1557B0]">
+        <button type="button" onClick={() => setConfirming(true)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] px-3 font-semibold text-[#1B3FD0]">
           <XCircle className="h-4 w-4" aria-hidden="true" />
           Close call
         </button>

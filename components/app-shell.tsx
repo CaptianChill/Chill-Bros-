@@ -57,7 +57,7 @@ export async function AppShell({ children, title, description, highlight, lead, 
   return (
     <div className="cb-staff cb-camo-page min-h-dvh">
       {profile ? <LiveOfficeRefresh intervalMs={10000} /> : null}
-      <a href="#main-content" className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-xl bg-[#1557B0] px-4 py-2 text-sm font-semibold text-white transition focus:translate-y-0">
+      <a href="#main-content" className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-xl bg-[#1B3FD0] px-4 py-2 text-sm font-semibold text-white transition focus:translate-y-0">
         Skip to content
       </a>
 
