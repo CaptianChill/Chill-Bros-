@@ -283,7 +283,7 @@ function AgreementEditor({ agreement, customers, defaultOpen }: { agreement: Ser
     if (defaultOpen) document.getElementById(`plan-${agreement.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [defaultOpen, agreement.id]);
 
-  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, success: string) => { setError(null); setMessage(null); startTransition(async () => { const result = await fn(); if (!result.ok) { setError(result.error ?? "Action failed."); return; } setMessage(success); router.refresh(); }); };
+  const run = (fn: () => Promise<{ ok: boolean; error?: string; data?: unknown }>, success: string) => { setError(null); setMessage(null); startTransition(async () => { const result = await fn(); if (!result.ok) { setError(result.error ?? "Action failed."); return; } const detail = result.data && typeof result.data === "object" && "message" in result.data ? (result.data as { message?: string }).message : undefined; setMessage(detail || success); router.refresh(); }); };
   const save = () => {
     if (signed && !window.confirm("This plan was already approved. Saving changes sends it back to the customer for a new approval. Continue?")) return;
     run(() => updateServiceAgreementAction({ ...toInput(state), id: agreement.id }), signed ? "Saved. Customer needs to approve the updated plan." : "Plan updated.");
