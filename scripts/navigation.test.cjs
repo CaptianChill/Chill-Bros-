@@ -43,7 +43,7 @@ test('office can open every billing page its menu and buttons point to', () => {
 test('tech job screen links its tools', () => {
   const src = read('app/technician/page.tsx');
   assert.match(src, /href=\{`\/tech-assist\/\$\{job\.id\}`\}/);
-  assert.match(src, /href="\/field-notes"/);
+  assert.match(src, /href=\{`\/field-notes\?job=\$\{job\.id\}`\}/);
   assert.match(src, /href="\/parts-lookup"/);
 });
 
