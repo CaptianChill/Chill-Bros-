@@ -39,56 +39,59 @@ export type PlanStarter = {
   servicesIncluded: string;
 };
 
-// Starting points only — every field stays editable before saving.
+// Keep the historical ids so saved UI defaults remain compatible, while the
+// customer-facing package names match the current Chill Pros sales program.
 export const PLAN_STARTERS: PlanStarter[] = [
   {
     id: "basic",
-    label: "Basic",
-    blurb: "1 visit · 1.5 hr",
-    title: "Basic Monthly Maintenance Plan",
+    label: "Silver Essential",
+    blurb: "Core coverage · 1 visit",
+    title: "Silver Essential Service Plan",
     visitsPerMonth: 1,
     hoursPerVisit: 1.5,
     servicesIncluded: [
-      "Filter check / replacement (filters billed at cost unless included)",
-      "Thermostat and controls check",
-      "Condensate drain line check",
-      "Visual inspection of coils, belts, and electrical connections",
-      "Written visit report",
+      "Scheduled preventive-maintenance visit and normal trip charge included",
+      "HVAC / refrigeration visual inspection and operating checks",
+      "Thermostat, controls, condensate, belt, coil, gasket, and electrical checks as applicable",
+      "Written service report with recommendations",
+      "Standard scheduling priority",
     ].join("\n"),
   },
   {
     id: "standard",
-    label: "Standard",
-    blurb: "1 visit · 3 hr",
-    title: "Standard Monthly Maintenance Plan",
+    label: "Gold Protection",
+    blurb: "Priority value · 1 extended visit",
+    title: "Gold Protection Service Plan",
     visitsPerMonth: 1,
     hoursPerVisit: 3,
     servicesIncluded: [
-      "Everything in Basic",
-      "Refrigerant pressure / temperature checks",
-      "Condenser coil cleaning as needed",
-      "Walk-in / reach-in cooler and freezer checks",
-      "Ice machine inspection",
-      "Written visit report with recommendations",
+      "Everything included in Silver Essential",
+      "Expanded HVAC, refrigeration, ice-machine, and kitchen-equipment checks as selected",
+      "Scheduled preventive-maintenance visit and normal trip charge included",
+      "Priority scheduling",
+      "Detailed service reporting and equipment recommendations",
+      "10% repair-labor discount on eligible work",
+      "5% discount from standard service-plan parts selling price on eligible repairs",
     ].join("\n"),
   },
   {
     id: "premium",
-    label: "Premium",
-    blurb: "2 visits · 3 hr",
-    title: "Premium Monthly Maintenance Plan",
+    label: "Diamond Operations",
+    blurb: "Maximum coverage · 2 visits",
+    title: "Diamond Operations Service Plan",
     visitsPerMonth: 2,
     hoursPerVisit: 3,
     servicesIncluded: [
-      "Everything in Standard",
-      "Twice-monthly visits",
-      "Evaporator and condenser coil cleaning",
-      "Door gasket, hinge, and seal checks",
-      "Kitchen equipment checks",
-      "Written visit report with recommendations",
+      "Everything included in Gold Protection",
+      "Two scheduled preventive-maintenance visits per month with normal trip charges included",
+      "Full equipment / asset-management focus",
+      "Highest service-plan scheduling priority",
+      "Detailed condition reporting and repair planning",
+      "20% repair-labor discount on eligible work",
+      "10% discount from standard service-plan parts selling price on eligible repairs",
     ].join("\n"),
   },
 ];
 
 export const DEFAULT_PLAN_TERMS =
-  "Monthly service is scheduled according to the days, visit frequency, hours, scope, and pricing shown in this agreement. Work outside the included scope may be quoted separately. Schedule changes should be coordinated with Chill Pros in advance.";
+  "Monthly service is scheduled according to the days, visit frequency, hours, scope, and pricing shown in this agreement. Scheduled preventive-maintenance trips are included when stated in the package. Work outside the included scope, emergency service, specialty parts, or added equipment may be quoted separately. Schedule changes should be coordinated with Chill Pros in advance.";
