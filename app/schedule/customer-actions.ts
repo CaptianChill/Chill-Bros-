@@ -29,7 +29,7 @@ export async function createScheduleCustomerAction(formData: FormData): Promise<
   revalidatePath("/schedule");
   revalidatePath("/customers");
   revalidatePath("/dispatch");
-  query.set("success", "Customer added. They are now available in the schedule customer list.");
+  query.set("success", "Customer added. Tap New service call to book them.");
   query.set("customer", result.data.customerId);
   redirect(`/schedule?${query.toString()}`);
 }

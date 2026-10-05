@@ -10,7 +10,7 @@ import { displayTime, parseWindow } from "@/lib/chillbros/schedule-window";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
-type Props = { searchParams: Promise<{ saved?: string }> };
+type Props = { searchParams: Promise<{ saved?: string; warning?: string }> };
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const CLOSED_STATUSES = ["paid", "completed", "cancelled"];
@@ -55,7 +55,7 @@ export default async function OpenWorkPage({ searchParams }: Props) {
   if (profile.role === "technician") redirect("/technician");
   if (!["manager", "office"].includes(profile.role)) redirect("/");
 
-  const [{ saved }, jobs, invoiceCenter] = await Promise.all([
+  const [{ saved, warning }, jobs, invoiceCenter] = await Promise.all([
     searchParams,
     getDispatchJobs(250),
     getInvoiceCenterData().catch(() => ({ rows: [] as InvoiceCenterRow[] })),
@@ -81,6 +81,7 @@ export default async function OpenWorkPage({ searchParams }: Props) {
             Saved the call for {savedJob.customerName}.
           </p>
         ) : null}
+        {savedJob && warning ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#1B3FD0]">{warning}</p> : null}
 
         <Link href="/jobs/new" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]">
           <Plus className="h-5 w-5" aria-hidden="true" />

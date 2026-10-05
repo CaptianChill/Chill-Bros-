@@ -15,30 +15,46 @@ type CustomerOption = { id: string; name: string; address: string | null };
 type UnitOption = { id: string; customerId: string; label: string };
 type TechOption = { id: string; fullName: string };
 
-const TIMES = Array.from({ length: 29 }, (_, i) => `${String(6 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
+// Every half hour of the day (the schedule screen allowed all 24 hours, so
+// after-hours and emergency calls can still be booked here).
+const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
 const field = "mt-1 min-h-11 w-full rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 text-base font-medium text-[#0A1A33] placeholder:text-[#5B6B82]";
 const labelClass = "block text-sm font-semibold text-[#0A1A33]";
 
 // New service call in one screen: customer (or a new one), unit, complaint,
 // technician and time. Uses the existing equipment-linked intake action, then
-// opens the new job so parts can be added right away.
-export function NewServiceCallForm({ customers, units, technicians, today, initialCustomerId }: { customers: CustomerOption[]; units: UnitOption[]; technicians: TechOption[]; today: string; initialCustomerId?: string }) {
+// opens the new job so parts can be added right away. This is the only form
+// that starts a service call: Schedule and Dispatch link here with prefill.
+export function NewServiceCallForm({ customers, units, technicians, today, initialCustomerId, initialEquipmentId, initialTechId, initialDate, returnTo }: {
+  customers: CustomerOption[];
+  units: UnitOption[];
+  technicians: TechOption[];
+  today: string;
+  initialCustomerId?: string;
+  initialEquipmentId?: string;
+  initialTechId?: string;
+  initialDate?: string;
+  /** "schedule" sends the office back to that week's calendar after saving. */
+  returnTo?: "schedule";
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // One id per open form: a double tap or retry saves the call only once.
+  const [submissionId] = useState(() => crypto.randomUUID());
 
   const [newCustomer, setNewCustomer] = useState(false);
   const [customerId, setCustomerId] = useState(initialCustomerId ?? "");
   const [customer, setCustomer] = useState({ name: "", phone: "", email: "", address: "" });
-  const [equipmentId, setEquipmentId] = useState("");
+  const [equipmentId, setEquipmentId] = useState(initialEquipmentId ?? "");
   const [addEquipment, setAddEquipment] = useState(false);
   const [equipment, setEquipment] = useState({ equipmentType: "", manufacturer: "", model: "", serialNumber: "", refrigerant: "" });
   const [location, setLocation] = useState("");
   const [scope, setScope] = useState("");
   const [approved, setApproved] = useState(false);
-  const [techId, setTechId] = useState("");
+  const [techId, setTechId] = useState(initialTechId ?? "");
   const [scheduleNow, setScheduleNow] = useState(true);
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(initialDate ?? today);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("11:00");
 
@@ -84,9 +100,13 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
         location: location.trim() || (newCustomer ? customer.address : ""),
         scope: fullScope,
         scheduledWindow: scheduleNow ? `${date} ${start}-${end} CT` : undefined,
+        submissionId,
       });
       if (!result.ok) return setError(result.error);
-      router.push(addParts ? `/jobs/${result.jobId}?success=${encodeURIComponent("Service call saved. Add parts below.")}#parts` : `/work?saved=${encodeURIComponent(result.jobId)}`);
+      const warning = result.warning ? `&warning=${encodeURIComponent(result.warning)}` : "";
+      if (addParts) return router.push(`/jobs/${result.jobId}?success=${encodeURIComponent(`Service call saved. Add parts below.${result.warning ? ` ${result.warning}` : ""}`)}#parts`);
+      if (returnTo === "schedule") return router.push(`/schedule?week=${scheduleNow ? date : today}&success=${encodeURIComponent("Call saved to the calendar.")}${warning}`);
+      router.push(`/work?saved=${encodeURIComponent(result.jobId)}${warning}`);
     });
   };
 
