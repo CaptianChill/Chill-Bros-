@@ -29,7 +29,7 @@ const DOWN_PAYMENT_METHODS = [...METHODS, ["chime", "Chime"] as const];
 export default async function PaymentsPage({ searchParams }: Props) {
   const profile = await getCurrentStaffProfile();
   if (!profile) redirect("/sign-in?next=%2Fpayments");
-  if (profile.role !== "manager") redirect("/");
+  if (!["manager", "office"].includes(profile.role)) redirect("/");
 
   const params = await searchParams;
   const tab = params.tab === "down" ? "down" : "full";
@@ -43,7 +43,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
 
   return <AppShell
     title="Payment Center"
-    description="Record full invoice payments and quote down payments from one manager-only form."
+    description="Record full invoice payments and quote down payments from one form."
     highlight={<div className="space-y-2"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Payments</p><StatusPill tone="emerald">Manager only</StatusPill><StatusPill>{unpaid.length} unpaid approved</StatusPill>{needsDownPayment.length ? <StatusPill tone="amber">{needsDownPayment.length} down payment due</StatusPill> : null}</div>}
   >
     <div className="space-y-5">
