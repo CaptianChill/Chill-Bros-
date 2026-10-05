@@ -194,7 +194,7 @@ export function ServiceAgreementAdmin({ customers, agreements, initialCustomerId
       <div className="flex flex-wrap gap-2">
         {([["open", "Open"], ["active", "Active"], ["all", "All"]] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setFilter(key)} className={`rounded-full border px-3 py-1.5 text-xs ${filter === key ? "border-[#8ffafa]/50 bg-[#2d7dff]/15 text-[#d9fbff]" : "border-[#2d7dff]/20 text-zinc-400"}`}>{label} ({counts[key]})</button>)}
       </div>
-      {visible.length === 0 ? <p className="text-sm text-zinc-500">{filter === "open" ? "No plans waiting on approval." : filter === "active" ? "No active plans yet." : "No monthly plans created yet."}</p> : visible.map((agreement) => <AgreementEditor key={agreement.id} agreement={agreement} customers={customers} defaultOpen={agreement.id === focusPlanId} />)}
+      {visible.length === 0 ? <p className="text-sm text-zinc-500">{filter === "open" ? "No plans waiting on approval." : filter === "active" ? "No active plans yet." : "No monthly plans created yet."}</p> : <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">{visible.map((agreement) => <AgreementEditor key={agreement.id} agreement={agreement} customers={customers} defaultOpen={agreement.id === focusPlanId} />)}</div>}
     </div>
   </div>;
 }
@@ -291,10 +291,12 @@ function AgreementEditor({ agreement, customers, defaultOpen }: { agreement: Ser
   const setStatus = (status: "proposed" | "active" | "cancelled") => run(() => setServiceAgreementStatusAction(agreement.id, status), status === "active" ? "Plan is active." : status === "cancelled" ? "Plan cancelled." : "Plan reopened.");
   const verbal = () => run(() => recordVerbalAgreementApprovalAction(agreement.id, approvedBy), "Verbal approval recorded.");
 
-  return <div id={`plan-${agreement.id}`} className="rounded-2xl border border-[#2d7dff]/15 bg-zinc-950/70">
-    <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-3 p-4 text-left">
-      <div className="min-w-0"><p className="truncate font-medium text-white">{agreement.customerName}</p><p className="mt-0.5 truncate text-xs text-zinc-500">{agreement.title} · {agreement.agreementNumber}</p></div>
-      <div className="flex shrink-0 flex-col items-end gap-1"><span className="text-sm font-semibold text-[#bafcfc]">{money(agreement.monthlyTotal)}/mo</span><StatusPill tone={statusTone(agreement.status)}>{statusLabel[agreement.status]}</StatusPill></div>
+  return <div id={`plan-${agreement.id}`} className={`rounded-2xl border bg-zinc-950/70 ${open ? "col-span-full border-[#8ffafa]/40" : "border-[#2d7dff]/20"}`}>
+    <button type="button" onClick={() => setOpen(!open)} className="flex w-full flex-col gap-2 p-3 text-left">
+      <StatusPill tone={statusTone(agreement.status)}>{statusLabel[agreement.status]}</StatusPill>
+      <p className="line-clamp-2 font-semibold leading-tight text-white">{agreement.customerName}</p>
+      <p className="text-base font-semibold text-[#bafcfc]">{money(agreement.monthlyTotal)}<span className="text-xs font-normal text-zinc-500">/mo</span></p>
+      <p className="truncate text-[11px] text-zinc-500">{agreement.agreementNumber}</p>
     </button>
     {open ? <div className="space-y-4 border-t border-[#2d7dff]/10 p-4">
       <ShareActions token={agreement.portalToken} title={agreement.title} email={agreement.customerEmail} phone={agreement.customerPhone} />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BarChart3, Box, Boxes, Clock3, CreditCard, FileText, GraduationCap, Package, Radar, ScanLine, ShieldCheck, SlidersHorizontal, Wallet, type LucideIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 const OWNER_EMAIL = "chillprostx@gmail.com";
 
-type OwnerTool = { href: string; title: string; description: string };
+type OwnerTool = { href: string; title: string; description: string; icon: LucideIcon };
 
 // Daily screens (customers, schedule, invoices, payments) are already in the
 // main menu, so they are not repeated here. Owner Access holds only what the
@@ -22,31 +23,31 @@ const ownerToolGroups: { title: string; description: string; tools: OwnerTool[] 
     title: "Run the business",
     description: "Money, pricing, staff, and reports.",
     tools: [
-      { href: "/reports", title: "Reports", description: "Revenue, outstanding balances, jobs, technician time, and inventory value." },
-      { href: "/manager", title: "Manager controls", description: "Estimates, approvals, collections, and staff status." },
-      { href: "/inventory", title: "Parts, price book & fees", description: "Stock, cost, retail prices, and fee presets used in estimates." },
-      { href: "/payroll", title: "Payroll & paystubs", description: "Open the payroll workspace." },
-      { href: "/timesheet", title: "Clock & timesheets", description: "Clock in or out and review hours." },
-      { href: "/revenue-radar/opportunities", title: "Sales pipeline & closeout", description: "Full Revenue Radar pipeline, audit, and do-not-contact review." },
+      { href: "/reports", title: "Reports", description: "Revenue, outstanding balances, jobs, technician time, and inventory value.", icon: BarChart3 },
+      { href: "/manager", title: "Manager controls", description: "Estimates, approvals, collections, and staff status.", icon: SlidersHorizontal },
+      { href: "/inventory", title: "Parts, price book & fees", description: "Stock, cost, retail prices, and fee presets used in estimates.", icon: Package },
+      { href: "/payroll", title: "Payroll & paystubs", description: "Open the payroll workspace.", icon: Wallet },
+      { href: "/timesheet", title: "Clock & timesheets", description: "Clock in or out and review hours.", icon: Clock3 },
+      { href: "/revenue-radar/opportunities", title: "Sales pipeline & closeout", description: "Full Revenue Radar pipeline, audit, and do-not-contact review.", icon: Radar },
     ],
   },
   {
     title: "Settings",
     description: "Company setup and account safety.",
     tools: [
-      { href: "/settings/payments", title: "Payments & email", description: "Square setup and a live company-email test." },
-      { href: "/security", title: "Security", description: "Review active sessions and sign out other devices." },
+      { href: "/settings/payments", title: "Payments & email", description: "Square setup and a live company-email test.", icon: CreditCard },
+      { href: "/security", title: "Security", description: "Review active sessions and sign out other devices.", icon: ShieldCheck },
     ],
   },
   {
     title: "Extras",
     description: "Creative and training tools, kept out of the daily menus.",
     tools: [
-      { href: "/training", title: "Training & Chill Bro Bible", description: "Equipment training and reference." },
-      { href: "/3d-studio", title: "3D Studio", description: "3D equipment and project models." },
-      { href: "/3d-project-builder", title: "3D Project Builder", description: "Build a 3D walkthrough for a project." },
-      { href: "/create", title: "Document Desk", description: "Create owner documents." },
-      { href: "/scan-send", title: "Scan & Send", description: "Scan a document and send it." },
+      { href: "/training", title: "Training & Chill Bro Bible", description: "Equipment training and reference.", icon: GraduationCap },
+      { href: "/3d-studio", title: "3D Studio", description: "3D equipment and project models.", icon: Box },
+      { href: "/3d-project-builder", title: "3D Project Builder", description: "Build a 3D walkthrough for a project.", icon: Boxes },
+      { href: "/create", title: "Document Desk", description: "Create owner documents.", icon: FileText },
+      { href: "/scan-send", title: "Scan & Send", description: "Scan a document and send it.", icon: ScanLine },
     ],
   },
 ];
@@ -73,18 +74,16 @@ export default async function OwnerAccessPage() {
 
         {ownerToolGroups.map((group) => (
           <SectionCard key={group.title} eyebrow="Owner only" title={group.title} description={group.description}>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
               {group.tools.map((tool) => (
                 <Link
                   key={tool.href}
                   href={tool.href}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4 text-left transition hover:border-[#8ffafa]/50 hover:bg-[#2d7dff]/10"
+                  title={tool.description}
+                  className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/25 bg-black/45 p-3 text-center transition hover:border-[#8ffafa]/55 hover:bg-[#2d7dff]/10"
                 >
-                  <div className="min-w-0">
-                    <h2 className="font-semibold text-white">{tool.title}</h2>
-                    <p className="mt-1 text-sm leading-5 text-zinc-400">{tool.description}</p>
-                  </div>
-                  <span aria-hidden="true" className="text-[#bafcfc]">→</span>
+                  <tool.icon className="h-6 w-6 text-[#8ffafa]" aria-hidden="true" />
+                  <span className="text-sm font-semibold leading-tight text-white">{tool.title}</span>
                 </Link>
               ))}
             </div>
