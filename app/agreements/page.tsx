@@ -9,20 +9,22 @@ import { getServiceAgreements } from "@/lib/chillbros/service-agreement-queries"
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
+type Props = { searchParams: Promise<{ customer?: string; plan?: string }> };
 
-export default async function AgreementsPage() {
+export default async function AgreementsPage({ searchParams }: Props) {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
-  const [customers, agreements] = await Promise.all([getCustomers(), getServiceAgreements()]);
+  const [{ customer, plan }, customers, agreements] = await Promise.all([searchParams, getCustomers(), getServiceAgreements()]);
   const active = agreements.filter((a) => a.status === "active").length;
-  const awaiting = agreements.filter((a) => a.status === "proposed").length;
+  const waiting = agreements.filter((a) => ["draft", "proposed", "accepted"].includes(a.status)).length;
+  const monthly = agreements.filter((a) => a.status === "active").reduce((sum, a) => sum + a.monthlyTotal, 0);
   return <AppShell
-    title="Build completely custom monthly service plans around the customer’s hours, schedule, scope, and budget."
-    description="Create the plan on site or from the office, calculate monthly pricing, save it under the customer, and send a secure printable quote/agreement for review and acceptance."
-    highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Plan agreements</p><StatusPill tone="emerald">{active} active</StatusPill><StatusPill tone="amber">{awaiting} awaiting approval</StatusPill><StatusPill>{agreements.length} total</StatusPill></div>}
+    title="Service plans"
+    description="Build a custom monthly maintenance package in under a minute: pick the customer, start from a package, set the price, and send the link."
+    highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Service plans</p><StatusPill tone="emerald">{active} active · {monthly.toLocaleString("en-US", { style: "currency", currency: "USD" })}/mo</StatusPill><StatusPill tone="amber">{waiting} open</StatusPill></div>}
   >
-    <SectionCard eyebrow="Monthly plans" title="Custom service agreement builder" description="Visits, hours, rates, preferred days, services, discounts, setup fees, dates, terms, and customer preferences all stay editable until the customer accepts.">
-      <ServiceAgreementAdmin customers={customers} agreements={agreements} />
+    <SectionCard eyebrow="Monthly packages" title="New service plan" description="Everything stays editable until the customer approves.">
+      <ServiceAgreementAdmin customers={customers} agreements={agreements} initialCustomerId={customer} focusPlanId={plan} />
     </SectionCard>
   </AppShell>;
 }

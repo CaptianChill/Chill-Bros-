@@ -13,7 +13,7 @@ const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/scan-send", "Scan & Send"],
   [(p) => p === "/invoices", "Invoices"],
   [(p) => p === "/payments", "Payment Center"],
-  [(p) => p === "/agreements", "Monthly Plans"],
+  [(p) => p === "/agreements", "Service Plans"],
   [(p) => p === "/manager", "Manager Hub"],
   [(p) => p === "/security", "Security"],
   [(p) => p === "/technician", "Field Workflow"],
