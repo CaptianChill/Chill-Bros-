@@ -43,6 +43,12 @@ test('askClaude explains API errors and a missing key instead of throwing', asyn
   } finally { global.fetch = realFetch; delete process.env.ANTHROPIC_API_KEY; }
 });
 
+test('Tech Assist uses Claude when connected, else the existing OpenAI key', () => {
+  const ai = fs.readFileSync('lib/chillbros/ai.ts', 'utf8');
+  assert.ok(ai.indexOf('claudeConfigured()') < ai.indexOf('createOpenAI({ apiKey })'));
+  assert.match(fs.readFileSync('lib/chillbros/tech-assist-ai.ts', 'utf8'), /await askAI\(/);
+});
+
 test('Tech Assist chat is on the job page and techs only reach their own jobs', () => {
   assert.match(fs.readFileSync('app/tech-assist/[id]/page.tsx', 'utf8'), /<TechAssistChat jobId=\{j\.id\}\/>/);
   const action = fs.readFileSync('lib/chillbros/tech-assist-ai.ts', 'utf8');

@@ -1,6 +1,7 @@
 "use server";
 
-import { askClaude, type ClaudeMessage } from "@/lib/chillbros/claude";
+import { askAI } from "@/lib/chillbros/ai";
+import type { ClaudeMessage } from "@/lib/chillbros/claude";
 import { getTechAssistContext } from "@/lib/chillbros/tech-assist-context";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
@@ -58,6 +59,6 @@ export async function askTechAssistAction(jobId: string, question: string, histo
     .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
   while (prior.length && prior[0].role !== "user") prior.shift();
 
-  const result = await askClaude({ system: `${SYSTEM}\n\nJOB CONTEXT:\n${context}`, messages: [...prior, { role: "user", content: q }] });
+  const result = await askAI({ system: `${SYSTEM}\n\nJOB CONTEXT:\n${context}`, messages: [...prior, { role: "user", content: q }] });
   return result.ok ? { ok: true, answer: result.text } : { ok: false, error: result.error };
 }
