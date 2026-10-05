@@ -19,6 +19,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/portal",
   "/api/payments/square/webhook",
   "/api/cron",
+  // Brae.I. read-only API: no Neon session; each route checks its own BRAE_API_KEY bearer token.
+  "/api/brae",
   "/api/3d-project-builder/blender-self-test",
 ];
 
