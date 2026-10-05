@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
+import { calculatePlanPricing } from "@/lib/chillbros/service-plan-pricing";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { AgreementCalculationMode, AgreementDiscountType, ServiceAgreementStatus } from "./service-agreement-queries";
@@ -49,18 +50,7 @@ function refresh(customerId?: string, token?: string) {
 }
 
 function calculateAgreement(input: Pick<ServiceAgreementInput, "calculationMode" | "visitsPerMonth" | "hoursPerVisit" | "hourlyRate" | "monthlyFlatRate" | "discountType" | "discountValue">) {
-  const visits = Math.max(1, Math.min(31, Math.floor(Number(input.visitsPerMonth) || 1)));
-  const hours = Math.max(0, Math.min(24, Number(input.hoursPerVisit) || 0));
-  const hourlyRate = Math.max(0, Number(input.hourlyRate) || 0);
-  const flat = Math.max(0, Number(input.monthlyFlatRate) || 0);
-  const monthlySubtotal = round(input.calculationMode === "flat" ? flat : visits * hours * hourlyRate);
-  const rawDiscount = Math.max(0, Number(input.discountValue) || 0);
-  const discountAmount = input.discountType === "percent"
-    ? round(Math.min(monthlySubtotal, monthlySubtotal * Math.min(rawDiscount, 100) / 100))
-    : input.discountType === "dollar"
-      ? round(Math.min(monthlySubtotal, rawDiscount))
-      : 0;
-  return { monthlySubtotal, discountAmount, monthlyTotal: round(Math.max(0, monthlySubtotal - discountAmount)) };
+  return calculatePlanPricing(input);
 }
 
 function validate(input: ServiceAgreementInput) {
@@ -141,5 +131,24 @@ export async function acceptServiceAgreementAction(token: string, signatureName:
   if (error || !data) return { ok: false, error: error?.message ?? "This agreement is no longer available for acceptance." };
   await supabase.from("chillbros_customer_service_history").insert({ customer_id: data.customer_id, note: `Customer accepted monthly service agreement ${data.agreement_number}.` });
   refresh(data.customer_id, token);
+  return { ok: true, data: undefined };
+}
+
+// Owner/office path: the customer approved by phone or in person. Records who
+// logged it and when, keeps the same agreement (no duplicate), and writes a
+// customer history entry.
+export async function recordVerbalAgreementApprovalAction(id: string, approvedBy: string): Promise<Result> {
+  const guard = await requireOfficeOrManager();
+  if (!guard.ok) return guard;
+  const customerContact = String(approvedBy ?? "").trim();
+  if (customerContact.length < 2) return { ok: false, error: "Enter who approved the plan (customer contact name)." };
+  const supabase = createServiceRoleClient();
+  const signedAt = new Date().toISOString();
+  const staffName = guard.profile.fullName || guard.profile.email || "office";
+  const signatureName = `${customerContact.slice(0, 120)} (verbal approval logged by ${staffName})`.slice(0, 200);
+  const { data, error } = await supabase.from("chillbros_service_agreements").update({ status: "accepted", signature_name: signatureName, signed_at: signedAt, updated_at: signedAt }).eq("id", id).in("status", ["draft", "proposed"]).select("customer_id,agreement_number,portal_token").maybeSingle();
+  if (error || !data) return { ok: false, error: error?.message ?? "This plan is no longer waiting for approval." };
+  await supabase.from("chillbros_customer_service_history").insert({ customer_id: data.customer_id, note: `Verbal approval of monthly service agreement ${data.agreement_number} from ${customerContact.slice(0, 120)}, logged by ${staffName}.` });
+  refresh(data.customer_id, data.portal_token);
   return { ok: true, data: undefined };
 }
