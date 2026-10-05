@@ -6,8 +6,8 @@
   --cb-navy: #0a1a33;
   --cb-navy-fill: #13284a;
   --cb-navy-border: #2a4468;
-  --cb-blue: #1557b0;
-  --cb-blue-hover: #0e3f82;
+  --cb-blue: #1b3fd0; /* royal blue from the CHILL PROS wordmark */
+  --cb-blue-hover: #1530a8;
   --cb-icy: #9fd3ff;
   --cb-card: rgba(255, 255, 255, 0.78); /* frosted see-through white */
   --cb-card-border: rgba(255, 255, 255, 0.9);
@@ -15,16 +15,18 @@
   --cb-text: #0a1a33;
   --cb-text-2: #2b3f5c; /* darker secondary text for field readability */
   --cb-input-border: #c7d3e2;
-  --cb-needs-action: #0b5cd5; /* all accents are shades of blue */
+  --cb-needs-action: #1b3fd0; /* wordmark royal blue */
+  --cb-gold: #ffb400; /* wordmark gold */
+  --cb-red: #e3261c; /* wordmark red */
   --cb-success: #0a7fc2;
   --cb-tile: rgba(250, 251, 253, 0.95); /* off-white inner boxes, easy to read */
   --cb-field: #f8fafd; /* off-white text inputs */
-  /* Frosted ice-brick wall behind cards, the header and the tab bar. One
-     brick size everywhere (the wall repeats instead of stretching). */
-  --cb-ice-bricks: url("/brand/chill-pros-ice-bricks.webp");
-  --cb-ice-size: 380px auto;
-  --cb-card-frost: rgba(255, 255, 255, 0.3);
-  --cb-card-glow: 0 0 0 1px rgba(159, 211, 255, 0.55), 0 0 14px rgba(255, 255, 255, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  /* Clean frosted glass over the camo for cards, the header and the tab
+     bar: bright see-through white, soft blur, crisp white edge, soft shadow. */
+  --cb-glass: rgba(255, 255, 255, 0.8);
+  --cb-glass-band: rgba(255, 255, 255, 0.72);
+  --cb-glass-blur: blur(16px) saturate(160%);
+  --cb-card-glow: 0 0 0 1px rgba(255, 255, 255, 0.95), 0 8px 28px rgba(4, 28, 78, 0.22), inset 0 1px 0 rgba(255, 255, 255, 1);
 
   font-family: var(--font-barlow), "Segoe UI", Arial, sans-serif;
   color: #fff;
@@ -49,7 +51,7 @@
   font-family: var(--font-varsity), "Arial Black", Impact, sans-serif;
   font-weight: 400 !important;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.065em;
   line-height: 1.15;
 }
 .cb-staff :is(h1, h2):not(#cb-bubble):not(:has(.varsity)) {
@@ -89,14 +91,14 @@
 /* Header, tab bar and desktop sidebar: frosted "foggy glass" over the page
    camo, which shows through softly blurred. */
 .cb-camo-band {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(214, 230, 248, 0.42)), var(--cb-ice-bricks) 0 0 / var(--cb-ice-size) repeat;
-  -webkit-backdrop-filter: blur(18px) saturate(135%);
-  backdrop-filter: blur(18px) saturate(135%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 0 rgba(255, 255, 255, 0.55);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), var(--cb-glass-band));
+  -webkit-backdrop-filter: var(--cb-glass-blur);
+  backdrop-filter: var(--cb-glass-blur);
+  box-shadow: inset 0 1px 0 #fff, 0 1px 0 rgba(255, 255, 255, 0.9), 0 6px 24px rgba(4, 28, 78, 0.18);
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .cb-camo-band {
-    background: linear-gradient(rgba(226, 237, 250, 0.7), rgba(226, 237, 250, 0.7)), var(--cb-ice-bricks) 0 0 / var(--cb-ice-size) repeat;
+    background: rgba(244, 248, 254, 0.96);
   }
 }
 
@@ -113,7 +115,8 @@
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: url("/brand/chill-pros-camo-blue.webp") center / cover no-repeat;
+  /* Vector redraw of the camo: razor sharp at any screen size. */
+  background: url("/brand/chill-pros-camo-blue.svg") center / cover no-repeat;
   pointer-events: none;
 }
 
@@ -142,12 +145,12 @@
 }
 
 .cb-card {
-  background: linear-gradient(var(--cb-card-frost), var(--cb-card-frost)), var(--cb-ice-bricks) 0 0 / var(--cb-ice-size) repeat;
+  background: var(--cb-glass);
   box-shadow: var(--cb-card-glow);
-  -webkit-backdrop-filter: blur(12px) saturate(120%);
-  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: var(--cb-glass-blur);
+  backdrop-filter: var(--cb-glass-blur);
   border: 1px solid var(--cb-card-border);
-  border-radius: 12px;
+  border-radius: 16px;
   color: var(--cb-text);
   text-shadow: none;
 }
@@ -183,20 +186,17 @@
   background-color: transparent !important;
 }
 
-/* Every dark or translucent panel becomes a frosted ice-brick card. Fixed
+/* Every dark or translucent panel becomes a frosted glass card. Fixed
    full-screen overlays (modals, lightboxes) keep their dark backdrop. */
 .cb-staff .cb-page :is(.panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"], [class*="bg-background"]):not(.fixed):not(.cb-new, .cb-new *) {
-  background-color: transparent !important;
-  background-image: linear-gradient(var(--cb-card-frost), var(--cb-card-frost)), var(--cb-ice-bricks) !important;
-  background-size: auto, var(--cb-ice-size) !important;
-  background-repeat: repeat !important;
-  background-position: 0 0 !important;
+  background-color: var(--cb-glass) !important;
+  background-image: none !important;
   border-color: var(--cb-card-border) !important;
   color: var(--cb-text) !important;
   text-shadow: none !important;
   box-shadow: var(--cb-card-glow) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
-  backdrop-filter: blur(12px) saturate(120%) !important;
+  -webkit-backdrop-filter: var(--cb-glass-blur) !important;
+  backdrop-filter: var(--cb-glass-blur) !important;
 }
 /* Text on every card is a step heavier so it reads easily outdoors. */
 .cb-staff .cb-page :is(.cb-card, .panel, .sign-surface, .box, [class*="bg-black"], [class*="bg-zinc-9"], [class*="bg-[#0"], [class*="bg-white/"]):not(.fixed) {

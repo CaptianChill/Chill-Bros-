@@ -27,7 +27,7 @@ function Section({ id, title, count, empty, children }: { id: string; title: str
     <section aria-labelledby={id} className="cb-card overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
         <h2 id={id} className="text-[28px] leading-none">{title}</h2>
-        <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1557B0] px-2.5 py-1 text-sm font-bold text-white">{count}</span>
+        <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1B3FD0] px-2.5 py-1 text-sm font-bold text-white">{count}</span>
       </div>
       {count === 0 ? <p className="bg-[#F8FAFD] px-3.5 py-4 text-sm font-medium text-[#2B3F5C]">{empty}</p> : <ul className="grid grid-cols-2 gap-2 bg-[#F8FAFD] p-2 lg:grid-cols-3">{children}</ul>}
     </section>
@@ -37,7 +37,7 @@ function Section({ id, title, count, empty, children }: { id: string; title: str
 function Row({ href, title, detail, right, highlight = false }: { href: string; title: string; detail: string; right: React.ReactNode; highlight?: boolean }) {
   return (
     <li>
-      <Link href={href} className={`flex h-full min-h-[104px] flex-col justify-between gap-2 rounded-xl border p-3 transition hover:border-[#1557B0]/50 hover:bg-white ${highlight ? "border-[#1557B0]/50 bg-[#DCEBFF]" : "border-[#0A1A33]/10 bg-white"}`}>
+      <Link href={href} className={`flex h-full min-h-[104px] flex-col justify-between gap-2 rounded-xl border p-3 transition hover:border-[#1B3FD0]/50 hover:bg-white ${highlight ? "border-[#1B3FD0]/50 bg-[#DCEBFF]" : "border-[#0A1A33]/10 bg-white"}`}>
         <span className="line-clamp-2 font-bold leading-tight text-[#0A1A33]">{title}</span>
         <span className="line-clamp-2 text-[12px] font-medium leading-snug text-[#2B3F5C]">{detail}</span>
         <span className="flex items-center justify-between gap-2">{right}<ChevronRight className="h-4 w-4 shrink-0 text-[#2B3F5C]" aria-hidden="true" /></span>
@@ -82,7 +82,7 @@ export default async function OpenWorkPage({ searchParams }: Props) {
           </p>
         ) : null}
 
-        <Link href="/jobs/new" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82]">
+        <Link href="/jobs/new" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]">
           <Plus className="h-5 w-5" aria-hidden="true" />
           New service call
         </Link>

@@ -95,7 +95,7 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
       <section className="cb-card space-y-3 p-3.5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-[26px] leading-none">Customer</h2>
-          <button type="button" onClick={() => setNewCustomer((value) => !value)} className="min-h-11 px-1 text-sm font-semibold text-[#1557B0]">
+          <button type="button" onClick={() => setNewCustomer((value) => !value)} className="min-h-11 px-1 text-sm font-semibold text-[#1B3FD0]">
             {newCustomer ? "Pick existing" : "+ New customer"}
           </button>
         </div>
@@ -124,7 +124,7 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
                     {customerUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.label}</option>)}
                   </select>
                 </label>
-                <button type="button" onClick={() => { setAddEquipment((value) => !value); setEquipmentId(""); }} className="min-h-11 w-full rounded-xl border border-[#1557B0] bg-[#F8FAFD] px-3 font-semibold text-[#1557B0]">{addEquipment ? "Use saved equipment" : "+ Add equipment information"}</button>
+                <button type="button" onClick={() => { setAddEquipment((value) => !value); setEquipmentId(""); }} className="min-h-11 w-full rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] px-3 font-semibold text-[#1B3FD0]">{addEquipment ? "Use saved equipment" : "+ Add equipment information"}</button>
               </>
             ) : null}
           </>
@@ -153,10 +153,10 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
           <textarea required rows={4} value={scope} onChange={(e) => setScope(e.target.value)} placeholder="e.g. Replace condenser fan motor and capacitor" className={`${field} py-2`} />
         </label>
         <label className="flex min-h-11 items-center gap-3 rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 text-base font-semibold text-[#0A1A33]">
-          <input type="checkbox" checked={approved} onChange={(e) => setApproved(e.target.checked)} className="h-5 w-5 accent-[#1557B0]" />
+          <input type="checkbox" checked={approved} onChange={(e) => setApproved(e.target.checked)} className="h-5 w-5 accent-[#1B3FD0]" />
           Customer approved this repair verbally
         </label>
-        <Link href={partsProHref({ details: scope })} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#1557B0]">
+        <Link href={partsProHref({ details: scope })} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#1B3FD0]">
           <Sparkles className="h-4 w-4" aria-hidden="true" />
           Find the OEM part # with Parts Pro
         </Link>
@@ -173,7 +173,7 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
         </label>
         <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="When">
           {[true, false].map((value) => (
-            <button key={String(value)} type="button" role="radio" aria-checked={scheduleNow === value} onClick={() => setScheduleNow(value)} className={`min-h-11 rounded-xl border font-semibold ${scheduleNow === value ? "border-[#1557B0] bg-[#1557B0] text-white" : "border-[#C7D3E2] bg-[#F8FAFD] text-[#0A1A33]"}`}>
+            <button key={String(value)} type="button" role="radio" aria-checked={scheduleNow === value} onClick={() => setScheduleNow(value)} className={`min-h-11 rounded-xl border font-semibold ${scheduleNow === value ? "border-[#1B3FD0] bg-[#1B3FD0] text-white" : "border-[#C7D3E2] bg-[#F8FAFD] text-[#0A1A33]"}`}>
               {value ? "Schedule now" : "Schedule later"}
             </button>
           ))}
@@ -187,12 +187,12 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
         ) : null}
       </section>
 
-      {error ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#0B5CD5]">{error}</p> : null}
-      <button type="submit" name="next" value="save" disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82] disabled:opacity-60">
+      {error ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#1B3FD0]">{error}</p> : null}
+      <button type="submit" name="next" value="save" disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8] disabled:opacity-60">
         <Save className="h-5 w-5" aria-hidden="true" />
         {pending ? "Saving…" : "Save call"}
       </button>
-      <button type="submit" name="next" value="parts" disabled={pending} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1557B0] bg-[#F8FAFD] font-bold text-[#1557B0] disabled:opacity-60">
+      <button type="submit" name="next" value="parts" disabled={pending} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B3FD0] bg-[#F8FAFD] font-bold text-[#1B3FD0] disabled:opacity-60">
         Save &amp; add parts
         <ArrowRight className="h-5 w-5" aria-hidden="true" />
       </button>

@@ -74,7 +74,7 @@ export default async function DispatchPage({ searchParams }: Props) {
     <AppShell title="Dispatch" description="Assign calls and balance technician workload.">
       <LiveOfficeRefresh />
       <div className="cb-new space-y-3.5">
-        <Link href="/jobs/new" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82]">
+        <Link href="/jobs/new" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]">
           <Plus className="h-5 w-5" aria-hidden="true" />
           New service call
         </Link>
@@ -91,8 +91,8 @@ export default async function DispatchPage({ searchParams }: Props) {
                 aria-label={`${label}, ${count} job${count === 1 ? "" : "s"}`}
                 className={`flex min-h-[72px] flex-col items-center justify-center rounded-xl border text-center transition ${
                   selected
-                    ? "border-[#1557B0] bg-[#1557B0] text-white shadow-[0_4px_12px_rgba(10,26,51,0.25)]"
-                    : "cb-card text-[#0A1A33] hover:border-[#1557B0]"
+                    ? "border-[#1B3FD0] bg-[#1B3FD0] text-white shadow-[0_4px_12px_rgba(10,26,51,0.25)]"
+                    : "cb-card text-[#0A1A33] hover:border-[#1B3FD0]"
                 }`}
               >
                 <span className={`text-xs font-semibold uppercase ${selected ? "text-white" : "text-[#2B3F5C]"}`}>{i === 0 ? "Today" : weekday}</span>
@@ -103,10 +103,10 @@ export default async function DispatchPage({ searchParams }: Props) {
           })}
         </nav>
 
-        <section aria-labelledby="unassigned-title" className="cb-card overflow-hidden !border-2 !border-[#0B5CD5]">
+        <section aria-labelledby="unassigned-title" className="cb-card overflow-hidden !border-2 !border-[#1B3FD0]">
           <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
             <h2 id="unassigned-title" className="text-[28px] leading-none">Unassigned</h2>
-            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#0B5CD5] px-2.5 py-1 text-sm font-bold text-white">{unassigned.length}</span>
+            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1B3FD0] px-2.5 py-1 text-sm font-bold text-white">{unassigned.length}</span>
           </div>
           {unassigned.length === 0 ? (
             <p className="px-3.5 py-5 text-sm text-[#2B3F5C]">Every call for {dayParts(selectedDay).label} has a technician.</p>
@@ -162,9 +162,9 @@ export default async function DispatchPage({ searchParams }: Props) {
                       aria-valuemax={barMax}
                       aria-valuenow={count}
                     >
-                      <div className="h-full rounded-full bg-[#1557B0]" style={{ width: `${Math.round((count / barMax) * 100)}%` }} />
+                      <div className="h-full rounded-full bg-[#1B3FD0]" style={{ width: `${Math.round((count / barMax) * 100)}%` }} />
                     </div>
-                    <p className={`mt-1 truncate text-[13px] ${busy ? "font-semibold text-[#0E3F82]" : "text-[#2B3F5C]"}`}>{status}</p>
+                    <p className={`mt-1 truncate text-[13px] ${busy ? "font-semibold text-[#1530A8]" : "text-[#2B3F5C]"}`}>{status}</p>
                   </div>
                 </li>
               ))}

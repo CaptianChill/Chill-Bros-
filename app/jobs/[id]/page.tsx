@@ -48,7 +48,7 @@ const FIELD_NEXT: Record<number, { status: JobStatus; label: string }> = {
 };
 
 const TIMES = Array.from({ length: 29 }, (_, i) => `${String(6 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
-const primaryClass = "flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82]";
+const primaryClass = "flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]";
 const fieldClass = "mt-1 min-h-11 w-full rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 font-medium text-[#0A1A33]";
 
 export default async function JobWorkspacePage({ params, searchParams }: Props) {
@@ -116,7 +116,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
     }
   } else if (invoiceIssued && isOffice && invoice) {
     primary = (
-      <Link href={`/invoices?focus=${invoice.id}`} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#1557B0] bg-[#F8FAFD] font-semibold text-[#1557B0]">
+      <Link href={`/invoices?focus=${invoice.id}`} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] font-semibold text-[#1B3FD0]">
         <ReceiptText className="h-5 w-5" aria-hidden="true" />
         {paid ? "Open paid invoice" : "Open invoice"}
       </Link>
@@ -127,8 +127,8 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
     <AppShell title={job.customerName} description={job.scope || "Service call"}>
       <div className="cb-new space-y-3.5">
         {messages.success ? <p role="status" className="cb-card p-3 text-sm font-semibold text-[#0A7FC2]">{messages.success}</p> : null}
-        {messages.error ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#0B5CD5]">{messages.error}</p> : null}
-        {messages.invoice ? <Link href={`/invoices?focus=${encodeURIComponent(messages.invoice)}`} className="cb-card block p-3 text-sm font-semibold text-[#1557B0] underline">Open invoice</Link> : null}
+        {messages.error ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#1B3FD0]">{messages.error}</p> : null}
+        {messages.invoice ? <Link href={`/invoices?focus=${encodeURIComponent(messages.invoice)}`} className="cb-card block p-3 text-sm font-semibold text-[#1B3FD0] underline">Open invoice</Link> : null}
 
         <section aria-label="Job progress" className="cb-card p-3.5">
           <ol className="grid grid-cols-5">
@@ -137,11 +137,11 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
               const current = index === step && !done;
               return (
                 <li key={label} className="relative flex flex-col items-center text-center">
-                  {index > 0 ? <span aria-hidden="true" className={`absolute right-1/2 top-[15px] h-[3px] w-full ${index <= step ? "bg-[#1557B0]" : "bg-[#0A1A33]/15"}`} /> : null}
+                  {index > 0 ? <span aria-hidden="true" className={`absolute right-1/2 top-[15px] h-[3px] w-full ${index <= step ? "bg-[#1B3FD0]" : "bg-[#0A1A33]/15"}`} /> : null}
                   <span
                     aria-hidden="true"
                     className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
-                      done ? "bg-[#1557B0] text-white" : current ? "bg-[#F8FAFD] text-[#1557B0] ring-4 ring-[#9FD3FF]" : "bg-[#F8FAFD] text-[#2B3F5C] ring-1 ring-[#C7D3E2]"
+                      done ? "bg-[#1B3FD0] text-white" : current ? "bg-[#F8FAFD] text-[#1B3FD0] ring-4 ring-[#9FD3FF]" : "bg-[#F8FAFD] text-[#2B3F5C] ring-1 ring-[#C7D3E2]"
                     }`}
                   >
                     {done ? <Check className="h-4 w-4" /> : index + 1}
@@ -163,19 +163,19 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
           <h2 id="details-title" className="border-b border-[#0A1A33]/10 px-3.5 py-3 text-[28px] leading-none">Details</h2>
           <ul className="divide-y divide-[#0A1A33]/10">
             <li className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5">
-              <MapPin className="h-5 w-5 shrink-0 text-[#1557B0]" aria-hidden="true" />
+              <MapPin className="h-5 w-5 shrink-0 text-[#1B3FD0]" aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-medium text-[#2B3F5C]">Address</p>
                 <p className="font-semibold text-[#0A1A33]">{job.location || "No address saved"}</p>
               </div>
               {job.location ? (
-                <a href={`https://maps.apple.com/?q=${encodeURIComponent(job.location)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-semibold text-[#1557B0]">
+                <a href={`https://maps.apple.com/?q=${encodeURIComponent(job.location)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-semibold text-[#1B3FD0]">
                   Directions
                 </a>
               ) : null}
             </li>
             <li className="flex min-h-[60px] flex-wrap items-center gap-3 px-3.5 py-2.5">
-              <UserRound className="h-5 w-5 shrink-0 text-[#1557B0]" aria-hidden="true" />
+              <UserRound className="h-5 w-5 shrink-0 text-[#1B3FD0]" aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-medium text-[#2B3F5C]">Technician</p>
                 <p className="font-semibold text-[#0A1A33]">{job.assignedTechName || "Unassigned"}</p>
@@ -184,7 +184,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
             </li>
             <li className="px-3.5 py-2.5">
               <div className="flex min-h-[40px] items-center gap-3">
-                <CalendarClock className="h-5 w-5 shrink-0 text-[#1557B0]" aria-hidden="true" />
+                <CalendarClock className="h-5 w-5 shrink-0 text-[#1B3FD0]" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-medium text-[#2B3F5C]">Scheduled time</p>
                   <p className="font-semibold text-[#0A1A33]">
@@ -196,7 +196,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
               </div>
               {isOffice && active ? (
                 <details className="mt-1">
-                  <summary className="ml-8 inline-flex min-h-11 cursor-pointer list-none items-center text-sm font-semibold text-[#1557B0]">Reschedule</summary>
+                  <summary className="ml-8 inline-flex min-h-11 cursor-pointer list-none items-center text-sm font-semibold text-[#1B3FD0]">Reschedule</summary>
                   {/* rescheduleJobAction keeps the current technician (hidden field) and the job's status. */}
                   <form data-no-draft action={rescheduleJobAction} className="mt-1 grid grid-cols-2 gap-2">
                     <input type="hidden" name="jobId" value={job.id} />
@@ -217,7 +217,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
                         {TIMES.map((t) => <option key={t} value={t}>{displayTime(t)}</option>)}
                       </select>
                     </label>
-                    <button type="submit" className="col-span-2 min-h-12 rounded-xl bg-[#1557B0] font-semibold text-white">Save new time</button>
+                    <button type="submit" className="col-span-2 min-h-12 rounded-xl bg-[#1B3FD0] font-semibold text-white">Save new time</button>
                   </form>
                 </details>
               ) : null}
@@ -240,7 +240,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
             <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 3</p><h2 className="text-xl font-bold text-[#0A1A33]">Quote / invoice</h2><p className="mt-1 text-sm text-[#2B3F5C]">Create the customer document from this same service call. Do not start a second call.</p></div>
           <div className="grid grid-cols-2 gap-2.5">
             {isField ? (
-              <Link href={quoteHref} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#1557B0] bg-[#F8FAFD] px-3 font-semibold text-[#1557B0] ${isOffice && active ? "" : "col-span-2"}`}>
+              <Link href={quoteHref} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] px-3 font-semibold text-[#1B3FD0] ${isOffice && active ? "" : "col-span-2"}`}>
                 <FileText className="h-4 w-4" aria-hidden="true" />
                 {invoice ? (invoiceIssued ? "Open invoice" : "View / edit quote") : "Create quote"}
               </Link>
