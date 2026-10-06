@@ -279,7 +279,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
 
         <div ref={listRef} className="min-h-[96px] flex-1 space-y-2 overflow-y-auto px-3 py-3">
           {messages.length === 0 ? <div className="space-y-2">
-            <p className="rounded-2xl bg-[#eef3ff] px-3 py-2 text-sm">Hi {firstName}. Ask me about today's jobs, who owes us money, a customer, or any HVAC or refrigeration question. Give me a brand, model and serial and I'll look up OEM parts too.</p>
+            <p className="rounded-2xl bg-[#eef3ff] px-3 py-2 text-sm">Hi {firstName}. Ask me about today&apos;s jobs, who owes us money, a customer, or any HVAC or refrigeration question. Give me a brand, model and serial and I&apos;ll look up OEM parts too.</p>
             <div className="grid grid-cols-2 gap-2">{["What needs my attention today?", "Who has overdue invoices?", "Which calls are unassigned?", "Walk-in cooler not cooling: where do I start?"].map((s) => <button key={s} type="button" disabled={busy || recording} onClick={() => { unlockAudio(); void ask(s); }} className="rounded-xl border border-[#1B3FD0]/20 bg-white px-2.5 py-2 text-left text-xs font-medium text-[#1B3FD0] disabled:opacity-50">{s}</button>)}</div>
           </div> : messages.map((m, i) => <div key={i} className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-6 ${m.role === "user" ? "ml-auto bg-[#1B3FD0] text-white" : "bg-[#eef3ff]"}`}>
             <p className="whitespace-pre-wrap">{m.role === "assistant" ? stripVoiceTags(m.content) : m.content}</p>
