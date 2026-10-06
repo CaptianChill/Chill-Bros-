@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
+import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
@@ -82,12 +83,20 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const number = documentNumber(type); const { data: created, error: createError } = await supabase.rpc("chillbros_create_estimate_v2", { p_job_id: job.id, p_invoice_number: number, p_notes: text(formData,"notes").slice(0,2000) || null, p_line_items: lines.map(({ inventoryPartId: _inventoryPartId, ...line }) => line), p_adjustments: { discount_type: discount > 0 ? "dollar" : null, discount_value: discount, down_payment_type: downPaymentType, down_payment_value: downPaymentValue, tax_rate: taxRate } }).single();
   if (createError || !created) { await rollbackInventory(); await supabase.from("chillbros_jobs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id); fail(createError?.message ?? `Could not create ${type}.`, type); }
   const invoice = created as { estimate_id: string; estimate_number: string; estimate_token: string }; const terms = PAYMENT_TERMS.has(text(formData,"paymentTerms")) ? text(formData,"paymentTerms") : "due_on_receipt"; const method = PAYMENT_METHODS.has(text(formData,"paymentMethod")) ? text(formData,"paymentMethod") : null; const requestedPaid = type === "invoice" && text(formData,"paymentStatus") === "paid"; if (requestedPaid && !method) fail("Choose a payment method when marking an invoice paid.", type); const computedDueAt = type === "invoice" ? dueAt(terms, text(formData,"customDueDate")) : null;
-  const { error: issueError } = await supabase.from("chillbros_invoices").update({ status: "awaiting_approval", issued_at: type === "invoice" ? now : null, due_at: computedDueAt, payment_terms: terms, payment_method: type === "invoice" ? method : null, payment_status: "unpaid", paid_at: null, paid_recorded_by: null, taxable_subtotal: taxableSubtotal, tax_amount: taxAmount, updated_at: now }).eq("id", invoice.estimate_id);
+  // An invoice issued here is finalized on the spot (same record as Billing > Finalize), so the customer can pay it right away
+  // instead of being asked to approve it like an estimate. Quotes still wait for the customer's signature.
+  const issueNow = type === "invoice";
+  const { error: issueError } = await supabase.from("chillbros_invoices").update({ status: issueNow ? "approved" : "awaiting_approval", signature_name: issueNow ? "Approved by Chill Pros office" : null, signed_at: issueNow ? now : null, issued_at: type === "invoice" ? now : null, due_at: computedDueAt, payment_terms: terms, payment_method: type === "invoice" ? method : null, payment_status: "unpaid", paid_at: null, paid_recorded_by: null, taxable_subtotal: taxableSubtotal, tax_amount: taxAmount, updated_at: now }).eq("id", invoice.estimate_id);
   if (issueError) { await rollbackInventory(); await supabase.from("chillbros_jobs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id); fail(issueError.message, type); }
   await supabase.from("chillbros_jobs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id);
   await supabase.from("chillbros_workflow_events").insert({ job_id: job.id, invoice_id: invoice.estimate_id, actor_id: profile.id, stage: type === "quote" ? "estimate_created" : "invoice_issued", message: type === "invoice" && allocatedJobPartIds.length > 0 ? `Invoice issued directly by ${profile.role === "office" ? "office" : "owner/manager"}. ${allocatedJobPartIds.length} inventory item group(s) allocated and deducted from stock.` : `${type === "quote" ? "Quote" : "Invoice"} issued directly by ${profile.role === "office" ? "office" : "owner/manager"} without requiring an open service call.` });
   await supabase.from("chillbros_customer_service_history").insert({ customer_id: customerId, note: `${type === "quote" ? "Quote" : "Invoice"} ${number} created by owner.` });
-  if (requestedPaid) { try { await supabase.from("chillbros_workflow_events").insert({ job_id: job.id, invoice_id: invoice.estimate_id, actor_id: profile.id, stage: "payment_pending_review", message: "Paid-now was requested during direct invoice creation; invoice was issued unpaid because payment posting currently requires an approved invoice." }); } catch {} }
+  if (issueNow) {
+    await supabase.from("chillbros_workflow_events").insert({ job_id: job.id, invoice_id: invoice.estimate_id, actor_id: profile.id, stage: "invoice_finalized", message: "Issued directly and finalized by Chill Pros office; ready for customer payment." });
+    // Keep the permanent approved PDF like Finalize does; a PDF hiccup must not undo a valid invoice.
+    try { await archiveInvoicePdf(invoice.estimate_id, "approved", profile.id); } catch (archiveError) { console.error("Direct invoice PDF archive failed", archiveError); }
+  }
+  if (requestedPaid) { try { await supabase.from("chillbros_workflow_events").insert({ job_id: job.id, invoice_id: invoice.estimate_id, actor_id: profile.id, stage: "payment_pending_review", message: "Paid-now was requested during direct invoice creation; the invoice was issued unpaid. Record the payment from Billing." }); } catch {} }
   for (const path of ["/create","/invoices/new","/invoices","/inventory","/payments","/reports","/customers","/dispatch","/"]) revalidatePath(path);
   redirect(`/invoices?focus=${encodeURIComponent(invoice.estimate_id)}&created=1`);
 }
