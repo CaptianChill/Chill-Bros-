@@ -3,11 +3,11 @@
 import { Mic, Send, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { askChillAction } from "@/lib/chillbros/chill-assistant";
 import { firstVoiceTag, stripVoiceTags, type VoiceTag } from "@/lib/chillbros/voice-tags";
 
 type Pose = "idle" | "greeting" | "listening" | "thinking" | "talking" | "success";
-type Message = { role: "user" | "assistant"; content: string };
+type Link = { label: string; url: string };
+type Message = { role: "user" | "assistant"; content: string; links?: Link[] };
 // Short reaction moves layered on top of the pose (CSS classes chill-emote-*).
 type Emote = "hop" | "bounce" | "shake" | "tilt" | "pop" | "droop" | "lean" | "wiggle" | "spin" | "peek";
 const TAG_EMOTE: Record<VoiceTag, Emote> = { excited: "hop", happy: "bounce", laughs: "shake", chuckles: "shake", curious: "tilt", surprised: "pop", sighs: "droop", whispers: "lean" };
@@ -26,6 +26,15 @@ export function splitForSpeech(answer: string) {
   const clean = answer.replace(/\s+/g, " ").trim();
   const match = clean.match(/^(.{12,220}?[.!?])\s+(.+)$/);
   return match ? [match[1], match[2]] : [clean];
+}
+
+// Source links from a parts lookup: only well-formed http(s) links are shown.
+function safeLinks(raw: unknown): Link[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((l) => {
+    if (typeof l?.label !== "string" || typeof l?.url !== "string") return [];
+    try { const u = new URL(l.url); return u.protocol === "https:" || u.protocol === "http:" ? [{ label: l.label.slice(0, 160), url: u.href }] : []; } catch { return []; }
+  }).slice(0, 8);
 }
 
 function pickMimeType() {
@@ -57,6 +66,13 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   messagesRef.current = messages;
   const [emote, setEmote] = useState<{ name: Emote; key: number } | null>(null);
   const [talkMove, setTalkMove] = useState(0);
+  // After a few seconds of thinking, say he's still working (parts lookups search the web).
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!busy) return;
+    const timer = window.setTimeout(() => setSlow(true), 6000);
+    return () => { window.clearTimeout(timer); setSlow(false); };
+  }, [busy]);
   const emoteTimerRef = useRef<number | null>(null);
 
   // Plays one reaction move, then settles back to the pose's own motion.
@@ -147,8 +163,8 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   }, [voiceOn, unlockAudio]);
 
   // Shows the answer, reacts to its mood, and speaks it.
-  const deliver = useCallback(async (q: string, history: Message[], answer: string) => {
-    setMessages([...history, { role: "user", content: q }, { role: "assistant", content: answer }]);
+  const deliver = useCallback(async (q: string, history: Message[], answer: string, links?: Link[]) => {
+    setMessages([...history, { role: "user", content: q }, { role: "assistant", content: answer, links: links?.length ? links : undefined }]);
     const tag = firstVoiceTag(answer);
     react(tag ? TAG_EMOTE[tag] : "bounce");
     await speak(answer);
@@ -163,10 +179,14 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     setMessages([...history, { role: "user", content: q }]);
     setBusy(true);
     setPose("thinking");
-    const result = await askChillAction(q, history);
+    const form = new FormData();
+    form.append("question", q);
+    form.append("history", JSON.stringify(history.slice(-8).map(({ role, content }) => ({ role, content }))));
+    const response = await fetch("/api/voice/ask", { method: "POST", body: form }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
     setBusy(false);
-    if (!result.ok) { setError(result.error); setPose("idle"); return; }
-    await deliver(q, history, result.answer);
+    if (!response?.ok || typeof payload?.answer !== "string") { setError(payload?.error ?? "Chilly Bro couldn't answer right now. Try again."); setPose("idle"); return; }
+    await deliver(q, history, payload.answer, safeLinks(payload.links));
   }, [deliver, stopSpeaking]);
 
   const stopRecording = useCallback(() => {
@@ -201,7 +221,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
       const history = messagesRef.current;
       const form = new FormData();
       form.append("audio", blob, `chill.${type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm"}`);
-      form.append("history", JSON.stringify(history.slice(-8)));
+      form.append("history", JSON.stringify(history.slice(-8).map(({ role, content }) => ({ role, content }))));
       const response = await fetch("/api/voice/ask", { method: "POST", body: form }).catch(() => null);
       const payload = response ? await response.json().catch(() => ({})) : {};
       setBusy(false);
@@ -212,7 +232,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
         setError(payload?.error ?? "I couldn't hear that. Try again.");
         return;
       }
-      await deliver(question, history, payload.answer);
+      await deliver(question, history, payload.answer, safeLinks(payload.links));
     };
     recorderRef.current = recorder;
     // Let go before the mic was ready (for example during the permission prompt): don't record.
@@ -231,7 +251,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   };
   const closePanel = () => { stopRecording(); stopSpeaking(); setOpen(false); setPose("idle"); };
 
-  const statusText = recording ? "Listening… let go when you're done" : busy ? "Thinking…" : pose === "talking" ? "Speaking…" : "Hold the mic and ask me anything";
+  const statusText = recording ? "Listening… let go when you're done" : busy ? (slow ? "Still digging… (parts lookups take up to a minute)" : "Thinking…") : pose === "talking" ? "Speaking…" : "Hold the mic and ask me anything";
 
   return <>
     {!open ? (
@@ -259,9 +279,12 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
 
         <div ref={listRef} className="min-h-[96px] flex-1 space-y-2 overflow-y-auto px-3 py-3">
           {messages.length === 0 ? <div className="space-y-2">
-            <p className="rounded-2xl bg-[#eef3ff] px-3 py-2 text-sm">Hi {firstName}. Ask me about today's jobs, who owes us money, a customer, or any HVAC or refrigeration question.</p>
+            <p className="rounded-2xl bg-[#eef3ff] px-3 py-2 text-sm">Hi {firstName}. Ask me about today's jobs, who owes us money, a customer, or any HVAC or refrigeration question. Give me a brand, model and serial and I'll look up OEM parts too.</p>
             <div className="grid grid-cols-2 gap-2">{["What needs my attention today?", "Who has overdue invoices?", "Which calls are unassigned?", "Walk-in cooler not cooling: where do I start?"].map((s) => <button key={s} type="button" disabled={busy || recording} onClick={() => { unlockAudio(); void ask(s); }} className="rounded-xl border border-[#1B3FD0]/20 bg-white px-2.5 py-2 text-left text-xs font-medium text-[#1B3FD0] disabled:opacity-50">{s}</button>)}</div>
-          </div> : messages.map((m, i) => <p key={i} className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-6 ${m.role === "user" ? "ml-auto bg-[#1B3FD0] text-white" : "bg-[#eef3ff]"}`}>{m.role === "assistant" ? stripVoiceTags(m.content) : m.content}</p>)}
+          </div> : messages.map((m, i) => <div key={i} className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-6 ${m.role === "user" ? "ml-auto bg-[#1B3FD0] text-white" : "bg-[#eef3ff]"}`}>
+            <p className="whitespace-pre-wrap">{m.role === "assistant" ? stripVoiceTags(m.content) : m.content}</p>
+            {m.links?.length ? <ul className="mt-2 space-y-1 border-t border-[#1B3FD0]/15 pt-2">{m.links.map((l) => <li key={l.url + l.label}><a href={l.url} target="_blank" rel="noopener noreferrer" className="break-words text-xs font-medium text-[#1B3FD0] underline">{l.label}</a></li>)}</ul> : null}
+          </div>)}
           {error ? <p role="alert" className="rounded-xl border border-[#f5b5b0] bg-[#fef2f1] px-3 py-2 text-xs text-[#b42318]">{error}</p> : null}
         </div>
 

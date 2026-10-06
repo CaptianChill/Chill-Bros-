@@ -112,3 +112,33 @@ test('emotion tags drive v3 delivery and are hidden everywhere else', () => {
   assert.match(voice, /text: stripVoiceTags\(text\), model_id/);
   assert.match(read('app/api/voice/speak/route.ts'), /input: stripVoiceTags\(text\)/);
 });
+
+function loadParts(fakeResearch, fakeAsk) {
+  const ts = require('typescript');
+  const out = ts.transpileModule(read('lib/chillbros/chill-parts.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const mod = { exports: {} };
+  const deps = { 'server-only': {}, '@/lib/chillbros/ai': { askAI: fakeAsk }, '@/lib/chillbros/parts-research': { researchParts: fakeResearch } };
+  new Function('require', 'module', 'exports', out)((id) => deps[id] ?? require(id), mod, mod.exports);
+  return mod.exports;
+}
+
+test('Chilly Bro looks up OEM parts only for real parts requests, with sourced links', async () => {
+  let researched = null;
+  const research = { summary: 'Found it', serialCheck: 'Serial not confirmed', parts: [{ name: 'Condenser fan motor', partNumber: 'HC39GE237', evidence: 'Parts list', url: 'https://oem.example/list.pdf' }], manuals: [], contacts: [], nextSteps: [] };
+  const p = loadParts(async (input, opts) => { researched = { input, opts }; return research; }, async () => ({ ok: true, text: '{"lookup":true,"brand":"Carrier","model":"48TCED08","serial":"1218G20345","part":"condenser fan motor","manual":false}' }));
+  assert.equal(p.mightBePartsLookup('Who owes us money?'), false);
+  assert.equal(p.mightBePartsLookup('What fan motor fits a Carrier 48TCED08?'), true);
+  assert.equal(await p.chillPartsLookup('How is my day looking?', []), null);
+  const hit = await p.chillPartsLookup('Need the condenser fan motor for a Carrier 48TCED08 serial 1218G20345', []);
+  assert.deepEqual(researched.opts, { quick: true });
+  assert.equal(researched.input.model, '48TCED08'); assert.equal(researched.input.mode, 'parts');
+  assert.match(hit.context, /HC39GE237/); assert.match(hit.context, /Say only part numbers that appear here/);
+  assert.deepEqual(hit.links, [{ label: 'Condenser fan motor · HC39GE237', url: 'https://oem.example/list.pdf' }]);
+  const noModel = loadParts(async () => { throw new Error('should not search'); }, async () => ({ ok: true, text: '{"lookup":true,"brand":"Carrier","model":"","serial":"","part":"fan motor","manual":false}' }));
+  assert.match((await noModel.chillPartsLookup('Need a fan motor part for unit 4B12', [])).context, /did not give a model number/);
+  const failing = loadParts(async () => { throw new Error('timeout'); }, async () => ({ ok: true, text: '{"lookup":true,"brand":"Hoshizaki","model":"KM-515MAJ","serial":"","part":"","manual":true}' }));
+  const failed = await failing.chillPartsLookup('Find the parts manual for Hoshizaki KM-515MAJ', []);
+  assert.match(failed.context, /Do not guess part numbers/); assert.equal(failed.links.length, 0);
+  assert.match(read('lib/chillbros/parts-research.ts'), /max_tool_calls: quick \? 5 : 10/);
+  assert.match(read('app/api/voice/ask/route.ts'), /maxDuration = 120/);
+});
