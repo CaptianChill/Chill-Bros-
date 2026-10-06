@@ -107,7 +107,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     const first = queueRef.current[0];
     await playNextRef.current();
     if (run === speakRunRef.current && first && !(await first)) {
-      setError("Chill's voice is unavailable right now. The answer is shown above.");
+      setError("Chilly Bro's voice is unavailable right now. The answer is shown above.");
     }
   }, [voiceOn, unlockAudio]);
 
@@ -189,16 +189,16 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
       <section role="dialog" aria-label="Chill, the Chill Pros assistant" className="cb-new fixed inset-x-2 bottom-[calc(88px+env(safe-area-inset-bottom))] z-50 flex max-h-[min(78dvh,640px)] flex-col overflow-hidden rounded-3xl border border-white bg-white/95 text-[#0a1a33] shadow-[0_18px_48px_rgba(4,28,78,0.4)] backdrop-blur-xl lg:inset-x-auto lg:bottom-6 lg:right-6 lg:w-[400px]">
         <div className="flex items-center gap-3 border-b border-[#0a1a33]/10 bg-gradient-to-b from-[#e8f0ff] to-white px-3 pt-2">
           <div className="relative h-[112px] w-[112px] shrink-0">
-            <img src={src(pose)} alt={`Chill is ${pose === "idle" ? "ready" : pose}`} className={`h-full w-full object-contain ${pose === "idle" ? "chill-bob" : pose === "talking" ? "chill-talk" : pose === "greeting" ? "chill-greet" : ""}`} />
+            <img src={src(pose)} alt={`Chilly Bro is ${pose === "idle" ? "ready" : pose}`} className={`h-full w-full object-contain ${pose === "idle" ? "chill-bob" : pose === "talking" ? "chill-talk" : pose === "greeting" ? "chill-greet" : ""}`} />
           </div>
           <div className="min-w-0 flex-1 pb-2">
-            <p className="text-lg font-bold leading-tight">Chill</p>
+            <p className="text-lg font-bold leading-tight">Chilly Bro</p>
             <p className="text-xs text-[#2b3f5c]" aria-live="polite">{statusText}</p>
             {voiceSource ? <p className="mt-0.5 break-words text-[10px] leading-snug text-[#1B3FD0]/80">{voiceSource}</p> : null}
           </div>
           <div className="flex shrink-0 gap-1 self-start pt-1">
-            <button type="button" onClick={() => { if (voiceOn) stopSpeaking(); setVoiceOn(!voiceOn); }} aria-label={voiceOn ? "Turn Chill's voice off" : "Turn Chill's voice on"} className="rounded-full p-2 text-[#1B3FD0] hover:bg-[#1B3FD0]/10">{voiceOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}</button>
-            <button type="button" onClick={closePanel} aria-label="Close Chill" className="rounded-full p-2 text-[#2b3f5c] hover:bg-[#0a1a33]/10"><X className="h-5 w-5" /></button>
+            <button type="button" onClick={() => { if (voiceOn) stopSpeaking(); setVoiceOn(!voiceOn); }} aria-label={voiceOn ? "Turn Chilly Bro's voice off" : "Turn Chilly Bro's voice on"} className="rounded-full p-2 text-[#1B3FD0] hover:bg-[#1B3FD0]/10">{voiceOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}</button>
+            <button type="button" onClick={closePanel} aria-label="Close Chilly Bro" className="rounded-full p-2 text-[#2b3f5c] hover:bg-[#0a1a33]/10"><X className="h-5 w-5" /></button>
           </div>
         </div>
 
@@ -211,9 +211,9 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
         </div>
 
         <div className="flex items-center gap-2 border-t border-[#0a1a33]/10 p-2.5">
-          <button type="button" onClick={() => (recording ? stopRecording() : void startRecording())} disabled={busy} aria-label={recording ? "Stop recording" : "Talk to Chill"} className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-50 ${recording ? "animate-pulse bg-[#e3261c]" : "bg-[#1B3FD0]"}`}>{recording ? <Square className="h-5 w-5" /> : <Mic className="h-6 w-6" />}</button>
+          <button type="button" onClick={() => (recording ? stopRecording() : void startRecording())} disabled={busy} aria-label={recording ? "Stop recording" : "Talk to Chilly Bro"} className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-50 ${recording ? "animate-pulse bg-[#e3261c]" : "bg-[#1B3FD0]"}`}>{recording ? <Square className="h-5 w-5" /> : <Mic className="h-6 w-6" />}</button>
           <form className="flex min-w-0 flex-1 gap-2" data-no-draft onSubmit={(e) => { e.preventDefault(); unlockAudio(); const q = text; setText(""); void ask(q); }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} disabled={busy || recording} placeholder="Or type a question…" aria-label="Type a question for Chill" className="min-w-0 flex-1 rounded-full border border-[#c7d3e2] bg-[#f8fafd] px-3.5 py-2.5 text-sm text-[#0a1a33]" />
+            <input value={text} onChange={(e) => setText(e.target.value)} disabled={busy || recording} placeholder="Or type a question…" aria-label="Type a question for Chilly Bro" className="min-w-0 flex-1 rounded-full border border-[#c7d3e2] bg-[#f8fafd] px-3.5 py-2.5 text-sm text-[#0a1a33]" />
             <button type="submit" disabled={busy || recording || text.trim().length < 2} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#1B3FD0]/10 text-[#1B3FD0] disabled:opacity-40"><Send className="h-5 w-5" /></button>
           </form>
         </div>

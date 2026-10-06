@@ -18,7 +18,7 @@ type Result = { ok: true; answer: string } | { ok: false; error: string };
 const money = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const clip = (s: string | null | undefined, n = 90) => (s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 
-const PERSONA = `You are Chill, the voice assistant inside the Chill Pros app. Chill Pros is a commercial HVAC/R and refrigeration service company in San Antonio, Texas (walk-ins, reach-ins, ice machines, rooftop units, kitchen equipment).
+const PERSONA = `You are Chilly Bro, the voice assistant inside the Chill Pros app. Chill Pros is a commercial HVAC/R and refrigeration service company in San Antonio, Texas (walk-ins, reach-ins, ice machines, rooftop units, kitchen equipment).
 
 How you speak:
 - Professional, warm and confident. Plain everyday English with no slang. Your answers are read aloud, so be brief and precise: the direct answer in the first sentence, then at most two short supporting sentences, under 60 words total. No filler, no greetings, no repeating the question. No markdown, bullet symbols, tables or emoji. Say numbers and money naturally.
@@ -75,7 +75,7 @@ async function snapshotFor(profile: { id: string; email: string; fullName: strin
 
 export async function askChillAction(question: string, history: ClaudeMessage[] = []): Promise<Result> {
   const profile = await getCurrentStaffProfile();
-  if (!profile) return { ok: false, error: "Sign in to talk to Chill." };
+  if (!profile) return { ok: false, error: "Sign in to talk to Chilly Bro." };
   const q = String(question ?? "").trim();
   if (q.length < 2) return { ok: false, error: "I didn't catch a question." };
   if (q.length > 1500) return { ok: false, error: "Please keep it a little shorter." };

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return Response.json({ error: "Cross-origin request blocked." }, { status: 403 });
   const profile = await getCurrentStaffProfile();
-  if (!profile) return Response.json({ error: "Sign in to talk to Chill." }, { status: 401 });
+  if (!profile) return Response.json({ error: "Sign in to talk to Chilly Bro." }, { status: 401 });
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) return Response.json({ error: "Voice isn't configured." }, { status: 503 });
 
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       console.error("Chill transcription failed", response.status, payload?.error?.message ?? payload);
-      return Response.json({ error: "Chill couldn't hear that clearly. Try again." }, { status: 502 });
+      return Response.json({ error: "Chilly Bro couldn't hear that clearly. Try again." }, { status: 502 });
     }
     const text = typeof payload?.text === "string" ? payload.text.trim() : "";
     if (!text) return Response.json({ error: "No speech was detected." }, { status: 422 });
