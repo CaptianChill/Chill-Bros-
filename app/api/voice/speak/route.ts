@@ -13,13 +13,17 @@ export async function POST(request: Request) {
   if (!text) return Response.json({ error: "Nothing to say." }, { status: 400 });
 
   // 1) The owner's custom ElevenLabs voice, streamed straight through so playback starts sooner.
+  let elevenReason = "";
   try {
     const eleven = await elevenSpeech(text, AbortSignal.timeout(30000));
-    if (eleven?.ok && eleven.body) return new Response(eleven.body, { status: 200, headers: { "Content-Type": "audio/mpeg", "Cache-Control": "private, no-store", "X-Chill-Voice": "elevenlabs" } });
-    if (eleven) console.error("Chill ElevenLabs voice failed; using backup voice", eleven.status, (await eleven.text().catch(() => "")).slice(0, 300));
+    if (eleven.ok) return new Response(eleven.response.body, { status: 200, headers: { "Content-Type": "audio/mpeg", "Cache-Control": "private, no-store", "X-Chill-Voice": "elevenlabs", "X-Chill-Voice-Model": eleven.model } });
+    elevenReason = eleven.reason;
+    console.error("Chill ElevenLabs voice unavailable; using backup voice:", eleven.reason);
   } catch (error) {
+    elevenReason = error instanceof Error ? error.message : "ElevenLabs request failed";
     console.error("Chill ElevenLabs voice error; using backup voice", error);
   }
+  const reasonHeader = elevenReason.replace(/[^\x20-\x7E]/g, " ").slice(0, 400);
 
   // 2) Backup: OpenAI cedar.
   const apiKey = process.env.OPENAI_API_KEY?.trim();
@@ -37,7 +41,7 @@ export async function POST(request: Request) {
       console.error("Chill voice failed", response.status, (await response.text().catch(() => "")).slice(0, 300));
       return Response.json({ error: "Chill's voice is temporarily unavailable." }, { status: 502 });
     }
-    return new Response(await response.arrayBuffer(), { status: 200, headers: { "Content-Type": "audio/mpeg", "Cache-Control": "private, no-store", "X-Chill-Voice": "openai" } });
+    return new Response(await response.arrayBuffer(), { status: 200, headers: { "Content-Type": "audio/mpeg", "Cache-Control": "private, no-store", "X-Chill-Voice": "openai", "X-Chill-Voice-Reason": reasonHeader } });
   } catch (error) {
     console.error("Chill voice error", error);
     return Response.json({ error: "Chill's voice failed. Try again." }, { status: 500 });

@@ -97,7 +97,9 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
       const response = await fetch("/api/voice/speak", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: part }) }).catch(() => null);
       if (!response?.ok) return null;
       const voice = response.headers.get("X-Chill-Voice");
-      if (voice) setVoiceSource(voice === "elevenlabs" ? "BOODA voice" : "Backup voice");
+      const model = response.headers.get("X-Chill-Voice-Model");
+      const reason = response.headers.get("X-Chill-Voice-Reason");
+      if (voice) setVoiceSource(voice === "elevenlabs" ? `BOODA voice${model && !model.startsWith("eleven_v3") ? " (Turbo)" : " (v3)"}` : `Backup voice${reason ? ` — ${reason}` : ""}`);
       return URL.createObjectURL(await response.blob());
     };
     // Voice all parts at the same time; play them in order.
@@ -192,7 +194,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
           <div className="min-w-0 flex-1 pb-2">
             <p className="text-lg font-bold leading-tight">Chill</p>
             <p className="text-xs text-[#2b3f5c]" aria-live="polite">{statusText}</p>
-            {voiceSource ? <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-[#1B3FD0]/70">{voiceSource}</p> : null}
+            {voiceSource ? <p className="mt-0.5 break-words text-[10px] leading-snug text-[#1B3FD0]/80">{voiceSource}</p> : null}
           </div>
           <div className="flex shrink-0 gap-1 self-start pt-1">
             <button type="button" onClick={() => { if (voiceOn) stopSpeaking(); setVoiceOn(!voiceOn); }} aria-label={voiceOn ? "Turn Chill's voice off" : "Turn Chill's voice on"} className="rounded-full p-2 text-[#1B3FD0] hover:bg-[#1B3FD0]/10">{voiceOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}</button>

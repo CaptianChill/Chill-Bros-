@@ -16,25 +16,44 @@ export function elevenConfig() {
   return apiKey && voiceId ? { apiKey, voiceId, model } : null;
 }
 
-// Streams MP3 from ElevenLabs. v3 speaks through the text-to-dialogue API (stability
-// must be 0, 0.5 or 1; 0.5 "Natural" keeps the pace smooth and steady). Other models
-// use text-to-speech with smooth, steady settings.
-export async function elevenSpeech(text: string, signal?: AbortSignal) {
+// Speaks with the owner's ElevenLabs voice. Tries the chosen model (v3 by default,
+// through text-to-dialogue with "Natural" stability), then the same voice on Turbo
+// v2.5 if v3 refuses it (for example a professional clone v3 can't use yet).
+// Returns the audio response, or why ElevenLabs couldn't be used.
+export async function elevenSpeech(text: string, signal?: AbortSignal): Promise<{ ok: true; response: Response; model: string } | { ok: false; reason: string }> {
   const config = elevenConfig();
-  if (!config) return null;
+  if (!config) {
+    const hasKey = Boolean((process.env.ELEVEN_API_KEY || process.env.ELEVENLABS_API_KEY || "").trim());
+    const hasVoice = Boolean((process.env.CHILL_ELEVEN_VOICE_ID || process.env.BOODA_ELEVEN_VOICE_ID || process.env.ELEVENLABS_VOICE_ID || "").trim());
+    return { ok: false, reason: !hasKey && !hasVoice ? "ElevenLabs settings not found in this deployment" : !hasKey ? "ELEVEN_API_KEY not found in this deployment" : "BOODA_ELEVEN_VOICE_ID not found in this deployment" };
+  }
   const headers = { "xi-api-key": config.apiKey, "Content-Type": "application/json", Accept: "audio/mpeg" };
   const format = "output_format=mp3_44100_128";
-  const isV3 = config.model.startsWith("eleven_v3");
-  const response = isV3
-    ? await fetch(`https://api.elevenlabs.io/v1/text-to-dialogue/stream?${format}`, {
+  const attempt = (model: string) => model.startsWith("eleven_v3")
+    ? fetch(`https://api.elevenlabs.io/v1/text-to-dialogue/stream?${format}`, {
         method: "POST", headers, signal, cache: "no-store",
-        body: JSON.stringify({ inputs: [{ text, voice_id: config.voiceId }], model_id: config.model, language_code: "en", settings: { stability: 0.5 } }),
+        body: JSON.stringify({ inputs: [{ text, voice_id: config.voiceId }], model_id: model, settings: { stability: 0.5 }, use_pvc_as_ivc: true }),
       })
-    : await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(config.voiceId)}/stream?${format}`, {
+    : fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(config.voiceId)}/stream?${format}`, {
         method: "POST", headers, signal, cache: "no-store",
-        body: JSON.stringify({ text, model_id: config.model, voice_settings: { stability: 0.55, similarity_boost: 0.8, style: 0.15, speed: 1.0, use_speaker_boost: true } }),
+        body: JSON.stringify({ text, model_id: model, voice_settings: { stability: 0.55, similarity_boost: 0.8, style: 0.15, speed: 1.0, use_speaker_boost: true } }),
       });
-  return response;
+
+  const reasons: string[] = [];
+  for (const model of [...new Set([config.model, "eleven_turbo_v2_5"])]) {
+    const response = await attempt(model);
+    if (response.ok && response.body) return { ok: true, response, model };
+    const detail = await response.text().catch(() => "");
+    let message = detail.slice(0, 200);
+    try {
+      const parsed = JSON.parse(detail)?.detail;
+      message = typeof parsed === "string" ? parsed : parsed?.message ?? parsed?.status ?? message;
+    } catch { /* keep raw text */ }
+    reasons.push(`${model}: ElevenLabs ${response.status}${message ? ` ${String(message).slice(0, 160)}` : ""}`);
+    // A bad key, no credits or a missing voice won't be fixed by another model.
+    if ([401, 402, 404].includes(response.status)) break;
+  }
+  return { ok: false, reason: reasons.join(" | ") };
 }
 
 export function sameOrigin(request: Request) {
