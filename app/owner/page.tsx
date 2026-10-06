@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Box, Boxes, Clock3, CreditCard, FileText, GraduationCap, Package, Radar, ScanLine, ShieldCheck, SlidersHorizontal, Wallet, type LucideIcon } from "lucide-react";
+import { BarChart3, Clock3, CreditCard, FileText, GraduationCap, Package, Radar, ScanLine, ShieldCheck, SlidersHorizontal, Wallet, type LucideIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -44,8 +44,6 @@ const ownerToolGroups: { title: string; description: string; tools: OwnerTool[] 
     description: "Creative and training tools, kept out of the daily menus.",
     tools: [
       { href: "/training", title: "Training & Chill Bro Bible", description: "Equipment training and reference.", icon: GraduationCap },
-      { href: "/3d-studio", title: "3D Studio", description: "3D equipment and project models.", icon: Box },
-      { href: "/3d-project-builder", title: "3D Project Builder", description: "Build a 3D walkthrough for a project.", icon: Boxes },
       { href: "/create", title: "Document Desk", description: "Create owner documents.", icon: FileText },
       { href: "/scan-send", title: "Scan & Send", description: "Scan a document and send it.", icon: ScanLine },
     ],
