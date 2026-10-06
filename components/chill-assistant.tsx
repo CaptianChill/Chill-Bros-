@@ -1,6 +1,6 @@
 "use client";
 
-import { Mic, Send, Square, Volume2, VolumeX, X } from "lucide-react";
+import { Mic, Send, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { askChillAction } from "@/lib/chillbros/chill-assistant";
@@ -41,6 +41,8 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   const [voiceSource, setVoiceSource] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  // Push-to-talk: true while the mic button is held down.
+  const holdingRef = useRef(false);
   const chunksRef = useRef<Blob[]>([]);
   const stopTimerRef = useRef<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -128,12 +130,14 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   }, [speak, stopSpeaking]);
 
   const stopRecording = useCallback(() => {
+    holdingRef.current = false;
     if (stopTimerRef.current) { window.clearTimeout(stopTimerRef.current); stopTimerRef.current = null; }
     const recorder = recorderRef.current;
     if (recorder && recorder.state !== "inactive") recorder.stop();
   }, []);
 
   const startRecording = useCallback(async () => {
+    holdingRef.current = true;
     unlockAudio();
     stopSpeaking();
     setError(null);
@@ -150,7 +154,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
       setRecording(false);
       const type = recorder.mimeType || mimeType || "audio/webm";
       const blob = new Blob(chunksRef.current, { type });
-      if (blob.size < 1200) { setPose("idle"); setError("I didn't hear anything. Tap the mic and speak, then tap again."); return; }
+      if (blob.size < 1200) { setPose("idle"); setError("I didn't hear anything. Hold the mic button while you talk, then let go."); return; }
       setPose("thinking");
       setBusy(true);
       const form = new FormData();
@@ -162,6 +166,8 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
       await ask(String(payload.text));
     };
     recorderRef.current = recorder;
+    // Let go before the mic was ready (for example during the permission prompt): don't record.
+    if (!holdingRef.current) { stream.getTracks().forEach((t) => t.stop()); setError("Hold the mic button while you talk, then let go."); return; }
     recorder.start();
     setRecording(true);
     setPose("listening");
@@ -176,7 +182,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   };
   const closePanel = () => { stopRecording(); stopSpeaking(); setOpen(false); setPose("idle"); };
 
-  const statusText = recording ? "Listening… tap the square when you're done" : busy ? "Thinking…" : pose === "talking" ? "Speaking…" : "Tap the mic and ask me anything";
+  const statusText = recording ? "Listening… let go when you're done" : busy ? "Thinking…" : pose === "talking" ? "Speaking…" : "Hold the mic and ask me anything";
 
   return <>
     {!open ? (
@@ -211,7 +217,20 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
         </div>
 
         <div className="flex items-center gap-2 border-t border-[#0a1a33]/10 p-2.5">
-          <button type="button" onClick={() => (recording ? stopRecording() : void startRecording())} disabled={busy} aria-label={recording ? "Stop recording" : "Talk to Chilly Bro"} className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-50 ${recording ? "animate-pulse bg-[#e3261c]" : "bg-[#1B3FD0]"}`}>{recording ? <Square className="h-5 w-5" /> : <Mic className="h-6 w-6" />}</button>
+          <button
+            type="button"
+            disabled={busy}
+            aria-label={recording ? "Recording: let go to send" : "Hold to talk to Chilly Bro"}
+            onPointerDown={(e) => { if (e.button !== 0) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); void startRecording(); }}
+            onPointerUp={() => stopRecording()}
+            onPointerCancel={() => stopRecording()}
+            onLostPointerCapture={() => { if (holdingRef.current) stopRecording(); }}
+            onContextMenu={(e) => e.preventDefault()}
+            onKeyDown={(e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); void startRecording(); } }}
+            onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); stopRecording(); } }}
+            style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-50 ${recording ? "scale-110 animate-pulse bg-[#e3261c]" : "bg-[#1B3FD0]"}`}
+          ><Mic className="h-6 w-6" /></button>
           <form className="flex min-w-0 flex-1 gap-2" data-no-draft onSubmit={(e) => { e.preventDefault(); unlockAudio(); const q = text; setText(""); void ask(q); }}>
             <input value={text} onChange={(e) => setText(e.target.value)} disabled={busy || recording} placeholder="Or type a question…" aria-label="Type a question for Chilly Bro" className="min-w-0 flex-1 rounded-full border border-[#c7d3e2] bg-[#f8fafd] px-3.5 py-2.5 text-sm text-[#0a1a33]" />
             <button type="submit" disabled={busy || recording || text.trim().length < 2} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#1B3FD0]/10 text-[#1B3FD0] disabled:opacity-40"><Send className="h-5 w-5" /></button>
