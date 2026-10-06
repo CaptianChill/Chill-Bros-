@@ -37,3 +37,22 @@ test('poses follow real state: listening while recording, talking only during vo
   assert.match(src, /addEventListener\("play", \(\) => \{ if \(isVoice\(\)\) setPose\("talking"\)/);
   assert.match(read('components/app-shell.tsx'), /<ChillAssistant firstName=\{user\.firstName\} \/>/);
 });
+
+test('custom ElevenLabs voice (v3 by default) with OpenAI cedar as backup', () => {
+  const voice = read('lib/chillbros/voice.ts');
+  assert.match(voice, /CHILL_ELEVEN_MODEL \|\| "eleven_v3"/);
+  assert.match(voice, /BOODA_ELEVEN_VOICE_ID/);
+  assert.match(voice, /text-to-dialogue\/stream/);
+  const route = read('app/api/voice/speak/route.ts');
+  assert.ok(route.indexOf('elevenSpeech(') < route.indexOf('api.openai.com/v1/audio/speech'), 'ElevenLabs is tried before the backup voice');
+});
+
+test('answers are short and start speaking after the first sentence', () => {
+  assert.match(read('lib/chillbros/chill-assistant.ts'), /under 60 words/);
+  const ts = require('typescript');
+  const out = ts.transpileModule(read('components/chill-assistant.tsx'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+  const m = out.match(/function splitForSpeech[\s\S]*?\n}/);
+  const splitForSpeech = new Function(`${m[0]}; return splitForSpeech;`)();
+  assert.deepEqual(splitForSpeech('You have three unassigned calls today. Alamo Brewing has waited longest.'), ['You have three unassigned calls today.', 'Alamo Brewing has waited longest.']);
+  assert.deepEqual(splitForSpeech('Yes.'), ['Yes.']);
+});

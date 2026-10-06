@@ -14,6 +14,13 @@ const MAX_RECORD_MS = 30000;
 // A few milliseconds of silence, played on the first tap so phones allow Chill's voice later.
 const SILENT_AUDIO = "data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA";
 
+// First sentence on its own so Chill starts talking sooner; the rest as one part.
+export function splitForSpeech(answer: string) {
+  const clean = answer.replace(/\s+/g, " ").trim();
+  const match = clean.match(/^(.{20,220}?[.!?])\s+(.+)$/);
+  return match ? [match[1], match[2]] : [clean];
+}
+
 function pickMimeType() {
   if (typeof MediaRecorder === "undefined") return "";
   for (const type of ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"]) {
@@ -49,30 +56,53 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
       // Only real answers (blob URLs) drive the talking pose, never the silent unlock clip.
       const isVoice = () => audio.src.startsWith("blob:");
       audio.addEventListener("play", () => { if (isVoice()) setPose("talking"); });
-      audio.addEventListener("ended", () => { if (isVoice()) setPose("idle"); });
-      audio.addEventListener("pause", () => { if (isVoice()) setPose((p) => (p === "talking" ? "idle" : p)); });
+      // When one part of the answer finishes, the next part plays straight away (no idle flicker).
+      audio.addEventListener("ended", () => { if (isVoice()) void playNextRef.current(); });
       audioRef.current = audio;
       audio.src = SILENT_AUDIO;
       void audio.play().catch(() => undefined);
     }
   }, []);
 
-  const stopSpeaking = useCallback(() => { audioRef.current?.pause(); }, []);
+  // Answer audio plays as a short queue of parts: the first sentence starts while the rest is still being voiced.
+  const queueRef = useRef<Promise<string | null>[]>([]);
+  const speakRunRef = useRef(0);
+  const playNextRef = useRef<() => Promise<void>>(async () => undefined);
+  playNextRef.current = async () => {
+    const run = speakRunRef.current;
+    const next = queueRef.current.shift();
+    if (!next) { setPose((p) => (p === "talking" ? "idle" : p)); return; }
+    const url = await next;
+    if (run !== speakRunRef.current) return;
+    if (!url) { await playNextRef.current(); return; }
+    const audio = audioRef.current!;
+    if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
+    audio.src = url;
+    try { await audio.play(); } catch { setPose("idle"); setError("Your phone blocked the voice. Tap the speaker button, or read the answer above."); }
+  };
+
+  const stopSpeaking = useCallback(() => {
+    speakRunRef.current += 1;
+    queueRef.current = [];
+    audioRef.current?.pause();
+    setPose((p) => (p === "talking" ? "idle" : p));
+  }, []);
 
   const speak = useCallback(async (answer: string) => {
     if (!voiceOn) { setPose("success"); window.setTimeout(() => setPose((p) => (p === "success" ? "idle" : p)), 1400); return; }
-    try {
-      const response = await fetch("/api/voice/speak", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: answer }) });
-      if (!response.ok) throw new Error((await response.json().catch(() => ({})))?.error ?? "Voice unavailable.");
-      const url = URL.createObjectURL(await response.blob());
-      if (!audioRef.current) unlockAudio();
-      const audio = audioRef.current!;
-      if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
-      audio.src = url;
-      await audio.play();
-    } catch (e) {
-      setPose("idle");
-      setError(e instanceof Error ? `${e.message} The answer is shown above.` : "Voice unavailable. The answer is shown above.");
+    if (!audioRef.current) unlockAudio();
+    const run = ++speakRunRef.current;
+    const fetchClip = async (part: string) => {
+      const response = await fetch("/api/voice/speak", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: part }) }).catch(() => null);
+      if (!response?.ok) return null;
+      return URL.createObjectURL(await response.blob());
+    };
+    // Voice all parts at the same time; play them in order.
+    queueRef.current = splitForSpeech(answer).map(fetchClip);
+    const first = queueRef.current[0];
+    await playNextRef.current();
+    if (run === speakRunRef.current && first && !(await first)) {
+      setError("Chill's voice is unavailable right now. The answer is shown above.");
     }
   }, [voiceOn, unlockAudio]);
 

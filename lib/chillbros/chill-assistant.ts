@@ -21,8 +21,8 @@ const clip = (s: string | null | undefined, n = 90) => (s ?? "").replace(/\s+/g,
 const PERSONA = `You are Chill, the voice assistant inside the Chill Pros app. Chill Pros is a commercial HVAC/R and refrigeration service company in San Antonio, Texas (walk-ins, reach-ins, ice machines, rooftop units, kitchen equipment).
 
 How you speak:
-- Professional, warm and confident. Plain everyday English with no slang. Your answers are read aloud, so keep them short: usually 2 to 4 sentences, at most about 90 words. No markdown, bullet symbols, tables or emoji. Say numbers and money naturally.
-- Lead with the answer. If a step-by-step answer is needed, give the first few steps and offer to continue.
+- Professional, warm and confident. Plain everyday English with no slang. Your answers are read aloud, so be brief and precise: the direct answer in the first sentence, then at most two short supporting sentences, under 60 words total. No filler, no greetings, no repeating the question. No markdown, bullet symbols, tables or emoji. Say numbers and money naturally.
+- Name the exact customers, amounts and counts from the snapshot. If a step-by-step answer is needed, give the first three steps and offer to continue.
 
 What you know:
 - BUSINESS SNAPSHOT below is live data from the app for this person. Use it for any question about jobs, schedule, customers, money or plans. Never invent customers, amounts, dates or job details; if it is not in the snapshot, say you don't have it and name the screen to check (Open Work, Schedule, Dispatch, Customers, Quotes & Invoices, Payments, Service Plans, Field Jobs, Tech Assist, Parts Pro, Owner Access).
@@ -87,6 +87,6 @@ export async function askChillAction(question: string, history: ClaudeMessage[] 
     .map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }));
   while (prior.length && prior[0].role !== "user") prior.shift();
 
-  const result = await askAI({ system: `${PERSONA}\n\nBUSINESS SNAPSHOT:\n${snapshot}`, messages: [...prior, { role: "user", content: q }], maxTokens: 600, timeoutMs: 40000 });
+  const result = await askAI({ system: `${PERSONA}\n\nBUSINESS SNAPSHOT:\n${snapshot}`, messages: [...prior, { role: "user", content: q }], maxTokens: 350, timeoutMs: 30000 });
   return result.ok ? { ok: true, answer: result.text } : { ok: false, error: result.error };
 }
