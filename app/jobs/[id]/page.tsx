@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ChangeTechnician, CloseCallButton, NextStepButton, TechNotes } from "@/components/job-screen-actions";
 import { JobPartsCard } from "@/components/job-parts-card";
+import { MediaAccordion } from "@/components/media-accordion";
 import { getPartsCatalog } from "@/lib/chillbros/queries";
 import { SectionCard } from "@/components/section-card";
 import { getActiveTechnicians } from "@/lib/chillbros/operations-queries";
@@ -231,13 +232,18 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
         </section>
 
         <section className="cb-card p-3.5">
-          <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 2</p><h2 className="text-xl font-bold text-[#0A1A33]">Job notes</h2><p className="mt-1 text-sm text-[#2B3F5C]">Technician diagnosis, readings, work performed, and recommendations. These notes are included in the customer equipment service history.</p></div>
+          <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 2</p><h2 className="text-xl font-bold text-[#0A1A33]">Before & after photos</h2><p className="mt-1 text-sm text-[#2B3F5C]">Capture proof of condition before work and proof of completed work after. These photos follow this equipment service history.</p></div>
+          <MediaAccordion jobId={job.id} beforePhotos={job.beforePhotos} afterPhotos={job.afterPhotos} readOnly={!canEditParts || !active} />
+        </section>
+
+        <section className="cb-card p-3.5">
+          <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 3</p><h2 className="text-xl font-bold text-[#0A1A33]">Job notes</h2><p className="mt-1 text-sm text-[#2B3F5C]">Technician diagnosis, readings, work performed, and recommendations. These notes are included in the customer equipment service history.</p></div>
           <TechNotes job={fieldJob} canEdit={isField && active} />
         </section>
 
         {isField || (isOffice && active) ? (
           <section className="cb-card p-3.5">
-            <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 3</p><h2 className="text-xl font-bold text-[#0A1A33]">Quote / invoice</h2><p className="mt-1 text-sm text-[#2B3F5C]">Create the customer document from this same service call. Do not start a second call.</p></div>
+            <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 4</p><h2 className="text-xl font-bold text-[#0A1A33]">Quote / invoice</h2><p className="mt-1 text-sm text-[#2B3F5C]">Create the customer document from this same service call. Do not start a second call.</p></div>
           <div className="grid grid-cols-2 gap-2.5">
             {isField ? (
               <Link href={quoteHref} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] px-3 font-semibold text-[#1B3FD0] ${isOffice && active ? "" : "col-span-2"}`}>
