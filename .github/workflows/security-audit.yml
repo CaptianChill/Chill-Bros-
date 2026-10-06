@@ -43,15 +43,7 @@ jobs:
           npm audit --omit=dev --audit-level=high
 
       - name: Lint
-        run: |
-          npx eslint -f json -o eslint.json . || true
-          node -e '
-            const r = JSON.parse(require("fs").readFileSync("eslint.json", "utf8"));
-            let n = 0;
-            for (const f of r) for (const m of f.messages) if (m.severity === 2 && n++ < 40) console.log(`::error file=${f.filePath.replace(process.cwd() + "/", "")},line=${m.line || 1}::TEMPLINT ${m.ruleId || "parse"}: ${m.message.replace(/\n/g, " ").slice(0, 300)}`);
-            console.log(`::notice::TEMPLINT errors=${r.reduce((a, f) => a + f.errorCount, 0)}`);
-          '
-          npm run lint
+        run: npm run lint
 
       - name: Field Notes workflow tests
         run: node --test scripts/field-notes.test.cjs scripts/parts-research.test.cjs
