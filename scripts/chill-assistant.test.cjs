@@ -56,3 +56,29 @@ test('answers are short and start speaking after the first sentence', () => {
   assert.deepEqual(splitForSpeech('You have three unassigned calls today. Alamo Brewing has waited longest.'), ['You have three unassigned calls today.', 'Alamo Brewing has waited longest.']);
   assert.deepEqual(splitForSpeech('Yes.'), ['Yes.']);
 });
+
+function loadVoice() {
+  const ts = require('typescript');
+  const out = ts.transpileModule(read('lib/chillbros/voice.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const mod = { exports: {} };
+  new Function('require', 'module', 'exports', 'process', out)((id) => (id === 'server-only' ? {} : require(id)), mod, mod.exports, process);
+  return mod.exports;
+}
+
+test('voice falls back from v3 to the same voice on Turbo, and explains failures', async () => {
+  const realFetch = global.fetch;
+  const env = { ...process.env };
+  try {
+    delete process.env.ELEVEN_API_KEY; delete process.env.BOODA_ELEVEN_VOICE_ID;
+    assert.match((await loadVoice().elevenSpeech('Hi')).reason, /settings not found/);
+    process.env.ELEVEN_API_KEY = 'k'; process.env.BOODA_ELEVEN_VOICE_ID = 'v';
+    const calls = [];
+    global.fetch = async (url, init) => { calls.push({ url, body: JSON.parse(init.body) }); return url.includes('dialogue') ? { ok: false, status: 400, body: null, text: async () => '{"detail":{"message":"voice not supported by v3"}}' } : { ok: true, status: 200, body: 'audio' }; };
+    const r = await loadVoice().elevenSpeech('Hi');
+    assert.equal(r.ok, true); assert.equal(r.model, 'eleven_turbo_v2_5');
+    assert.match(calls[0].url, /text-to-dialogue\/stream/); assert.match(calls[1].url, /text-to-speech\/v\/stream/);
+    global.fetch = async () => ({ ok: false, status: 401, body: null, text: async () => '{"detail":{"message":"Invalid API key"}}' });
+    const bad = await loadVoice().elevenSpeech('Hi');
+    assert.equal(bad.ok, false); assert.match(bad.reason, /401 Invalid API key/); assert.doesNotMatch(bad.reason, /turbo/);
+  } finally { global.fetch = realFetch; process.env = env; }
+});
