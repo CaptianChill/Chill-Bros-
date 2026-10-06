@@ -3,11 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { MapPin, Navigation } from "lucide-react";
 
 export function WorkLocationTracker({jobId,destination,active}:{jobId:string;destination:string|null;active:boolean}){
- const [status,setStatus]=useState(active?"Work location sharing is active while this call is in progress.":"Location sharing is off.");
+ // "shared" flips once a location ping has gone out; the message is derived from it and "active".
+ const [shared,setShared]=useState(false);
+ const [denied,setDenied]=useState(false);
+ const status=!active?"Location sharing is off.":denied?"Location permission is off. Enable it to share work location and improve routing.":shared?"Work location shared with owner/dispatch.":"Work location is used for dispatch, ETA and routing while you are working this call.";
  const last=useRef(0);
  useEffect(()=>{if(!active||!navigator.geolocation)return;
-   setStatus("Work location is used for dispatch, ETA and routing while you are working this call.");
-   const watch=navigator.geolocation.watchPosition(async(pos)=>{const now=Date.now();if(now-last.current<45000)return;last.current=now;setStatus("Work location shared with owner/dispatch.");await fetch("/api/tech-location",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jobId,lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy})}).catch(()=>{});},()=>setStatus("Location permission is off. Enable it to share work location and improve routing."),{enableHighAccuracy:true,maximumAge:30000,timeout:12000});
+   const watch=navigator.geolocation.watchPosition(async(pos)=>{const now=Date.now();if(now-last.current<45000)return;last.current=now;setShared(true);setDenied(false);await fetch("/api/tech-location",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jobId,lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy})}).catch(()=>{});},()=>setDenied(true),{enableHighAccuracy:true,maximumAge:30000,timeout:12000});
    return()=>{navigator.geolocation.clearWatch(watch);};
  },[active,jobId]);
  const nav=destination?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`:null;
