@@ -5,6 +5,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { FormDraftProtector } from "@/components/form-draft-protector";
 import { LiveOfficeRefresh } from "@/components/live-office-refresh";
 import { StaffHeader, StaffSidebar, StaffTabBar, type StaffShellUser } from "@/components/staff-shell-nav";
+import { ChillAssistant } from "@/components/chill-assistant";
 
 type AppShellProps = {
   children: ReactNode;
@@ -90,6 +91,7 @@ export async function AppShell({ children, title, description, highlight, lead, 
       </div>
 
       {user ? <StaffTabBar role={user.role} /> : null}
+      {user ? <ChillAssistant firstName={user.firstName} /> : null}
     </div>
   );
 }
