@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return Response.json({ error: "Cross-origin request blocked." }, { status: 403 });
   const profile = await getCurrentStaffProfile();
-  if (!profile) return Response.json({ error: "Sign in to use Chill's voice." }, { status: 401 });
+  if (!profile) return Response.json({ error: "Sign in to use Chilly Bro's voice." }, { status: 401 });
   const body = await request.json().catch(() => ({}));
   const text = typeof body?.text === "string" ? body.text.trim().slice(0, MAX_SPEECH_CHARS) : "";
   if (!text) return Response.json({ error: "Nothing to say." }, { status: 400 });
@@ -39,11 +39,11 @@ export async function POST(request: Request) {
     });
     if (!response.ok) {
       console.error("Chill voice failed", response.status, (await response.text().catch(() => "")).slice(0, 300));
-      return Response.json({ error: "Chill's voice is temporarily unavailable." }, { status: 502 });
+      return Response.json({ error: "Chilly Bro's voice is temporarily unavailable." }, { status: 502 });
     }
     return new Response(await response.arrayBuffer(), { status: 200, headers: { "Content-Type": "audio/mpeg", "Cache-Control": "private, no-store", "X-Chill-Voice": "openai", "X-Chill-Voice-Reason": reasonHeader } });
   } catch (error) {
     console.error("Chill voice error", error);
-    return Response.json({ error: "Chill's voice failed. Try again." }, { status: 500 });
+    return Response.json({ error: "Chilly Bro's voice failed. Try again." }, { status: 500 });
   }
 }
