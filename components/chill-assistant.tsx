@@ -38,6 +38,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
+  const [voiceSource, setVoiceSource] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -95,6 +96,8 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     const fetchClip = async (part: string) => {
       const response = await fetch("/api/voice/speak", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: part }) }).catch(() => null);
       if (!response?.ok) return null;
+      const voice = response.headers.get("X-Chill-Voice");
+      if (voice) setVoiceSource(voice === "elevenlabs" ? "BOODA voice" : "Backup voice");
       return URL.createObjectURL(await response.blob());
     };
     // Voice all parts at the same time; play them in order.
@@ -189,6 +192,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
           <div className="min-w-0 flex-1 pb-2">
             <p className="text-lg font-bold leading-tight">Chill</p>
             <p className="text-xs text-[#2b3f5c]" aria-live="polite">{statusText}</p>
+            {voiceSource ? <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-[#1B3FD0]/70">{voiceSource}</p> : null}
           </div>
           <div className="flex shrink-0 gap-1 self-start pt-1">
             <button type="button" onClick={() => { if (voiceOn) stopSpeaking(); setVoiceOn(!voiceOn); }} aria-label={voiceOn ? "Turn Chill's voice off" : "Turn Chill's voice on"} className="rounded-full p-2 text-[#1B3FD0] hover:bg-[#1B3FD0]/10">{voiceOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}</button>
