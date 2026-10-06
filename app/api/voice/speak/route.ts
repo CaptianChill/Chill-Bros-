@@ -1,4 +1,5 @@
 import { CHILL_VOICE, CHILL_VOICE_INSTRUCTIONS, MAX_SPEECH_CHARS, elevenSpeech, sameOrigin } from "@/lib/chillbros/voice";
+import { stripVoiceTags } from "@/lib/chillbros/voice-tags";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const runtime = "nodejs";
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     const response = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "gpt-4o-mini-tts", voice: CHILL_VOICE, input: text, instructions: CHILL_VOICE_INSTRUCTIONS, response_format: "mp3" }),
+      body: JSON.stringify({ model: "gpt-4o-mini-tts", voice: CHILL_VOICE, input: stripVoiceTags(text), instructions: CHILL_VOICE_INSTRUCTIONS, response_format: "mp3" }),
       cache: "no-store",
       signal: AbortSignal.timeout(30000),
     });
