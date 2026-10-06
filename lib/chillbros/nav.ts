@@ -8,8 +8,6 @@ import {
   GraduationCap,
   Home,
   Radar,
-  Route,
-  Search,
   Sparkles,
   StickyNote,
   UsersRound,
@@ -39,30 +37,58 @@ export const GROUP_LABELS: Record<NavGroup, string> = {
   financial: "Financial",
 };
 
-// Production navigation is intentionally small. The app still contains legacy,
-// experimental, reporting, AI/3D, payroll, inventory, and admin routes, but they
-// are not part of the day-to-day operating surface until the core service-call
-// workflow is stable end to end.
+// Production navigation is intentionally small: every role gets the same simple
+// flow (Work -> Schedule -> Billing) and a short More list. Pages that were merged
+// in the menu (Dispatch + Calendar, Invoices + Payments, Leads + Plans + Tasks)
+// stay separate pages and are switched with SECTION_TABS at the top of the page.
+// Tech Assist opens from each job on the tech's job screen, not the menu.
 export const navItems: NavItem[] = [
   { href: "/", label: "Home", shortLabel: "Home", roles: ["manager"], group: "command" },
-  { href: "/office", label: "Office", shortLabel: "Office", roles: ["office"], group: "command" },
-  { href: "/work", label: "Open Work", shortLabel: "Work", roles: ["manager", "office"], group: "command" },
-  { href: "/schedule", label: "Schedule", shortLabel: "Schedule", roles: ["manager", "office"], group: "command" },
-  { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"], group: "command" },
+  { href: "/office", label: "Home", shortLabel: "Home", roles: ["office"], group: "command" },
+  { href: "/work", label: "Work", shortLabel: "Work", roles: ["manager", "office"], group: "command" },
+  { href: "/dispatch", label: "Schedule", shortLabel: "Schedule", roles: ["manager", "office"], group: "command" },
+  { href: "/invoices", label: "Billing", shortLabel: "Billing", roles: ["manager", "office"], group: "financial" },
   { href: "/customers", label: "Customers", shortLabel: "Customers", roles: ["manager", "office"], group: "crm" },
-  { href: "/technician", label: "Field Jobs", shortLabel: "Field", roles: ["manager", "technician"], group: "operations" },
-  { href: "/field-notes", label: "Field Notes", shortLabel: "Notes", roles: ["manager", "technician"], group: "operations" },
+  { href: "/revenue-radar", label: "Sales", shortLabel: "Sales", roles: ["manager", "office"], group: "sales" },
+  { href: "/technician", label: "My Jobs", shortLabel: "My Jobs", roles: ["technician"], group: "operations" },
+  { href: "/field-notes", label: "Notes", shortLabel: "Notes", roles: ["technician"], group: "operations" },
   { href: "/timesheet", label: "Clock", shortLabel: "Clock", roles: ["technician"], group: "operations" },
-  { href: "/tech-assist", label: "Tech Assist", shortLabel: "Assist", roles: ["technician"], group: "operations" },
-  { href: "/training", label: "Training", shortLabel: "Training", roles: ["technician"], group: "operations" },
   { href: "/parts-lookup", label: "Parts Pro", shortLabel: "Parts Pro", roles: ["manager", "technician", "office"], group: "operations" },
-  { href: "/agreements", label: "Service Plans", shortLabel: "Plans", roles: ["manager", "office"], group: "sales" },
-  { href: "/revenue-radar", label: "Revenue Radar", shortLabel: "Radar", roles: ["manager", "office"], group: "sales" },
-  { href: "/revenue-radar/tasks", label: "Sales Tasks", shortLabel: "Sales", roles: ["office"], group: "sales" },
-  { href: "/revenue-radar/handoffs", label: "Tech Requests", shortLabel: "Requests", roles: ["technician"], group: "sales" },
-  { href: "/invoices", label: "Quotes & Invoices", shortLabel: "Billing", roles: ["manager", "office"], group: "financial" },
-  { href: "/payments", label: "Payments", shortLabel: "Payments", roles: ["manager", "office"], group: "financial" },
+  { href: "/training", label: "Training", shortLabel: "Training", roles: ["technician"], group: "operations" },
+  { href: "/revenue-radar/handoffs", label: "Send a Lead", shortLabel: "Lead", roles: ["technician"], group: "sales" },
 ];
+
+// Switch tabs shown at the top of pages that share one menu entry.
+export type SectionTab = { href: string; label: string; roles: StaffRole[] };
+export const SECTION_TABS: SectionTab[][] = [
+  [
+    { href: "/dispatch", label: "Board", roles: ["manager", "office"] },
+    { href: "/schedule", label: "Calendar", roles: ["manager", "office"] },
+  ],
+  [
+    { href: "/invoices", label: "Quotes & Invoices", roles: ["manager", "office"] },
+    { href: "/payments", label: "Payments", roles: ["manager", "office"] },
+  ],
+  [
+    { href: "/revenue-radar", label: "Leads", roles: ["manager", "office"] },
+    { href: "/agreements", label: "Service Plans", roles: ["manager", "office"] },
+    { href: "/revenue-radar/tasks", label: "Sales Tasks", roles: ["manager", "office"] },
+  ],
+];
+
+// Finds the section a page belongs to and which tab is current (longest matching path wins,
+// so /revenue-radar/tasks is "Sales Tasks", not "Leads"). Tech-only Send a Lead is not part of Sales.
+export function sectionTabsFor(pathname: string, role: StaffRole) {
+  if (pathname.startsWith("/revenue-radar/handoffs")) return null;
+  for (const group of SECTION_TABS) {
+    const tabs = group.filter((tab) => tab.roles.includes(role));
+    const matches = tabs.filter((tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`));
+    if (!matches.length || tabs.length < 2) continue;
+    const active = matches.sort((a, b) => b.href.length - a.href.length)[0];
+    return { tabs, activeHref: active.href };
+  }
+  return null;
+}
 
 // Manager-only tools that don't belong in the daily nav (sales pipeline
 // audit, DNC review, payment settings, manual payment recording, etc.) live
@@ -74,7 +100,7 @@ export const NAV_ICONS: Partial<Record<string, LucideIcon>> = {
   "/office": Home,
   "/work": ClipboardList,
   "/schedule": CalendarDays,
-  "/dispatch": Route,
+  "/dispatch": CalendarDays,
   "/customers": UsersRound,
   "/technician": Wrench,
   "/field-notes": StickyNote,
@@ -90,10 +116,14 @@ export const NAV_ICONS: Partial<Record<string, LucideIcon>> = {
   "/payments": CreditCard,
 };
 
+const isUnder = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
 export function isNavItemActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   if (href === "/technician") return pathname === "/technician" || pathname.startsWith("/jobs/");
-  if (href === "/invoices") return pathname === "/invoices" || pathname.startsWith("/invoices/");
+  if (href === "/invoices") return isUnder(pathname, "/invoices") || isUnder(pathname, "/payments");
+  if (href === "/dispatch") return isUnder(pathname, "/dispatch") || isUnder(pathname, "/schedule");
+  if (href === "/revenue-radar") return (isUnder(pathname, "/revenue-radar") && !isUnder(pathname, "/revenue-radar/handoffs")) || isUnder(pathname, "/agreements");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -107,17 +137,14 @@ export function groupNavItems(items: NavItem[]) {
 // role's nav stays reachable from the "More" menu.
 export type PrimaryTab = { href: string; label: string; icon: LucideIcon; isActive: (pathname: string) => boolean };
 
-const isUnder = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
-
 export function getPrimaryTabs(role: StaffRole): PrimaryTab[] {
   if (role === "technician") {
     // Technicians can't open Dispatch or Billing, and "/" redirects them to
     // their field workflow, so they get their own daily screens instead.
     return [
-      { href: "/technician", label: "Job", icon: Wrench, isActive: (p) => p === "/" || p === "/technician" || p.startsWith("/jobs/") },
+      { href: "/technician", label: "My Jobs", icon: Wrench, isActive: (p) => p === "/" || p === "/technician" || p.startsWith("/jobs/") || p.startsWith("/tech-assist") },
       { href: "/field-notes", label: "Notes", icon: StickyNote, isActive: (p) => isUnder(p, "/field-notes") },
       { href: "/timesheet", label: "Clock", icon: Clock3, isActive: (p) => isUnder(p, "/timesheet") },
-      { href: "/parts-lookup", label: "Parts Pro", icon: Search, isActive: (p) => isUnder(p, "/parts-lookup") },
     ];
   }
 
@@ -127,8 +154,8 @@ export function getPrimaryTabs(role: StaffRole): PrimaryTab[] {
     { href: homeHref, label: "Home", icon: Home, isActive: (p) => p === "/" || p === "/office" },
     // Open work: saved calls, quotes and invoices still to finish.
     { href: "/work", label: "Work", icon: ClipboardList, isActive: (p) => isUnder(p, "/work") || p.startsWith("/jobs/") },
-    { href: "/dispatch", label: "Dispatch", icon: Route, isActive: (p) => isUnder(p, "/dispatch") },
-    { href: "/invoices", label: "Billing", icon: Banknote, isActive: (p) => isUnder(p, "/invoices") },
+    { href: "/dispatch", label: "Schedule", icon: CalendarDays, isActive: (p) => isUnder(p, "/dispatch") || isUnder(p, "/schedule") },
+    { href: "/invoices", label: "Billing", icon: Banknote, isActive: (p) => isUnder(p, "/invoices") || isUnder(p, "/payments") },
   ];
 }
 

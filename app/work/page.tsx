@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronRight, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { JobStatusChip } from "@/components/job-status-chip";
 import { getInvoiceCenterData, type InvoiceCenterRow } from "@/lib/chillbros/billing-queries";
+import { getFieldNoteInboxCounts } from "@/lib/chillbros/field-notes-queries";
 import { getDispatchJobs } from "@/lib/chillbros/operations-queries";
 import { displayTime, parseWindow } from "@/lib/chillbros/schedule-window";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
@@ -55,11 +56,14 @@ export default async function OpenWorkPage({ searchParams }: Props) {
   if (profile.role === "technician") redirect("/technician");
   if (!["manager", "office"].includes(profile.role)) redirect("/");
 
-  const [{ saved, warning }, jobs, invoiceCenter] = await Promise.all([
+  const [{ saved, warning }, jobs, invoiceCenter, fieldNotes] = await Promise.all([
     searchParams,
     getDispatchJobs(250),
     getInvoiceCenterData().catch(() => ({ rows: [] as InvoiceCenterRow[] })),
+    // Owner reviews tech Field Notes; they show up here instead of a separate menu item.
+    profile.role === "manager" ? getFieldNoteInboxCounts().catch(() => null) : Promise.resolve(null),
   ]);
+  const fieldNotesWaiting = fieldNotes ? fieldNotes.new + fieldNotes.needsReview : 0;
   const rows = invoiceCenter.rows.filter((row) => row.status !== "void" && row.paymentStatus !== "paid");
   const jobsWithDocument = new Set(invoiceCenter.rows.filter((row) => row.status !== "void").map((row) => row.jobId));
 
@@ -73,7 +77,7 @@ export default async function OpenWorkPage({ searchParams }: Props) {
   const savedJob = saved ? jobs.find((job) => job.id === saved) : undefined;
 
   return (
-    <AppShell title="Open work" description="Saved calls, quotes and invoices that still need finishing.">
+    <AppShell title="Work" description="Saved calls, quotes and invoices that still need finishing.">
       <div className="cb-new space-y-3.5">
         {savedJob ? (
           <p role="status" className="cb-card flex items-center gap-2 p-3.5 font-semibold text-[#0A1A33]">
@@ -82,6 +86,13 @@ export default async function OpenWorkPage({ searchParams }: Props) {
           </p>
         ) : null}
         {savedJob && warning ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#1B3FD0]">{warning}</p> : null}
+
+        {fieldNotesWaiting > 0 ? (
+          <Link href="/owner/field-notes" className="cb-card flex items-center justify-between gap-3 p-3.5 font-semibold text-[#0A1A33] transition hover:border-[#1B3FD0]/50">
+            <span>Tech field notes to review</span>
+            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1B3FD0] px-2.5 py-1 text-sm font-bold text-white">{fieldNotesWaiting}</span>
+          </Link>
+        ) : null}
 
         <Link href="/jobs/new" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]">
           <Plus className="h-5 w-5" aria-hidden="true" />
