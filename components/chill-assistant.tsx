@@ -62,8 +62,9 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   const chunksRef = useRef<Blob[]>([]);
   const stopTimerRef = useRef<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  // Latest messages for event handlers (kept in sync after each render, not during it).
   const messagesRef = useRef<Message[]>([]);
-  messagesRef.current = messages;
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
   const [emote, setEmote] = useState<{ name: Emote; key: number } | null>(null);
   const [talkMove, setTalkMove] = useState(0);
   // After a few seconds of thinking, say he's still working (parts lookups search the web).
@@ -102,6 +103,22 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   useEffect(() => { for (const p of POSES) { const img = new Image(); img.src = src(p); } }, []);
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }); }, [messages, busy]);
 
+  // Answer audio plays as a short queue of parts: the first sentence starts while the rest is still being voiced.
+  const queueRef = useRef<Promise<string | null>[]>([]);
+  const speakRunRef = useRef(0);
+  const playNext = useCallback(async function playNextPart(): Promise<void> {
+    const run = speakRunRef.current;
+    const next = queueRef.current.shift();
+    if (!next) { setPose((p) => (p === "talking" ? "idle" : p)); return; }
+    const url = await next;
+    if (run !== speakRunRef.current) return;
+    if (!url) { await playNextPart(); return; }
+    const audio = audioRef.current!;
+    if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
+    audio.src = url;
+    try { await audio.play(); } catch { setPose("idle"); setError("Your phone blocked the voice. Tap the speaker button, or read the answer above."); }
+  }, []);
+
   const unlockAudio = useCallback(() => {
     if (!audioRef.current) {
       const audio = new Audio();
@@ -109,29 +126,13 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
       const isVoice = () => audio.src.startsWith("blob:");
       audio.addEventListener("play", () => { if (isVoice()) setPose("talking"); });
       // When one part of the answer finishes, the next part plays straight away (no idle flicker).
-      audio.addEventListener("ended", () => { if (isVoice()) void playNextRef.current(); });
+      audio.addEventListener("ended", () => { if (isVoice()) void playNext(); });
       audioRef.current = audio;
       audio.src = SILENT_AUDIO;
       void audio.play().catch(() => undefined);
     }
-  }, []);
+  }, [playNext]);
 
-  // Answer audio plays as a short queue of parts: the first sentence starts while the rest is still being voiced.
-  const queueRef = useRef<Promise<string | null>[]>([]);
-  const speakRunRef = useRef(0);
-  const playNextRef = useRef<() => Promise<void>>(async () => undefined);
-  playNextRef.current = async () => {
-    const run = speakRunRef.current;
-    const next = queueRef.current.shift();
-    if (!next) { setPose((p) => (p === "talking" ? "idle" : p)); return; }
-    const url = await next;
-    if (run !== speakRunRef.current) return;
-    if (!url) { await playNextRef.current(); return; }
-    const audio = audioRef.current!;
-    if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
-    audio.src = url;
-    try { await audio.play(); } catch { setPose("idle"); setError("Your phone blocked the voice. Tap the speaker button, or read the answer above."); }
-  };
 
   const stopSpeaking = useCallback(() => {
     speakRunRef.current += 1;
@@ -156,11 +157,11 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     // Voice all parts at the same time; play them in order.
     queueRef.current = splitForSpeech(answer).map(fetchClip);
     const first = queueRef.current[0];
-    await playNextRef.current();
+    await playNext();
     if (run === speakRunRef.current && first && !(await first)) {
       setError("Chilly Bro's voice is unavailable right now. The answer is shown above.");
     }
-  }, [voiceOn, unlockAudio]);
+  }, [voiceOn, unlockAudio, playNext]);
 
   // Shows the answer, reacts to its mood, and speaks it.
   const deliver = useCallback(async (q: string, history: Message[], answer: string, links?: Link[]) => {
@@ -279,7 +280,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
 
         <div ref={listRef} className="min-h-[96px] flex-1 space-y-2 overflow-y-auto px-3 py-3">
           {messages.length === 0 ? <div className="space-y-2">
-            <p className="rounded-2xl bg-[#eef3ff] px-3 py-2 text-sm">Hi {firstName}. Ask me about today's jobs, who owes us money, a customer, or any HVAC or refrigeration question. Give me a brand, model and serial and I'll look up OEM parts too.</p>
+            <p className="rounded-2xl bg-[#eef3ff] px-3 py-2 text-sm">Hi {firstName}. Ask me about today&apos;s jobs, who owes us money, a customer, or any HVAC or refrigeration question. Give me a brand, model and serial and I&apos;ll look up OEM parts too.</p>
             <div className="grid grid-cols-2 gap-2">{["What needs my attention today?", "Who has overdue invoices?", "Which calls are unassigned?", "Walk-in cooler not cooling: where do I start?"].map((s) => <button key={s} type="button" disabled={busy || recording} onClick={() => { unlockAudio(); void ask(s); }} className="rounded-xl border border-[#1B3FD0]/20 bg-white px-2.5 py-2 text-left text-xs font-medium text-[#1B3FD0] disabled:opacity-50">{s}</button>)}</div>
           </div> : messages.map((m, i) => <div key={i} className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-6 ${m.role === "user" ? "ml-auto bg-[#1B3FD0] text-white" : "bg-[#eef3ff]"}`}>
             <p className="whitespace-pre-wrap">{m.role === "assistant" ? stripVoiceTags(m.content) : m.content}</p>
