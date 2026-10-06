@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useMemo, useState, useTransition } from "react";
 import { Boxes, CalendarPlus, CheckCircle2, RefreshCw, RotateCcw, Search, UserPlus, UserRoundSearch, Wrench } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -98,7 +99,7 @@ export function CustomerCenter({ customers, technicians, equipment, jobs }: { cu
         <label className="space-y-1.5"><span className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-400">Customer / business name *</span><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Customer or company name" autoComplete="organization" className="w-full rounded-2xl border border-[#2d7dff]/20 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-[#8ffafa]/50" /></label>
         <label className="space-y-1.5"><span className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-400">Phone</span><input type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="210-555-0123" autoComplete="tel" className="w-full rounded-2xl border border-[#2d7dff]/20 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-[#8ffafa]/50" /></label>
         <label className="space-y-1.5"><span className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-400">Email</span><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="customer@email.com" autoComplete="email" className="w-full rounded-2xl border border-[#2d7dff]/20 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-[#8ffafa]/50" /></label>
-        <label className="space-y-1.5"><span className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-400">Service / billing address</span><input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="Street, city, state, ZIP" autoComplete="street-address" className="w-full rounded-2xl border border-[#2d7dff]/20 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-[#8ffafa]/50" /></label>
+        <label className="space-y-1.5"><span className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-400">Service / billing address</span><AddressAutocomplete value={form.address} onChange={(address) => setForm({ ...form, address })} placeholder="Start typing street, city, state, ZIP" className="w-full rounded-2xl border border-[#2d7dff]/20 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-[#8ffafa]/50" /></label>
       </div>
       <label className="mt-3 block space-y-1.5"><span className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-400">Customer intake notes</span><textarea value={form.intakeNotes} onChange={(event) => setForm({ ...form, intakeNotes: event.target.value })} rows={3} placeholder="Access instructions, primary contact, billing notes, site details, or other customer information..." className="w-full rounded-2xl border border-[#2d7dff]/20 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-[#8ffafa]/50" /></label>
 

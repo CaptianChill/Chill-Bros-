@@ -16,6 +16,7 @@ import { getActiveTechnicians, getDispatchJobs } from "@/lib/chillbros/operation
 import { getCalendarJobs } from "@/lib/chillbros/schedule-queries";
 import { addDays, ctToday, dayParts, displayTime, parseWindow } from "@/lib/chillbros/schedule-window";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
 
@@ -59,12 +60,16 @@ export default async function DispatchPage({ searchParams }: Props) {
   const unassigned = [...unassignedForDay, ...unassignedNoTime];
 
   const openJobs = jobs.filter((job) => isOpen(job.status));
+  const activeJobIds = openJobs.map((job) => job.id);
+  const { data: locationEvents } = activeJobIds.length ? await createServiceRoleClient().from("chillbros_workflow_events").select("job_id,message,created_at").eq("stage","tech_location").in("job_id",activeJobIds).order("created_at",{ascending:false}).limit(250) : { data: [] };
+  const latestLocation = new Map<string,{lat:number;lon:number;at:string}>();
+  for (const event of locationEvents ?? []) { try { const payload=JSON.parse(event.message); const job=openJobs.find((j)=>j.id===event.job_id); if(job?.assignedTechId&&!latestLocation.has(job.assignedTechId)&&Number.isFinite(payload.lat)&&Number.isFinite(payload.lon)) latestLocation.set(job.assignedTechId,{lat:payload.lat,lon:payload.lon,at:payload.at||event.created_at}); } catch {} }
   const techRows = technicians.map((tech) => {
     const count = dayJobs.filter((job) => job.assignedTechId === tech.id).length;
     const onSite = openJobs.find((job) => job.assignedTechId === tech.id && ON_SITE_STATUSES.includes(job.status));
     const enRoute = openJobs.find((job) => job.assignedTechId === tech.id && EN_ROUTE_STATUSES.includes(job.status));
     const status = onSite ? `On site · ${onSite.customerName}` : enRoute ? `En route · ${enRoute.customerName}` : "Available";
-    return { tech, count, status, busy: Boolean(onSite || enRoute) };
+    return { tech, count, status, busy: Boolean(onSite || enRoute), location: latestLocation.get(tech.id) ?? null };
   });
   const barMax = Math.max(4, ...techRows.map((row) => row.count));
   const techOptions = technicians.map((tech) => ({ id: tech.id, fullName: tech.fullName }));
@@ -141,7 +146,7 @@ export default async function DispatchPage({ searchParams }: Props) {
             <p className="px-3.5 py-5 text-sm text-[#2B3F5C]">No active technicians.</p>
           ) : (
             <ul className="divide-y divide-[#0A1A33]/10">
-              {techRows.map(({ tech, count, status, busy }) => (
+              {techRows.map(({ tech, count, status, busy, location }) => (
                 <li key={tech.id} className="flex items-center gap-3 px-3.5 py-3">
                   <span aria-hidden="true" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#9FD3FF] text-sm font-bold text-[#0A1A33]">
                     {initialsFor(tech.fullName)}
@@ -163,7 +168,7 @@ export default async function DispatchPage({ searchParams }: Props) {
                     >
                       <div className="h-full rounded-full bg-[#1B3FD0]" style={{ width: `${Math.round((count / barMax) * 100)}%` }} />
                     </div>
-                    <p className={`mt-1 truncate text-[13px] ${busy ? "font-semibold text-[#1530A8]" : "text-[#2B3F5C]"}`}>{status}</p>
+                    <p className={`mt-1 truncate text-[13px] ${busy ? "font-semibold text-[#1530A8]" : "text-[#2B3F5C]"}`}>{status}</p>{location ? <a href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lon}`} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-[#1557B0]">Last work location · {new Date(location.at).toLocaleTimeString("en-US",{timeZone:"America/Chicago",hour:"numeric",minute:"2-digit"})} CT</a> : <p className="mt-1 text-xs text-[#5B6B82]">No work location shared</p>}
                   </div>
                 </li>
               ))}

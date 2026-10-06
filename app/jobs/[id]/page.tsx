@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { ChangeTechnician, CloseCallButton, NextStepButton, TechNotes } from "@/components/job-screen-actions";
 import { JobPartsCard } from "@/components/job-parts-card";
 import { MediaAccordion } from "@/components/media-accordion";
+import { WorkLocationTracker } from "@/components/work-location-tracker";
 import { getPartsCatalog } from "@/lib/chillbros/queries";
 import { SectionCard } from "@/components/section-card";
 import { getActiveTechnicians } from "@/lib/chillbros/operations-queries";
@@ -159,6 +160,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
         </section>
 
         {primary}
+        {profile.role === "technician" ? <WorkLocationTracker jobId={job.id} destination={job.location} active={["en_route","arrived","in_progress","diagnosing","repairing"].includes(job.status)} /> : null}
 
         <section aria-labelledby="details-title" className="cb-card overflow-hidden">
           <h2 id="details-title" className="border-b border-[#0A1A33]/10 px-3.5 py-3 text-[28px] leading-none">Details</h2>
