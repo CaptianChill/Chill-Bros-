@@ -1,7 +1,9 @@
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { discoverSanAntonioRevenueLeads } from "@/lib/chillbros/revenue-discovery";
+import { runLeadScan } from "@/lib/chillbros/revenue-discovery";
 
 export const dynamic = "force-dynamic";
+// Up to 4 map searches of ~25s each.
+export const maxDuration = 120;
 
 export async function GET(request: Request) {
   const secret = String(process.env.CRON_SECRET || "");
@@ -26,34 +28,12 @@ export async function GET(request: Request) {
   const missingSalesSchema = overdueError && ["PGRST205", "42P01"].includes(String(overdueError.code || ""));
   if (overdueError && !missingSalesSchema) console.error("[revenue-radar-cron] overdue task update failed", overdueError);
 
-  const discovered = await discoverSanAntonioRevenueLeads(80);
-  if (!discovered.length) {
-    return Response.json({ ok: true, discovered: 0, added: 0, tasksMarkedOverdue: overdueRows?.length ?? 0, ranAt: now });
+  // Rotates through greater San Antonio, one area forward each day, until ~25 new leads are added.
+  try {
+    const scan = await runLeadScan(client, { mode: "daily", actorId: null, target: 25, maxAreas: 4 });
+    return Response.json({ ok: true, added: scan.added, areas: scan.scanned, skippedCustomers: scan.skippedCustomers, tasksMarkedOverdue: overdueRows?.length ?? 0, ranAt: now });
+  } catch (error) {
+    console.error("[revenue-radar-cron] lead scan failed", error);
+    return Response.json({ ok: false, error: error instanceof Error ? error.message : "Lead scan failed.", tasksMarkedOverdue: overdueRows?.length ?? 0 }, { status: 500 });
   }
-
-  const rows = discovered.map((lead) => ({
-    ...lead,
-    status: "new",
-    created_by: null,
-    updated_by: null,
-    updated_at: now,
-  }));
-
-  const { data, error } = await client
-    .from("chillbros_revenue_prospects")
-    .upsert(rows, { onConflict: "normalized_key", ignoreDuplicates: true })
-    .select("id");
-
-  if (error) {
-    console.error("[revenue-radar-cron] lead upsert failed", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
-  }
-
-  return Response.json({
-    ok: true,
-    discovered: discovered.length,
-    added: data?.length ?? 0,
-    tasksMarkedOverdue: overdueRows?.length ?? 0,
-    ranAt: now,
-  });
 }

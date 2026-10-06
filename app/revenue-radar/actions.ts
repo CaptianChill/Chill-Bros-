@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { categories, normalizedKey, scoreSignal, serviceLines, statuses } from "@/lib/chillbros/revenue-radar";
-import { discoverSanAntonioRevenueLeads } from "@/lib/chillbros/revenue-discovery";
+import { runLeadScan } from "@/lib/chillbros/revenue-discovery";
 
 async function office() {
   const profile = await getCurrentStaffProfile();
@@ -32,7 +32,7 @@ async function assertProspectAccess(profile: { id: string; role: string }, id: s
 
 const value = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
-export type ScanForLeadsResult = { ok: true } | { ok: false; error: string };
+export type ScanForLeadsResult = { ok: true; message: string } | { ok: false; error: string };
 
 export async function scanForLeads(_form: FormData): Promise<ScanForLeadsResult> {
   let profile: Awaited<ReturnType<typeof manager>>;
@@ -42,29 +42,14 @@ export async function scanForLeads(_form: FormData): Promise<ScanForLeadsResult>
     return { ok: false, error: err instanceof Error ? err.message : "Manager access required." };
   }
 
-  let discovered: Awaited<ReturnType<typeof discoverSanAntonioRevenueLeads>>;
   try {
-    discovered = await discoverSanAntonioRevenueLeads(60);
+    const scan = await runLeadScan(createServiceRoleClient(), { mode: "manual", actorId: profile.id, target: 25, maxAreas: 3 });
+    revalidatePath("/revenue-radar");
+    const where = scan.scanned.join(", ");
+    return { ok: true, message: scan.added ? `Added ${scan.added} new lead${scan.added === 1 ? "" : "s"} from ${where}.` : `No new businesses in ${where} this time. Press again to search other areas.` };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Lead discovery failed." };
   }
-  if (!discovered.length) return { ok: false, error: "No leads were returned by the discovery source. Try the scan again shortly." };
-
-  const rows = discovered.map((lead) => ({
-    ...lead,
-    created_by: profile.id,
-    updated_by: profile.id,
-    status: "new",
-    updated_at: new Date().toISOString(),
-  }));
-
-  const { error } = await createServiceRoleClient()
-    .from("chillbros_revenue_prospects")
-    .upsert(rows, { onConflict: "normalized_key", ignoreDuplicates: true });
-
-  if (error) return { ok: false, error: error.message };
-  revalidatePath("/revenue-radar");
-  return { ok: true };
 }
 
 export async function addProspect(form: FormData) {

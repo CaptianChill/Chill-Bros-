@@ -8,6 +8,7 @@ export function ScanForLeadsButton({ action }: { action: (form: FormData) => Pro
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   return (
     <div className="flex flex-col items-end gap-2">
@@ -16,6 +17,7 @@ export function ScanForLeadsButton({ action }: { action: (form: FormData) => Pro
         className="min-h-12 whitespace-nowrap rounded-2xl bg-cyan-300 px-6 font-bold text-black shadow-[0_0_24px_rgba(103,232,249,0.28)] hover:bg-cyan-200 disabled:opacity-60"
         onClick={() => {
           setError("");
+          setMessage("");
           startTransition(async () => {
             try {
               const result = await action(new FormData());
@@ -23,6 +25,7 @@ export function ScanForLeadsButton({ action }: { action: (form: FormData) => Pro
                 setError(result.error);
                 return;
               }
+              setMessage(result.message);
               router.refresh();
             } catch (err) {
               setError(err instanceof Error ? err.message : "Scan failed. Try again.");
@@ -32,6 +35,7 @@ export function ScanForLeadsButton({ action }: { action: (form: FormData) => Pro
       >
         {pending ? "Scanning…" : "Scan for leads"}
       </button>
+      {message ? <p role="status" className="max-w-xs text-right text-sm text-cyan-200">{message}</p> : null}
       {error ? <p role="alert" className="max-w-xs text-right text-sm text-rose-300">{error}</p> : null}
     </div>
   );

@@ -8,6 +8,8 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { addProspect, scanForLeads } from "./actions";
 
 export const dynamic = "force-dynamic";
+// Scan for leads runs here as a server action: up to 3 map searches.
+export const maxDuration = 90;
 const input = "min-h-11 w-full rounded-xl border border-cyan-400/30 bg-black/50 px-3 py-2 text-white";
 
 const PROSPECT_COLUMNS = "id,business_name,city,category,service_line,signal_summary,signal_verified,signal_observed_at,score,status,follow_up_at,estimated_revenue,actual_revenue,direct_cost,business_address,contact_phone,contact_email,contact_name,contact_role,verification_status,source_url,assigned_salesperson,sales_status";
