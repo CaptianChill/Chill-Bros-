@@ -35,6 +35,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const discovery = list(content.discoveryQuestions);
   const buying = list(content.buyingSignals);
   const objections = Array.isArray(content.objectionResponses) ? content.objectionResponses as Array<Record<string, unknown>> : [];
+  // AI Sales Assist extras (fit, suggested plan, intro email draft), when this card was AI-written.
+  const fit = (content.fit ?? {}) as Record<string, unknown>;
+  const plan = (content.suggestedPlan ?? {}) as Record<string, unknown>;
+  const email = (content.introEmail ?? {}) as Record<string, unknown>;
+  const aiLines: string[] = content.aiWritten ? [
+    "FIT", `${text(String(fit.score ?? ""))}/10 - ${text(fit.reason)}`, "",
+    "SUGGESTED SERVICE PLAN", `${text(plan.tier)} - ${text(plan.reason)}`, "",
+    "INTRO EMAIL DRAFT (REVIEW BEFORE SENDING)", `Subject: ${text(email.subject)}`, ...text(email.body).split("\n"), "",
+  ] : [];
   const lines: string[] = [
     "CHILL PROS - REVENUE RADAR SALES BATTLE CARD",
     "",
@@ -78,6 +87,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     "OBJECTIONS AND RESPONSES",
     ...objections.flatMap((item) => [`Objection: ${text(item.objection)}`, `Response: ${text(item.response)}`]),
     "",
+    ...aiLines,
     "BEST NEXT STEP",
     text(content.bestNextStep),
     "",
