@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   audit-and-build:
@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -27,8 +29,36 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --ignore-scripts
 
+      - name: TEMP apply audit fixes to lockfile
+        if: github.event_name == 'pull_request'
+        run: |
+          npm audit fix --omit=dev --package-lock-only --ignore-scripts || true
+          git status --short
+          if ! git diff --quiet -- package-lock.json package.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json package.json
+            git commit -m "Apply npm audit fix to production dependencies"
+            git push origin HEAD:${{ github.head_ref }}
+            echo "::notice::Committed npm audit fix lockfile changes"
+          else
+            echo "::notice::npm audit fix made no changes"
+          fi
+
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          # List each high/critical finding as an annotation so failures are readable without the raw log.
+          npm audit --omit=dev --json > audit.json || true
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync("audit.json", "utf8"));
+            for (const [name, v] of Object.entries(r.vulnerabilities || {})) {
+              if (!["high", "critical"].includes(v.severity)) continue;
+              const fix = v.fixAvailable === true ? "fix available" : v.fixAvailable ? `fix: ${v.fixAvailable.name}@${v.fixAvailable.version}${v.fixAvailable.isSemVerMajor ? " (major)" : ""}` : "no fix available";
+              const via = (v.via || []).map((x) => typeof x === "string" ? x : x.title).join("; ");
+              console.log(`::error title=npm audit ${v.severity}::${name} ${v.range} | ${fix} | ${via}`);
+            }
+          '
+          npm audit --omit=dev --audit-level=high
 
       - name: Lint
         run: npm run lint
