@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { SalesAssistEmail, SalesAssistSubmit } from "@/components/sales-assist-controls";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { explainLeadRanking } from "@/lib/chillbros/revenue-sales";
@@ -8,11 +9,14 @@ import { updateProspect } from "../actions";
 import {
   assignRevenueSalesperson,
   createRevenueTechnicianHandoff,
+  generateSalesBattleCard,
   logRevenueActivity,
   markRevenueDoNotContact,
 } from "../sales-actions";
 
 export const dynamic = "force-dynamic";
+// "Write with AI" runs as a server action on this page; give the AI time to answer.
+export const maxDuration = 60;
 const input = "min-h-11 w-full rounded-xl border border-cyan-400/30 bg-black/50 px-3 py-2 text-white";
 const area = `${input} resize-y`;
 
@@ -21,10 +25,11 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
   const { id } = await params;
   const client = createServiceRoleClient();
-  const [{ data: p }, { data: salesStaff }, { data: leadContacts }] = await Promise.all([
+  const [{ data: p }, { data: salesStaff }, { data: leadContacts }, { data: battleCard }] = await Promise.all([
     client.from("chillbros_revenue_prospects").select("*").eq("id", id).maybeSingle(),
     client.from("chillbros_profiles").select("id,full_name,role,status").eq("status", "active").in("role", ["manager", "office"]).order("full_name"),
     client.from("chillbros_revenue_contacts").select("id,name,role,phone,email,verification_status,source,is_primary,notes").eq("lead_id", id).order("is_primary", { ascending: false }).order("created_at", { ascending: true }),
+    client.from("chillbros_revenue_battle_cards").select("id,content,created_at").eq("lead_id", id).eq("is_current", true).maybeSingle(),
   ]);
   if (!p) notFound();
 
@@ -42,6 +47,14 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
     contactEmail: p.contact_email,
   });
   const salesStatus = p.sales_status || p.status;
+  const card = (battleCard?.content ?? null) as Record<string, unknown> | null;
+  const cardText = (v: unknown) => (typeof v === "string" ? v : "");
+  const cardList = (v: unknown) => (Array.isArray(v) ? v.map((x) => String(x)) : []);
+  const fit = card?.fit as { score?: number; reason?: string } | undefined;
+  const plan = card?.suggestedPlan as { tier?: string; reason?: string } | undefined;
+  const email = card?.introEmail as { subject?: string; body?: string } | undefined;
+  const objections = Array.isArray(card?.objectionResponses) ? (card.objectionResponses as Array<{ objection?: string; response?: string }>) : [];
+  const canWorkLead = profile.role === "manager" || p.assigned_salesperson === profile.id;
   const field = (label: string, name: string, type = "text") => <label key={name}>{label}<input className={input} name={name} type={type} defaultValue={p[name] ?? ""} /></label>;
 
   return <AppShell title={p.business_name} description="Revenue Radar sales execution, follow-up, and technical handoff."><div className="mx-auto max-w-3xl space-y-4 text-left">
@@ -86,6 +99,35 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
         </div>
       </div> : null}
       {p.do_not_contact ? <p className="mt-3 rounded-xl border border-red-400/40 bg-red-400/10 p-3 text-sm font-semibold text-red-100">DO NOT CONTACT · {p.do_not_contact_reason || "restriction active"}</p> : null}
+    </section>
+
+    <section className="rounded-2xl border border-cyan-300/30 bg-black/40 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><h2 className="text-lg font-semibold text-white">Sales Assist</h2><p className="text-xs text-zinc-400">AI-written prep from this lead&apos;s recorded facts. Drafts only: nothing is sent until you send it.</p></div>
+        {card?.aiWritten ? <span className="rounded-full border border-cyan-300/30 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-200">AI</span> : card ? <span className="rounded-full border border-white/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-300">Standard</span> : null}
+      </div>
+      {p.do_not_contact ? <p className="mt-3 text-sm text-red-100">Do Not Contact is active, so no outreach is prepared.</p> : canWorkLead ? (
+        <form action={generateSalesBattleCard} className="mt-3"><input type="hidden" name="lead_id" value={id} /><SalesAssistSubmit hasCard={Boolean(card)} /></form>
+      ) : <p className="mt-3 text-sm text-zinc-400">Assigned salesperson or owner only.</p>}
+      {card ? <div className="mt-4 space-y-3 text-sm">
+        {fit?.score || plan?.tier ? <div className="grid gap-2 sm:grid-cols-2">
+          {fit?.score ? <div className="rounded-xl border border-white/10 bg-black/30 p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Fit</p><p className="mt-1 text-2xl font-bold text-white">{fit.score}/10</p><p className="text-xs text-zinc-300">{fit.reason}</p></div> : null}
+          {plan?.tier ? <div className="rounded-xl border border-white/10 bg-black/30 p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Suggested plan</p><p className="mt-1 text-lg font-bold text-white">{plan.tier}</p><p className="text-xs text-zinc-300">{plan.reason}</p></div> : null}
+        </div> : null}
+        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Why now</p><p className="mt-1 text-zinc-200">{cardText(card.whyNow)}</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Call opener</p><p className="mt-1 whitespace-pre-wrap text-zinc-200">{cardText(card.callOpener)}</p></div>
+        {email?.subject && email?.body ? <div className="rounded-xl border border-cyan-300/20 bg-cyan-400/5 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Intro email draft · review before sending</p>
+          <p className="mt-2 font-semibold text-white">{email.subject}</p>
+          <p className="mt-1 whitespace-pre-wrap text-zinc-200">{email.body}</p>
+          <SalesAssistEmail subject={email.subject} body={email.body} to={p.contact_email ?? null} />
+        </div> : null}
+        <details><summary className="cursor-pointer font-semibold text-white">Discovery questions & objections</summary>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-zinc-200">{cardList(card.discoveryQuestions).map((q) => <li key={q}>{q}</li>)}</ol>
+          <div className="mt-3 space-y-2">{objections.map((o) => <div key={o.objection} className="rounded-lg border border-white/10 p-2"><p className="font-semibold text-white">&ldquo;{o.objection}&rdquo;</p><p className="text-zinc-300">{o.response}</p></div>)}</div>
+        </details>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500"><span>Written {new Date(battleCard!.created_at).toLocaleString()}</span><a href={`/revenue-radar/${id}/battle-card.pdf`} className="text-cyan-200 underline">Download PDF</a></div>
+      </div> : null}
     </section>
 
     {profile.role === "manager" ? <details className="rounded-2xl border border-white/10 bg-black/30 p-4">

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { BATTLE_CARD_PROMPT_VERSION, buildSafeBattleCard } from "@/lib/chillbros/revenue-sales";
+import { AI_BATTLE_CARD_PROMPT_VERSION, writeAiBattleCard } from "@/lib/chillbros/revenue-ai";
+import { BATTLE_CARD_PROMPT_VERSION } from "@/lib/chillbros/revenue-sales";
 
 const ACTIVE_TASK_STATUSES = ["open", "in_progress", "overdue"] as const;
 const ACTIVITY_TYPES = ["call_attempt", "connected_call", "voicemail", "email_message", "inbound_inquiry", "meeting", "other"] as const;
@@ -121,8 +122,12 @@ export async function generateSalesBattleCard(form: FormData) {
   ]);
   if (error || !lead) throw new Error(error?.message || "Lead not found.");
   requireAssignedLead(profile, lead);
+  // No outreach prep for a business that asked not to be contacted.
+  if (lead.do_not_contact) throw new Error("This lead is marked Do Not Contact.");
 
-  const card = buildSafeBattleCard({
+  // AI writes the sales copy and email draft; it falls back to the standard card if AI is unavailable.
+  const { card, aiUsed, error: aiError } = await writeAiBattleCard({
+    category: lead.category,
     businessName: lead.business_name,
     city: lead.city,
     businessType: lead.category,
@@ -142,7 +147,7 @@ export async function generateSalesBattleCard(form: FormData) {
   const { data: created, error: createError } = await client.from("chillbros_revenue_battle_cards").insert({
     lead_id: leadId,
     content: card,
-    prompt_version: BATTLE_CARD_PROMPT_VERSION,
+    prompt_version: aiUsed ? AI_BATTLE_CARD_PROMPT_VERSION : BATTLE_CARD_PROMPT_VERSION,
     generation_trigger: "user_request",
     generated_by: profile.id,
     is_current: false,
@@ -172,7 +177,7 @@ export async function generateSalesBattleCard(form: FormData) {
     entityId: created.id,
     action: "generated",
     actorId: profile.id,
-    newValue: { promptVersion: BATTLE_CARD_PROMPT_VERSION, salesStatus: shouldReady ? "ready_to_call" : lead.sales_status ?? "new" },
+    newValue: { promptVersion: aiUsed ? AI_BATTLE_CARD_PROMPT_VERSION : BATTLE_CARD_PROMPT_VERSION, aiUsed, ...(aiError ? { aiNote: aiError.slice(0, 200) } : {}), salesStatus: shouldReady ? "ready_to_call" : lead.sales_status ?? "new" },
   });
   revalidatePath(`/revenue-radar/${leadId}`);
   revalidatePath("/revenue-radar");
