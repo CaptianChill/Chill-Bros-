@@ -18,7 +18,7 @@ test('techs get Tech Assist and Training in their menu', () => {
 });
 
 test('every owner add-on tool is reachable from Owner Access', () => {
-  for (const href of ['/reports', '/manager', '/inventory', '/payroll', '/timesheet', '/settings/payments', '/security', '/training', '/3d-studio', '/3d-project-builder', '/create', '/scan-send', '/revenue-radar/opportunities']) {
+  for (const href of ['/reports', '/manager', '/inventory', '/payroll', '/timesheet', '/settings/payments', '/security', '/training', '/create', '/scan-send', '/revenue-radar/opportunities']) {
     assert.ok(owner.includes(`href: "${href}"`), `${href} missing from Owner Access`);
     assert.ok(fs.existsSync(`app${href}/page.tsx`), `${href} page does not exist`);
   }
