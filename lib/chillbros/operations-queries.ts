@@ -17,7 +17,7 @@ export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
   if (error || !data) return [];
   const ids = data.map((row) => row.id);
   const [{ data: invoices }, { data: events }] = ids.length ? await Promise.all([
-    supabase.from("chillbros_invoices").select("job_id,status,payment_status,updated_at").in("job_id", ids).is("revoked_at", null).neq("status", "void").order("updated_at", { ascending: false }),
+    supabase.from("chillbros_invoices").select("job_id,status,payment_status,updated_at").in("job_id", ids).is("converted_invoice_id", null).is("revoked_at", null).neq("status", "void").order("updated_at", { ascending: false }),
     supabase.from("chillbros_workflow_events").select("job_id,stage,created_at").in("job_id", ids).order("created_at", { ascending: false }),
   ]) : [{ data: [] }, { data: [] }];
   const stageByJob = new Map<string, string>();

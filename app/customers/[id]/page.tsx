@@ -36,14 +36,14 @@ export default async function CustomerProfilePage({ params }: Props) {
   >
     <div className="space-y-4">
       <SectionCard eyebrow="Customer record" title="Contact & service history" description="Edit the customer record here. All equipment, documents, calls, and plans remain tied to this customer ID."><CustomerEditor customer={data.customer} /></SectionCard>
-      <Link href={`/jobs/new?customer=${data.customer.id}`} className="cb-new flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82]">
+      <Link href={`/jobs/new?customer=${data.customer.id}`} className="cb-new flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]">
         <Plus className="h-5 w-5" aria-hidden="true" />
         New call for this customer
       </Link>
       <section aria-labelledby="customer-equipment-title" className="cb-new cb-card overflow-hidden">
         <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
           <h2 id="customer-equipment-title" className="text-[28px] leading-none">Equipment</h2>
-          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1557B0] px-2.5 py-1 text-sm font-bold text-white">{data.equipment.length}</span>
+          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1B3FD0] px-2.5 py-1 text-sm font-bold text-white">{data.equipment.length}</span>
         </div>
         {data.equipment.length === 0 ? (
           <p className="bg-[#F8FAFD] px-3.5 py-4 text-sm font-medium text-[#2B3F5C]">No equipment saved yet. Add units in the asset registry below.</p>
@@ -52,13 +52,13 @@ export default async function CustomerProfilePage({ params }: Props) {
             {data.equipment.map((unit) => (
               <li key={unit.id}>
                 <Link href={`/equipment/${unit.id}`} className="flex min-h-[64px] items-center gap-3 bg-[#F8FAFD] px-3.5 py-2.5 transition hover:bg-white">
-                  <Wrench className="h-5 w-5 shrink-0 text-[#1557B0]" aria-hidden="true" />
+                  <Wrench className="h-5 w-5 shrink-0 text-[#1B3FD0]" aria-hidden="true" />
                   <span className="min-w-0 flex-1 text-left">
                     <span className="block truncate font-bold text-[#0A1A33]">{[unit.manufacturer, unit.model].filter(Boolean).join(" ") || unit.equipmentType}</span>
                     <span className="block truncate text-[13px] font-medium text-[#2B3F5C]">{[unit.equipmentType, unit.serialNumber ? `S/N ${unit.serialNumber}` : null, unit.assetTag].filter(Boolean).join(" · ")}</span>
                   </span>
-                  <span className="shrink-0 text-[13px] font-semibold text-[#1557B0]">History</span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-[#1557B0]" aria-hidden="true" />
+                  <span className="shrink-0 text-[13px] font-semibold text-[#1B3FD0]">History</span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-[#1B3FD0]" aria-hidden="true" />
                 </Link>
               </li>
             ))}
@@ -100,8 +100,8 @@ export default async function CustomerProfilePage({ params }: Props) {
         </SectionCard>
 
         <SectionCard eyebrow="Monthly plans" title="Service agreements" description="Saved custom plans and customer-facing quote documents.">
-          <div className="mb-3 flex flex-wrap gap-2"><Link href="/agreements" className="rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]">Create / edit monthly plan</Link></div>
-          {data.agreements.length === 0 ? <p className="text-sm text-zinc-500">No monthly plans saved for this customer.</p> : <div className="space-y-2">{data.agreements.map((plan) => <div key={plan.id} className="rounded-xl border border-[#2d7dff]/15 bg-black/40 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-medium text-white">{plan.title}</p><p className="mt-1 text-xs text-zinc-500">{plan.agreementNumber} • {plan.monthlyTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })}/month</p></div><StatusPill tone={plan.status === "active" || plan.status === "accepted" ? "emerald" : plan.status === "cancelled" ? "rose" : "amber"}>{plan.status}</StatusPill></div><div className="mt-3 flex flex-wrap gap-2"><Link href={`/agreement/${plan.portalToken}`} className="inline-flex items-center gap-1.5 rounded-lg border border-[#2d7dff]/25 px-2.5 py-1.5 text-xs text-[#d9fbff]"><FileText className="h-3.5 w-3.5" />Customer quote</Link><Link href={`/agreement/${plan.portalToken}/document`} className="inline-flex items-center gap-1.5 rounded-lg border border-[#2d7dff]/25 px-2.5 py-1.5 text-xs text-[#d9fbff]">Printable document</Link><Link href="/agreements" className="inline-flex items-center rounded-lg border border-[#8ffafa]/35 bg-[#2d7dff]/10 px-2.5 py-1.5 text-xs font-semibold text-[#d9fbff]">Edit / Continue</Link></div></div>)}</div>}
+          <div className="mb-3 flex flex-wrap gap-2"><Link href={`/agreements?customer=${encodeURIComponent(data.customer.id)}`} className="rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-xs text-[#d9fbff]">New service plan</Link></div>
+          {data.agreements.length === 0 ? <p className="text-sm text-zinc-500">No monthly plans saved for this customer.</p> : <div className="space-y-2">{data.agreements.map((plan) => <div key={plan.id} className="rounded-xl border border-[#2d7dff]/15 bg-black/40 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-medium text-white">{plan.title}</p><p className="mt-1 text-xs text-zinc-500">{plan.agreementNumber} • {plan.monthlyTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })}/month</p></div><StatusPill tone={plan.status === "active" || plan.status === "accepted" ? "emerald" : plan.status === "cancelled" ? "rose" : "amber"}>{plan.status}</StatusPill></div><div className="mt-3 flex flex-wrap gap-2"><Link href={`/agreement/${plan.portalToken}`} className="inline-flex items-center gap-1.5 rounded-lg border border-[#2d7dff]/25 px-2.5 py-1.5 text-xs text-[#d9fbff]"><FileText className="h-3.5 w-3.5" />Customer quote</Link><Link href={`/agreement/${plan.portalToken}/document`} className="inline-flex items-center gap-1.5 rounded-lg border border-[#2d7dff]/25 px-2.5 py-1.5 text-xs text-[#d9fbff]">Printable document</Link><Link href={`/agreements?plan=${encodeURIComponent(plan.id)}`} className="inline-flex items-center rounded-lg border border-[#8ffafa]/35 bg-[#2d7dff]/10 px-2.5 py-1.5 text-xs font-semibold text-[#d9fbff]">Edit / Continue</Link></div></div>)}</div>}
         </SectionCard>
       </div>
     </div>

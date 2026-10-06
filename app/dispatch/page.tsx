@@ -6,7 +6,6 @@ import { AppShell } from "@/components/app-shell";
 import { DispatchAssignRow } from "@/components/dispatch-assign-row";
 import { DispatchPanel } from "@/components/dispatch-panel";
 import { DispatchIntelligence } from "@/components/dispatch-intelligence";
-import { EquipmentFirstIntake } from "@/components/equipment-first-intake";
 import { EN_ROUTE_STATUSES, ON_SITE_STATUSES } from "@/components/job-status-chip";
 import { JobAssetReturnPanel } from "@/components/job-asset-return-panel";
 import { LiveOfficeRefresh } from "@/components/live-office-refresh";
@@ -79,7 +78,7 @@ export default async function DispatchPage({ searchParams }: Props) {
     <AppShell title="Dispatch" description="Assign calls and balance technician workload.">
       <LiveOfficeRefresh />
       <div className="cb-new space-y-3.5">
-        <Link href="/jobs/new" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82]">
+        <Link href={selectedDay === today ? "/jobs/new" : `/jobs/new?date=${selectedDay}`} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]">
           <Plus className="h-5 w-5" aria-hidden="true" />
           New service call
         </Link>
@@ -96,8 +95,8 @@ export default async function DispatchPage({ searchParams }: Props) {
                 aria-label={`${label}, ${count} job${count === 1 ? "" : "s"}`}
                 className={`flex min-h-[72px] flex-col items-center justify-center rounded-xl border text-center transition ${
                   selected
-                    ? "border-[#1557B0] bg-[#1557B0] text-white shadow-[0_4px_12px_rgba(10,26,51,0.25)]"
-                    : "cb-card text-[#0A1A33] hover:border-[#1557B0]"
+                    ? "border-[#1B3FD0] bg-[#1B3FD0] text-white shadow-[0_4px_12px_rgba(10,26,51,0.25)]"
+                    : "cb-card text-[#0A1A33] hover:border-[#1B3FD0]"
                 }`}
               >
                 <span className={`text-xs font-semibold uppercase ${selected ? "text-white" : "text-[#2B3F5C]"}`}>{i === 0 ? "Today" : weekday}</span>
@@ -108,10 +107,10 @@ export default async function DispatchPage({ searchParams }: Props) {
           })}
         </nav>
 
-        <section aria-labelledby="unassigned-title" className="cb-card overflow-hidden !border-2 !border-[#0B5CD5]">
+        <section aria-labelledby="unassigned-title" className="cb-card overflow-hidden !border-2 !border-[#1B3FD0]">
           <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
             <h2 id="unassigned-title" className="text-[28px] leading-none">Unassigned</h2>
-            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#0B5CD5] px-2.5 py-1 text-sm font-bold text-white">{unassigned.length}</span>
+            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1B3FD0] px-2.5 py-1 text-sm font-bold text-white">{unassigned.length}</span>
           </div>
           {unassigned.length === 0 ? (
             <p className="px-3.5 py-5 text-sm text-[#2B3F5C]">Every call for {dayParts(selectedDay).label} has a technician.</p>
@@ -167,9 +166,9 @@ export default async function DispatchPage({ searchParams }: Props) {
                       aria-valuemax={barMax}
                       aria-valuenow={count}
                     >
-                      <div className="h-full rounded-full bg-[#1557B0]" style={{ width: `${Math.round((count / barMax) * 100)}%` }} />
+                      <div className="h-full rounded-full bg-[#1B3FD0]" style={{ width: `${Math.round((count / barMax) * 100)}%` }} />
                     </div>
-                    <p className={`mt-1 truncate text-[13px] ${busy ? "font-semibold text-[#0E3F82]" : "text-[#2B3F5C]"}`}>{status}</p>{location ? <a href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lon}`} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-[#1557B0]">Last work location · {new Date(location.at).toLocaleTimeString("en-US",{timeZone:"America/Chicago",hour:"numeric",minute:"2-digit"})} CT</a> : <p className="mt-1 text-xs text-[#5B6B82]">No work location shared</p>}
+                    <p className={`mt-1 truncate text-[13px] ${busy ? "font-semibold text-[#1530A8]" : "text-[#2B3F5C]"}`}>{status}</p>{location ? <a href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lon}`} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-[#1557B0]">Last work location · {new Date(location.at).toLocaleTimeString("en-US",{timeZone:"America/Chicago",hour:"numeric",minute:"2-digit"})} CT</a> : <p className="mt-1 text-xs text-[#5B6B82]">No work location shared</p>}
                   </div>
                 </li>
               ))}
@@ -185,7 +184,6 @@ export default async function DispatchPage({ searchParams }: Props) {
         </summary>
         <div className="mt-3.5 space-y-3.5">
           <SectionCard eyebrow="Phase 6 · Intelligence" title="Dispatch recommendations" description="Balance active workload and surface the next assignment decision before opening individual calls."><DispatchIntelligence jobs={jobs} technicians={technicians} /></SectionCard>
-          <SectionCard eyebrow="Equipment-linked intake" title="Create service call" description="Start with the customer and exact unit so the permanent history begins correctly."><EquipmentFirstIntake customers={customers} technicians={technicians} equipment={equipment} /></SectionCard>
           <SectionCard eyebrow="Operations" title="Dispatch board" description="Assign work, balance technician workload, and follow jobs from scheduling through billing."><DispatchPanel customers={customers} technicians={technicians} jobs={jobs} /></SectionCard>
           <SectionCard eyebrow="Equipment & return visits" title="Asset and return controls" description="Correct the linked asset and schedule return trips without duplicate work orders."><JobAssetReturnPanel jobs={jobs} equipment={equipment} technicians={technicians} /></SectionCard>
         </div>

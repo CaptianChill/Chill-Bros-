@@ -55,7 +55,7 @@ export function ClockCard({ open }: { open: { id: string; clockInAt: string; loc
   return (
     <section aria-label="Time clock" className="cb-new cb-card p-3.5">
       <div className="flex items-center gap-3">
-        <span className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${session ? "bg-[#1557B0] text-white" : "bg-[#F8FAFD] text-[#1557B0] ring-1 ring-[#C7D3E2]"}`}>
+        <span className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${session ? "bg-[#1B3FD0] text-white" : "bg-[#F8FAFD] text-[#1B3FD0] ring-1 ring-[#C7D3E2]"}`}>
           <Clock3 className="h-5 w-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
@@ -70,14 +70,14 @@ export function ClockCard({ open }: { open: { id: string; clockInAt: string; loc
         onClick={session ? clockOut : clockIn}
         disabled={pending}
         className={`mt-3 flex h-[52px] w-full items-center justify-center gap-2 rounded-xl text-base font-bold transition disabled:opacity-60 ${
-          session ? "border-2 border-[#1557B0] bg-[#F8FAFD] text-[#1557B0]" : "bg-[#1557B0] text-white hover:bg-[#0E3F82]"
+          session ? "border-2 border-[#1B3FD0] bg-[#F8FAFD] text-[#1B3FD0]" : "bg-[#1B3FD0] text-white hover:bg-[#1530A8]"
         }`}
       >
         {session ? <LogOut className="h-5 w-5" aria-hidden="true" /> : <LogIn className="h-5 w-5" aria-hidden="true" />}
         {pending ? "Saving…" : session ? "Clock out" : "Clock in"}
       </button>
-      {error ? <p role="alert" className="mt-2 text-sm font-semibold text-[#0B5CD5]">{error}</p> : null}
-      <Link href="/timesheet" className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[#1557B0]">
+      {error ? <p role="alert" className="mt-2 text-sm font-semibold text-[#1B3FD0]">{error}</p> : null}
+      <Link href="/timesheet" className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[#1B3FD0]">
         Breaks and full timesheet
       </Link>
     </section>

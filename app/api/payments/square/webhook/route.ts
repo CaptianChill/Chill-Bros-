@@ -32,7 +32,13 @@ export async function POST(request: Request) {
     if (result.recorded && result.invoice) {
       const { invoice } = result;
       if (result.kind === "invoice") {
-        try { await sendBillingDeliveryRecorded(invoice.id, "receipt", "email"); } catch (error) { console.error("[square-webhook] receipt email failed", error); }
+        try {
+          let delivery = await sendBillingDeliveryRecorded(invoice.id, "receipt", "email");
+          if (delivery.status === "skipped" && delivery.error === "Customer has no email address.") {
+            delivery = await sendBillingDeliveryRecorded(invoice.id, "receipt", "sms");
+          }
+          if (delivery.status !== "sent") console.error("[square-webhook] receipt delivery incomplete", delivery);
+        } catch (error) { console.error("[square-webhook] receipt delivery failed", error); }
         try { await archiveInvoicePdf(invoice.id, "paid"); } catch { /* payment stays recorded */ }
       }
       try { await sendInvoicePaidNotification({ invoiceNumber: invoice.invoiceNumber, customerName: invoice.customerName, amount: result.amount ?? 0, method: "card (Square)", invoiceId: invoice.id }); } catch (error) { console.error("[square-webhook] owner notification failed", error); }

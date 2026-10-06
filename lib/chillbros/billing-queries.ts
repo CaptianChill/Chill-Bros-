@@ -7,6 +7,7 @@ export type InvoiceCenterAdjustment = { id: string; type: InvoiceAdjustmentType;
 export type InvoiceCenterRow = {
   id: string;
   invoiceNumber: string;
+  convertedInvoiceId: string | null;
   portalToken: string;
   status: InvoiceStatus;
   paymentStatus: PaymentStatus;
@@ -63,7 +64,7 @@ function daysBetween(a: string, b: string) { return Math.max(0, Math.round((new 
 
 export async function getInvoiceCenterData(): Promise<{ rows: InvoiceCenterRow[]; metrics: InvoiceCenterMetrics }> {
   const supabase = createServiceRoleClient();
-  const { data: invoices, error } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,customer_id,job_id,discount_amount,down_payment_amount,down_payment_status,tax_rate,tax_amount,issued_at,payment_terms,due_at,last_reminder_at,reminder_count,paid_at,created_at,updated_at").order("updated_at", { ascending: false }).limit(300);
+  const { data: invoices, error } = await supabase.from("chillbros_invoices").select("id,converted_invoice_id,invoice_number,portal_token,status,payment_status,customer_id,job_id,discount_amount,down_payment_amount,down_payment_status,tax_rate,tax_amount,issued_at,payment_terms,due_at,last_reminder_at,reminder_count,paid_at,created_at,updated_at").order("updated_at", { ascending: false }).limit(300);
   if (error || !invoices?.length) return { rows: [], metrics: { outstandingValue: 0, dueToday: 0, overdueValue: 0, collectedThisMonth: 0, pendingApproval: 0, averageDaysToPay: 0 } };
 
   const invoiceIds = invoices.map((row) => row.id);
@@ -120,7 +121,7 @@ export async function getInvoiceCenterData(): Promise<{ rows: InvoiceCenterRow[]
     const refundAmount = adjustments.filter((entry) => entry.type === "refund").reduce((sum, entry) => sum + entry.amount, 0);
     const subtotal = subtotalMap.get(invoice.id) ?? 0;
     const total = Math.max(0, subtotal - Number(invoice.discount_amount ?? 0) + Number(invoice.tax_amount ?? 0) - creditAmount);
-    const isOutstanding = invoice.status === "approved" && invoice.payment_status !== "paid";
+    const isOutstanding = invoice.status === "approved" && invoice.payment_status !== "paid" && Boolean(invoice.issued_at) && !invoice.converted_invoice_id;
     const dueMs = invoice.due_at ? new Date(invoice.due_at).getTime() : Number.NaN;
     const daysOverdue = isOutstanding && Number.isFinite(dueMs) && dueMs < today.getTime() ? Math.max(1, Math.ceil((today.getTime() - dueMs) / 86400000)) : 0;
     const agingBucket = !isOutstanding ? "—" : daysOverdue <= 0 ? "Current" : daysOverdue <= 30 ? "1–30" : daysOverdue <= 60 ? "31–60" : daysOverdue <= 90 ? "61–90" : "90+";
@@ -128,6 +129,7 @@ export async function getInvoiceCenterData(): Promise<{ rows: InvoiceCenterRow[]
     return {
       id: invoice.id,
       invoiceNumber: invoice.invoice_number,
+      convertedInvoiceId: invoice.converted_invoice_id,
       portalToken: invoice.portal_token,
       status: invoice.status as InvoiceStatus,
       paymentStatus: invoice.payment_status as PaymentStatus,
@@ -170,7 +172,7 @@ export async function getInvoiceCenterData(): Promise<{ rows: InvoiceCenterRow[]
     };
   });
 
-  const outstanding = rows.filter((row) => row.status === "approved" && row.paymentStatus !== "paid");
+  const outstanding = rows.filter((row) => row.status === "approved" && row.paymentStatus !== "paid" && Boolean(row.issuedAt) && !row.convertedInvoiceId);
   const paidThisMonth = rows.filter((row) => row.paymentStatus === "paid" && row.paidAt && dayKey(new Date(row.paidAt)).slice(0, 7) === monthKey);
   const paidDurations = rows.filter((row) => row.paymentStatus === "paid" && row.paidAt && row.issuedAt).map((row) => daysBetween(row.issuedAt!, row.paidAt!));
   const metrics: InvoiceCenterMetrics = {

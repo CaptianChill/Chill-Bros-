@@ -3,6 +3,7 @@
 import { generateText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 
+import { askClaude, claudeConfigured } from "@/lib/chillbros/claude";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 type ActionResult = { ok: true; data: string } | { ok: false; error: string };
@@ -22,8 +23,15 @@ export async function rewriteQuoteTextAction(text: string, mode: "professional" 
   if (!trimmed) return { ok: false, error: "Nothing to improve yet." };
   if (trimmed.length > 6000) return { ok: false, error: "Text is too long to rewrite at once." };
 
+  // Claude is the primary AI when ANTHROPIC_API_KEY is set; OpenAI stays as the fallback.
+  if (claudeConfigured()) {
+    const claude = await askClaude({ system: SYSTEM_PROMPTS[mode], messages: [{ role: "user", content: trimmed }], maxTokens: 2000, timeoutMs: 30000 });
+    if (claude.ok) return { ok: true, data: claude.text };
+    if (!process.env.OPENAI_API_KEY?.trim()) return { ok: false, error: claude.error };
+  }
+
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) return { ok: false, error: "AI text assist requires OPENAI_API_KEY on this deployment." };
+  if (!apiKey) return { ok: false, error: "AI text assist needs ANTHROPIC_API_KEY (Claude) or OPENAI_API_KEY on this deployment." };
 
   try {
     const result = await generateText({

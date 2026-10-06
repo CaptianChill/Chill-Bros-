@@ -95,15 +95,15 @@ export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProH
       } catch {
         // Nothing to clean up.
       }
-      const message = verbal ? "Quote approved (verbal). Ready for the work." : "Quote sent to the customer for approval.";
-      router.push(`/jobs/${jobId}?success=${encodeURIComponent(message)}`);
+      if (verbal) { router.push(`/jobs/${jobId}?success=${encodeURIComponent("Customer verbal approval recorded. Continue the work, then create the invoice.")}`); } else { router.push(`/jobs/${jobId}?success=${encodeURIComponent("Quote sent to the customer for approval.")}`); }
+      router.refresh();
     });
   };
 
   return (
     <div className="cb-new space-y-3.5">
       {savedDraft && !restored && !edited ? (
-        <button type="button" onClick={restore} className="cb-card flex min-h-12 w-full items-center justify-center gap-2 p-3 font-semibold text-[#1557B0]">
+        <button type="button" onClick={restore} className="cb-card flex min-h-12 w-full items-center justify-center gap-2 p-3 font-semibold text-[#1B3FD0]">
           <History className="h-5 w-5" aria-hidden="true" />
           Pick up the quote you started on this phone
         </button>
@@ -118,7 +118,7 @@ export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProH
             <li key={line.id} className="space-y-2 bg-[#F8FAFD] px-3.5 py-3">
               <div className="flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-[#2B3F5C]">Line {index + 1}</span>
-                <button type="button" onClick={() => { touch(); setLines((current) => (current.length === 1 ? [newLine()] : current.filter((item) => item.id !== line.id))); }} aria-label={`Remove line ${index + 1}`} className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#0B5CD5]">
+                <button type="button" onClick={() => { touch(); setLines((current) => (current.length === 1 ? [newLine()] : current.filter((item) => item.id !== line.id))); }} aria-label={`Remove line ${index + 1}`} className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#1B3FD0]">
                   <Trash2 className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>
@@ -141,22 +141,22 @@ export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProH
                 </label>
               </div>
               <label className="flex min-h-11 items-center gap-3 text-sm font-semibold text-[#0A1A33]">
-                <input type="checkbox" checked={line.taxable} onChange={(e) => update(line.id, { taxable: e.target.checked })} className="h-5 w-5 accent-[#1557B0]" />
+                <input type="checkbox" checked={line.taxable} onChange={(e) => update(line.id, { taxable: e.target.checked })} className="h-5 w-5 accent-[#1B3FD0]" />
                 Taxable
               </label>
             </li>
           ))}
         </ol>
         <div className="grid grid-cols-2 gap-2 border-t border-[#0A1A33]/10 px-3.5 py-3">
-          <button type="button" onClick={() => { touch(); setLines((current) => [...current, newLine()]); }} disabled={lines.length >= 20} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-[#1557B0] bg-[#F8FAFD] font-semibold text-[#1557B0] disabled:opacity-50">
+          <button type="button" onClick={() => { touch(); setLines((current) => [...current, newLine()]); }} disabled={lines.length >= 20} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] font-semibold text-[#1B3FD0] disabled:opacity-50">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Add line
           </button>
-          <button type="button" onClick={() => { touch(); setLines((current) => [...current, newLine({ description: "Sourced part" })]); }} disabled={lines.length >= 20} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-[#1557B0] bg-[#F8FAFD] font-semibold text-[#1557B0] disabled:opacity-50">
+          <button type="button" onClick={() => { touch(); setLines((current) => [...current, newLine({ description: "Sourced part" })]); }} disabled={lines.length >= 20} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] font-semibold text-[#1B3FD0] disabled:opacity-50">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Bought part
           </button>
-          <Link href={partsProHref} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-1.5 text-sm font-semibold text-[#1557B0]">
+          <Link href={partsProHref} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-1.5 text-sm font-semibold text-[#1B3FD0]">
             <Sparkles className="h-4 w-4" aria-hidden="true" />
             Find the OEM part # with Parts Pro
           </Link>
@@ -179,19 +179,19 @@ export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProH
         </dl>
       </section>
 
-      {error ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#0B5CD5]">{error}</p> : null}
+      {error ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#1B3FD0]">{error}</p> : null}
 
-      <button type="button" onClick={() => submit(false)} disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82] disabled:opacity-60">
+      <button type="button" onClick={() => submit(false)} disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8] disabled:opacity-60">
         <Send className="h-5 w-5" aria-hidden="true" />
         {pending ? "Saving…" : "Send to customer for approval"}
       </button>
       {canApproveVerbally ? (
-        <button type="button" onClick={() => submit(true)} disabled={pending} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1557B0] bg-[#F8FAFD] font-bold text-[#1557B0] disabled:opacity-60">
+        <button type="button" onClick={() => submit(true)} disabled={pending} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B3FD0] bg-[#F8FAFD] font-bold text-[#1B3FD0] disabled:opacity-60">
           <BadgeCheck className="h-5 w-5" aria-hidden="true" />
           Customer approved verbally · skip email
         </button>
       ) : null}
-      <Link href="/work" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-[#1557B0]">
+      <Link href="/work" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-[#1B3FD0]">
         <Save className="h-4 w-4" aria-hidden="true" />
         Save and finish later
       </Link>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, FileText } from "lucide-react";
+import { ChevronRight, ExternalLink, FileText, Navigation, Phone, Search, Sparkles, StickyNote } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -12,6 +12,7 @@ import { OwnerEstimateEditor } from "@/components/owner-estimate-editor";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { TechnicianJobEditor } from "@/components/technician-job-editor";
+import { getCustomerProfile } from "@/lib/chillbros/customer-profile";
 import { getEquipmentByCustomer } from "@/lib/chillbros/equipment-queries";
 import { getInvoiceV2ByJobId, invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { getDispatchJobs, getOpenTimesheet } from "@/lib/chillbros/operations-queries";
@@ -24,6 +25,9 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ job?: string }> };
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+const tileBase = "flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-center text-xs font-medium leading-tight text-[#d9fbff]";
+const toolTile = `${tileBase} border-[#2d7dff]/30 bg-black/40`;
+const assistTile = `${tileBase} border-[#8ffafa]/35 bg-[#2d7dff]/10`;
 
 const FIELD_VISIBLE = new Set([
   "scheduled",
@@ -60,9 +64,14 @@ export default async function TechnicianPage({ searchParams }: Props) {
   const selectedId = requestedId ?? managerOwnJob ?? fieldJobs[0]?.id;
   const job = selectedId ? await getJob(selectedId) : null;
 
-  const [invoice, feeSettings, partsCatalog, equipment] = job
-    ? await Promise.all([getInvoiceV2ByJobId(job.id), getFeeSettings(), getPartsCatalog(), getEquipmentByCustomer(job.customerId)])
-    : [null, [], [], []];
+  const [invoice, feeSettings, partsCatalog, equipment, customerProfile] = job
+    ? await Promise.all([getInvoiceV2ByJobId(job.id), getFeeSettings(), getPartsCatalog(), getEquipmentByCustomer(job.customerId), getCustomerProfile(job.customerId).catch(() => null)])
+    : [null, [], [], [], null];
+  // Quick contact for the current call: phone from the customer record, directions to the job site (or the customer's address).
+  const phoneDigits = (customerProfile?.customer.phone ?? "").replace(/[^\d+]/g, "");
+  const callHref = phoneDigits.replace(/\D/g, "").length >= 7 ? `tel:${phoneDigits}` : null;
+  const serviceAddress = job?.location?.trim() || customerProfile?.customer.address?.trim() || null;
+  const directionsHref = serviceAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(serviceAddress)}` : null;
   const [paymentSettings, openTimesheet] = await Promise.all([getPaymentSettings(), getOpenTimesheet(profile.id)]);
   const totals = invoice ? invoiceTotals(invoice) : null;
   const suggestedItems = job ? [
@@ -84,11 +93,18 @@ export default async function TechnicianPage({ searchParams }: Props) {
       <div className="space-y-4">
         <SectionCard eyebrow="Service workflow" title="Run this call" description="Use the large stage action first. Notes and time autosave underneath.">
           <div className="mb-4 grid gap-3 md:grid-cols-2"><div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3"><p className="text-sm text-zinc-400">Customer</p><p className="mt-1 text-lg font-medium text-white">{job.customerName}</p><p className="mt-1 text-sm text-zinc-300">{job.location ?? "No location tagged"}</p>{job.scheduledWindow ? <p className="mt-2 text-xs text-[#bafcfc]">{job.scheduledWindow}</p> : null}</div><div className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3"><p className="text-sm text-zinc-400">Dispatch complaint / scope</p><p className="mt-1 text-sm leading-6 text-white">{job.scope ?? "No scope notes yet."}</p></div></div>
+          <nav aria-label="Call tools" className="mb-4 grid grid-cols-3 gap-2">
+            {callHref ? <a href={callHref} className={toolTile}><Phone className="h-5 w-5" aria-hidden="true" />Call customer</a> : null}
+            {directionsHref ? <a href={directionsHref} target="_blank" rel="noopener noreferrer" className={toolTile}><Navigation className="h-5 w-5" aria-hidden="true" />Directions</a> : null}
+            <Link href={`/tech-assist/${job.id}`} className={assistTile}><Sparkles className="h-5 w-5" aria-hidden="true" />Tech Assist</Link>
+            <Link href={`/field-notes?job=${job.id}`} className={toolTile}><StickyNote className="h-5 w-5" aria-hidden="true" />Add note</Link>
+            <Link href="/parts-lookup" className={toolTile}><Search className="h-5 w-5" aria-hidden="true" />Parts Pro</Link>
+          </nav>
           <TechnicianJobEditor job={job} partsCatalog={partsCatalog} />
         </SectionCard>
 
         <SectionCard eyebrow="Customer equipment" title={`${equipment.length} registered asset${equipment.length === 1 ? "" : "s"}`} description="Model, serial, refrigerant, and stored field notes stay beside the active service call.">
-          {equipment.length === 0 ? <p className="text-sm text-zinc-500">No equipment records on file.</p> : <div className="space-y-3">{equipment.map((asset) => <div key={asset.id} className="rounded-2xl border border-[#2d7dff]/15 bg-black/40 p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-medium text-white">{asset.equipmentType}</p><p className="mt-1 text-sm text-zinc-300">{[asset.manufacturer, asset.model].filter(Boolean).join(" • ") || "Manufacturer/model not recorded"}</p></div>{asset.refrigerant ? <StatusPill>{asset.refrigerant}</StatusPill> : null}</div><p className="mt-2 text-xs text-zinc-400">Serial: {asset.serialNumber ?? "not recorded"}</p>{asset.notes ? <p className="mt-2 text-sm leading-6 text-zinc-300">{asset.notes}</p> : null}</div>)}</div>}
+          {equipment.length === 0 ? <p className="text-sm text-zinc-500">No equipment records on file.</p> : <div className="space-y-3">{equipment.map((asset) => <Link key={asset.id} href={`/equipment/${asset.id}`} className="block rounded-2xl border border-[#2d7dff]/15 bg-black/40 p-3 transition hover:border-[#2d7dff]/45"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-medium text-white">{asset.equipmentType}</p><p className="mt-1 text-sm text-zinc-300">{[asset.manufacturer, asset.model].filter(Boolean).join(" • ") || "Manufacturer/model not recorded"}</p></div>{asset.refrigerant ? <StatusPill>{asset.refrigerant}</StatusPill> : null}</div><p className="mt-2 text-xs text-zinc-400">Serial: {asset.serialNumber ?? "not recorded"}</p>{asset.notes ? <p className="mt-2 text-sm leading-6 text-zinc-300">{asset.notes}</p> : null}<p className="mt-2 inline-flex items-center gap-0.5 text-xs font-medium text-[#8ffafa]">Full unit record<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></p></Link>)}</div>}
         </SectionCard>
 
         <SectionCard eyebrow="Proof of work" title="Before / after media" description="Capture field proof against the same job record."><MediaAccordion jobId={job.id} beforePhotos={job.beforePhotos} afterPhotos={job.afterPhotos} /></SectionCard>

@@ -58,9 +58,17 @@ export async function getPortalEquipmentHistory(jobId: string | null, customerId
   const jobIds = (jobs ?? []).map((row) => row.id);
   const { data: photoRows } = jobIds.length ? await supabase.from("chillbros_job_photos").select("id,job_id,phase,storage_path").in("job_id", jobIds) : { data: [] };
   const signedByPath = new Map<string,string>();
-  if (photoRows?.length) { const { data: signed } = await supabase.storage.from("chillbros-media").createSignedUrls(photoRows.map((p) => p.storage_path), 3600); for (const entry of signed ?? []) if (entry.path && entry.signedUrl) signedByPath.set(entry.path, entry.signedUrl); }
+  if (photoRows?.length) {
+    const { data: signed } = await supabase.storage.from("chillbros-media").createSignedUrls(photoRows.map((p) => p.storage_path), 3600);
+    for (const entry of signed ?? []) if (entry.path && entry.signedUrl) signedByPath.set(entry.path, entry.signedUrl);
+  }
   const photosByJob = new Map<string,{before:{id:string;url:string|null}[];after:{id:string;url:string|null}[]}>();
-  for (const photo of photoRows ?? []) { const set=photosByJob.get(photo.job_id)??{before:[],after:[]}; const item={id:photo.id,url:signedByPath.get(photo.storage_path)??null}; if(photo.phase==="before")set.before.push(item); else if(photo.phase==="after")set.after.push(item); photosByJob.set(photo.job_id,set); }
+  for (const photo of photoRows ?? []) {
+    const set = photosByJob.get(photo.job_id) ?? { before: [], after: [] };
+    const item = { id: photo.id, url: signedByPath.get(photo.storage_path) ?? null };
+    if (photo.phase === "before") set.before.push(item); else if (photo.phase === "after") set.after.push(item);
+    photosByJob.set(photo.job_id, set);
+  }
 
   const { data: invoices } = jobIds.length
     ? await supabase

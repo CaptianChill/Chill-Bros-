@@ -67,7 +67,7 @@ export default async function EquipmentServiceRecordPage({ params }: Props) {
           <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
             <h2 id="unit-title" className="text-[28px] leading-none">Unit</h2>
             {canLink ? (
-              <Link href={`/customers/${equipment.customerId}`} className="inline-flex min-h-11 items-center gap-0.5 text-sm font-semibold text-[#1557B0]">
+              <Link href={`/customers/${equipment.customerId}`} className="inline-flex min-h-11 items-center gap-0.5 text-sm font-semibold text-[#1B3FD0]">
                 {equipment.customerName}
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </Link>
@@ -89,7 +89,7 @@ export default async function EquipmentServiceRecordPage({ params }: Props) {
         <section aria-labelledby="history-title" className="cb-card overflow-hidden">
           <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
             <h2 id="history-title" className="text-[28px] leading-none">Service history</h2>
-            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1557B0] px-2.5 py-1 text-sm font-bold text-white">{jobs.length}</span>
+            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#1B3FD0] px-2.5 py-1 text-sm font-bold text-white">{jobs.length}</span>
           </div>
           {history.length === 0 ? (
             <p className="bg-[#F8FAFD] px-3.5 py-4 text-sm font-medium text-[#2B3F5C]">

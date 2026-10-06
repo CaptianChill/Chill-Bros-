@@ -20,7 +20,7 @@ const label = "text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400";
 export default async function NewInvoicePage({ searchParams }: Props) {
   const profile = await getCurrentStaffProfile();
   if (!profile) redirect("/sign-in");
-  if (profile.role !== "manager") redirect("/invoices");
+  if (!["manager", "office"].includes(profile.role)) redirect("/invoices");
   const params = await searchParams;
   const documentType = params.type === "quote" ? "quote" : "invoice";
   const isQuote = documentType === "quote";

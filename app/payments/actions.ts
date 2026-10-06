@@ -18,7 +18,7 @@ function text(formData: FormData, key: string) {
 
 export async function recordFullPaymentAction(formData: FormData): Promise<never> {
   const profile = await getCurrentStaffProfile();
-  if (!profile || profile.role !== "manager") redirect("/sign-in");
+  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/sign-in");
 
   const invoiceId = text(formData, "invoiceId");
   const method = text(formData, "method");
@@ -100,7 +100,7 @@ const DOWN_PAYMENT_METHODS = new Set(["cash", "check", "ach", "cash_app", "venmo
 
 export async function recordDownPaymentAction(formData: FormData): Promise<never> {
   const profile = await getCurrentStaffProfile();
-  if (!profile || profile.role !== "manager") redirect("/sign-in");
+  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/sign-in");
 
   const invoiceId = text(formData, "invoiceId");
   const method = text(formData, "method");

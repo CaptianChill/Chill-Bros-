@@ -28,7 +28,19 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          # List each high/critical finding as an annotation so failures are readable without the raw log.
+          npm audit --omit=dev --json > audit.json || true
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync("audit.json", "utf8"));
+            for (const [name, v] of Object.entries(r.vulnerabilities || {})) {
+              if (!["high", "critical"].includes(v.severity)) continue;
+              const fix = v.fixAvailable === true ? "fix available" : v.fixAvailable ? `fix: ${v.fixAvailable.name}@${v.fixAvailable.version}${v.fixAvailable.isSemVerMajor ? " (major)" : ""}` : "no fix available";
+              const via = (v.via || []).map((x) => typeof x === "string" ? x : x.title).join("; ");
+              console.log(`::error title=npm audit ${v.severity}::${name} ${v.range} | ${fix} | ${via}`);
+            }
+          '
+          npm audit --omit=dev --audit-level=high
 
       - name: Lint
         run: npm run lint

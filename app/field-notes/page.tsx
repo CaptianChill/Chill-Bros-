@@ -29,8 +29,10 @@ const STATUS_TONE = {
   processing_failed: "rose",
 } as const;
 
-export default async function FieldNotesPage() {
-  const profile = await getCurrentStaffProfile();
+type Props = { searchParams: Promise<{ job?: string }> };
+
+export default async function FieldNotesPage({ searchParams }: Props) {
+  const [profile, params] = await Promise.all([getCurrentStaffProfile(), searchParams]);
   if (!profile) redirect("/sign-in?next=/field-notes");
   if (!["technician", "manager"].includes(profile.role)) redirect("/");
 
@@ -38,6 +40,8 @@ export default async function FieldNotesPage() {
   const jobs = allJobs
     .filter((job) => JOB_ACTIVE_STATUSES.includes(job.status))
     .map((job) => ({ id: job.id, customerId: job.customerId, customerName: job.customerName, location: job.location }));
+  // ?job=<id> from the tech job screen: only preselect a job this user is allowed to see.
+  const preselectedJobId = jobs.some((job) => job.id === params.job) ? params.job! : null;
 
   const [customers, recent] = await Promise.all([getCustomers(), getTechnicianFieldNotes(profile.id, 10)]);
 
@@ -50,7 +54,7 @@ export default async function FieldNotesPage() {
     <main className="mx-auto min-h-screen max-w-xl space-y-4 px-4 pb-8 pt-4 text-white">
       <header className="flex items-center justify-between gap-3">
         <LogoBadge variant="full" className="w-12" />
-        <Link href={profile.role === "manager" ? "/owner/field-notes" : "/technician"} className="py-3 text-sm text-cyan-200">{profile.role === "manager" ? "Review inbox" : "My jobs"}</Link>
+        <Link href={profile.role === "manager" ? "/owner/field-notes" : preselectedJobId ? `/technician?job=${preselectedJobId}` : "/technician"} className="py-3 text-sm text-cyan-200">{profile.role === "manager" ? "Review inbox" : "My jobs"}</Link>
         <form action={signOutAction}><button type="submit" className="min-h-11 px-3 text-sm">Sign out</button></form>
       </header>
       <div className="space-y-4">
@@ -59,6 +63,7 @@ export default async function FieldNotesPage() {
             technicianName={profile.fullName}
             profileId={profile.id}
             equipment={equipment}
+            preselectedJobId={preselectedJobId}
             jobs={jobs.map((job) => ({ id: job.id, customerId: job.customerId, customerName: job.customerName, location: job.location }))}
             customers={customers.map((customer) => ({ id: customer.id, name: customer.name }))}
           />

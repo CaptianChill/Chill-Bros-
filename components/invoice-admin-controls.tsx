@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Archive, Mail, MessageSquareText, RefreshCw, ReceiptText, Send, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { convertQuoteToInvoiceAction, finalizeInvoiceAction, reopenInvoiceAction, saveCustomerEmailAndSendAction, ensureInvoiceArchiveAction, recordInvoiceAdjustmentAction, sendInvoiceCommunicationAction, updateInvoiceBillingSettingsAction } from "@/lib/chillbros/billing-actions";
+import { overrideQuoteToEstimateAction, convertQuoteToInvoiceAction, finalizeInvoiceAction, reopenInvoiceAction, saveCustomerEmailAndSendAction, ensureInvoiceArchiveAction, recordInvoiceAdjustmentAction, sendInvoiceCommunicationAction, updateInvoiceBillingSettingsAction } from "@/lib/chillbros/billing-actions";
 import { markInvoicePaidV2Action } from "@/lib/chillbros/estimate-actions-v2";
 import { revokeEstimateAction } from "@/lib/chillbros/mutations";
 import type { InvoiceAdjustmentType, InvoiceStatus, PaymentStatus, PaymentTerms } from "@/lib/chillbros/types";
@@ -27,6 +27,7 @@ type Props = {
   invoiceNumber: string;
   customerPhone: string | null;
   issuedAt: string | null;
+  convertedInvoiceId?: string | null;
 };
 
 function inputDate(value: string | null) { return value ? new Date(value).toISOString().slice(0, 10) : ""; }
@@ -51,9 +52,9 @@ export function InvoiceAdminControls(props: Props) {
   const taxLocked = props.status === "approved";
   const isAwaitingApproval = props.status === "awaiting_approval";
   const isQuote = props.invoiceNumber.toUpperCase().startsWith("Q-") || !props.issuedAt;
-  const documentLabel = isQuote ? "quote" : "invoice";
+  const documentLabel = props.invoiceNumber.startsWith("E-") ? "estimate" : isQuote ? "quote" : "invoice";
 
-  const run = async (task: () => Promise<{ ok: boolean; error?: string; status?: string; data?: { recipient?: string | null; status?: string } }>, success: string, keepVisible = false) => {
+  const run = async (task: () => Promise<{ ok: boolean; error?: string; status?: string; data?: { recipient?: string | null; status?: string; invoiceId?: string } }>, success: string, keepVisible = false) => {
     if (pending) return;
     setMessage(null);
     setError(null);
@@ -95,13 +96,25 @@ export function InvoiceAdminControls(props: Props) {
   const textFromMyPhone = () => {
     if (!props.customerPhone) return;
     const portalUrl = `${window.location.origin}/portal/${props.portalToken}`;
-    window.location.href = `sms:${props.customerPhone.replace(/[^+\d]/g, "")}?&body=${encodeURIComponent(`Chill Bros ${props.invoiceNumber}: ${portalUrl}`)}`;
+    window.location.href = `sms:${props.customerPhone.replace(/[^+\d]/g, "")}?&body=${encodeURIComponent(`Chill Pros ${props.invoiceNumber}: ${portalUrl}`)}`;
   };
+
+  if (props.convertedInvoiceId) return <Link href={`/invoices?focus=${props.convertedInvoiceId}`} className="inline-flex rounded-xl border border-[#8ffafa]/45 px-3 py-2 text-sm text-white">Open converted invoice</Link>;
 
   return <div className="space-y-3">
     {pending ? <p className="rounded-xl border border-[#2d7dff]/30 bg-[#2d7dff]/10 px-3 py-2 text-xs text-[#d9fbff]">Processing {documentLabel} action…</p> : null}
     {message ? <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">{message}</p> : null}
     {error ? <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</p> : null}
+
+    {props.canManage && isQuote && props.status !== "void" && props.paymentStatus !== "paid" ? <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#8ffafa]/30 p-3">
+      {<button type="button" disabled={pending || props.status !== "approved"} onClick={() => void run(async () => {
+        const result = await convertQuoteToInvoiceAction(props.invoiceId);
+        if (result.ok) router.push(`/invoices?focus=${result.data.invoiceId}&created=1`);
+        return result;
+      }, "Invoice ready — Waiting for Payment.")} className="rounded-xl border border-[#8ffafa]/45 bg-[#2d7dff]/10 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{props.convertedInvoiceId ? "Open converted invoice" : "Convert to Invoice"}</button> }
+      {props.invoiceNumber.toUpperCase().startsWith("Q-") && !props.convertedInvoiceId ? <label className="rounded-xl border border-amber-400/25 px-3 py-2 text-xs text-amber-100">Billing Override / Document Type <select aria-label="Billing Override / Document Type" value="quote" disabled={pending} onChange={(event) => { if (event.target.value === "estimate") void run(() => overrideQuoteToEstimateAction(props.invoiceId), "Document changed to Estimate. Audit history recorded."); }} className="ml-2 rounded-lg bg-zinc-950 p-1 text-white"><option value="quote">Quote</option><option value="estimate">Estimate</option></select></label> : null}
+      {props.status !== "approved" ? <p className="w-full text-xs text-amber-200">Approval is required before conversion. Finalize below to record office approval, or send the quote for customer approval.</p> : null}
+    </div> : null}
 
     {needsEmail || props.missingEmail ? <form data-no-draft onSubmit={(event) => { event.preventDefault(); void run(() => saveCustomerEmailAndSendAction(props.invoiceId, email), "Email saved."); }} className="flex flex-wrap gap-2">
       <label className="text-xs text-zinc-400">Customer email<input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="ml-2 rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white" /></label>
@@ -116,12 +129,12 @@ export function InvoiceAdminControls(props: Props) {
         {props.canManage ? <Link href={"/invoices?focus=" + props.invoiceId + "&edit=1"} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]">Edit document</Link> : null}
         <button type="button" disabled={pending} onClick={() => void run(() => finalizeInvoiceAction(props.invoiceId), "Invoice finalized. Review the Document link below, then Email or Text it to the customer.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Finalize invoice (review before sending)</button>
       </> : null}
-      {props.canManage && !props.issuedAt && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void run(() => convertQuoteToInvoiceAction(props.invoiceId), "Quote converted to invoice. Review it, then send it to the customer.")} className="rounded-xl border border-[#8ffafa]/45 bg-[#2d7dff]/10 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">Convert quote to invoice</button> : null}
+
       {props.canManage && props.status === "approved" && props.paymentStatus === "unpaid" ? <button type="button" disabled={pending} onClick={() => void run(() => reopenInvoiceAction(props.invoiceId), "Invoice reopened. Select Edit document to correct equipment, notes, or pricing, then Finalize & email.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Reopen to edit</button> : null}
       {props.canManage && props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void run(() => markInvoicePaidV2Action(props.invoiceId), "Payment recorded.", true)} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-xs text-emerald-100 disabled:opacity-40">Mark paid</button> : null}
       <button type="button" disabled={pending} onClick={() => void send("email")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Mail className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Email receipt" : isQuote ? "Email quote to customer" : "Email invoice to customer"}</button>
-      <button type="button" disabled={pending} onClick={() => void send("sms")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><MessageSquareText className="h-3.5 w-3.5" />{isQuote ? "Text quote to customer" : "Text invoice to customer"}</button>
-      {props.customerPhone ? <button type="button" onClick={textFromMyPhone} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]"><MessageSquareText className="h-3.5 w-3.5" />Text from my phone</button> : null}
+      <button type="button" disabled={pending} onClick={() => void send("sms")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><MessageSquareText className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Text receipt" : isQuote ? "Text quote to customer" : "Text invoice to customer"}</button>
+      {props.customerPhone ? <button type="button" onClick={textFromMyPhone} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]"><MessageSquareText className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Text receipt from my phone" : "Text from my phone"}</button> : null}
       {props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void send("email", true)} className="inline-flex items-center gap-2 rounded-xl border border-amber-400/25 px-3 py-2 text-xs text-amber-100 disabled:opacity-40"><Send className="h-3.5 w-3.5" />Email reminder</button> : null}
       {props.status === "approved" && !props.hasApprovedArchive ? <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await ensureInvoiceArchiveAction(props.invoiceId, "approved"); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Approved PDF archive created.")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Archive className="h-3.5 w-3.5" />Build approved PDF</button> : null}
       {props.paymentStatus === "paid" && !props.hasPaidArchive ? <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await ensureInvoiceArchiveAction(props.invoiceId, "paid"); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Paid PDF archive created.")} className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/25 px-3 py-2 text-xs text-emerald-100 disabled:opacity-40"><ReceiptText className="h-3.5 w-3.5" />Build paid PDF</button> : null}
