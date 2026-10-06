@@ -62,8 +62,9 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   const chunksRef = useRef<Blob[]>([]);
   const stopTimerRef = useRef<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  // Latest messages for event handlers (kept in sync after each render, not during it).
   const messagesRef = useRef<Message[]>([]);
-  messagesRef.current = messages;
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
   const [emote, setEmote] = useState<{ name: Emote; key: number } | null>(null);
   const [talkMove, setTalkMove] = useState(0);
   // After a few seconds of thinking, say he's still working (parts lookups search the web).
@@ -120,18 +121,20 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   const queueRef = useRef<Promise<string | null>[]>([]);
   const speakRunRef = useRef(0);
   const playNextRef = useRef<() => Promise<void>>(async () => undefined);
-  playNextRef.current = async () => {
+  const playNext = useCallback(async function next(): Promise<void> {
     const run = speakRunRef.current;
     const next = queueRef.current.shift();
     if (!next) { setPose((p) => (p === "talking" ? "idle" : p)); return; }
     const url = await next;
     if (run !== speakRunRef.current) return;
-    if (!url) { await playNextRef.current(); return; }
+    if (!url) { await next(); return; }
     const audio = audioRef.current!;
     if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
     audio.src = url;
     try { await audio.play(); } catch { setPose("idle"); setError("Your phone blocked the voice. Tap the speaker button, or read the answer above."); }
-  };
+  }, []);
+  // The audio element's "ended" listener (set up once) calls the current playNext through this ref.
+  useEffect(() => { playNextRef.current = playNext; }, [playNext]);
 
   const stopSpeaking = useCallback(() => {
     speakRunRef.current += 1;
