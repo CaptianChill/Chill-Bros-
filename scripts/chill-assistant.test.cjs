@@ -9,7 +9,7 @@ test('all six mascot poses ship with the app', () => {
 });
 
 test('voice routes require a signed-in staff member and use the BOODA cedar voice, professionally', () => {
-  for (const f of ['app/api/voice/speak/route.ts', 'app/api/voice/transcribe/route.ts']) {
+  for (const f of ['app/api/voice/speak/route.ts', 'app/api/voice/transcribe/route.ts', 'app/api/voice/ask/route.ts']) {
     const src = read(f);
     assert.match(src, /getCurrentStaffProfile\(\)/, f);
     assert.match(src, /if \(!profile\) return/, f);
@@ -21,8 +21,11 @@ test('voice routes require a signed-in staff member and use the BOODA cedar voic
 });
 
 test('Chill answers from a role-scoped live snapshot and never takes actions', () => {
-  const src = read('lib/chillbros/chill-assistant.ts');
-  assert.match(src, /^"use server";/);
+  const action = read('lib/chillbros/chill-assistant.ts');
+  assert.match(action, /^"use server";/);
+  assert.match(action, /getCurrentStaffProfile\(\)[\s\S]*if \(!profile\) return[\s\S]*answerChill\(/);
+  const src = read('lib/chillbros/chill-brain.ts');
+  assert.match(src, /^import "server-only";/);
   assert.match(src, /profile\.role === "technician"[\s\S]*getAssignedFieldJobsForTechnician/);
   assert.match(src, /only discuss their own jobs/);
   assert.match(src, /Never invent customers, amounts/);
@@ -48,7 +51,7 @@ test('custom ElevenLabs voice (v3 by default) with OpenAI cedar as backup', () =
 });
 
 test('answers are short and start speaking after the first sentence', () => {
-  assert.match(read('lib/chillbros/chill-assistant.ts'), /under 60 words/);
+  assert.match(read('lib/chillbros/chill-brain.ts'), /under 60 words/);
   const ts = require('typescript');
   const out = ts.transpileModule(read('components/chill-assistant.tsx'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const m = out.match(/function splitForSpeech[\s\S]*?\n}/);
@@ -61,7 +64,7 @@ function loadVoice() {
   const ts = require('typescript');
   const out = ts.transpileModule(read('lib/chillbros/voice.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const mod = { exports: {} };
-  new Function('require', 'module', 'exports', 'process', out)((id) => (id === 'server-only' ? {} : require(id)), mod, mod.exports, process);
+  new Function('require', 'module', 'exports', 'process', out)((id) => (id === 'server-only' ? {} : id === '@/lib/chillbros/voice-tags' ? loadTags() : require(id)), mod, mod.exports, process);
   return mod.exports;
 }
 
@@ -81,4 +84,31 @@ test('voice falls back from v3 to the same voice on Turbo, and explains failures
     const bad = await loadVoice().elevenSpeech('Hi');
     assert.equal(bad.ok, false); assert.match(bad.reason, /401 Invalid API key/); assert.doesNotMatch(bad.reason, /turbo/);
   } finally { global.fetch = realFetch; process.env = env; }
+});
+
+test('spoken questions take one trip: snapshot starts before transcription finishes', () => {
+  const route = read('app/api/voice/ask/route.ts');
+  assert.ok(route.indexOf('snapshotFor(profile)') < route.indexOf('await transcribeAudio('), 'snapshot is started first');
+  assert.match(route, /answerChill\(profile, heard\.text, history, snapshot\)/);
+  assert.match(read('components/chill-assistant.tsx'), /fetch\("\/api\/voice\/ask"/);
+});
+
+function loadTags() {
+  const ts = require('typescript');
+  const out = ts.transpileModule(read('lib/chillbros/voice-tags.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const mod = { exports: {} };
+  new Function('require', 'module', 'exports', out)(require, mod, mod.exports);
+  return mod.exports;
+}
+
+test('emotion tags drive v3 delivery and are hidden everywhere else', () => {
+  const t = loadTags();
+  assert.equal(t.stripVoiceTags('[excited] Whoa! You have [chuckles] two calls.'), 'Whoa! You have two calls.');
+  assert.equal(t.keepKnownVoiceTags('[Excited] Hi [dances] there.'), '[excited] Hi there.');
+  assert.equal(t.firstVoiceTag('[dances] [sighs] Uh-oh.'), 'sighs');
+  assert.equal(t.firstVoiceTag('No tags.'), null);
+  const voice = read('lib/chillbros/voice.ts');
+  assert.match(voice, /text: keepKnownVoiceTags\(text\), voice_id/);
+  assert.match(voice, /text: stripVoiceTags\(text\), model_id/);
+  assert.match(read('app/api/voice/speak/route.ts'), /input: stripVoiceTags\(text\)/);
 });

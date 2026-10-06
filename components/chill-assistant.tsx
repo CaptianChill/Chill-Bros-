@@ -4,9 +4,16 @@ import { Mic, Send, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { askChillAction } from "@/lib/chillbros/chill-assistant";
+import { firstVoiceTag, stripVoiceTags, type VoiceTag } from "@/lib/chillbros/voice-tags";
 
 type Pose = "idle" | "greeting" | "listening" | "thinking" | "talking" | "success";
 type Message = { role: "user" | "assistant"; content: string };
+// Short reaction moves layered on top of the pose (CSS classes chill-emote-*).
+type Emote = "hop" | "bounce" | "shake" | "tilt" | "pop" | "droop" | "lean" | "wiggle" | "spin" | "peek";
+const TAG_EMOTE: Record<VoiceTag, Emote> = { excited: "hop", happy: "bounce", laughs: "shake", chuckles: "shake", curious: "tilt", surprised: "pop", sighs: "droop", whispers: "lean" };
+const POSE_MOTION: Record<Pose, string> = { idle: "chill-bob", greeting: "chill-greet", listening: "chill-listen", thinking: "chill-ponder", talking: "talk", success: "chill-jump" };
+const FIDGETS: Emote[] = ["hop", "wiggle", "tilt", "spin", "peek", "bounce"];
+const TALK_MOVES = ["chill-talk", "chill-talk-tilt", "chill-talk-bounce"];
 
 const POSES: Pose[] = ["idle", "greeting", "listening", "thinking", "talking", "success"];
 const src = (pose: Pose) => `/chill-pros-mascot/${pose}.webp`;
@@ -14,10 +21,10 @@ const MAX_RECORD_MS = 30000;
 // A few milliseconds of silence, played on the first tap so phones allow Chill's voice later.
 const SILENT_AUDIO = "data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA";
 
-// First sentence on its own so Chill starts talking sooner; the rest as one part.
+// First sentence (or a short reaction like "Whoa!") on its own so he starts talking sooner; the rest as one part.
 export function splitForSpeech(answer: string) {
   const clean = answer.replace(/\s+/g, " ").trim();
-  const match = clean.match(/^(.{20,220}?[.!?])\s+(.+)$/);
+  const match = clean.match(/^(.{12,220}?[.!?])\s+(.+)$/);
   return match ? [match[1], match[2]] : [clean];
 }
 
@@ -48,6 +55,32 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   const listRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<Message[]>([]);
   messagesRef.current = messages;
+  const [emote, setEmote] = useState<{ name: Emote; key: number } | null>(null);
+  const [talkMove, setTalkMove] = useState(0);
+  const emoteTimerRef = useRef<number | null>(null);
+
+  // Plays one reaction move, then settles back to the pose's own motion.
+  const react = useCallback((name: Emote) => {
+    if (emoteTimerRef.current) window.clearTimeout(emoteTimerRef.current);
+    setEmote({ name, key: Date.now() });
+    emoteTimerRef.current = window.setTimeout(() => setEmote(null), 1300);
+  }, []);
+
+  // Idle fidgets: every few seconds he hops, wiggles, tilts, spins or peeks.
+  useEffect(() => {
+    if (!open || pose !== "idle") return;
+    let timer = 0;
+    const next = () => { timer = window.setTimeout(() => { react(FIDGETS[Math.floor(Math.random() * FIDGETS.length)]); next(); }, 3500 + Math.random() * 3500); };
+    next();
+    return () => window.clearTimeout(timer);
+  }, [open, pose, react]);
+
+  // While talking, switch between a few talking moves so he never loops the same one.
+  useEffect(() => {
+    if (pose !== "talking") return;
+    const timer = window.setInterval(() => setTalkMove((m) => (m + 1 + Math.floor(Math.random() * (TALK_MOVES.length - 1))) % TALK_MOVES.length), 1400);
+    return () => window.clearInterval(timer);
+  }, [pose]);
 
   // Preload every pose so switching never flickers.
   useEffect(() => { for (const p of POSES) { const img = new Image(); img.src = src(p); } }, []);
@@ -113,6 +146,14 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     }
   }, [voiceOn, unlockAudio]);
 
+  // Shows the answer, reacts to its mood, and speaks it.
+  const deliver = useCallback(async (q: string, history: Message[], answer: string) => {
+    setMessages([...history, { role: "user", content: q }, { role: "assistant", content: answer }]);
+    const tag = firstVoiceTag(answer);
+    react(tag ? TAG_EMOTE[tag] : "bounce");
+    await speak(answer);
+  }, [react, speak]);
+
   const ask = useCallback(async (question: string) => {
     const q = question.trim();
     if (!q) return;
@@ -125,9 +166,8 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     const result = await askChillAction(q, history);
     setBusy(false);
     if (!result.ok) { setError(result.error); setPose("idle"); return; }
-    setMessages([...history, { role: "user", content: q }, { role: "assistant", content: result.answer }]);
-    await speak(result.answer);
-  }, [speak, stopSpeaking]);
+    await deliver(q, history, result.answer);
+  }, [deliver, stopSpeaking]);
 
   const stopRecording = useCallback(() => {
     holdingRef.current = false;
@@ -157,13 +197,22 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
       if (blob.size < 1200) { setPose("idle"); setError("I didn't hear anything. Hold the mic button while you talk, then let go."); return; }
       setPose("thinking");
       setBusy(true);
+      // One trip: the server hears the question and answers it.
+      const history = messagesRef.current;
       const form = new FormData();
       form.append("audio", blob, `chill.${type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm"}`);
-      const response = await fetch("/api/voice/transcribe", { method: "POST", body: form }).catch(() => null);
+      form.append("history", JSON.stringify(history.slice(-8)));
+      const response = await fetch("/api/voice/ask", { method: "POST", body: form }).catch(() => null);
       const payload = response ? await response.json().catch(() => ({})) : {};
       setBusy(false);
-      if (!response?.ok || !payload?.text) { setPose("idle"); setError(payload?.error ?? "I couldn't hear that. Try again."); return; }
-      await ask(String(payload.text));
+      const question = typeof payload?.question === "string" ? payload.question : "";
+      if (!response?.ok || typeof payload?.answer !== "string") {
+        if (question) setMessages([...history, { role: "user", content: question }]);
+        setPose("idle");
+        setError(payload?.error ?? "I couldn't hear that. Try again.");
+        return;
+      }
+      await deliver(question, history, payload.answer);
     };
     recorderRef.current = recorder;
     // Let go before the mic was ready (for example during the permission prompt): don't record.
@@ -172,7 +221,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     setRecording(true);
     setPose("listening");
     stopTimerRef.current = window.setTimeout(stopRecording, MAX_RECORD_MS);
-  }, [ask, stopRecording, stopSpeaking, unlockAudio]);
+  }, [deliver, stopRecording, stopSpeaking, unlockAudio]);
 
   const openPanel = () => {
     unlockAudio();
@@ -186,16 +235,16 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
 
   return <>
     {!open ? (
-      <button type="button" onClick={openPanel} aria-label="Talk to Chill, the Chill Pros assistant" className="chill-launcher fixed bottom-[calc(92px+env(safe-area-inset-bottom))] right-3 z-40 h-[76px] w-[76px] rounded-full border-2 border-white bg-[#1B3FD0]/90 shadow-[0_8px_24px_rgba(4,28,78,0.35)] lg:bottom-6 lg:right-6 lg:h-[88px] lg:w-[88px]">
-        <img src={src("idle")} alt="" className="chill-bob h-full w-full object-contain p-1" />
+      <button type="button" onClick={openPanel} aria-label="Talk to Chilly Bro, the Chill Pros assistant" className="chill-launcher fixed bottom-[calc(92px+env(safe-area-inset-bottom))] right-3 z-40 h-[76px] w-[76px] rounded-full border-2 border-white bg-[#1B3FD0]/90 shadow-[0_8px_24px_rgba(4,28,78,0.35)] lg:bottom-6 lg:right-6 lg:h-[88px] lg:w-[88px]">
+        <img src={src("idle")} alt="" className="chill-bob chill-launcher-peek h-full w-full object-contain p-1" />
       </button>
     ) : null}
 
     {open ? (
-      <section role="dialog" aria-label="Chill, the Chill Pros assistant" className="cb-new fixed inset-x-2 bottom-[calc(88px+env(safe-area-inset-bottom))] z-50 flex max-h-[min(78dvh,640px)] flex-col overflow-hidden rounded-3xl border border-white bg-white/95 text-[#0a1a33] shadow-[0_18px_48px_rgba(4,28,78,0.4)] backdrop-blur-xl lg:inset-x-auto lg:bottom-6 lg:right-6 lg:w-[400px]">
+      <section role="dialog" aria-label="Chilly Bro, the Chill Pros assistant" className="cb-new fixed inset-x-2 bottom-[calc(88px+env(safe-area-inset-bottom))] z-50 flex max-h-[min(78dvh,640px)] flex-col overflow-hidden rounded-3xl border border-white bg-white/95 text-[#0a1a33] shadow-[0_18px_48px_rgba(4,28,78,0.4)] backdrop-blur-xl lg:inset-x-auto lg:bottom-6 lg:right-6 lg:w-[400px]">
         <div className="flex items-center gap-3 border-b border-[#0a1a33]/10 bg-gradient-to-b from-[#e8f0ff] to-white px-3 pt-2">
-          <div className="relative h-[112px] w-[112px] shrink-0">
-            <img src={src(pose)} alt={`Chilly Bro is ${pose === "idle" ? "ready" : pose}`} className={`h-full w-full object-contain ${pose === "idle" ? "chill-bob" : pose === "talking" ? "chill-talk" : pose === "greeting" ? "chill-greet" : ""}`} />
+          <div key={emote?.key ?? "still"} className={`relative h-[112px] w-[112px] shrink-0 ${emote ? `chill-emote-${emote.name}` : ""}`}>
+            <img src={src(pose)} alt={`Chilly Bro is ${pose === "idle" ? "ready" : pose}`} className={`h-full w-full object-contain ${POSE_MOTION[pose] === "talk" ? TALK_MOVES[talkMove] : POSE_MOTION[pose]}`} />
           </div>
           <div className="min-w-0 flex-1 pb-2">
             <p className="text-lg font-bold leading-tight">Chilly Bro</p>
@@ -212,7 +261,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
           {messages.length === 0 ? <div className="space-y-2">
             <p className="rounded-2xl bg-[#eef3ff] px-3 py-2 text-sm">Hi {firstName}. Ask me about today's jobs, who owes us money, a customer, or any HVAC or refrigeration question.</p>
             <div className="grid grid-cols-2 gap-2">{["What needs my attention today?", "Who has overdue invoices?", "Which calls are unassigned?", "Walk-in cooler not cooling: where do I start?"].map((s) => <button key={s} type="button" disabled={busy || recording} onClick={() => { unlockAudio(); void ask(s); }} className="rounded-xl border border-[#1B3FD0]/20 bg-white px-2.5 py-2 text-left text-xs font-medium text-[#1B3FD0] disabled:opacity-50">{s}</button>)}</div>
-          </div> : messages.map((m, i) => <p key={i} className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-6 ${m.role === "user" ? "ml-auto bg-[#1B3FD0] text-white" : "bg-[#eef3ff]"}`}>{m.content}</p>)}
+          </div> : messages.map((m, i) => <p key={i} className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-6 ${m.role === "user" ? "ml-auto bg-[#1B3FD0] text-white" : "bg-[#eef3ff]"}`}>{m.role === "assistant" ? stripVoiceTags(m.content) : m.content}</p>)}
           {error ? <p role="alert" className="rounded-xl border border-[#f5b5b0] bg-[#fef2f1] px-3 py-2 text-xs text-[#b42318]">{error}</p> : null}
         </div>
 
