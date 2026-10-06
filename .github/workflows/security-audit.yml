@@ -32,6 +32,7 @@ jobs:
       - name: TEMP apply audit fixes to lockfile
         if: github.event_name == 'pull_request'
         run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm audit fix --omit=dev --package-lock-only --ignore-scripts || true
           git status --short
           if ! git diff --quiet -- package-lock.json package.json; then
