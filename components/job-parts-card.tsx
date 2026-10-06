@@ -96,7 +96,7 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit, canAddCustom = fa
                 </p>
               </div>
               {canEdit ? (
-                <button type="button" onClick={() => run(() => removeJobPartAtomicAction(part.id))} disabled={pending} aria-label={`Remove ${part.name}`} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#0B5CD5] disabled:opacity-50">
+                <button type="button" onClick={() => run(() => removeJobPartAtomicAction(part.id))} disabled={pending} aria-label={`Remove ${part.name}`} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#1B3FD0] disabled:opacity-50">
                   <Trash2 className="h-5 w-5" aria-hidden="true" />
                 </button>
               ) : null}
@@ -109,7 +109,7 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit, canAddCustom = fa
           {canAddCustom ? (
             <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Where the part comes from">
               {([["stock", "From stock"], ["custom", "Bought part"]] as const).map(([value, text]) => (
-                <button key={value} type="button" role="radio" aria-checked={mode === value} onClick={() => { setMode(value); setError(null); }} className={`min-h-11 rounded-xl border font-semibold ${mode === value ? "border-[#1557B0] bg-[#1557B0] text-white" : "border-[#C7D3E2] bg-[#F8FAFD] text-[#0A1A33]"}`}>
+                <button key={value} type="button" role="radio" aria-checked={mode === value} onClick={() => { setMode(value); setError(null); }} className={`min-h-11 rounded-xl border font-semibold ${mode === value ? "border-[#1B3FD0] bg-[#1B3FD0] text-white" : "border-[#C7D3E2] bg-[#F8FAFD] text-[#0A1A33]"}`}>
                   {text}
                 </button>
               ))}
@@ -123,7 +123,7 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit, canAddCustom = fa
               <label className="text-sm font-semibold text-[#0A1A33]">Your cost<input type="number" inputMode="decimal" min={0} step="0.01" value={custom.cost} onChange={(e) => setCustom({ ...custom, cost: e.target.value })} placeholder="$0.00" className={fieldClass} /></label>
               <label className="text-sm font-semibold text-[#0A1A33]">Price to customer<input type="number" inputMode="decimal" min={0} step="0.01" value={custom.price} onChange={(e) => setCustom({ ...custom, price: e.target.value })} placeholder="$0.00" className={fieldClass} /></label>
               <label className="text-sm font-semibold text-[#0A1A33]">Qty<input type="number" inputMode="numeric" min={1} value={custom.quantity} onChange={(e) => setCustom({ ...custom, quantity: e.target.value })} className={`${fieldClass} text-center`} /></label>
-              <button type="button" onClick={addCustom} disabled={pending} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#1557B0] px-4 font-semibold text-white disabled:opacity-60">
+              <button type="button" onClick={addCustom} disabled={pending} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] px-4 font-semibold text-white disabled:opacity-60">
                 <PackagePlus className="h-5 w-5" aria-hidden="true" />
                 {pending ? "Saving…" : "Add part"}
               </button>
@@ -152,7 +152,7 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit, canAddCustom = fa
               Quantity
             </label>
             <input id={qtyId} type="number" inputMode="numeric" min={1} value={quantity} onChange={(event) => setQuantity(event.target.value)} className="min-h-11 w-24 rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 text-center font-semibold text-[#0A1A33]" />
-            <button type="button" onClick={add} disabled={pending} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#1557B0] px-4 font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={add} disabled={pending} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] px-4 font-semibold text-white disabled:opacity-60">
               <PackagePlus className="h-5 w-5" aria-hidden="true" />
               {pending ? "Saving…" : "Add part"}
             </button>
@@ -160,14 +160,14 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit, canAddCustom = fa
           </>
           )}
           {partsProHref ? (
-            <Link href={partsProHref} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#1557B0]">
+            <Link href={partsProHref} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#1B3FD0]">
               <Sparkles className="h-4 w-4" aria-hidden="true" />
               Find the OEM part # with Parts Pro
             </Link>
           ) : null}
         </div>
       ) : null}
-      {error ? <p role="alert" className="px-3.5 pb-3 text-sm font-semibold text-[#0B5CD5]">{error}</p> : null}
+      {error ? <p role="alert" className="px-3.5 pb-3 text-sm font-semibold text-[#1B3FD0]">{error}</p> : null}
     </section>
   );
 }

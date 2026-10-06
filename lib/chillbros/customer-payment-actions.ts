@@ -21,13 +21,14 @@ export async function setCustomerPaymentMethodAction(token: string, method: Paym
   const supabase = createServiceRoleClient();
   const { data: invoice } = await supabase
     .from("chillbros_invoices")
-    .select("id,job_id,status,payment_status,issued_at,revoked_at")
+    .select("id,job_id,status,payment_status,issued_at,revoked_at,converted_invoice_id")
     .eq("portal_token", token)
-    .is("revoked_at", null)
+    .is("converted_invoice_id", null).is("revoked_at", null)
     .neq("status", "void")
     .maybeSingle();
 
   if (!invoice) return { ok: false, error: "This secure payment link is no longer active." };
+  if (invoice.converted_invoice_id) return { ok: false, error: "Use the converted invoice payment link." };
   if (invoice.status !== "approved") return { ok: false, error: "Please sign and approve the estimate before choosing payment." };
   if (!invoice.issued_at) return { ok: false, error: "Payment is not due until Chill Pros completes the work and issues the final invoice." };
 
@@ -43,7 +44,7 @@ export async function setCustomerPaymentMethodAction(token: string, method: Paym
     .eq("id", invoice.id)
     .not("issued_at", "is", null)
     .eq("status", "approved")
-    .is("revoked_at", null)
+    .is("converted_invoice_id", null).is("revoked_at", null)
     .neq("payment_status", "paid")
     .select("id")
     .maybeSingle();
@@ -70,13 +71,14 @@ export async function setCustomerDownPaymentMethodAction(token: string, method: 
   const supabase = createServiceRoleClient();
   const { data: invoice } = await supabase
     .from("chillbros_invoices")
-    .select("id,job_id,status,down_payment_amount,down_payment_status,revoked_at")
+    .select("id,job_id,status,down_payment_amount,down_payment_status,revoked_at,converted_invoice_id")
     .eq("portal_token", token)
-    .is("revoked_at", null)
+    .is("converted_invoice_id", null).is("revoked_at", null)
     .neq("status", "void")
     .maybeSingle();
 
   if (!invoice) return { ok: false, error: "This secure payment link is no longer active." };
+  if (invoice.converted_invoice_id) return { ok: false, error: "Use the converted invoice payment link." };
   if (invoice.status !== "approved") return { ok: false, error: "Please sign and approve the estimate before choosing a down payment method." };
   if (!(Number(invoice.down_payment_amount) > 0)) return { ok: false, error: "No down payment is required on this estimate." };
   if (invoice.down_payment_status === "paid") return { ok: false, error: "The down payment is already recorded." };
@@ -90,7 +92,7 @@ export async function setCustomerDownPaymentMethodAction(token: string, method: 
     })
     .eq("id", invoice.id)
     .eq("status", "approved")
-    .is("revoked_at", null)
+    .is("converted_invoice_id", null).is("revoked_at", null)
     .neq("down_payment_status", "paid")
     .select("id")
     .maybeSingle();

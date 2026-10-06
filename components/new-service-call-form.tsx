@@ -15,30 +15,46 @@ type CustomerOption = { id: string; name: string; address: string | null };
 type UnitOption = { id: string; customerId: string; label: string };
 type TechOption = { id: string; fullName: string };
 
-const TIMES = Array.from({ length: 29 }, (_, i) => `${String(6 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
+// Every half hour of the day (the schedule screen allowed all 24 hours, so
+// after-hours and emergency calls can still be booked here).
+const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
 const field = "mt-1 min-h-11 w-full rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 text-base font-medium text-[#0A1A33] placeholder:text-[#5B6B82]";
 const labelClass = "block text-sm font-semibold text-[#0A1A33]";
 
 // New service call in one screen: customer (or a new one), unit, complaint,
 // technician and time. Uses the existing equipment-linked intake action, then
-// opens the new job so parts can be added right away.
-export function NewServiceCallForm({ customers, units, technicians, today, initialCustomerId }: { customers: CustomerOption[]; units: UnitOption[]; technicians: TechOption[]; today: string; initialCustomerId?: string }) {
+// opens the new job so parts can be added right away. This is the only form
+// that starts a service call: Schedule and Dispatch link here with prefill.
+export function NewServiceCallForm({ customers, units, technicians, today, initialCustomerId, initialEquipmentId, initialTechId, initialDate, returnTo }: {
+  customers: CustomerOption[];
+  units: UnitOption[];
+  technicians: TechOption[];
+  today: string;
+  initialCustomerId?: string;
+  initialEquipmentId?: string;
+  initialTechId?: string;
+  initialDate?: string;
+  /** "schedule" sends the office back to that week's calendar after saving. */
+  returnTo?: "schedule";
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // One id per open form: a double tap or retry saves the call only once.
+  const [submissionId] = useState(() => crypto.randomUUID());
 
   const [newCustomer, setNewCustomer] = useState(false);
   const [customerId, setCustomerId] = useState(initialCustomerId ?? "");
   const [customer, setCustomer] = useState({ name: "", phone: "", email: "", address: "" });
-  const [equipmentId, setEquipmentId] = useState("");
+  const [equipmentId, setEquipmentId] = useState(initialEquipmentId ?? "");
   const [addEquipment, setAddEquipment] = useState(false);
   const [equipment, setEquipment] = useState({ equipmentType: "", manufacturer: "", model: "", serialNumber: "", refrigerant: "" });
   const [location, setLocation] = useState("");
   const [scope, setScope] = useState("");
   const [approved, setApproved] = useState(false);
-  const [techId, setTechId] = useState("");
+  const [techId, setTechId] = useState(initialTechId ?? "");
   const [scheduleNow, setScheduleNow] = useState(true);
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(initialDate ?? today);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("11:00");
 
@@ -84,9 +100,13 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
         location: location.trim() || (newCustomer ? customer.address : ""),
         scope: fullScope,
         scheduledWindow: scheduleNow ? `${date} ${start}-${end} CT` : undefined,
+        submissionId,
       });
       if (!result.ok) return setError(result.error);
-      router.push(addParts ? `/jobs/${result.jobId}?success=${encodeURIComponent("Service call saved. Add parts below.")}#parts` : `/work?saved=${encodeURIComponent(result.jobId)}`);
+      const warning = result.warning ? `&warning=${encodeURIComponent(result.warning)}` : "";
+      if (addParts) return router.push(`/jobs/${result.jobId}?success=${encodeURIComponent(`Service call saved. Add parts below.${result.warning ? ` ${result.warning}` : ""}`)}#parts`);
+      if (returnTo === "schedule") return router.push(`/schedule?week=${scheduleNow ? date : today}&success=${encodeURIComponent("Call saved to the calendar.")}${warning}`);
+      router.push(`/work?saved=${encodeURIComponent(result.jobId)}${warning}`);
     });
   };
 
@@ -95,7 +115,7 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
       <section className="cb-card space-y-3 p-3.5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-[26px] leading-none">Customer</h2>
-          <button type="button" onClick={() => setNewCustomer((value) => !value)} className="min-h-11 px-1 text-sm font-semibold text-[#1557B0]">
+          <button type="button" onClick={() => setNewCustomer((value) => !value)} className="min-h-11 px-1 text-sm font-semibold text-[#1B3FD0]">
             {newCustomer ? "Pick existing" : "+ New customer"}
           </button>
         </div>
@@ -124,7 +144,7 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
                     {customerUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.label}</option>)}
                   </select>
                 </label>
-                <button type="button" onClick={() => { setAddEquipment((value) => !value); setEquipmentId(""); }} className="min-h-11 w-full rounded-xl border border-[#1557B0] bg-[#F8FAFD] px-3 font-semibold text-[#1557B0]">{addEquipment ? "Use saved equipment" : "+ Add equipment information"}</button>
+                <button type="button" onClick={() => { setAddEquipment((value) => !value); setEquipmentId(""); }} className="min-h-11 w-full rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] px-3 font-semibold text-[#1B3FD0]">{addEquipment ? "Use saved equipment" : "+ Add equipment information"}</button>
               </>
             ) : null}
           </>
@@ -153,10 +173,10 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
           <textarea required rows={4} value={scope} onChange={(e) => setScope(e.target.value)} placeholder="e.g. Replace condenser fan motor and capacitor" className={`${field} py-2`} />
         </label>
         <label className="flex min-h-11 items-center gap-3 rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 text-base font-semibold text-[#0A1A33]">
-          <input type="checkbox" checked={approved} onChange={(e) => setApproved(e.target.checked)} className="h-5 w-5 accent-[#1557B0]" />
+          <input type="checkbox" checked={approved} onChange={(e) => setApproved(e.target.checked)} className="h-5 w-5 accent-[#1B3FD0]" />
           Customer approved this repair verbally
         </label>
-        <Link href={partsProHref({ details: scope })} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#1557B0]">
+        <Link href={partsProHref({ details: scope })} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[#1B3FD0]">
           <Sparkles className="h-4 w-4" aria-hidden="true" />
           Find the OEM part # with Parts Pro
         </Link>
@@ -173,7 +193,7 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
         </label>
         <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="When">
           {[true, false].map((value) => (
-            <button key={String(value)} type="button" role="radio" aria-checked={scheduleNow === value} onClick={() => setScheduleNow(value)} className={`min-h-11 rounded-xl border font-semibold ${scheduleNow === value ? "border-[#1557B0] bg-[#1557B0] text-white" : "border-[#C7D3E2] bg-[#F8FAFD] text-[#0A1A33]"}`}>
+            <button key={String(value)} type="button" role="radio" aria-checked={scheduleNow === value} onClick={() => setScheduleNow(value)} className={`min-h-11 rounded-xl border font-semibold ${scheduleNow === value ? "border-[#1B3FD0] bg-[#1B3FD0] text-white" : "border-[#C7D3E2] bg-[#F8FAFD] text-[#0A1A33]"}`}>
               {value ? "Schedule now" : "Schedule later"}
             </button>
           ))}
@@ -187,12 +207,12 @@ export function NewServiceCallForm({ customers, units, technicians, today, initi
         ) : null}
       </section>
 
-      {error ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#0B5CD5]">{error}</p> : null}
-      <button type="submit" name="next" value="save" disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1557B0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#0E3F82] disabled:opacity-60">
+      {error ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#1B3FD0]">{error}</p> : null}
+      <button type="submit" name="next" value="save" disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8] disabled:opacity-60">
         <Save className="h-5 w-5" aria-hidden="true" />
         {pending ? "Saving…" : "Save call"}
       </button>
-      <button type="submit" name="next" value="parts" disabled={pending} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1557B0] bg-[#F8FAFD] font-bold text-[#1557B0] disabled:opacity-60">
+      <button type="submit" name="next" value="parts" disabled={pending} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B3FD0] bg-[#F8FAFD] font-bold text-[#1B3FD0] disabled:opacity-60">
         Save &amp; add parts
         <ArrowRight className="h-5 w-5" aria-hidden="true" />
       </button>

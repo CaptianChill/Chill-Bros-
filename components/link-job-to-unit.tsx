@@ -51,12 +51,12 @@ export function LinkJobToUnit({ equipmentId, jobs }: { equipmentId: string; jobs
             </option>
           ))}
         </select>
-        <button type="button" onClick={link} disabled={pending} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-[#1557B0] px-4 text-sm font-semibold text-white disabled:opacity-60">
+        <button type="button" onClick={link} disabled={pending} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-[#1B3FD0] px-4 text-sm font-semibold text-white disabled:opacity-60">
           <Link2 className="h-4 w-4" aria-hidden="true" />
           {pending ? "Linking…" : "Link"}
         </button>
       </div>
-      {error ? <p role="alert" className="mt-1.5 text-sm font-semibold text-[#0B5CD5]">{error}</p> : null}
+      {error ? <p role="alert" className="mt-1.5 text-sm font-semibold text-[#1B3FD0]">{error}</p> : null}
       {message ? <p role="status" className="mt-1.5 text-sm font-semibold text-[#0A7FC2]">{message}</p> : null}
     </div>
   );

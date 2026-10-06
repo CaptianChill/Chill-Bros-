@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { Alfa_Slab_One, Barlow, Barlow_Condensed } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import "../styles/starfield-theme.css";
@@ -12,6 +12,10 @@ const barlowCondensed = Barlow_Condensed({ subsets: ["latin"], weight: ["700"], 
 // Graffiti bubble lettering traced from the owner's alphabet sheet: a color
 // font (black outline + shadow, blue fill, light-blue shine) with A-Z;
 // lowercase maps to the same letters. Used for staff page titles and headings.
+// Varsity block lettering for staff titles (styled like the chenille-patch
+// CHILL PROS wordmark: red / royal blue / gold letters, black / white /
+// purple outlines). See components/varsity-title.tsx and staff-theme.css.
+const varsity = Alfa_Slab_One({ subsets: ["latin"], weight: "400", variable: "--font-varsity", display: "swap" });
 const chillBubble = localFont({ src: "./fonts/chill-bubble.woff2", variable: "--font-chill-bubble", display: "swap" });
 
 export const metadata: Metadata = {
@@ -49,8 +53,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable} ${chillBubble.variable} h-full bg-background antialiased`}>
+    <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable} ${chillBubble.variable} ${varsity.variable} h-full bg-background antialiased`}>
       <body className="min-h-full bg-background font-sans text-foreground">
+        {/* Chenille fuzz for varsity titles: frays letter edges like stitched patch fabric. */}
+        <svg aria-hidden="true" width="0" height="0" style={{ position: "absolute" }}>
+          <filter id="cb-chenille" x="-5%" y="-10%" width="110%" height="120%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.6" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </svg>
         <div className="theme-starfield min-h-screen">{children}</div>
       </body>
     </html>

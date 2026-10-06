@@ -1,4 +1,4 @@
-import { CalendarPlus, FilePenLine, FilePlus2, ReceiptText, Search, UserPlus, UsersRound, WalletCards } from "lucide-react";
+import { CalendarPlus, FilePenLine, FilePlus2, Package, ReceiptText, Search, UserPlus, UsersRound, WalletCards } from "lucide-react";
 
 import { EstimateComposer } from "@/components/estimate-composer";
 import {
@@ -159,9 +159,10 @@ export function CreationCenterServer({
 
     <section className="rounded-2xl border border-[#2d7dff]/20 bg-black/30 p-3 sm:p-4">
       <p className="mb-2 text-center text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Start a service workflow</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <a href="/create?mode=customer" className={smallActionClass}><UserPlus className="mr-1 h-4 w-4 text-[#8ffafa]" />Customer</a>
         <a href="/create?mode=job" className={smallActionClass}><CalendarPlus className="mr-1 h-4 w-4 text-[#8ffafa]" />New Call</a>
+        <a href="/agreements" className={smallActionClass}><Package className="mr-1 h-4 w-4 text-[#8ffafa]" />Package Deal</a>
         <a href="/create?mode=technician" className={smallActionClass}><UsersRound className="mr-1 h-4 w-4 text-[#8ffafa]" />Staff</a>
       </div>
     </section>

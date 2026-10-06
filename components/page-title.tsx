@@ -2,28 +2,38 @@
 
 import { usePathname } from "next/navigation";
 
+import { VarsityTitle } from "@/components/varsity-title";
+
+// Screen names match the menu labels so people always know where they are.
 const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
-  [(p) => p === "/", "Command Center"],
-  [(p) => p === "/create", "Creation Center"],
-  [(p) => p === "/office", "Office Hub"],
+  [(p) => p === "/", "Home"],
+  [(p) => p === "/office", "Office"],
+  [(p) => p === "/work", "Open Work"],
+  [(p) => p === "/schedule", "Schedule"],
   [(p) => p === "/dispatch", "Dispatch"],
-  [(p) => p === "/schedule", "Scheduling"],
-  [(p) => p === "/customers", "Customer Center"],
+  [(p) => p === "/customers", "Customers"],
   [(p) => p.startsWith("/customers/"), "Customer Profile"],
-  [(p) => p === "/scan-send", "Scan & Send"],
-  [(p) => p === "/invoices", "Invoices"],
-  [(p) => p === "/payments", "Payment Center"],
-  [(p) => p === "/agreements", "Monthly Plans"],
-  [(p) => p === "/manager", "Manager Hub"],
-  [(p) => p === "/security", "Security"],
-  [(p) => p === "/technician", "Field Workflow"],
-  [(p) => p === "/training", "Tech Assist"],
-  [(p) => p.startsWith("/training/model/"), "Tech Training Model"],
-  [(p) => p === "/timesheet", "Timesheets"],
-  [(p) => p === "/inventory", "Inventory"],
-  [(p) => p === "/equipment", "Equipment Database"],
-  [(p) => p === "/3d-studio" || p.startsWith("/3d-studio/"), "Tech 3D Studio"],
+  [(p) => p === "/jobs/new", "New Service Call"],
+  [(p) => p === "/technician" || p.startsWith("/jobs/"), "Field Jobs"],
+  [(p) => p === "/field-notes", "Field Notes"],
+  [(p) => p === "/timesheet", "Clock"],
+  [(p) => p === "/parts-lookup", "Parts Pro"],
+  [(p) => p === "/tech-assist" || p.startsWith("/tech-assist/"), "Tech Assist"],
+  [(p) => p === "/training", "Training"],
+  [(p) => p === "/revenue-radar" || p.startsWith("/revenue-radar/"), "Revenue Radar"],
+  [(p) => p === "/agreements", "Service Plans"],
+  [(p) => p === "/invoices" || p.startsWith("/invoices/"), "Quotes & Invoices"],
+  [(p) => p === "/payments", "Payments"],
+  [(p) => p === "/owner" || p.startsWith("/owner/"), "Owner Access"],
+  [(p) => p === "/manager", "Manager Controls"],
   [(p) => p === "/reports", "Reports"],
+  [(p) => p === "/payroll", "Payroll"],
+  [(p) => p === "/inventory", "Parts & Price Book"],
+  [(p) => p === "/equipment" || p.startsWith("/equipment/"), "Equipment"],
+  [(p) => p === "/security", "Security"],
+  [(p) => p === "/settings/payments", "Payments & Email"],
+  [(p) => p === "/create", "Document Desk"],
+  [(p) => p === "/scan-send", "Scan & Send"],
 ];
 
 /** Short screen name for a route, or null when the route has no fixed name. */
@@ -37,7 +47,7 @@ export function PageTitle() {
 
   return (
     <h1 className="glo w-full text-center font-serif text-[1.35rem] font-black italic uppercase leading-tight tracking-[0.015em] sm:text-[1.8rem]">
-      {label}
+      <VarsityTitle text={label} fuzz />
     </h1>
   );
 }

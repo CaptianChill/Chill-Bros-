@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpenCheck, Box, Database, ScanLine, Sparkles, Wrench } from "lucide-react";
+import { BookOpenCheck, Database, ScanLine, Sparkles, Wrench } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -16,7 +16,6 @@ const quickLinks = [
   { href: "#equipment", label: "Add Equipment", icon: Database },
   { href: "/scan-send", label: "Scan / Upload", icon: ScanLine },
   { href: "#library", label: "Service Guides", icon: BookOpenCheck },
-  { href: "#training", label: "Training + 3D", icon: Box },
 ];
 
 export default async function TrainingPage() {
@@ -31,7 +30,7 @@ export default async function TrainingPage() {
       description="One field workspace for equipment records, proven service knowledge, parts references, and training. AI assistance will sit on top of this data later instead of replacing it."
       highlight={<div className="grid grid-cols-2 gap-2 text-center text-xs"><span className="rounded-xl border border-[#2d7dff]/25 bg-black px-3 py-2">{equipment.length} assets</span><span className="rounded-xl border border-[#2d7dff]/25 bg-black px-3 py-2">{trainingCases.length} field cases</span></div>}
     >
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         {quickLinks.map(({ href, label, icon: Icon }) => (
           <Link key={label} href={href} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/30 bg-[#020407] px-3 py-3 text-center text-sm font-semibold text-white shadow-[0_0_12px_rgba(45,125,255,.12)]">
             <Icon className="h-4 w-4 shrink-0 text-[#8ffafa]" />
@@ -62,16 +61,6 @@ export default async function TrainingPage() {
           <div><p className="font-semibold text-white">Service Knowledge</p><p className="text-xs text-zinc-400">Symptoms, readings, parts and proven repair paths</p></div><span className="text-sm text-[#8ffafa] group-open:hidden">Open</span><span className="hidden text-sm text-[#8ffafa] group-open:inline">Close</span>
         </summary>
         <div className="border-t border-[#2d7dff]/15 p-3 md:p-4"><TrainingBibleLibrary cases={trainingCases} /></div>
-      </details>
-
-      <details id="training" className="group mt-3 rounded-2xl border border-[#2d7dff]/30 bg-[#020407]">
-        <summary className="flex min-h-16 list-none items-center justify-between gap-3 px-4 py-3">
-          <div><p className="font-semibold text-white">Training + 3D</p><p className="text-xs text-zinc-400">Interactive equipment exercises without another giant page</p></div><span className="text-sm text-[#8ffafa] group-open:hidden">Open</span><span className="hidden text-sm text-[#8ffafa] group-open:inline">Close</span>
-        </summary>
-        <div className="grid gap-2 border-t border-[#2d7dff]/15 p-3 sm:grid-cols-2">
-          <Link href="#library" className="rounded-xl border border-[#2d7dff]/25 bg-black px-4 py-3 text-center text-sm font-semibold text-white">Open 3D case exercises</Link>
-          {profile.role === "manager" ? <Link href="/3d-studio" className="rounded-xl border border-[#2d7dff]/25 bg-black px-4 py-3 text-center text-sm font-semibold text-white">Open 3D Studio</Link> : null}
-        </div>
       </details>
 
       <section className="mt-3 rounded-2xl border border-[#2d7dff]/20 bg-[#020407] p-4">

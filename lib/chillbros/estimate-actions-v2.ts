@@ -205,9 +205,13 @@ export async function markInvoicePaidV2Action(invoiceId: string): Promise<Result
   const documentErrors: string[] = [];
   try { await createReceiptForPaidInvoice(invoiceId, profile.id); } catch (error) { documentErrors.push(error instanceof Error ? error.message : "Receipt creation failed."); }
   try { await archiveInvoicePdf(invoiceId, "paid", profile.id); } catch (error) { documentErrors.push(error instanceof Error ? error.message : "Receipt archive failed."); }
-  const delivery = await sendBillingDeliveryRecorded(invoiceId, "receipt", "email");
+  let delivery = await sendBillingDeliveryRecorded(invoiceId, "receipt", "email");
+  if (delivery.status === "skipped" && delivery.error === "Customer has no email address.") {
+    delivery = await sendBillingDeliveryRecorded(invoiceId, "receipt", "sms");
+  }
   refresh(["/manager", "/dispatch", "/technician", "/office", "/invoices", "/reports", "/crm", "/", `/portal/${data.portal_token}`, `/portal/${data.portal_token}/receipt`]);
-  if (delivery.status !== "sent") return { ok: false, status: delivery.status, error: `Payment recorded. Receipt email not sent: ${delivery.error ?? delivery.status}${documentErrors.length ? `. ${documentErrors.join("; ")}` : ""}` };
-  if (documentErrors.length) return { ok: false, error: `Payment recorded and receipt emailed to ${delivery.recipient}. ${documentErrors.join("; ")}` };
+  const deliveryLabel = delivery.channel === "sms" ? "text message" : "email";
+  if (delivery.status !== "sent") return { ok: false, status: delivery.status, error: `Payment recorded. Receipt ${deliveryLabel} not sent: ${delivery.error ?? delivery.status}${documentErrors.length ? `. ${documentErrors.join("; ")}` : ""}` };
+  if (documentErrors.length) return { ok: false, error: `Payment recorded and receipt sent by ${deliveryLabel} to ${delivery.recipient}. ${documentErrors.join("; ")}` };
   return { ok: true, data: { status: delivery.status, recipient: delivery.recipient } };
 }

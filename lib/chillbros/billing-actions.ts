@@ -129,7 +129,8 @@ export async function sendInvoiceCommunicationAction(invoiceId: string, channel:
   const invoice = await getInvoiceV2ById(invoiceId);
   if (!invoice) return { ok: false, error: "Active invoice was not found." };
   if (reminder && (invoice.status !== "approved" || invoice.paymentStatus === "paid")) return { ok: false, error: "Reminders are only for approved unpaid invoices." };
-  const deliveryType = reminder ? "reminder" : invoice.paymentStatus === "paid" ? "receipt" : invoice.issuedAt ? "invoice" : "estimate";
+  const isQuote = invoice.invoiceNumber.toUpperCase().startsWith("Q-") || !invoice.issuedAt;
+  const deliveryType = reminder ? "reminder" : invoice.paymentStatus === "paid" ? "receipt" : isQuote ? "estimate" : "invoice";
   const result = await sendBillingDeliveryRecorded(invoiceId, deliveryType, channel, recipient);
   if (result.status === "sent" && reminder) {
     const supabase = createServiceRoleClient();
@@ -152,8 +153,9 @@ export async function finalizeInvoiceAction(invoiceId: string): Promise<Result> 
   if (!guard.ok) return guard;
   const supabase = createServiceRoleClient();
   const { data: invoice, error: readError } = await supabase.from("chillbros_invoices")
-    .select("id,job_id,status,payment_status,payment_terms,due_at,issued_at,portal_token,revoked_at,updated_at").eq("id", invoiceId).maybeSingle();
+    .select("id,invoice_number,job_id,status,payment_status,payment_terms,due_at,issued_at,portal_token,revoked_at,updated_at").eq("id", invoiceId).maybeSingle();
   if (readError || !invoice) return { ok: false, error: readError?.message ?? "Invoice not found." };
+  if (invoice.invoice_number?.toUpperCase().startsWith("Q-")) return { ok: false, error: "This is a quote. Send it for customer approval or convert it to an invoice first." };
   if (invoice.revoked_at || !["draft", "awaiting_approval"].includes(invoice.status) || invoice.payment_status === "paid") return { ok: false, error: `Cannot finalize invoice with status "${invoice.status}" and payment status "${invoice.payment_status}".` };
   const now = new Date();
   const { data: updated, error } = await supabase.from("chillbros_invoices").update({
@@ -216,28 +218,24 @@ export async function ensureInvoiceArchiveAction(invoiceId: string, stage: Archi
 }
 
 
-export async function convertQuoteToInvoiceAction(invoiceId: string): Promise<Result> {
-  const guard = await requireOfficeOrManager();
+export async function convertQuoteToInvoiceAction(invoiceId: string): Promise<Result<{ invoiceId: string }>> {
+  const guard = await requireManager();
   if (!guard.ok) return guard;
   const supabase = createServiceRoleClient();
-  const { data: invoice, error: readError } = await supabase.from("chillbros_invoices")
-    .select("id,job_id,status,payment_status,issued_at,payment_terms,due_at,portal_token,revoked_at")
-    .eq("id", invoiceId).maybeSingle();
-  if (readError || !invoice) return { ok: false, error: readError?.message ?? "Quote not found." };
-  if (invoice.revoked_at || invoice.status === "void") return { ok: false, error: "Quote is not active." };
-  if (invoice.payment_status === "paid") return { ok: false, error: "Paid documents cannot be converted." };
-  if (invoice.issued_at) return { ok: false, error: "This document is already an invoice." };
-  const now = new Date();
-  const terms = (invoice.payment_terms ?? "due_on_receipt") as PaymentTerms;
-  const dueAt = approvalDueAt(terms, invoice.due_at, now);
-  const { data: updated, error } = await supabase.from("chillbros_invoices")
-    .update({ issued_at: now.toISOString(), due_at: dueAt, updated_at: now.toISOString() })
-    .eq("id", invoiceId).is("issued_at", null).is("revoked_at", null).select("id").maybeSingle();
-  if (error || !updated) return { ok: false, error: error?.message ?? "Quote changed. Refresh and try again." };
-  await supabase.from("chillbros_workflow_events").insert({
-    job_id: invoice.job_id, invoice_id: invoiceId, actor_id: guard.profile.id,
-    stage: "invoice_issued", message: "Quote converted to invoice by office/manager. Existing customer notes and line items were preserved."
-  });
-  refreshInvoicePaths(invoice.portal_token);
+  const { data, error } = await supabase.rpc("chillbros_owner_convert_quote", { p_quote_id: invoiceId, p_actor_id: guard.profile.id });
+  if (error || !data) return { ok: false, error: error?.message ?? "Conversion failed." };
+  refreshInvoicePaths();
+  return { ok: true, data: { invoiceId: String(data) } };
+}
+
+export async function overrideQuoteToEstimateAction(invoiceId: string): Promise<Result> {
+  const guard = await requireManager();
+  if (!guard.ok) return guard;
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase.rpc("chillbros_owner_quote_to_estimate", { p_quote_id: invoiceId, p_actor_id: guard.profile.id });
+  if (error || !data) return { ok: false, error: error?.message ?? "Override failed." };
+  const { data: document } = await supabase.from("chillbros_invoices").select("portal_token,job_id").eq("id", invoiceId).maybeSingle();
+  refreshInvoicePaths(document?.portal_token);
+  if (document?.job_id) revalidatePath(`/jobs/${document.job_id}`);
   return { ok: true, data: undefined };
 }

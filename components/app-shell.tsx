@@ -5,6 +5,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { FormDraftProtector } from "@/components/form-draft-protector";
 import { LiveOfficeRefresh } from "@/components/live-office-refresh";
 import { StaffHeader, StaffSidebar, StaffTabBar, type StaffShellUser } from "@/components/staff-shell-nav";
+import { ChillAssistant } from "@/components/chill-assistant";
 
 type AppShellProps = {
   children: ReactNode;
@@ -57,7 +58,7 @@ export async function AppShell({ children, title, description, highlight, lead, 
   return (
     <div className="cb-staff cb-camo-page min-h-dvh">
       {profile ? <LiveOfficeRefresh intervalMs={10000} /> : null}
-      <a href="#main-content" className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-xl bg-[#1557B0] px-4 py-2 text-sm font-semibold text-white transition focus:translate-y-0">
+      <a href="#main-content" className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-xl bg-[#1B3FD0] px-4 py-2 text-sm font-semibold text-white transition focus:translate-y-0">
         Skip to content
       </a>
 
@@ -90,6 +91,7 @@ export async function AppShell({ children, title, description, highlight, lead, 
       </div>
 
       {user ? <StaffTabBar role={user.role} /> : null}
+      {user ? <ChillAssistant firstName={user.firstName} /> : null}
     </div>
   );
 }

@@ -15,7 +15,7 @@ export async function getOperationsReport(): Promise<OperationsReport> {
   const supabase = createServiceRoleClient();
   const [{ data: jobs }, { data: invoices }, { data: lineItems }, { data: adjustments }, { data: timesheets }, { data: parts }] = await Promise.all([
     supabase.from("chillbros_jobs").select("id,status"),
-    supabase.from("chillbros_invoices").select("id,invoice_number,status,payment_status,discount_amount,tax_amount,revoked_at,customer:chillbros_customers(name)").is("revoked_at", null).order("updated_at", { ascending: false }),
+    supabase.from("chillbros_invoices").select("id,invoice_number,status,payment_status,discount_amount,tax_amount,revoked_at,customer:chillbros_customers(name)").is("converted_invoice_id", null).is("revoked_at", null).order("updated_at", { ascending: false }),
     supabase.from("chillbros_invoice_line_items").select("invoice_id,amount"),
     supabase.from("chillbros_invoice_adjustments").select("invoice_id,adjustment_type,amount"),
     supabase.from("chillbros_timesheets").select("id,labor_hours,drive_hours"),
