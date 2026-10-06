@@ -12,9 +12,56 @@ function navRoles(href) {
   return m ? m[1].replace(/"/g, '').split(',').map((s) => s.trim()) : null;
 }
 
-test('techs get Tech Assist and Training in their menu', () => {
-  assert.deepEqual(navRoles('/tech-assist'), ['technician']);
+test('techs get Training in their menu; Tech Assist opens from each job', () => {
   assert.deepEqual(navRoles('/training'), ['technician']);
+  assert.equal(navRoles('/tech-assist'), null);
+  assert.match(read('app/technician/page.tsx'), /href=\{`\/tech-assist\/\$\{job\.id\}`\}/);
+});
+
+function loadNav() {
+  const ts = require('typescript');
+  const out = ts.transpileModule(nav, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const mod = { exports: {} };
+  new Function('require', 'module', 'exports', out)((id) => (id === 'lucide-react' ? new Proxy({}, { get: () => () => null }) : require(id)), mod, mod.exports);
+  return mod.exports;
+}
+
+test('every role gets the simple flow: few tabs, short More list', () => {
+  const n = loadNav();
+  const labels = (role) => n.getPrimaryTabs(role).map((t) => t.label);
+  assert.deepEqual(labels('manager'), ['Home', 'Work', 'Schedule', 'Billing']);
+  assert.deepEqual(labels('office'), ['Home', 'Work', 'Schedule', 'Billing']);
+  assert.deepEqual(labels('technician'), ['My Jobs', 'Notes', 'Clock']);
+  const more = (role) => n.navItems.filter((i) => i.roles.includes(role) && !n.getPrimaryTabs(role).some((t) => t.href === i.href)).map((i) => i.label);
+  assert.deepEqual(more('manager'), ['Customers', 'Sales', 'Parts Pro']);
+  assert.deepEqual(more('office'), ['Customers', 'Sales', 'Parts Pro']);
+  assert.deepEqual(more('technician'), ['Parts Pro', 'Training', 'Send a Lead']);
+});
+
+test('merged menu entries switch between their pages with section tabs', () => {
+  const n = loadNav();
+  const at = (path, role = 'manager') => { const s = n.sectionTabsFor(path, role); return s && [s.tabs.map((t) => t.label), s.activeHref]; };
+  assert.deepEqual(at('/dispatch'), [['Board', 'Calendar'], '/dispatch']);
+  assert.deepEqual(at('/schedule'), [['Board', 'Calendar'], '/schedule']);
+  assert.deepEqual(at('/payments'), [['Quotes & Invoices', 'Payments'], '/payments']);
+  assert.deepEqual(at('/invoices/new', 'office'), [['Quotes & Invoices', 'Payments'], '/invoices']);
+  assert.deepEqual(at('/revenue-radar/tasks'), [['Leads', 'Service Plans', 'Sales Tasks'], '/revenue-radar/tasks']);
+  assert.deepEqual(at('/revenue-radar/abc-123'), [['Leads', 'Service Plans', 'Sales Tasks'], '/revenue-radar']);
+  assert.equal(n.sectionTabsFor('/revenue-radar/handoffs', 'technician'), null);
+  assert.equal(n.sectionTabsFor('/dispatch', 'technician'), null);
+  assert.equal(n.sectionTabsFor('/customers', 'manager'), null);
+  // Every page behind a tab still exists.
+  for (const group of n.SECTION_TABS) for (const tab of group) assert.ok(fs.existsSync(`app${tab.href}/page.tsx`), tab.href);
+  assert.ok(n.isNavItemActive('/payments', '/invoices'));
+  assert.ok(n.isNavItemActive('/schedule', '/dispatch'));
+  assert.ok(n.isNavItemActive('/agreements', '/revenue-radar'));
+  assert.ok(!n.isNavItemActive('/revenue-radar/handoffs', '/revenue-radar'));
+});
+
+test('owner sees tech field notes waiting on Work', () => {
+  const work = read('app/work/page.tsx');
+  assert.match(work, /profile\.role === "manager" \? getFieldNoteInboxCounts\(\)/);
+  assert.match(work, /href="\/owner\/field-notes"/);
 });
 
 test('every owner add-on tool is reachable from Owner Access', () => {
