@@ -103,6 +103,22 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   useEffect(() => { for (const p of POSES) { const img = new Image(); img.src = src(p); } }, []);
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }); }, [messages, busy]);
 
+  // Answer audio plays as a short queue of parts: the first sentence starts while the rest is still being voiced.
+  const queueRef = useRef<Promise<string | null>[]>([]);
+  const speakRunRef = useRef(0);
+  const playNext = useCallback(async function playNextPart(): Promise<void> {
+    const run = speakRunRef.current;
+    const next = queueRef.current.shift();
+    if (!next) { setPose((p) => (p === "talking" ? "idle" : p)); return; }
+    const url = await next;
+    if (run !== speakRunRef.current) return;
+    if (!url) { await playNextPart(); return; }
+    const audio = audioRef.current!;
+    if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
+    audio.src = url;
+    try { await audio.play(); } catch { setPose("idle"); setError("Your phone blocked the voice. Tap the speaker button, or read the answer above."); }
+  }, []);
+
   const unlockAudio = useCallback(() => {
     if (!audioRef.current) {
       const audio = new Audio();
@@ -110,31 +126,13 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
       const isVoice = () => audio.src.startsWith("blob:");
       audio.addEventListener("play", () => { if (isVoice()) setPose("talking"); });
       // When one part of the answer finishes, the next part plays straight away (no idle flicker).
-      audio.addEventListener("ended", () => { if (isVoice()) void playNextRef.current(); });
+      audio.addEventListener("ended", () => { if (isVoice()) void playNext(); });
       audioRef.current = audio;
       audio.src = SILENT_AUDIO;
       void audio.play().catch(() => undefined);
     }
-  }, []);
+  }, [playNext]);
 
-  // Answer audio plays as a short queue of parts: the first sentence starts while the rest is still being voiced.
-  const queueRef = useRef<Promise<string | null>[]>([]);
-  const speakRunRef = useRef(0);
-  const playNextRef = useRef<() => Promise<void>>(async () => undefined);
-  const playNext = useCallback(async function next(): Promise<void> {
-    const run = speakRunRef.current;
-    const next = queueRef.current.shift();
-    if (!next) { setPose((p) => (p === "talking" ? "idle" : p)); return; }
-    const url = await next;
-    if (run !== speakRunRef.current) return;
-    if (!url) { await next(); return; }
-    const audio = audioRef.current!;
-    if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
-    audio.src = url;
-    try { await audio.play(); } catch { setPose("idle"); setError("Your phone blocked the voice. Tap the speaker button, or read the answer above."); }
-  }, []);
-  // The audio element's "ended" listener (set up once) calls the current playNext through this ref.
-  useEffect(() => { playNextRef.current = playNext; }, [playNext]);
 
   const stopSpeaking = useCallback(() => {
     speakRunRef.current += 1;
@@ -159,11 +157,11 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     // Voice all parts at the same time; play them in order.
     queueRef.current = splitForSpeech(answer).map(fetchClip);
     const first = queueRef.current[0];
-    await playNextRef.current();
+    await playNext();
     if (run === speakRunRef.current && first && !(await first)) {
       setError("Chilly Bro's voice is unavailable right now. The answer is shown above.");
     }
-  }, [voiceOn, unlockAudio]);
+  }, [voiceOn, unlockAudio, playNext]);
 
   // Shows the answer, reacts to its mood, and speaks it.
   const deliver = useCallback(async (q: string, history: Message[], answer: string, links?: Link[]) => {
