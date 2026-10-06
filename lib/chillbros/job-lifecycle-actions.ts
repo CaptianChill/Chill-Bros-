@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { JOB_ACTIVE_STATUSES } from "./types";
 
+import { routeApprovedJob } from "@/lib/chillbros/approved-job-routing";
 import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { captureCompletedJobKnowledge } from "@/lib/chillbros/knowledge-cases";
@@ -78,13 +79,7 @@ export async function approveEstimateLifecycleAction(token: string, signatureNam
     .maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "Approval could not be recorded." };
 
-  if (invoice.job_id) {
-    await supabase
-      .from("chillbros_jobs")
-      .update({ status: "scheduled", scheduled_window: "Approved · needs scheduling", updated_at: now })
-      .eq("id", invoice.job_id)
-      .eq("status", "completed");
-  }
+  if (invoice.job_id) await routeApprovedJob(supabase, invoice.job_id, now);
 
   await supabase.from("chillbros_workflow_events").insert({
     job_id: invoice.job_id,
