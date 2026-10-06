@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertCircle, BellRing, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, CreditCard, PackageCheck, Plus, X } from "lucide-react";
+import { AlertCircle, BellRing, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, CreditCard, Package, PackageCheck, Plus, X } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { EN_ROUTE_STATUSES, JobStatusChip, ON_SITE_STATUSES } from "@/components/job-status-chip";
@@ -159,13 +159,22 @@ export default async function HomePage() {
           )}
         </section>
 
-        <Link
-          href="/jobs/new"
-          className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition [text-shadow:none] hover:bg-[#1530A8]"
-        >
-          <Plus className="h-5 w-5" aria-hidden="true" />
-          New service call
-        </Link>
+        <div className="grid grid-cols-2 gap-2.5">
+          <Link
+            href="/jobs/new"
+            className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] px-2 text-center text-base font-semibold leading-tight text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition [text-shadow:none] hover:bg-[#1530A8]"
+          >
+            <Plus className="h-5 w-5 shrink-0" aria-hidden="true" />
+            New service call
+          </Link>
+          <Link
+            href="/agreements"
+            className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] px-2 text-center text-base font-semibold leading-tight text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition [text-shadow:none] hover:bg-[#1530A8]"
+          >
+            <Package className="h-5 w-5 shrink-0" aria-hidden="true" />
+            Package deal
+          </Link>
+        </div>
         <div className="grid grid-cols-2 gap-2.5">
           <Link href="/invoices/new?type=quote" className="flex min-h-[50px] items-center justify-center rounded-xl border-2 border-[#1B3FD0] bg-[#F8FAFD] px-3 text-center text-sm font-bold text-[#1B3FD0] transition hover:bg-[#EAF2FC]">
             + New quote
