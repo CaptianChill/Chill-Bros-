@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createEstimateV2Action, type EstimateAdjustments, type EstimateDraftLine } from "@/lib/chillbros/estimate-actions-v2";
+import { routeApprovedJob } from "@/lib/chillbros/approved-job-routing";
 import { addJobPartAtomicAction } from "@/lib/chillbros/job-parts";
 
 import { createPartAction, updatePartAction } from "@/lib/chillbros/operations";
@@ -35,6 +36,8 @@ export async function approveQuoteVerballyAction(jobId: string, lines: EstimateD
     .select("id")
     .maybeSingle();
   if (approvalError || !approved) return { ok: false, error: `Quote saved, but verbal approval could not be recorded: ${approvalError?.message ?? "Approval update failed."}` };
+  // Same as a signed approval: sold work goes to Unassigned unless the tech is still on site.
+  await routeApprovedJob(supabase, jobId, now);
   await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: created.data.estimateId, actor_id: profile.id, stage: "approved_needs_action", message: `Customer approved quote verbally. Recorded by ${profile.fullName}. Work is sold; proceed with work and issue the invoice when complete.` });
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath("/invoices");
