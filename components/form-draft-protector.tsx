@@ -107,7 +107,7 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
   useEffect(() => {
     const currentUrl = new URL(window.location.href);
     const pendingSubmitKey = `chillbros-submitted-draft:${profileId}`;
-    if (currentUrl.searchParams.has("success")) {
+    if (currentUrl.searchParams.has("success") || currentUrl.searchParams.has("created")) {
       const submittedDraftId = window.sessionStorage.getItem(pendingSubmitKey);
       if (submittedDraftId) {
         window.sessionStorage.removeItem(pendingSubmitKey);
@@ -138,9 +138,15 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
       let dirty = false;
       let submitting = false;
       const draftPrefix = form.dataset.draftKey || form.id || `form:${path}:${formIndex}`;
-      const draftId = requestedDraftId && (requestedDraftId === draftPrefix || requestedDraftId.startsWith(`${draftPrefix}:`))
-        ? requestedDraftId
-        : `${draftPrefix}:${crypto.randomUUID()}`;
+      // A failed save redirects back with ?error= and a blank form. Reopen the draft that was just submitted
+      // so nothing typed is lost, and keep autosaving into that same draft.
+      const justSubmittedId = !requestedDraftId && currentUrl.searchParams.has("error") ? window.sessionStorage.getItem(pendingSubmitKey) : null;
+      const recoveredDraft = justSubmittedId && justSubmittedId.startsWith(`${draftPrefix}:`) ? readFormDrafts(profileId).find((draft) => draft.id === justSubmittedId) ?? null : null;
+      const draftId = recoveredDraft
+        ? recoveredDraft.id
+        : requestedDraftId && (requestedDraftId === draftPrefix || requestedDraftId.startsWith(`${draftPrefix}:`))
+          ? requestedDraftId
+          : `${draftPrefix}:${crypto.randomUUID()}`;
 
       const draftIdInput = document.createElement("input");
       draftIdInput.type = "hidden";
@@ -261,6 +267,12 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
       form.addEventListener("submit", submit);
       window.addEventListener("pagehide", pagehide);
       window.addEventListener("chillbros-save", saveFromHeader);
+
+      if (recoveredDraft) {
+        window.setTimeout(() => {
+          if (!disposed) restore(form, recoveredDraft);
+        }, 0);
+      }
 
       if (requestedDraftId) {
         void requestedDraft.then((draft) => {
