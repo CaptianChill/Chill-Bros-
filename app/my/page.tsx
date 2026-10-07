@@ -39,6 +39,11 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
   const names = [...new Set(home.locations.map((l) => l.name.trim()))];
   const multi = names.length > 1;
   const accountName = multi ? `${names.length} locations` : primary?.name ?? session.email;
+  // Balance alert: everything the customer can pay right now, oldest due first.
+  const payable = home.due.filter((d) => d.action === "pay" || d.action === "down_payment").sort((a, b) => String(a.dueAt ?? "9999").localeCompare(String(b.dueAt ?? "9999")));
+  const balance = payable.reduce((sum, d) => sum + d.amount, 0);
+  const today = new Date().toISOString().slice(0, 10);
+  const overdue = payable.filter((d) => d.dueAt && d.dueAt.slice(0, 10) < today).length;
 
   return (
     <CustomerFrame accountName={accountName} right={<CustomerSignOutButton />}>
@@ -49,6 +54,17 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
         <p role="status" className="mt-4 rounded-xl border border-[#B7E3C8] bg-[#E6F6EC] px-4 py-3 text-sm font-semibold text-[#11663A]">
           Request received{query.requested !== "1" ? ` (${query.requested})` : ""}. We&apos;ll contact you to confirm a time.
         </p>
+      ) : null}
+
+      {payable.length ? (
+        <div role="alert" className={`mt-4 flex items-center justify-between gap-3 rounded-2xl border p-4 ${overdue ? "border-[#F2B8B5] bg-[#FDECEA]" : "border-[#F3D48B] bg-[#FFF8E8]"}`}>
+          <div className="min-w-0">
+            <p className={`text-sm font-bold uppercase tracking-[0.12em] ${overdue ? "text-[#8C1D18]" : "text-[#7A4A00]"}`}>{overdue ? "Past due" : "Balance due"}</p>
+            <p className="text-2xl font-extrabold text-[#0B1220]">{money(balance)}</p>
+            <p className="text-sm text-[#3D5170]">{payable.length === 1 ? `${payable[0].kind} ${payable[0].number}` : `${payable.length} invoices`}{overdue ? ` · ${overdue} past due` : ""}</p>
+          </div>
+          <Link href={`/portal/${payable[0].token}`} className="inline-flex h-12 shrink-0 items-center rounded-xl bg-[#05070A] px-5 text-base font-bold text-white">{payable.length === 1 ? "Pay now" : "Pay oldest"}</Link>
+        </div>
       ) : null}
 
       <Link href="/my/request" className="mt-4 mb-5 flex h-[58px] w-full items-center justify-center gap-2 rounded-2xl bg-[#1F6FEB] text-lg font-bold text-white shadow-[0_4px_14px_rgba(31,111,235,0.35)] transition hover:bg-[#1a5fd0]">
