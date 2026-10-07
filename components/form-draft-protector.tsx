@@ -239,19 +239,22 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
         window.clearTimeout(timer);
         timer = window.setTimeout(() => { void flushRemote(); }, 1200);
       };
-      const submit = (event: SubmitEvent) => {
-        if (submitting || form.hasAttribute("data-no-draft")) return;
-        event.preventDefault();
+      // Never hold the Create/Save button back for draft syncing. The draft is saved on this device first,
+      // sent to the server in the background, and the form submits immediately.
+      const submit = () => {
+        if (form.hasAttribute("data-no-draft")) return;
         submitting = true;
         dirty = true;
         window.clearTimeout(timer);
         const { draft } = snapshot();
         window.sessionStorage.setItem(pendingSubmitKey, draft.id);
-        const submitter = event.submitter instanceof HTMLElement ? event.submitter : undefined;
-        void Promise.race([flushRemote(), new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), 2000))]).catch((error) => { console.error("Draft sync failed", error); }).finally(() => {
-          if (submitter) form.requestSubmit(submitter);
-          else form.requestSubmit();
-        });
+        if (remoteWritable) {
+          try {
+            navigator.sendBeacon("/api/form-drafts", new Blob([JSON.stringify(draft)], { type: "application/json" }));
+          } catch (error) {
+            console.error("Draft sync failed", error);
+          }
+        }
       };
       const pagehide = () => {
         if (!dirty || submitting) return;
