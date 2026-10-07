@@ -12,6 +12,7 @@ import { OwnerEstimateEditor } from "@/components/owner-estimate-editor";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { TechnicianJobEditor } from "@/components/technician-job-editor";
+import { getCustomerPartIds } from "@/lib/chillbros/customer-parts";
 import { getCustomerProfile } from "@/lib/chillbros/customer-profile";
 import { getEquipmentByCustomer } from "@/lib/chillbros/equipment-queries";
 import { getInvoiceV2ByJobId, invoiceTotals } from "@/lib/chillbros/invoice-v2";
@@ -64,9 +65,9 @@ export default async function TechnicianPage({ searchParams }: Props) {
   const selectedId = requestedId ?? managerOwnJob ?? fieldJobs[0]?.id;
   const job = selectedId ? await getJob(selectedId) : null;
 
-  const [invoice, feeSettings, partsCatalog, equipment, customerProfile] = job
-    ? await Promise.all([getInvoiceV2ByJobId(job.id), getFeeSettings(), getPartsCatalog(), getEquipmentByCustomer(job.customerId), getCustomerProfile(job.customerId).catch(() => null)])
-    : [null, [], [], [], null];
+  const [invoice, feeSettings, partsCatalog, equipment, customerProfile, customerParts] = job
+    ? await Promise.all([getInvoiceV2ByJobId(job.id), getFeeSettings(), getPartsCatalog(), getEquipmentByCustomer(job.customerId), getCustomerProfile(job.customerId).catch(() => null), getCustomerPartIds(job.customerId)])
+    : [null, [], [], [], null, {} as Record<string, string[]>];
   // Quick contact for the current call: phone from the customer record, directions to the job site (or the customer's address).
   const phoneDigits = (customerProfile?.customer.phone ?? "").replace(/[^\d+]/g, "");
   const callHref = phoneDigits.replace(/\D/g, "").length >= 7 ? `tel:${phoneDigits}` : null;
@@ -100,7 +101,7 @@ export default async function TechnicianPage({ searchParams }: Props) {
             <Link href={`/field-notes?job=${job.id}`} className={toolTile}><StickyNote className="h-5 w-5" aria-hidden="true" />Add note</Link>
             <Link href="/parts-lookup" className={toolTile}><Search className="h-5 w-5" aria-hidden="true" />Parts Pro</Link>
           </nav>
-          <TechnicianJobEditor job={job} partsCatalog={partsCatalog} />
+          <TechnicianJobEditor job={job} partsCatalog={partsCatalog} customerPartIds={customerParts[job.customerId]} />
         </SectionCard>
 
         <SectionCard eyebrow="Customer equipment" title={`${equipment.length} registered asset${equipment.length === 1 ? "" : "s"}`} description="Model, serial, refrigerant, and stored field notes stay beside the active service call.">

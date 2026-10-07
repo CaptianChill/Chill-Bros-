@@ -7,6 +7,7 @@ import { PackagePlus, Sparkles, Trash2 } from "lucide-react";
 
 import { addJobPartAtomicAction, removeJobPartAtomicAction } from "@/lib/chillbros/job-parts";
 import { addCustomJobPartAction } from "@/lib/chillbros/quote-actions";
+import { splitCustomerParts } from "@/lib/chillbros/customer-parts-rank";
 
 type JobPart = { id: string; name: string; partNumber: string; retailPrice: number; quantity: number };
 type CatalogPart = { id: string; name: string; partNumber: string; retailPrice: number; stock: number; trackInventory: boolean };
@@ -17,7 +18,7 @@ const money = (value: number) => value.toLocaleString("en-US", { style: "currenc
 // Parts on a job, using the existing atomic parts actions (inventory stock is
 // adjusted the same way as on the technician screen). "Bought part" is for a
 // part priced from an online or local supplier that isn't normally stocked.
-export function JobPartsCard({ jobId, parts, catalog, canEdit, canAddCustom = false, partsProHref }: { jobId: string; parts: JobPart[]; catalog: CatalogPart[]; canEdit: boolean; canAddCustom?: boolean; partsProHref?: string }) {
+export function JobPartsCard({ jobId, parts, catalog, canEdit, canAddCustom = false, partsProHref, customerPartIds, customerName }: { jobId: string; parts: JobPart[]; catalog: CatalogPart[]; canEdit: boolean; canAddCustom?: boolean; partsProHref?: string; customerPartIds?: string[]; customerName?: string }) {
   const router = useRouter();
   const searchId = useId();
   const partId = useId();
@@ -37,6 +38,9 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit, canAddCustom = fa
       .filter((part) => !term || `${part.name} ${part.partNumber}`.toLowerCase().includes(term))
       .slice(0, 150);
   }, [catalog, search]);
+  // This customer's usual parts first, so the tech doesn't have to hunt for tricky equipment.
+  const { mine, rest } = splitCustomerParts(available, customerPartIds);
+  const label = (part: CatalogPart) => `${part.name}${part.partNumber ? ` · ${part.partNumber}` : ""}${part.trackInventory ? ` · ${part.stock} in stock` : ""}`;
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) => {
     setError(null);
@@ -139,13 +143,16 @@ export function JobPartsCard({ jobId, parts, catalog, canEdit, canAddCustom = fa
           </label>
           <select id={partId} value={selected} onChange={(event) => setSelected(event.target.value)} className="min-h-11 w-full rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 font-medium text-[#0A1A33]">
             <option value="">{available.length ? "Choose a part" : "No parts match"}</option>
-            {available.map((part) => (
-              <option key={part.id} value={part.id}>
-                {part.name}
-                {part.partNumber ? ` · ${part.partNumber}` : ""}
-                {part.trackInventory ? ` · ${part.stock} in stock` : ""}
-              </option>
-            ))}
+            {mine.length ? (
+              <optgroup label={`Used on ${customerName ?? "this customer"}'s equipment before`}>
+                {mine.map((part) => <option key={part.id} value={part.id}>{label(part)}</option>)}
+              </optgroup>
+            ) : null}
+            {mine.length ? (
+              <optgroup label="All other parts">
+                {rest.map((part) => <option key={part.id} value={part.id}>{label(part)}</option>)}
+              </optgroup>
+            ) : rest.map((part) => <option key={part.id} value={part.id}>{label(part)}</option>)}
           </select>
           <div className="flex gap-2">
             <label htmlFor={qtyId} className="sr-only">

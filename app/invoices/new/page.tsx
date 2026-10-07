@@ -2,7 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { CustomerEquipmentSelect } from "@/components/customer-equipment-select";
 import { CustomerFields } from "@/components/customer-fields";
+import { OpenFormDrafts } from "@/components/open-form-drafts";
+import { getCustomerPartIds } from "@/lib/chillbros/customer-parts";
 import { TextareaWithAI } from "@/components/textarea-with-ai";
 import { getCustomers, getFeeSettings, getPartsCatalog, getPriceBookEntries } from "@/lib/chillbros/queries";
 import { getEquipment } from "@/lib/chillbros/equipment-queries";
@@ -24,7 +27,8 @@ export default async function NewInvoicePage({ searchParams }: Props) {
   const params = await searchParams;
   const documentType = params.type === "quote" ? "quote" : "invoice";
   const isQuote = documentType === "quote";
-  const [customers, parts, fees, priceBook, equipment] = await Promise.all([getCustomers(), getPartsCatalog(), getFeeSettings(), getPriceBookEntries(), getEquipment(1000)]);
+  const [customers, parts, fees, priceBook, equipment, customerParts] = await Promise.all([getCustomers(), getPartsCatalog(), getFeeSettings(), getPriceBookEntries(), getEquipment(1000), getCustomerPartIds()]);
+  const units = equipment.map((unit) => ({ id: unit.id, customerId: unit.customerId, label: `${[unit.manufacturer, unit.model].filter(Boolean).join(" ") || unit.equipmentType}${unit.serialNumber ? ` · S/N ${unit.serialNumber}` : ""}` }));
   const selectedCustomerId = customers.some((customer) => customer.id === params.customer) ? String(params.customer) : "";
 
   return <AppShell title={isQuote ? "New Quote" : "New Invoice"} description="Create billing documents immediately. No open job or scheduled service call is required.">
@@ -45,6 +49,8 @@ export default async function NewInvoicePage({ searchParams }: Props) {
         {params.token ? <div className="mt-3 flex flex-wrap gap-2"><Link target="_blank" href={`/portal/${params.token}/document`} className="rounded-xl border border-emerald-400/30 px-3 py-2">Open / Print</Link><Link target="_blank" href={`/portal/${params.token}`} className="rounded-xl border border-emerald-400/30 px-3 py-2">Customer view</Link></div> : null}
       </div> : null}
 
+      <details className="rounded-2xl border border-amber-400/25 bg-amber-500/[0.04] p-4"><summary className="cursor-pointer text-sm font-semibold text-amber-100">Unfinished quotes &amp; invoices (saved drafts, not created yet)</summary><div className="mt-3"><OpenFormDrafts profileId={profile.id} paths={["/invoices/new"]} /></div></details>
+
       <form action={createDirectInvoiceAction} className="space-y-5" data-draft-key={`billing:${documentType}:${selectedCustomerId || "new"}`} data-draft-label={isQuote ? "New quote" : "New invoice"}>
         <input type="hidden" name="documentType" value={documentType} />
         <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4 sm:p-5">
@@ -56,16 +62,16 @@ export default async function NewInvoicePage({ searchParams }: Props) {
               <label className={label}>Service location<input name="jobLocation" placeholder="Optional" className={`${input} mt-1`} /></label>
               <label className={label}>Description<input name="jobDescription" placeholder={isQuote ? "Quoted work / scope" : "Service performed / invoice description"} className={`${input} mt-1`} /></label>
             </div>
-            <label className={label}>Equipment being serviced<select name="equipmentId" className={`${input} mt-1`}><option value="">Choose saved equipment (optional)</option>{equipment.map((unit) => <option key={unit.id} value={unit.id}>{unit.customerName} · {[unit.manufacturer, unit.model].filter(Boolean).join(" ") || unit.equipmentType}{unit.serialNumber ? ` · S/N ${unit.serialNumber}` : ""}</option>)}</select></label>
+            <label className={label}>Equipment being serviced<CustomerEquipmentSelect units={units} initialCustomerId={selectedCustomerId} className={`${input} mt-1`} /></label>
             <details className="rounded-xl border border-[#2d7dff]/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-[#d9fbff]">+ Add new equipment information</summary><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className={label}>Equipment type<input name="equipmentType" placeholder="RTU, walk-in freezer, ice machine..." className={`${input} mt-1`} /></label><label className={label}>Manufacturer<input name="equipmentManufacturer" className={`${input} mt-1`} /></label><label className={label}>Model<input name="equipmentModel" className={`${input} mt-1`} /></label><label className={label}>Serial number<input name="equipmentSerial" className={`${input} mt-1`} /></label><label className={label}>Refrigerant<input name="equipmentRefrigerant" className={`${input} mt-1`} /></label></div></details>
-            <label className={label}>Job notes<TextareaWithAI name="workPerformed" rows={3} placeholder="Technician/job notes for this service record. Customers can see these in equipment service history." className={`${input} mt-1 resize-y`} /></label>
+            <label className={label}>Job notes<TextareaWithAI name="workPerformed" rows={7} placeholder="Technician/job notes for this service record. Customers can see these in equipment service history." className={`${input} mt-1 resize-y`} /></label>
           </div>
         </section>
 
         <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4 sm:p-5">
           <h2 className="text-xl font-semibold text-white">2. Labor, Parts & Charges</h2>
           <p className="mt-1 text-sm text-zinc-400">Use the same item workflow for quotes and invoices. Choose an inventory part, service fee, price-book item, or enter a manual labor/part line.</p>
-          <LineItemsEditor parts={parts} fees={fees} priceBook={priceBook} />
+          <LineItemsEditor parts={parts} fees={fees} priceBook={priceBook} customerParts={customerParts} initialCustomerId={selectedCustomerId} />
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className={label}>Discount $<input name="discount" type="number" min="0" step="0.01" defaultValue="0" className={`${input} mt-1`} /></label>
             <label className={label}>Sales tax %<input name="taxRate" type="number" min="0" max="25" step="0.001" defaultValue="8.25" className={`${input} mt-1`} /></label>

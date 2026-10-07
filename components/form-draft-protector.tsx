@@ -107,7 +107,8 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
   useEffect(() => {
     const currentUrl = new URL(window.location.href);
     const pendingSubmitKey = `chillbros-submitted-draft:${profileId}`;
-    if (currentUrl.searchParams.has("success")) {
+    // Billing redirects with created=1 after a real quote/invoice is made, so clear its draft then too.
+    if (currentUrl.searchParams.has("success") || currentUrl.searchParams.has("created")) {
       const submittedDraftId = window.sessionStorage.getItem(pendingSubmitKey);
       if (submittedDraftId) {
         window.sessionStorage.removeItem(pendingSubmitKey);
@@ -189,10 +190,10 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
         if (explicit && saveButton) saveButton.textContent = "Saving…";
         const savedToNeon = await flushRemote();
         if (explicit && saveButton && !disposed) {
-          saveButton.textContent = savedToNeon ? "Saved ✓" : savedLocally ? "Saved on device" : "Draft save failed";
+          saveButton.textContent = savedToNeon ? "Draft saved, not created yet" : savedLocally ? "Draft saved on device" : "Draft save failed";
           window.setTimeout(() => {
             if (!disposed) saveButton.textContent = "Save Draft";
-          }, 1800);
+          }, 3000);
         }
       };
 
@@ -203,7 +204,7 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
 
       const note = document.createElement("span");
       note.className = "mr-auto text-[11px] text-zinc-500";
-      note.textContent = "Changes autosave to Neon, with an offline copy on this device.";
+      note.textContent = "Save Draft only keeps your typing. It does not create or send anything. Use the main button at the bottom to finish.";
 
       const backButton = document.createElement("button");
       backButton.type = "button";

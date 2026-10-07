@@ -17,7 +17,13 @@ function text(fd: FormData, key: string) { return String(fd.get(key) ?? "").trim
 function money(fd: FormData, key: string) { const n = Number(text(fd, key) || 0); return Number.isFinite(n) ? n : 0; }
 function documentNumber(type: DocumentType) { return simpleDocumentNumber(type); }
 function dueAt(terms: string, custom: string) { if (terms === "custom" && custom) { const d = new Date(`${custom}T23:59:59`); return Number.isNaN(d.getTime()) ? null : d.toISOString(); } const days = terms === "net_7" ? 7 : terms === "net_15" ? 15 : terms === "net_30" ? 30 : 0; const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString(); }
-function fail(message: string, type: DocumentType): never { redirect(`/invoices/new?type=${type}&error=${encodeURIComponent(message)}&t=${Date.now()}`); }
+// On any error, come back to the same form with everything that was typed restored
+// from its autosaved draft (the draft id carries the form's customer key), instead of a blank page.
+function failWith(message: string, type: DocumentType, draftId: string): never {
+  const draft = /^billing:(quote|invoice):([^:]+):[0-9a-f-]{36}$/i.exec(draftId);
+  const keep = draft ? `&draft=${encodeURIComponent(draftId)}${draft[2] !== "new" ? `&customer=${encodeURIComponent(draft[2])}` : ""}` : "";
+  redirect(`/invoices/new?type=${type}${keep}&error=${encodeURIComponent(message)}&t=${Date.now()}`);
+}
 function norm(value: string | null | undefined) { return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " "); }
 function phoneKey(value: string | null | undefined) { return String(value ?? "").replace(/\D/g, ""); }
 
@@ -25,6 +31,8 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/sign-in");
   const type: DocumentType = text(formData, "documentType") === "quote" ? "quote" : "invoice";
+  const draftId = text(formData, "draftId");
+  const fail: (message: string, type: DocumentType) => never = (message, documentType) => failWith(message, documentType, draftId);
   const supabase = createServiceRoleClient();
   let customerId = text(formData, "customerId");
   if (!customerId) {
@@ -45,7 +53,8 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const catalog = new Map((catalogRows ?? []).map((row) => [String(row.id), row]));
   const priceBook = new Map((catalogRows ?? []).filter((row) => String(row.part_number ?? "").startsWith("PB-")).map((row) => [String(row.part_number), row]));
   const fees = new Map((feeRows ?? []).map((row) => [String(row.id), row]));
-  const lines: DirectLine[] = Array.from({ length: 8 }, (_, i) => {
+  // Must match MAX_LINE_ITEMS in line-items-editor.tsx, or lines past this count are silently dropped.
+  const lines: DirectLine[] = Array.from({ length: 20 }, (_, i) => {
     const preset = text(formData, `itemPreset${i}`); let presetLabel = ""; let presetDescription = ""; let presetPrice: number | null = null; let inventoryPartId: string | null = null;
     if (preset.startsWith("part:")) { const row = catalog.get(preset.slice(5)); if (row) { presetLabel = row.name; presetDescription = row.part_number || "Inventory part"; presetPrice = Number(row.retail_price ?? 0); if (row.track_inventory) inventoryPartId = String(row.id); } }
     else if (preset.startsWith("fee:")) { const row = fees.get(preset.slice(4)); if (row) { presetLabel = row.label; presetDescription = "Service fee"; presetPrice = Number(row.amount ?? 0); } }

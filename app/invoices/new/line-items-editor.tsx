@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+
+import { useFormCustomer } from "@/components/use-form-customer";
+import { splitCustomerParts } from "@/lib/chillbros/customer-parts-rank";
 
 const input = "min-h-12 w-full rounded-xl border border-[#2d7dff]/25 bg-black px-3 py-2.5 text-white placeholder:text-zinc-600";
 const label = "text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400";
@@ -32,13 +35,20 @@ type Props = {
   parts: PartOption[];
   fees: FeeOption[];
   priceBook: PriceBookOption[];
+  /** customerId -> part ids that customer's equipment used before, most-used first. */
+  customerParts?: Record<string, string[]>;
+  initialCustomerId?: string;
 };
 
 function usd(value: number) {
   return Number(value || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
-export function LineItemsEditor({ parts, fees, priceBook }: Props) {
+export function LineItemsEditor({ parts, fees, priceBook, customerParts = {}, initialCustomerId = "" }: Props) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const customerId = useFormCustomer(rootRef, initialCustomerId);
+  const { mine, rest } = splitCustomerParts(parts, customerId ? customerParts[customerId] : undefined);
+  const partOption = (part: PartOption) => <option key={part.id} value={`part:${part.id}`}>{part.name}{part.partNumber ? ` · ${part.partNumber}` : ""}{part.trackInventory ? ` · ${part.stock} in stock` : ""} · {usd(part.retailPrice)}</option>;
   const [rowIds, setRowIds] = useState<number[]>([0]);
   const [nextId, setNextId] = useState(1);
   const [previewSubtotal, setPreviewSubtotal] = useState(0);
@@ -65,7 +75,7 @@ export function LineItemsEditor({ parts, fees, priceBook }: Props) {
     setRowIds((current) => current.length > 1 ? current.filter((rowId) => rowId !== id) : current);
   }
 
-  return <div className="mt-4 space-y-3" onInput={(e) => recalc(e.currentTarget)} onChange={(e) => recalc(e.currentTarget)}>
+  return <div ref={rootRef} className="mt-4 space-y-3" onInput={(e) => recalc(e.currentTarget)} onChange={(e) => recalc(e.currentTarget)}>
     {rowIds.map((rowId, i) => <div key={rowId} className="rounded-2xl border border-[#2d7dff]/15 bg-zinc-950/65 p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Labor / Part / Charge {i + 1}</div>
@@ -73,7 +83,8 @@ export function LineItemsEditor({ parts, fees, priceBook }: Props) {
       </div>
       <label className={label}>Add from Parts / Price Book<select name={`itemPreset${i}`} defaultValue="" className={`${input} mt-1`}>
         <option value="">Manual labor / part / charge</option>
-        {parts.length ? <optgroup label="Inventory parts">{parts.map((part) => <option key={part.id} value={`part:${part.id}`}>{part.name}{part.partNumber ? ` · ${part.partNumber}` : ""}{part.trackInventory ? ` · ${part.stock} in stock` : ""} · {usd(part.retailPrice)}</option>)}</optgroup> : null}
+        {mine.length ? <optgroup label="Used on this customer's equipment before">{mine.map(partOption)}</optgroup> : null}
+        {rest.length ? <optgroup label={mine.length ? "All other inventory parts" : "Inventory parts"}>{rest.map(partOption)}</optgroup> : null}
         {fees.length ? <optgroup label="Service fees">{fees.map((fee) => <option key={fee.id} value={`fee:${fee.id}`}>{fee.label} · {usd(fee.amount)}</option>)}</optgroup> : null}
         {priceBook.length ? <optgroup label="Master price book">{priceBook.map((entry) => <option key={entry.code} value={`pb:${entry.code}`}>{entry.category} · {entry.title} · {usd(entry.currentValue)}</option>)}</optgroup> : null}
       </select></label>

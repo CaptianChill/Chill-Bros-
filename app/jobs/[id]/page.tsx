@@ -8,6 +8,7 @@ import { JobPartsCard } from "@/components/job-parts-card";
 import { MediaAccordion } from "@/components/media-accordion";
 import { WorkLocationTracker } from "@/components/work-location-tracker";
 import { getPartsCatalog } from "@/lib/chillbros/queries";
+import { getCustomerPartIds } from "@/lib/chillbros/customer-parts";
 import { SectionCard } from "@/components/section-card";
 import { getActiveTechnicians } from "@/lib/chillbros/operations-queries";
 import { getJobLifecycle } from "@/lib/chillbros/job-lifecycle-queries";
@@ -63,9 +64,10 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   if (profile.role === "technician" && lifecycle.job.assignedTechId !== profile.id) redirect("/technician");
 
   const canEditParts = profile.role === "manager" || (profile.role === "technician" && lifecycle.job.assignedTechId === profile.id);
-  const [technicians, partsCatalog] = await Promise.all([
+  const [technicians, partsCatalog, customerParts] = await Promise.all([
     profile.role === "technician" ? Promise.resolve([]) : getActiveTechnicians(),
     canEditParts ? getPartsCatalog() : Promise.resolve([]),
+    canEditParts ? getCustomerPartIds(lifecycle.job.customerId) : Promise.resolve({} as Record<string, string[]>),
   ]);
   const { job, invoice, events, stage, nextAction } = lifecycle;
   const totals = invoice ? invoiceTotals(invoice) : null;
@@ -230,7 +232,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
 
         <section className="cb-card p-3.5">
           <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 1</p><h2 className="text-xl font-bold text-[#0A1A33]">Parts & materials</h2><p className="mt-1 text-sm text-[#2B3F5C]">Add every part used or needed on this call here. These stay attached to the job for billing.</p></div>
-          <JobPartsCard jobId={job.id} parts={job.parts} catalog={partsCatalog} canEdit={canEditParts && active} canAddCustom={profile.role === "manager"} partsProHref={partsPro} />
+          <JobPartsCard jobId={job.id} parts={job.parts} catalog={partsCatalog} customerPartIds={customerParts[job.customerId]} customerName={job.customerName} canEdit={canEditParts && active} canAddCustom={profile.role === "manager"} partsProHref={partsPro} />
         </section>
 
         <section className="cb-card p-3.5">
