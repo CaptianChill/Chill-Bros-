@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, ChevronLeft, Ellipsis, LogOut, RefreshCw, Save, Wrench, X } from "lucide-react";
+import { Bell, ChevronLeft, Ellipsis, LogOut, Plus, RefreshCw, Save, Wrench, X } from "lucide-react";
 
 import { signOutAction } from "@/app/sign-in/actions";
 import { titleForPath } from "@/components/page-title";
@@ -55,6 +55,8 @@ export function StaffHeader({
   const isHome = useIsHome(user.role);
   const [menuOpen, setMenuOpen] = useState(false);
   const screenTitle = titleForPath(pathname) ?? title;
+  // Owner and office can start a blank invoice from any screen except the invoice form itself.
+  const showNewInvoice = user.role !== "technician" && !pathname.startsWith("/invoices/new");
 
   const goBack = () => {
     if (window.history.length > 1) router.back();
@@ -109,6 +111,16 @@ export function StaffHeader({
           </>
         )}
       </header>
+      {showNewInvoice ? (
+        <Link
+          href="/invoices/new?type=invoice"
+          aria-label="New invoice from blank"
+          className="fixed bottom-24 right-4 z-40 inline-flex h-12 items-center gap-2 rounded-full border border-[#1B3FD0] bg-[#1B3FD0] px-4 text-sm font-semibold text-white shadow-lg lg:bottom-6"
+        >
+          <Plus className="h-5 w-5" aria-hidden="true" />
+          New invoice
+        </Link>
+      ) : null}
       {menuOpen ? <MoreSheet user={user} items={moreItems} onClose={() => setMenuOpen(false)} /> : null}
     </>
   );
