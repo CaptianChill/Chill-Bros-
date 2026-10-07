@@ -62,10 +62,11 @@ function unique(values: Array<string | null | undefined>) { return [...new Set(v
 function dayKey(value: Date) { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(value); }
 function daysBetween(a: string, b: string) { return Math.max(0, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)); }
 
-export async function getInvoiceCenterData(): Promise<{ rows: InvoiceCenterRow[]; metrics: InvoiceCenterMetrics }> {
+export async function getInvoiceCenterData(): Promise<{ rows: InvoiceCenterRow[]; metrics: InvoiceCenterMetrics; loadError?: string }> {
   const supabase = createServiceRoleClient();
   const { data: invoices, error } = await supabase.from("chillbros_invoices").select("id,converted_invoice_id,invoice_number,portal_token,status,payment_status,customer_id,job_id,discount_amount,down_payment_amount,down_payment_status,tax_rate,tax_amount,issued_at,payment_terms,due_at,last_reminder_at,reminder_count,paid_at,created_at,updated_at").order("updated_at", { ascending: false }).limit(300);
-  if (error || !invoices?.length) return { rows: [], metrics: { outstandingValue: 0, dueToday: 0, overdueValue: 0, collectedThisMonth: 0, pendingApproval: 0, averageDaysToPay: 0 } };
+  if (error) console.error("[invoice-center] invoice list failed to load:", error.message);
+  if (error || !invoices?.length) return { loadError: error ? error.message : undefined, rows: [], metrics: { outstandingValue: 0, dueToday: 0, overdueValue: 0, collectedThisMonth: 0, pendingApproval: 0, averageDaysToPay: 0 } };
 
   const invoiceIds = invoices.map((row) => row.id);
   const customerIds = unique(invoices.map((row) => row.customer_id));

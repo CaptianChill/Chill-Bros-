@@ -29,8 +29,8 @@ function loadNav() {
 test('every role gets the simple flow: few tabs, short More list', () => {
   const n = loadNav();
   const labels = (role) => n.getPrimaryTabs(role).map((t) => t.label);
-  assert.deepEqual(labels('manager'), ['Home', 'Work', 'Schedule', 'Billing']);
-  assert.deepEqual(labels('office'), ['Home', 'Work', 'Schedule', 'Billing']);
+  assert.deepEqual(labels('manager'), ['Home', 'Work', 'Dispatch', 'Invoices']);
+  assert.deepEqual(labels('office'), ['Home', 'Work', 'Dispatch', 'Invoices']);
   assert.deepEqual(labels('technician'), ['My Jobs', 'Notes', 'Clock']);
   const more = (role) => n.navItems.filter((i) => i.roles.includes(role) && !n.getPrimaryTabs(role).some((t) => t.href === i.href)).map((i) => i.label);
   assert.deepEqual(more('manager'), ['Customers', 'Sales', 'Parts Pro']);
