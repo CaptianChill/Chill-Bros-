@@ -46,7 +46,7 @@ jobs:
         run: npm run lint
 
       - name: Field Notes workflow tests
-        run: node --test scripts/field-notes.test.cjs scripts/parts-research.test.cjs scripts/approved-job-routing.test.cjs scripts/revenue-ai.test.cjs scripts/revenue-discovery.test.cjs
+        run: node --test scripts/field-notes.test.cjs scripts/parts-research.test.cjs scripts/approved-job-routing.test.cjs scripts/revenue-ai.test.cjs scripts/revenue-discovery.test.cjs scripts/track-record.test.cjs
 
       - name: Production build
         run: npm run build

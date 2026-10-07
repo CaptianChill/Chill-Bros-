@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -23,7 +24,7 @@ export default async function ReportsPage() {
     ["Low stock", String(report.inventory.lowStock), `${report.inventory.parts} catalog parts`],
   ];
   return (
-    <AppShell title="See revenue, outstanding balances, jobs, technician time, and inventory value from live production data." description="This owner report is intentionally compact: the numbers needed to run the day without turning your service company into an accounting software museum." highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Owner report</p><StatusPill tone="emerald">{money.format(report.invoices.paidRevenue)} paid</StatusPill><StatusPill tone={report.invoices.outstanding > 0 ? "amber" : "emerald"}>{money.format(report.invoices.outstandingValue)} outstanding</StatusPill></div>}>
+    <AppShell title="See revenue, outstanding balances, jobs, technician time, and inventory value from live production data." description="This owner report is intentionally compact: the numbers needed to run the day without turning your service company into an accounting software museum." highlight={<div className="space-y-3"><p className="text-sm uppercase tracking-[0.3em] text-[#8ffafa]">Owner report</p><StatusPill tone="emerald">{money.format(report.invoices.paidRevenue)} paid</StatusPill><StatusPill tone={report.invoices.outstanding > 0 ? "amber" : "emerald"}>{money.format(report.invoices.outstandingValue)} outstanding</StatusPill><Link href="/reports/track-record" className="block rounded-xl border border-[#2d7dff]/40 bg-[#2d7dff]/15 px-4 py-3 text-center text-sm font-semibold text-white">Track Record: proof of income</Link></div>}>
       <div className="space-y-6">
         <SectionCard eyebrow="Business pulse" title="Core operating numbers" description="Live totals across work, collections, technician time, and stock."><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{metrics.map(([label, value, detail]) => <div key={label} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-4"><p className="text-sm text-zinc-400">{label}</p><p className="mt-2 text-3xl font-semibold text-white">{value}</p><p className="mt-2 text-sm text-[#bafcfc]">{detail}</p></div>)}</div></SectionCard>
         <div className="grid gap-6 xl:grid-cols-2">

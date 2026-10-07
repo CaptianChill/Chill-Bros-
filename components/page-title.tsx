@@ -27,6 +27,7 @@ const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/payments", "Payments"],
   [(p) => p === "/owner" || p.startsWith("/owner/"), "Owner Access"],
   [(p) => p === "/manager", "Manager Controls"],
+  [(p) => p === "/reports/track-record", "Track Record"],
   [(p) => p === "/reports", "Reports"],
   [(p) => p === "/payroll", "Payroll"],
   [(p) => p === "/inventory", "Parts & Price Book"],
