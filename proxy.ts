@@ -8,6 +8,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/reset-password",
   "/auth/callback",
   "/portal",
+  // Customer homepage: its own email-code sign-in (lib/chillbros/customer-account.ts), not Neon Auth.
+  "/my",
   "/agreement",
   "/_next",
   "/favicon.ico",
