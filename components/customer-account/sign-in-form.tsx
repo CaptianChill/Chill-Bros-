@@ -9,7 +9,7 @@ import { requestCustomerCodeAction, verifyCustomerCodeAction } from "@/lib/chill
 const input = "mt-1.5 w-full rounded-xl border border-[#B9CBE3] bg-white px-4 py-3.5 text-lg text-[#0B1220] outline-none placeholder:text-[#8A9AB3] focus:border-[#1F6FEB] focus:ring-2 focus:ring-[#1F6FEB]/25";
 const primary = "flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#1F6FEB] text-lg font-bold text-white shadow-[0_4px_14px_rgba(31,111,235,0.35)] transition hover:bg-[#1a5fd0] disabled:opacity-60";
 
-export function CustomerSignInForm({ initialEmail = "" }: { initialEmail?: string }) {
+export function CustomerSignInForm({ initialEmail = "", link = null }: { initialEmail?: string; link?: { kind: string; token: string } | null }) {
   const router = useRouter();
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState(initialEmail);
@@ -39,7 +39,7 @@ export function CustomerSignInForm({ initialEmail = "" }: { initialEmail?: strin
     inFlight.current = true;
     setError(null);
     startTransition(async () => {
-      const result = await verifyCustomerCodeAction(email, value).finally(() => { inFlight.current = false; });
+      const result = await verifyCustomerCodeAction(email, value, link).finally(() => { inFlight.current = false; });
       if (!result.ok) { setError(result.error); return; }
       router.replace(result.data.needsProfile ? "/my/welcome" : "/my");
       router.refresh();
@@ -55,7 +55,7 @@ export function CustomerSignInForm({ initialEmail = "" }: { initialEmail?: strin
         </label>
         {error ? <p role="alert" className="text-sm font-semibold text-[#B42318]">{error}</p> : null}
         <button type="submit" disabled={pending} className={primary}><Mail className="h-5 w-5" aria-hidden="true" />{pending ? "Sending…" : "Email me a code"}</button>
-        <p className="text-center text-sm text-[#3D5170]">No password needed. Use the email we have on file for your business to see your history.</p>
+        <p className="text-center text-sm text-[#3D5170]">{link ? "No password needed. Use any email you check — we'll send a 6-digit code to confirm it." : "No password needed. Use the email we have on file for your business to see your history."}</p>
       </form>
     );
   }

@@ -23,13 +23,13 @@ export const BRAND = {
  * Chill Pros ice logo and an electric-blue edge, frosted page, black footer.
  * Staff screens keep their own look; this is only for customers.
  */
-export function PortalFrame({ children, eyebrow }: { children: ReactNode; eyebrow?: string }) {
+export function PortalFrame({ children, eyebrow, accountHref = "/my" }: { children: ReactNode; eyebrow?: string; accountHref?: string }) {
   return (
     <div className="cb-portal flex min-h-dvh flex-col bg-[#EEF4FB] text-[#0B1220]">
       <header className="relative overflow-hidden bg-[#05070A] text-white">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,rgba(156,203,255,0.22),transparent_60%)]" aria-hidden="true" />
         <div className="relative mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6 sm:py-3">
-          <a href="/my" className="flex items-center gap-3" aria-label="Your Chill Pros account">
+          <a href={accountHref} className="flex items-center gap-3" aria-label="Your Chill Pros account">
             <Image src="/brand/chill-pros-ice-logo.png" alt="Chill Pros" width={900} height={900} priority className="h-[72px] w-[72px] shrink-0 object-contain drop-shadow-[0_0_14px_rgba(31,111,235,0.45)] sm:h-24 sm:w-24" />
             <Image src="/brand/chill-pros-wordmark-clean.png" alt="" width={1267} height={226} priority className="hidden h-8 w-auto drop-shadow-[0_0_10px_rgba(31,111,235,0.55)] sm:block" />
           </a>
@@ -39,7 +39,7 @@ export function PortalFrame({ children, eyebrow }: { children: ReactNode; eyebro
               <Lock className="h-3.5 w-3.5 text-[#9CCBFF]" aria-hidden="true" />
               {eyebrow ?? "Secure customer portal"}
             </p>
-            <a href="/my" style={{ color: "#9CCBFF" }} className="mt-1 inline-block text-[12px] font-bold underline-offset-2 hover:underline sm:text-[13px]">Your account →</a>
+            <a href={accountHref} style={{ color: "#9CCBFF" }} className="mt-1 inline-block text-[12px] font-bold underline-offset-2 hover:underline sm:text-[13px]">Your account →</a>
           </div>
         </div>
         <div className="relative h-[3px] bg-gradient-to-r from-[#1F6FEB] via-[#9CCBFF] to-[#1F6FEB]" aria-hidden="true" />

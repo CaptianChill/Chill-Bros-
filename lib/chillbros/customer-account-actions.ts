@@ -7,8 +7,10 @@ import {
   createLoginCode,
   endCustomerSession,
   getCustomerSession,
+  linkFromTarget,
   linkNewCustomer,
   normalizeEmail,
+  resolveLinkTarget,
   startCustomerSession,
   upsertAccountAndLink,
   verifyLoginCode,
@@ -55,7 +57,7 @@ export async function requestCustomerCodeAction(rawEmail: string): Promise<Resul
 }
 
 /** Step 2: check the code, link existing records, start the session. */
-export async function verifyCustomerCodeAction(rawEmail: string, code: string): Promise<Result<{ needsProfile: boolean }>> {
+export async function verifyCustomerCodeAction(rawEmail: string, code: string, link?: { kind: string; token: string } | null): Promise<Result<{ needsProfile: boolean }>> {
   const email = normalizeEmail(rawEmail);
   if (!email) return { ok: false, error: "Enter a valid email address." };
   const check = await verifyLoginCode(email, String(code ?? ""));
@@ -63,7 +65,14 @@ export async function verifyCustomerCodeAction(rawEmail: string, code: string): 
   if (check === "expired") return { ok: false, error: "That code expired. Send a new one." };
   if (check === "locked") return { ok: false, error: "Too many tries. Send a new code." };
   try {
-    const { accountId, customerIds } = await upsertAccountAndLink(email);
+    const linked = await upsertAccountAndLink(email);
+    const { accountId } = linked;
+    let { customerIds } = linked;
+    const target = link ? await resolveLinkTarget(link.kind, link.token) : null;
+    if (target) {
+      await linkFromTarget(accountId, email, target);
+      if (!customerIds.includes(target.customerId)) customerIds = [...customerIds, target.customerId];
+    }
     await startCustomerSession(accountId);
     return { ok: true, data: { needsProfile: customerIds.length === 0 } };
   } catch {
@@ -170,6 +179,16 @@ export async function submitServiceRequestAction(input: ServiceRequestInput): Pr
 
   for (const path of ["/dispatch", "/office", "/", "/my"]) revalidatePath(path);
   return { ok: true, data: { jobNumber: job.job_number ?? null } };
+}
+
+/** Already signed in and opened a personal link: connect that record too. */
+export async function linkSignedInCustomerAction(link: { kind: string; token: string }): Promise<Result> {
+  const session = await getCustomerSession();
+  if (!session) return { ok: false, error: "Sign in again." };
+  const target = await resolveLinkTarget(link.kind, link.token);
+  if (!target) return { ok: false, error: "That link has expired. Ask Chill Pros for a new one." };
+  await linkFromTarget(session.accountId, session.email, target);
+  return { ok: true, data: undefined };
 }
 
 export async function customerSignOutAction(): Promise<Result> {

@@ -129,7 +129,7 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   ) : null;
 
   return (
-    <PortalFrame>
+    <PortalFrame accountHref={`/my/sign-in?invoice=${encodeURIComponent(token)}`}>
       <PortalView data={data} tab={tab} actions={actions} banner={banner} />
     </PortalFrame>
   );

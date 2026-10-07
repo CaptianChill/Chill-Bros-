@@ -176,6 +176,54 @@ export async function getCustomerSession(): Promise<CustomerSession | null> {
   return { accountId: data.account_id, email: account.email, customerIds: await linkedCustomerIds(data.account_id) };
 }
 
+export type LinkTarget = { kind: "invite" | "invoice"; customerId: string; customerName: string; inviteId: string | null };
+
+const plainSha256 = (value: string) => createHash("sha256").update(value).digest("hex");
+
+/**
+ * Resolves a personal link to the customer record it belongs to:
+ * - invite: a personal sign-up link the owner sent (chillbros_customer_invites)
+ * - invoice: the secret portal token from an estimate/invoice link the
+ *   customer already received (that page already shows their history)
+ */
+export async function resolveLinkTarget(kind: string | null | undefined, token: string | null | undefined): Promise<LinkTarget | null> {
+  const value = String(token ?? "").trim();
+  if (!value || value.length > 200) return null;
+  const s = createServiceRoleClient();
+  if (kind === "invite") {
+    if (!/^[A-Za-z0-9_-]{20,100}$/.test(value)) return null;
+    const { data } = await s.from("chillbros_customer_invites").select("id,customer_id,expires_at,revoked_at,customer:chillbros_customers(name)").eq("token_hash", plainSha256(value)).maybeSingle();
+    if (!data || data.revoked_at || new Date(data.expires_at).getTime() < Date.now()) return null;
+    const c = Array.isArray(data.customer) ? data.customer[0] : data.customer;
+    return { kind: "invite", customerId: data.customer_id, customerName: c?.name ?? "your business", inviteId: data.id };
+  }
+  if (kind === "invoice") {
+    if (!/^[0-9a-f-]{36}$/i.test(value)) return null;
+    const { data } = await s.from("chillbros_invoices").select("customer_id,customer:chillbros_customers(name)").eq("portal_token", value).is("revoked_at", null).neq("status", "void").maybeSingle();
+    if (!data) return null;
+    const c = Array.isArray(data.customer) ? data.customer[0] : data.customer;
+    return { kind: "invoice", customerId: data.customer_id, customerName: c?.name ?? "your business", inviteId: null };
+  }
+  return null;
+}
+
+/** Links the record behind a personal link to the account; saves the email on the record if it had none. */
+export async function linkFromTarget(accountId: string, email: string, target: LinkTarget) {
+  const s = createServiceRoleClient();
+  await s.from("chillbros_customer_account_links").upsert(
+    { account_id: accountId, customer_id: target.customerId, link_source: target.kind === "invite" ? "invite_link" : "invoice_link" },
+    { onConflict: "account_id,customer_id", ignoreDuplicates: true },
+  );
+  const { data: customer } = await s.from("chillbros_customers").select("email").eq("id", target.customerId).maybeSingle();
+  if (customer && !normalizeEmail(customer.email)) {
+    await s.from("chillbros_customers").update({ email }).eq("id", target.customerId);
+  }
+  if (target.inviteId) {
+    const { data: invite } = await s.from("chillbros_customer_invites").select("use_count").eq("id", target.inviteId).maybeSingle();
+    await s.from("chillbros_customer_invites").update({ last_used_at: new Date().toISOString(), use_count: (invite?.use_count ?? 0) + 1 }).eq("id", target.inviteId);
+  }
+}
+
 /** Links a brand-new customer record (created from the welcome form) to the account. */
 export async function linkNewCustomer(accountId: string, customerId: string) {
   await createServiceRoleClient().from("chillbros_customer_account_links").insert({ account_id: accountId, customer_id: customerId, link_source: "self_signup" });

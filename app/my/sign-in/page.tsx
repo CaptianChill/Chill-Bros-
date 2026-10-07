@@ -3,13 +3,21 @@ import { redirect } from "next/navigation";
 
 import { CustomerFrame } from "@/components/customer-account/customer-frame";
 import { CustomerSignInForm } from "@/components/customer-account/sign-in-form";
-import { getCustomerSession } from "@/lib/chillbros/customer-account";
+import { getCustomerSession, linkFromTarget, resolveLinkTarget } from "@/lib/chillbros/customer-account";
 
 export const dynamic = "force-dynamic";
 
-export default async function CustomerSignInPage() {
-  const session = await getCustomerSession();
-  if (session) redirect(session.customerIds.length ? "/my" : "/my/welcome");
+type Props = { searchParams: Promise<{ invite?: string; invoice?: string }> };
+
+export default async function CustomerSignInPage({ searchParams }: Props) {
+  const query = await searchParams;
+  const link = query.invite ? { kind: "invite", token: query.invite } : query.invoice ? { kind: "invoice", token: query.invoice } : null;
+  const [session, target] = await Promise.all([getCustomerSession(), link ? resolveLinkTarget(link.kind, link.token) : null]);
+  if (session) {
+    // Already signed in: a personal link just connects that business too.
+    if (target && !session.customerIds.includes(target.customerId)) await linkFromTarget(session.accountId, session.email, target);
+    redirect(session.customerIds.length || target ? "/my" : "/my/welcome");
+  }
 
   return (
     <CustomerFrame>
@@ -22,7 +30,13 @@ export default async function CustomerSignInPage() {
           <p className="mt-2 text-[15px] text-[#3D5170]">Request service, pay invoices, approve estimates, and see your equipment history — all in one place.</p>
         </div>
         <div className="rounded-2xl border border-[#D3E1F2] bg-white p-5 shadow-[0_1px_3px_rgba(5,7,10,0.08)]">
-          <CustomerSignInForm />
+          {link && !target ? (
+            <p role="alert" className="mb-4 rounded-xl border border-[#F3D48B] bg-[#FFF8E8] px-4 py-3 text-sm font-semibold text-[#7A4A00]">That sign-up link has expired. You can still sign in below, or ask Chill Pros for a new link.</p>
+          ) : null}
+          {target ? (
+            <p className="mb-4 rounded-xl border border-[#C7D3E2] bg-[#F4F8FD] px-4 py-3 text-sm text-[#1F3B63]">Setting up the account for <span className="font-bold">{target.customerName}</span>. Your service history will be connected automatically.</p>
+          ) : null}
+          <CustomerSignInForm link={target && link ? link : null} />
         </div>
       </div>
     </CustomerFrame>
