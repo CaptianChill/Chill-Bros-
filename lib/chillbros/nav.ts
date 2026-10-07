@@ -46,8 +46,8 @@ export const navItems: NavItem[] = [
   { href: "/", label: "Home", shortLabel: "Home", roles: ["manager"], group: "command" },
   { href: "/office", label: "Home", shortLabel: "Home", roles: ["office"], group: "command" },
   { href: "/work", label: "Work", shortLabel: "Work", roles: ["manager", "office"], group: "command" },
-  { href: "/dispatch", label: "Schedule", shortLabel: "Schedule", roles: ["manager", "office"], group: "command" },
-  { href: "/invoices", label: "Billing", shortLabel: "Billing", roles: ["manager", "office"], group: "financial" },
+  { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"], group: "command" },
+  { href: "/invoices", label: "Invoices", shortLabel: "Invoices", roles: ["manager", "office"], group: "financial" },
   { href: "/customers", label: "Customers", shortLabel: "Customers", roles: ["manager", "office"], group: "crm" },
   { href: "/revenue-radar", label: "Sales", shortLabel: "Sales", roles: ["manager", "office"], group: "sales" },
   { href: "/technician", label: "My Jobs", shortLabel: "My Jobs", roles: ["technician"], group: "operations" },
@@ -154,8 +154,8 @@ export function getPrimaryTabs(role: StaffRole): PrimaryTab[] {
     { href: homeHref, label: "Home", icon: Home, isActive: (p) => p === "/" || p === "/office" },
     // Open work: saved calls, quotes and invoices still to finish.
     { href: "/work", label: "Work", icon: ClipboardList, isActive: (p) => isUnder(p, "/work") || p.startsWith("/jobs/") },
-    { href: "/dispatch", label: "Schedule", icon: CalendarDays, isActive: (p) => isUnder(p, "/dispatch") || isUnder(p, "/schedule") },
-    { href: "/invoices", label: "Billing", icon: Banknote, isActive: (p) => isUnder(p, "/invoices") || isUnder(p, "/payments") },
+    { href: "/dispatch", label: "Dispatch", icon: CalendarDays, isActive: (p) => isUnder(p, "/dispatch") || isUnder(p, "/schedule") },
+    { href: "/invoices", label: "Invoices", icon: Banknote, isActive: (p) => isUnder(p, "/invoices") || isUnder(p, "/payments") },
   ];
 }
 
