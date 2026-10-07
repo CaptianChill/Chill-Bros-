@@ -50,13 +50,12 @@ export default async function NewInvoicePage({ searchParams }: Props) {
         <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4 sm:p-5">
           <h2 className="text-xl font-semibold text-white">1. Customer</h2>
           <p className="mt-1 text-sm text-zinc-400">Pick an existing customer or create one here. No job selection is required.</p>
-          <CustomerFields customers={customers} initialCustomerId={selectedCustomerId} input={input} label={label} />
+          <CustomerFields customers={customers} initialCustomerId={selectedCustomerId} input={input} label={label} equipment={equipment.map((unit) => ({ id: unit.id, customerId: unit.customerId, label: `${[unit.manufacturer, unit.model].filter(Boolean).join(" ") || unit.equipmentType}${unit.serialNumber ? ` · S/N ${unit.serialNumber}` : ""}` }))} />
           <div className="mt-4 space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className={label}>Service location<input name="jobLocation" placeholder="Optional" className={`${input} mt-1`} /></label>
               <label className={label}>Description<input name="jobDescription" placeholder={isQuote ? "Quoted work / scope" : "Service performed / invoice description"} className={`${input} mt-1`} /></label>
             </div>
-            <label className={label}>Equipment being serviced<select name="equipmentId" className={`${input} mt-1`}><option value="">Choose saved equipment (optional)</option>{equipment.map((unit) => <option key={unit.id} value={unit.id}>{unit.customerName} · {[unit.manufacturer, unit.model].filter(Boolean).join(" ") || unit.equipmentType}{unit.serialNumber ? ` · S/N ${unit.serialNumber}` : ""}</option>)}</select></label>
             <details className="rounded-xl border border-[#2d7dff]/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-[#d9fbff]">+ Add new equipment information</summary><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className={label}>Equipment type<input name="equipmentType" placeholder="RTU, walk-in freezer, ice machine..." className={`${input} mt-1`} /></label><label className={label}>Manufacturer<input name="equipmentManufacturer" className={`${input} mt-1`} /></label><label className={label}>Model<input name="equipmentModel" className={`${input} mt-1`} /></label><label className={label}>Serial number<input name="equipmentSerial" className={`${input} mt-1`} /></label><label className={label}>Refrigerant<input name="equipmentRefrigerant" className={`${input} mt-1`} /></label></div></details>
             <label className={label}>Job notes<TextareaWithAI name="workPerformed" rows={3} placeholder="Technician/job notes for this service record. Customers can see these in equipment service history." className={`${input} mt-1 resize-y`} /></label>
           </div>

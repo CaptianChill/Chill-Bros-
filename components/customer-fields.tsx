@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 
+type EquipmentOption = { id: string; customerId: string; label: string };
 type CustomerOption = { id: string; name: string; phone: string | null; email: string | null; address: string | null };
 
 function fieldsFor(customers: CustomerOption[], id: string) {
@@ -10,9 +11,11 @@ function fieldsFor(customers: CustomerOption[], id: string) {
   return { name: match?.name ?? "", phone: match?.phone ?? "", email: match?.email ?? "", address: match?.address ?? "" };
 }
 
-export function CustomerFields({ customers, initialCustomerId, input, label }: { customers: CustomerOption[]; initialCustomerId: string; input: string; label: string }) {
+export function CustomerFields({ customers, initialCustomerId, input, label, equipment }: { customers: CustomerOption[]; initialCustomerId: string; input: string; label: string; equipment?: EquipmentOption[] }) {
   const [customerId, setCustomerId] = useState(initialCustomerId);
   const [fields, setFields] = useState(() => fieldsFor(customers, initialCustomerId));
+
+  const customerEquipment = (equipment ?? []).filter((unit) => unit.customerId === customerId);
 
   function selectCustomer(id: string) {
     setCustomerId(id);
@@ -33,6 +36,14 @@ export function CustomerFields({ customers, initialCustomerId, input, label }: {
         <label className={label}>Email<input name="customerEmail" type="email" value={fields.email} onChange={(event) => setFields({ ...fields, email: event.target.value })} placeholder="Email" className={`${input} mt-1`} /></label>
         <label className={label}>Address<AddressAutocomplete name="customerAddress" value={fields.address} onChange={(address) => setFields({ ...fields, address })} placeholder="Start typing billing / service address" className={`${input} mt-1`} /></label>
       </div>
+      {equipment ? (
+        <label className={label}>Equipment being serviced
+          <select name="equipmentId" key={customerId} defaultValue="" disabled={!customerId} className={`${input} mt-1 disabled:opacity-50`}>
+            <option value="">{!customerId ? "Choose a saved customer first (or add new equipment below)" : customerEquipment.length ? "Choose this customer's equipment (optional)" : "No saved equipment for this customer"}</option>
+            {customerEquipment.map((unit) => <option key={unit.id} value={unit.id}>{unit.label}</option>)}
+          </select>
+        </label>
+      ) : null}
       {customerId ? <p className="text-xs text-zinc-500">Auto-filled from the customer database. Edit here if it needs updating for this document only — it won&apos;t change the saved customer record.</p> : null}
     </div>
   );
