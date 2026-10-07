@@ -9,6 +9,7 @@ const TITLES: Array<[test: (pathname: string) => boolean, label: string]> = [
   [(p) => p === "/", "Home"],
   [(p) => p === "/office", "Home"],
   [(p) => p === "/work", "Work"],
+  [(p) => p === "/drafts", "Drafts"],
   [(p) => p === "/schedule", "Schedule"],
   [(p) => p === "/dispatch", "Dispatch"],
   [(p) => p === "/customers", "Customers"],

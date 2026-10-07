@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, ChevronLeft, Ellipsis, LogOut, Plus, RefreshCw, Save, Wrench, X } from "lucide-react";
+import { Bell, ChevronLeft, Ellipsis, FilePenLine, LogOut, Plus, RefreshCw, Save, Wrench, X } from "lucide-react";
 
 import { signOutAction } from "@/app/sign-in/actions";
 import { titleForPath } from "@/components/page-title";
@@ -56,7 +56,7 @@ export function StaffHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const screenTitle = titleForPath(pathname) ?? title;
   // Owner and office can start a blank invoice from any screen except the invoice form itself.
-  const showNewInvoice = user.role !== "technician" && !pathname.startsWith("/invoices/new");
+  const showNewInvoice = user.role !== "technician" && !pathname.startsWith("/invoices/new") && pathname !== "/drafts";
 
   const goBack = () => {
     if (window.history.length > 1) router.back();
@@ -112,14 +112,24 @@ export function StaffHeader({
         )}
       </header>
       {showNewInvoice ? (
-        <Link
-          href="/invoices/new?type=invoice"
-          aria-label="New invoice from blank"
-          className="fixed bottom-24 right-4 z-40 inline-flex h-12 items-center gap-2 rounded-full border border-[#1B3FD0] bg-[#1B3FD0] px-4 text-sm font-semibold text-white shadow-lg lg:bottom-6"
-        >
-          <Plus className="h-5 w-5" aria-hidden="true" />
-          New invoice
-        </Link>
+        <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-2 lg:bottom-6">
+          <Link
+            href="/drafts"
+            aria-label="Open saved drafts"
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-[#1B3FD0] bg-white px-4 text-sm font-semibold text-[#1B3FD0] shadow-lg"
+          >
+            <FilePenLine className="h-4 w-4" aria-hidden="true" />
+            Drafts
+          </Link>
+          <Link
+            href="/invoices/new?type=invoice"
+            aria-label="New invoice from blank"
+            className="inline-flex h-12 items-center gap-2 rounded-full border border-[#1B3FD0] bg-[#1B3FD0] px-4 text-sm font-semibold text-white shadow-lg"
+          >
+            <Plus className="h-5 w-5" aria-hidden="true" />
+            New invoice
+          </Link>
+        </div>
       ) : null}
       {menuOpen ? <MoreSheet user={user} items={moreItems} onClose={() => setMenuOpen(false)} /> : null}
     </>
