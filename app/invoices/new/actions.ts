@@ -51,7 +51,8 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const catalog = new Map((catalogRows ?? []).map((row) => [String(row.id), row]));
   const priceBook = new Map((catalogRows ?? []).filter((row) => String(row.part_number ?? "").startsWith("PB-")).map((row) => [String(row.part_number), row]));
   const fees = new Map((feeRows ?? []).map((row) => [String(row.id), row]));
-  const lines: DirectLine[] = Array.from({ length: 8 }, (_, i) => {
+  // Must match MAX_LINE_ITEMS in line-items-editor.tsx, or lines past this count are silently dropped.
+  const lines: DirectLine[] = Array.from({ length: 20 }, (_, i) => {
     const preset = text(formData, `itemPreset${i}`); let presetLabel = ""; let presetDescription = ""; let presetPrice: number | null = null; let inventoryPartId: string | null = null;
     if (preset.startsWith("part:")) { const row = catalog.get(preset.slice(5)); if (row) { presetLabel = row.name; presetDescription = row.part_number || "Inventory part"; presetPrice = Number(row.retail_price ?? 0); if (row.track_inventory) inventoryPartId = String(row.id); } }
     else if (preset.startsWith("fee:")) { const row = fees.get(preset.slice(4)); if (row) { presetLabel = row.label; presetDescription = "Service fee"; presetPrice = Number(row.amount ?? 0); } }

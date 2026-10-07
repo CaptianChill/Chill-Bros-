@@ -14,7 +14,9 @@ import {
   withDraftParam,
 } from "@/lib/chillbros/form-drafts";
 
-export function OpenFormDrafts({ customerId, profileId }: { customerId?: string; profileId: string }) {
+export function OpenFormDrafts({ customerId, profileId, paths }: { customerId?: string; profileId: string; paths?: string[] }) {
+  // Optional: only drafts from these screens (e.g. ["/invoices/new"] for unfinished quotes/invoices).
+  const pathKey = (paths ?? []).join("|");
   const [drafts, setDrafts] = useState<FormDraft[]>([]);
 
   useEffect(() => {
@@ -25,10 +27,12 @@ export function OpenFormDrafts({ customerId, profileId }: { customerId?: string;
       const version = ++requestVersion;
       controller?.abort();
       controller = new AbortController();
-      const local = readFormDrafts(profileId).filter((draft) => !customerId || draft.customerId === customerId);
-      setDrafts((current) => mergeFormDrafts(local, current));
+      const prefixes = pathKey ? pathKey.split("|") : [];
+      const onPath = (draft: FormDraft) => !prefixes.length || prefixes.some((prefix) => draft.path.startsWith(prefix));
+      const local = readFormDrafts(profileId).filter((draft) => (!customerId || draft.customerId === customerId) && onPath(draft));
+      setDrafts((current) => mergeFormDrafts(local, current).filter(onPath));
       void loadRemoteFormDrafts(customerId ? { customerId } : {}, controller.signal).then((remote) => {
-        if (active && version === requestVersion && remote.ok) setDrafts(mergeFormDrafts(local, remote.drafts));
+        if (active && version === requestVersion && remote.ok) setDrafts(mergeFormDrafts(local, remote.drafts).filter(onPath));
       });
     };
     refresh();
@@ -40,7 +44,7 @@ export function OpenFormDrafts({ customerId, profileId }: { customerId?: string;
       window.removeEventListener("storage", refresh);
       window.removeEventListener("chillbros:drafts-changed", refresh);
     };
-  }, [customerId, profileId]);
+  }, [customerId, profileId, pathKey]);
 
   if (!drafts.length) return <p className="text-sm text-zinc-500">{customerId ? "No saved forms are waiting for this customer." : "No saved drafts are waiting."}</p>;
 

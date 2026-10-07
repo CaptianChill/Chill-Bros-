@@ -6,6 +6,7 @@ import { CheckCircle2, Navigation, Save, XCircle } from "lucide-react";
 
 import { closeCallAction, reassignJobTechnicianAction } from "@/lib/chillbros/job-admin-actions";
 import { updateTechnicianJobV2Action } from "@/lib/chillbros/job-workflow-v2";
+import { TECH_NOTE_PICKS, appendNote } from "@/lib/chillbros/tech-note-picks";
 import type { JobStatus } from "@/lib/chillbros/types";
 
 type Result = { ok: boolean; error?: string };
@@ -80,14 +81,29 @@ export function TechNotes({ job, canEdit }: { job: FieldJob; canEdit: boolean })
       <label htmlFor={id} className="text-sm font-semibold text-[#0A1A33]">
         Tech notes
       </label>
+      {canEdit ? (
+        <select
+          aria-label="Add a common note"
+          value=""
+          onChange={(event) => { if (event.target.value) setNotes((current) => appendNote(current, event.target.value)); }}
+          className="mt-1.5 min-h-11 w-full rounded-xl border border-[#C7D3E2] bg-white px-3 text-base font-medium text-[#0A1A33]"
+        >
+          <option value="">+ Add a common note…</option>
+          {TECH_NOTE_PICKS.map((group) => (
+            <optgroup key={group.group} label={group.group}>
+              {group.notes.map((note) => <option key={note} value={note}>{note}</option>)}
+            </optgroup>
+          ))}
+        </select>
+      ) : null}
       <textarea
         id={id}
         value={notes}
         onChange={(event) => setNotes(event.target.value)}
         readOnly={!canEdit}
-        rows={5}
-        placeholder="Diagnosis, readings, work performed, recommendations. These notes become part of the customer equipment service history."
-        className="mt-1.5 w-full rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] p-3 text-base font-medium text-[#0A1A33] placeholder:text-[#5B6B82] read-only:text-[#2B3F5C]"
+        rows={10}
+        placeholder="Diagnosis, readings, work performed, recommendations. Type here or add common lines from the list above. These notes become part of the customer equipment service history."
+        className="mt-2 min-h-64 w-full resize-y rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] p-3 text-base leading-relaxed font-medium text-[#0A1A33] placeholder:text-[#5B6B82] read-only:text-[#2B3F5C]"
       />
       {canEdit ? (
         <button
