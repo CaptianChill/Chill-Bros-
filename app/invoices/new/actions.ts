@@ -17,13 +17,7 @@ function text(fd: FormData, key: string) { return String(fd.get(key) ?? "").trim
 function money(fd: FormData, key: string) { const n = Number(text(fd, key) || 0); return Number.isFinite(n) ? n : 0; }
 function documentNumber(type: DocumentType) { return simpleDocumentNumber(type); }
 function dueAt(terms: string, custom: string) { if (terms === "custom" && custom) { const d = new Date(`${custom}T23:59:59`); return Number.isNaN(d.getTime()) ? null : d.toISOString(); } const days = terms === "net_7" ? 7 : terms === "net_15" ? 15 : terms === "net_30" ? 30 : 0; const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString(); }
-// On any error, come back to the same form with everything that was typed restored
-// from its autosaved draft (the draft id carries the form's customer key), instead of a blank page.
-function failWith(message: string, type: DocumentType, draftId: string): never {
-  const draft = /^billing:(quote|invoice):([^:]+):[0-9a-f-]{36}$/i.exec(draftId);
-  const keep = draft ? `&draft=${encodeURIComponent(draftId)}${draft[2] !== "new" ? `&customer=${encodeURIComponent(draft[2])}` : ""}` : "";
-  redirect(`/invoices/new?type=${type}${keep}&error=${encodeURIComponent(message)}&t=${Date.now()}`);
-}
+function fail(message: string, type: DocumentType): never { redirect(`/invoices/new?type=${type}&error=${encodeURIComponent(message)}&t=${Date.now()}`); }
 function norm(value: string | null | undefined) { return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " "); }
 function phoneKey(value: string | null | undefined) { return String(value ?? "").replace(/\D/g, ""); }
 
@@ -37,8 +31,6 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/sign-in");
   const type: DocumentType = text(formData, "documentType") === "quote" ? "quote" : "invoice";
-  const draftId = text(formData, "draftId");
-  const fail: (message: string, type: DocumentType) => never = (message, documentType) => failWith(message, documentType, draftId);
   const supabase = createServiceRoleClient();
   let customerId = text(formData, "customerId");
   if (!customerId) {
@@ -93,6 +85,8 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const { data: job, error: jobError } = await supabase.from("chillbros_jobs").insert({ customer_id: customerId, equipment_id: equipmentId || null, assigned_tech_id: profile.id, status: "scheduled", location: jobLocation, scope: scope.slice(0,4000), work_performed: text(formData,"workPerformed").slice(0,4000) || null, scheduled_window: `Standalone ${type} · internal billing record` }).select("id").single();
   if (jobError || !job) fail(jobError?.message ?? `Could not create standalone ${type}.`, type);
   const inventoryByPart = new Map<string, number>(); if (type === "invoice") for (const row of lines) if (row.inventoryPartId) inventoryByPart.set(row.inventoryPartId, (inventoryByPart.get(row.inventoryPartId) ?? 0) + row.quantity);
+  // Billing must never be blocked by stock counts. A part that is short (or at 0) is simply billed without deducting inventory.
+  for (const [partId, quantity] of Array.from(inventoryByPart)) { const stock = Number(catalog.get(partId)?.stock ?? 0); if (!Number.isFinite(stock) || stock < quantity) inventoryByPart.delete(partId); }
   const allocatedJobPartIds: string[] = []; const rollbackInventory = async () => { for (const jobPartId of allocatedJobPartIds.reverse()) { try { await supabase.rpc("chillbros_set_job_part_quantity", { p_job_part_id: jobPartId, p_quantity: 0 }); } catch {} } };
   for (const [partId, quantity] of inventoryByPart) { if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) { await rollbackInventory(); await abandonJob(supabase, job.id); fail("Combined inventory quantity for one part must be between 1 and 100 units.", type); } const { data: jobPartId, error: stockError } = await supabase.rpc("chillbros_add_job_part", { p_job_id: job.id, p_part_id: partId, p_quantity: quantity }); if (stockError || !jobPartId) { await rollbackInventory(); await abandonJob(supabase, job.id); const partRow = catalog.get(partId); fail(stockError?.message === "insufficient stock" ? `Not enough inventory for ${partRow?.name ?? "one of the selected parts"}${partRow?.part_number ? ` (${partRow.part_number})` : ""}: requested ${quantity}, only ${partRow?.stock ?? "some"} in stock.` : stockError?.message ?? "Could not allocate inventory to this invoice.", type); } allocatedJobPartIds.push(String(jobPartId)); }
   const number = documentNumber(type); const { data: created, error: createError } = await supabase.rpc("chillbros_create_estimate_v2", { p_job_id: job.id, p_invoice_number: number, p_notes: text(formData,"notes").slice(0,2000) || null, p_line_items: lines.map(({ inventoryPartId: _inventoryPartId, ...line }) => line), p_adjustments: { discount_type: discount > 0 ? "dollar" : null, discount_value: discount, down_payment_type: downPaymentType, down_payment_value: downPaymentValue, tax_rate: taxRate } }).single();

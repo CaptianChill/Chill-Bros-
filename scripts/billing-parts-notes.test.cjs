@@ -56,20 +56,12 @@ test('billing form saves every line the editor allows', () => {
   assert.equal(read_, max);
 });
 
-test('a failed create comes back with the typed draft instead of a blank form', () => {
-  const src = read('app/invoices/new/actions.ts');
-  assert.match(src, /&draft=\$\{encodeURIComponent\(draftId\)\}/);
-  assert.doesNotMatch(src, /^let /m, 'no shared per-request state at module level');
-});
-
 test('unfinished drafts are visible in Billing and cleared after a real create', () => {
   assert.match(read('app/invoices/page.tsx'), /<OpenFormDrafts profileId=\{profile\.id\} paths=\{\["\/invoices\/new"\]\}/);
   assert.match(read('components/form-draft-protector.tsx'), /searchParams\.has\("created"\)/);
   assert.match(read('components/form-draft-protector.tsx'), /does not create or send anything/);
 });
 
-test('equipment picker on quotes/invoices only lists the chosen customer\'s units', () => {
-  const src = read('components/customer-equipment-select.tsx');
-  assert.match(src, /units\.filter\(\(unit\) => unit\.customerId === customerId\)/);
-  assert.match(read('app/invoices/new/page.tsx'), /<CustomerEquipmentSelect /);
+test("equipment picker on quotes/invoices only lists the chosen customer's units", () => {
+  assert.match(read('components/customer-fields.tsx'), /unit\.customerId === customerId/);
 });

@@ -139,9 +139,15 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
       let dirty = false;
       let submitting = false;
       const draftPrefix = form.dataset.draftKey || form.id || `form:${path}:${formIndex}`;
-      const draftId = requestedDraftId && (requestedDraftId === draftPrefix || requestedDraftId.startsWith(`${draftPrefix}:`))
-        ? requestedDraftId
-        : `${draftPrefix}:${crypto.randomUUID()}`;
+      // A failed save redirects back with ?error= and a blank form. Reopen the draft that was just submitted
+      // so nothing typed is lost, and keep autosaving into that same draft.
+      const justSubmittedId = !requestedDraftId && currentUrl.searchParams.has("error") ? window.sessionStorage.getItem(pendingSubmitKey) : null;
+      const recoveredDraft = justSubmittedId && justSubmittedId.startsWith(`${draftPrefix}:`) ? readFormDrafts(profileId).find((draft) => draft.id === justSubmittedId) ?? null : null;
+      const draftId = recoveredDraft
+        ? recoveredDraft.id
+        : requestedDraftId && (requestedDraftId === draftPrefix || requestedDraftId.startsWith(`${draftPrefix}:`))
+          ? requestedDraftId
+          : `${draftPrefix}:${crypto.randomUUID()}`;
 
       const draftIdInput = document.createElement("input");
       draftIdInput.type = "hidden";
@@ -234,19 +240,22 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
         window.clearTimeout(timer);
         timer = window.setTimeout(() => { void flushRemote(); }, 1200);
       };
-      const submit = (event: SubmitEvent) => {
-        if (submitting || form.hasAttribute("data-no-draft")) return;
-        event.preventDefault();
+      // Never hold the Create/Save button back for draft syncing. The draft is saved on this device first,
+      // sent to the server in the background, and the form submits immediately.
+      const submit = () => {
+        if (form.hasAttribute("data-no-draft")) return;
         submitting = true;
         dirty = true;
         window.clearTimeout(timer);
         const { draft } = snapshot();
         window.sessionStorage.setItem(pendingSubmitKey, draft.id);
-        const submitter = event.submitter instanceof HTMLElement ? event.submitter : undefined;
-        void Promise.race([flushRemote(), new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), 2000))]).catch((error) => { console.error("Draft sync failed", error); }).finally(() => {
-          if (submitter) form.requestSubmit(submitter);
-          else form.requestSubmit();
-        });
+        if (remoteWritable) {
+          try {
+            navigator.sendBeacon("/api/form-drafts", new Blob([JSON.stringify(draft)], { type: "application/json" }));
+          } catch (error) {
+            console.error("Draft sync failed", error);
+          }
+        }
       };
       const pagehide = () => {
         if (!dirty || submitting) return;
@@ -262,6 +271,12 @@ export function FormDraftProtector({ profileId }: { profileId: string }) {
       form.addEventListener("submit", submit);
       window.addEventListener("pagehide", pagehide);
       window.addEventListener("chillbros-save", saveFromHeader);
+
+      if (recoveredDraft) {
+        window.setTimeout(() => {
+          if (!disposed) restore(form, recoveredDraft);
+        }, 0);
+      }
 
       if (requestedDraftId) {
         void requestedDraft.then((draft) => {
