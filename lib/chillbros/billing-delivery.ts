@@ -35,13 +35,12 @@ export async function sendBillingDeliveryRecorded(invoiceId: string, type: Billi
   return result;
 }
 
+// Customer links always use the one public production address, never a
+// per-build preview URL, so customers get a short, clean link with no login.
+const CUSTOMER_LINK_BASE = "https://chill-bros.vercel.app";
 function appBaseUrl() {
-  if (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   const explicit = String(process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
-  if (explicit) return explicit;
-  const vercel = String(process.env.VERCEL_PROJECT_PRODUCTION_URL || "").trim().replace(/\/$/, "");
-  if (vercel) return vercel.startsWith("http") ? vercel : `https://${vercel}`;
-  return "https://chill-bros-chill-pros.vercel.app";
+  return explicit || CUSTOMER_LINK_BASE;
 }
 function esc(value: string) { return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] ?? char)); }
 

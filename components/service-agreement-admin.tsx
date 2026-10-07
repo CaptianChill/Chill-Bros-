@@ -118,7 +118,7 @@ const statusLabel: Record<ServiceAgreementStatus, string> = { draft: "Draft", pr
 
 function planUrl(token: string) {
   const configured = String(process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
-  return `${configured || window.location.origin}/agreement/${token}`;
+  return `${configured || "https://chill-bros.vercel.app"}/agreement/${token}`;
 }
 
 type Saved = { agreementNumber: string; portalToken: string; id: string; title: string; total: number; customerId: string };
