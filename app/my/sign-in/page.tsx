@@ -24,7 +24,7 @@ export default async function CustomerSignInPage({ searchParams }: Props) {
       <div className="mx-auto max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="rounded-3xl bg-[#05070A] p-4 shadow-[0_8px_30px_rgba(5,7,10,0.25)]">
-            <Image src="/brand/chill-pros-ice-logo.png" alt="Chill Pros" width={900} height={900} priority className="h-40 w-40 object-contain drop-shadow-[0_0_14px_rgba(31,111,235,0.5)] sm:h-48 sm:w-48" />
+            <Image src="/brand/chill-pros-ice-logo.png" alt="Chill Pros" width={900} height={900} priority sizes="192px" className="h-40 w-40 object-contain drop-shadow-[0_0_14px_rgba(31,111,235,0.5)] sm:h-48 sm:w-48" />
           </div>
           <h1 className="mt-5 text-[28px] font-bold leading-tight">Your Chill Pros account</h1>
           <p className="mt-2 text-[15px] text-[#3D5170]">Request service, pay invoices, approve estimates, and see your equipment history — all in one place.</p>
