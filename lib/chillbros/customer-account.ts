@@ -124,7 +124,7 @@ export async function upsertAccountAndLink(email: string): Promise<{ accountId: 
       account = created;
     }
   }
-  const matches = await findCustomerIdsByEmail(email);
+  const matches = await withDuplicateRecords(await findCustomerIdsByEmail(email));
   if (matches.length) {
     await s.from("chillbros_customer_account_links").upsert(
       matches.map((customer_id) => ({ account_id: account!.id, customer_id, link_source: "email_match" })),
@@ -134,6 +134,29 @@ export async function upsertAccountAndLink(email: string): Promise<{ accountId: 
   await s.from("chillbros_customer_accounts").update({ last_login_at: new Date().toISOString() }).eq("id", account.id);
   const customerIds = await linkedCustomerIds(account.id);
   return { accountId: account.id, customerIds };
+}
+
+/**
+ * The CRM has repeat records for the same customer (same name and phone, one
+ * job each). Linking one of them links all of them, so the customer sees their
+ * whole history. Matches only when BOTH the name and the phone number match.
+ */
+export async function withDuplicateRecords(customerIds: string[]): Promise<string[]> {
+  if (!customerIds.length) return customerIds;
+  const s = createServiceRoleClient();
+  const { data: base } = await s.from("chillbros_customers").select("id,name,phone").in("id", customerIds);
+  const keys = new Set((base ?? []).map((c) => duplicateKey(c.name, c.phone)).filter(Boolean) as string[]);
+  if (!keys.size) return customerIds;
+  const names = [...new Set((base ?? []).map((c) => String(c.name ?? "").trim()).filter(Boolean))];
+  const { data: candidates } = await s.from("chillbros_customers").select("id,name,phone").in("name", names).limit(500);
+  const extra = (candidates ?? []).filter((c) => keys.has(duplicateKey(c.name, c.phone) ?? "")).map((c) => c.id as string);
+  return [...new Set([...customerIds, ...extra])];
+}
+
+function duplicateKey(name: string | null, phone: string | null) {
+  const digits = String(phone ?? "").replace(/\D/g, "").slice(-10);
+  const n = String(name ?? "").trim().toLowerCase();
+  return digits.length === 10 && n ? `${n}|${digits}` : null;
 }
 
 export async function linkedCustomerIds(accountId: string): Promise<string[]> {
@@ -210,8 +233,9 @@ export async function resolveLinkTarget(kind: string | null | undefined, token: 
 /** Links the record behind a personal link to the account; saves the email on the record if it had none. */
 export async function linkFromTarget(accountId: string, email: string, target: LinkTarget) {
   const s = createServiceRoleClient();
+  const ids = await withDuplicateRecords([target.customerId]);
   await s.from("chillbros_customer_account_links").upsert(
-    { account_id: accountId, customer_id: target.customerId, link_source: target.kind === "invite" ? "invite_link" : "invoice_link" },
+    ids.map((customer_id) => ({ account_id: accountId, customer_id, link_source: target.kind === "invite" ? "invite_link" : "invoice_link" })),
     { onConflict: "account_id,customer_id", ignoreDuplicates: true },
   );
   const { data: customer } = await s.from("chillbros_customers").select("email").eq("id", target.customerId).maybeSingle();

@@ -22,7 +22,11 @@ export default async function CustomerRequestPage({ searchParams }: { searchPara
     s.from("chillbros_customers").select("id,name,address").in("id", session.customerIds).order("name"),
     s.from("chillbros_equipment").select("id,customer_id,asset_tag,equipment_type,manufacturer,model").in("customer_id", session.customerIds).order("created_at", { ascending: true }),
   ]);
-  const locations = (customers ?? []).map((c) => ({ id: c.id as string, name: c.name as string, address: (c.address as string | null) ?? null }));
+  // One choice per real location: repeat CRM records (same name and address) collapse.
+  const seen = new Set<string>();
+  const locations = (customers ?? [])
+    .map((c) => ({ id: c.id as string, name: c.name as string, address: (c.address as string | null) ?? null }))
+    .filter((l) => { const key = `${l.name.trim().toLowerCase()}|${(l.address ?? "").trim().toLowerCase()}`; if (seen.has(key)) return false; seen.add(key); return true; });
   const units = (equipment ?? []).map((u) => ({
     id: u.id,
     customerId: u.customer_id,

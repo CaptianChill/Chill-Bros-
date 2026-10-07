@@ -35,13 +35,15 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
 
   const [home, query] = await Promise.all([getCustomerHome(session.customerIds), searchParams]);
   const primary = home.locations[0];
-  const multi = home.locations.length > 1;
-  const accountName = multi ? `${home.locations.length} locations` : primary?.name ?? session.email;
+  // Repeat CRM records for the same customer collapse to one name on screen.
+  const names = [...new Set(home.locations.map((l) => l.name.trim()))];
+  const multi = names.length > 1;
+  const accountName = multi ? `${names.length} locations` : primary?.name ?? session.email;
 
   return (
     <CustomerFrame accountName={accountName} right={<CustomerSignOutButton />}>
       <h1 className="text-[26px] font-bold leading-tight sm:text-[30px]">Hi, {multi ? primary?.name.split(" ")[0] ?? "there" : primary?.name ?? "there"}</h1>
-      <p className="mt-1 text-[15px] text-[#3D5170]">{multi ? home.locations.map((l) => l.name).join(" · ") : primary?.address ?? session.email}</p>
+      <p className="mt-1 text-[15px] text-[#3D5170]">{multi ? names.join(" · ") : primary?.address ?? session.email}</p>
 
       {query.requested ? (
         <p role="status" className="mt-4 rounded-xl border border-[#B7E3C8] bg-[#E6F6EC] px-4 py-3 text-sm font-semibold text-[#11663A]">
