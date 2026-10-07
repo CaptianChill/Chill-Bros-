@@ -33,10 +33,13 @@ export function CustomerSignInForm({ initialEmail = "" }: { initialEmail?: strin
     });
   };
 
+  const inFlight = useRef(false);
   const verify = (value = code) => {
+    if (inFlight.current || value.length !== 6) return;
+    inFlight.current = true;
     setError(null);
     startTransition(async () => {
-      const result = await verifyCustomerCodeAction(email, value);
+      const result = await verifyCustomerCodeAction(email, value).finally(() => { inFlight.current = false; });
       if (!result.ok) { setError(result.error); return; }
       router.replace(result.data.needsProfile ? "/my/welcome" : "/my");
       router.refresh();
@@ -67,7 +70,7 @@ export function CustomerSignInForm({ initialEmail = "" }: { initialEmail?: strin
             const v = e.target.value.replace(/\D/g, "").slice(0, 6);
             setCode(v);
             setError(null);
-            if (v.length === 6 && !pending) verify(v);
+            if (v.length === 6) verify(v);
           }}
           placeholder="123456" className={`${input} text-center text-2xl font-bold tracking-[0.4em]`} />
       </label>

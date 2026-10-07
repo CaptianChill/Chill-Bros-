@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getInvoiceV2ByToken, invoiceTotals } from "@/lib/chillbros/invoice-v2";
+import { dayParts, displayTime, parseWindow } from "@/lib/chillbros/schedule-window";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 /**
@@ -47,7 +48,17 @@ const CUSTOMER_STATUS: Record<string, { label: string; tone: HomeVisit["tone"] }
 
 const ACTIVE = Object.keys(CUSTOMER_STATUS);
 const DONE = ["completed", "paid", "invoice_sent", "work_complete", "ready_to_invoice"];
+// Billing-only records (no visit) and internal markers the dispatch board writes.
+const BILLING_ONLY = /^(Standalone|Owner-created)/i;
 const INTERNAL_WINDOW = /^(Approved|Standalone|Owner-created)/i;
+
+/** "2026-10-09 08:00-10:00 CT" -> "Thursday, October 9 · 8:00 AM–10:00 AM" */
+function friendlyWindow(window: string | null) {
+  if (!window || INTERNAL_WINDOW.test(window)) return null;
+  const w = parseWindow(window);
+  if (!w) return window;
+  return `${dayParts(w.date).label} · ${displayTime(w.start)}–${displayTime(w.end)}`;
+}
 
 function firstLine(text: string | null | undefined, max = 90) {
   const line = String(text ?? "").split("\n")[0].replace(/^Customer request \([^)]*\):\s*/i, "").trim();
@@ -59,10 +70,8 @@ function unitLabel(u: { equipment_type: string | null; manufacturer: string | nu
   return [u.equipment_type, [u.manufacturer, u.model].filter(Boolean).join(" ")].filter(Boolean).join(" · ") || null;
 }
 
-/** Parses "YYYY-MM-DD …" style windows the dispatch board writes, for sorting. */
 function dateKey(window: string | null) {
-  const m = String(window ?? "").match(/(\d{4}-\d{2}-\d{2})/);
-  return m ? m[1] : null;
+  return parseWindow(window)?.date ?? null;
 }
 
 export async function getCustomerHome(customerIds: string[]): Promise<CustomerHome> {
@@ -119,7 +128,7 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
   const allJobs = jobs.data ?? [];
   const upcoming: HomeVisit[] = allJobs
     .filter((j) => ACTIVE.includes(j.status) && !["work_complete", "ready_to_invoice", "invoice_sent"].includes(j.status))
-    .filter((j) => !INTERNAL_WINDOW.test(String(j.scheduled_window ?? "")))
+    .filter((j) => !BILLING_ONLY.test(String(j.scheduled_window ?? "")))
     .map((j) => {
       const st = CUSTOMER_STATUS[j.status];
       const unit = unitLabel(unitById.get(j.equipment_id ?? "") ?? null);
@@ -127,7 +136,7 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
         id: j.id,
         jobNumber: j.job_number,
         title: firstLine(j.scope) || (unit ? `Service · ${unit}` : "Service call"),
-        when: j.scheduled_window && !INTERNAL_WINDOW.test(j.scheduled_window) ? j.scheduled_window : null,
+        when: friendlyWindow(j.scheduled_window),
         statusLabel: st.label,
         tone: st.tone,
         customerName: nameOf.get(j.customer_id) ?? "",
@@ -138,7 +147,7 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
 
   const history: HomeHistory[] = allJobs
     .filter((j) => DONE.includes(j.status))
-    .filter((j) => !INTERNAL_WINDOW.test(String(j.scheduled_window ?? "")) || j.work_performed)
+    .filter((j) => !BILLING_ONLY.test(String(j.scheduled_window ?? "")) || j.work_performed)
     .slice(0, 25)
     .map((j) => ({
       id: j.id,

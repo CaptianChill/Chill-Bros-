@@ -59,6 +59,8 @@ export async function createLoginCode(email: string): Promise<string | null> {
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count } = await s.from("chillbros_customer_login_codes").select("id", { count: "exact", head: true }).eq("email", email).gte("created_at", hourAgo);
   if ((count ?? 0) >= MAX_CODES_PER_HOUR) return null;
+  const { count: total } = await s.from("chillbros_customer_login_codes").select("id", { count: "exact", head: true }).gte("created_at", hourAgo);
+  if ((total ?? 0) >= 150) return null;
 
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
   const { error } = await s.from("chillbros_customer_login_codes").insert({
@@ -70,29 +72,40 @@ export async function createLoginCode(email: string): Promise<string | null> {
   return code;
 }
 
-/** Checks the newest unused code for this email. */
+/**
+ * Checks the code against this email's unexpired, unused codes (newest 5), so a
+ * customer who tapped "Send a new code" can still type the code from either email.
+ */
 export async function verifyLoginCode(email: string, code: string): Promise<"ok" | "invalid" | "expired" | "locked"> {
   const clean = code.replace(/\D/g, "");
   const s = createServiceRoleClient();
-  const { data: row } = await s.from("chillbros_customer_login_codes")
-    .select("id,code_hash,expires_at,attempts,used_at")
-    .eq("email", email).is("used_at", null)
-    .order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (!row) return "expired";
-  if (new Date(row.expires_at).getTime() < Date.now()) return "expired";
-  if (row.attempts >= MAX_CODE_ATTEMPTS) return "locked";
-  if (clean.length !== 6 || !sameHash(row.code_hash, hash("code", email, clean))) {
-    await s.from("chillbros_customer_login_codes").update({ attempts: row.attempts + 1 }).eq("id", row.id);
-    return row.attempts + 1 >= MAX_CODE_ATTEMPTS ? "locked" : "invalid";
+  const { data: rows } = await s.from("chillbros_customer_login_codes")
+    .select("id,code_hash,expires_at,attempts")
+    .eq("email", email).is("used_at", null).gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false }).limit(5);
+  const live = (rows ?? []).filter((r) => r.attempts < MAX_CODE_ATTEMPTS);
+  if (!rows?.length) return "expired";
+  if (!live.length) return "locked";
+  const match = clean.length === 6 ? live.find((r) => sameHash(r.code_hash, hash("code", email, clean))) : undefined;
+  if (!match) {
+    // Count the wrong guess against the newest live code.
+    const newest = live[0];
+    await s.from("chillbros_customer_login_codes").update({ attempts: newest.attempts + 1 }).eq("id", newest.id);
+    return live.length === 1 && newest.attempts + 1 >= MAX_CODE_ATTEMPTS ? "locked" : "invalid";
   }
-  await s.from("chillbros_customer_login_codes").update({ used_at: new Date().toISOString() }).eq("id", row.id);
+  // Single-use: only the request that flips used_at from null wins.
+  const { data: claimed } = await s.from("chillbros_customer_login_codes").update({ used_at: new Date().toISOString() }).eq("id", match.id).is("used_at", null).select("id");
+  if (!claimed?.length) return "expired";
+  // Retire the other outstanding codes for this email.
+  await s.from("chillbros_customer_login_codes").update({ used_at: new Date().toISOString() }).eq("email", email).is("used_at", null);
   return "ok";
 }
 
-/** Customer rows whose email matches (case-insensitive). */
+/** Customer rows whose email matches, ignoring capitals and stray spaces in the CRM. */
 export async function findCustomerIdsByEmail(email: string): Promise<string[]> {
   const s = createServiceRoleClient();
-  const { data } = await s.from("chillbros_customers").select("id,email").ilike("email", email);
+  const pattern = `%${email.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const { data } = await s.from("chillbros_customers").select("id,email").ilike("email", pattern).limit(50);
   return (data ?? []).filter((r) => normalizeEmail(r.email) === email).map((r) => r.id as string);
 }
 
