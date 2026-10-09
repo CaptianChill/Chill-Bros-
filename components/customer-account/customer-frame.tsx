@@ -30,6 +30,9 @@ export function CustomerFrame({ children, accountName, right }: { children: Reac
             {right}
           </div>
         </div>
+        {right ? <nav aria-label="Customer account" className="mx-auto flex max-w-5xl flex-wrap gap-2 px-4 pb-3 text-sm sm:px-6">
+          {[["/my", "Home"], ["/my/equipment", "Equipment & history"], ["/my/plans", "Monthly programs"], ["/my/billing", "Invoices & quotes"], ["/my/request", "Request service"]].map(([href, label]) => <Link key={href} href={href} className="rounded-lg border border-white/20 px-3 py-2 hover:bg-white/10">{label}</Link>)}
+        </nav> : null}
         <div className="h-[3px] bg-gradient-to-r from-[#1F6FEB] via-[#9CCBFF] to-[#1F6FEB]" aria-hidden="true" />
       </header>
 

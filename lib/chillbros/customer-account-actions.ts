@@ -51,7 +51,7 @@ export async function requestCustomerCodeAction(rawEmail: string): Promise<Resul
 <p style="margin:0 0 16px;font-size:36px;font-weight:800;letter-spacing:.3em">${code}</p>
 <p style="margin:0;color:#3D5170;font-size:14px">It expires in 10 minutes. If you didn't ask for this, you can ignore this email.</p>
 </div></div>`;
-  const sent = await sendCompanyEmail(email, `Your Chill Pros sign-in code: ${code}`, text, html).catch(() => ({ status: "failed" as const }));
+  const sent = await sendCompanyEmail(email, "Your Chill Pros sign-in code", text, html).catch(() => ({ status: "failed" as const }));
   if (sent.status !== "sent") return { ok: false, error: "We couldn't send the code right now. Try again, or email chillprostx@gmail.com." };
   return { ok: true, data: { email } };
 }

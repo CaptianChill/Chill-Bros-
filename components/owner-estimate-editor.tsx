@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { AiTextAssist } from "@/components/ai-text-assist";
 import { VoiceDictationButton } from "@/components/voice-dictation-button";
+import { ServiceEquipmentPicker } from "@/components/service-equipment-picker";
 import { replaceEstimateLinesForManagerAction } from "@/lib/chillbros/owner-estimate-actions";
 import type { DetailedInvoice } from "@/lib/chillbros/types";
 
@@ -33,12 +34,15 @@ function makeLine(item?: DetailedInvoice["lineItems"][number]): DraftLine {
   };
 }
 
-export function OwnerEstimateEditor({ invoice, equipment = [], currentEquipmentId = null }: { invoice: DetailedInvoice; equipment?: { id:string; label:string }[]; currentEquipmentId?: string|null }) {
+export function OwnerEstimateEditor({ invoice, equipment = [], currentEquipmentId = null, initialWorkPerformed = "" }: { invoice: DetailedInvoice; equipment?: { id:string; label:string }[]; currentEquipmentId?: string|null; initialWorkPerformed?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [lines, setLines] = useState<DraftLine[]>(() => invoice.lineItems.length ? invoice.lineItems.map(makeLine) : [makeLine()]);
   const [notes, setNotes] = useState(invoice.notes ?? "");
   const [equipmentId, setEquipmentId] = useState(currentEquipmentId ?? "");
+  const [workPerformed, setWorkPerformed] = useState(initialWorkPerformed);
+  const [equipmentChanged, setEquipmentChanged] = useState(false);
+  const [workChanged, setWorkChanged] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -70,12 +74,13 @@ export function OwnerEstimateEditor({ invoice, equipment = [], currentEquipmentI
         quantity: Number(line.quantity),
         unitPrice: Number(line.unitPrice),
         taxable: line.taxable,
-      })), notes, equipmentId || null);
+      })), notes, equipmentChanged ? equipmentId || null : undefined, workChanged ? workPerformed : undefined);
       if (!result.ok) {
         setError(result.error);
         return;
       }
       setMessage("Document saved. Equipment, customer notes, and pricing are updated.");
+      setEquipmentChanged(false); setWorkChanged(false);
       router.refresh();
       } catch (cause) { setError(cause instanceof Error ? cause.message : "Price changes could not be saved."); }
     });
@@ -108,7 +113,8 @@ export function OwnerEstimateEditor({ invoice, equipment = [], currentEquipmentI
 
       <button type="button" onClick={addLine} disabled={pending || lines.length >= 20} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/30 px-3 py-2 text-sm text-[#d9fbff] disabled:opacity-40"><Plus className="h-4 w-4" />Add line item</button>
 
-      {equipment.length ? <label className="block space-y-1"><span className="text-xs text-zinc-400">Equipment being serviced</span><select value={equipmentId} onChange={(e) => setEquipmentId(e.target.value)} className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white"><option value="">No specific unit</option>{equipment.map((unit) => <option key={unit.id} value={unit.id}>{unit.label}</option>)}</select></label> : null}
+      {invoice.jobId ? <><ServiceEquipmentPicker customerId={invoice.customerId} equipment={equipment} value={equipmentId} onChange={(id) => { setEquipmentId(id); setEquipmentChanged(true); }} disabled={pending} />
+      <label className="block space-y-1"><span className="text-sm font-semibold text-white">On-site notes / work performed</span><textarea value={workPerformed} onChange={(event) => { setWorkPerformed(event.target.value); setWorkChanged(true); }} maxLength={6000} rows={5} placeholder="Observations, readings, diagnosis, work performed and recommendations…" className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /><p className="text-xs text-zinc-400">Saved on the linked service call. Customer-facing invoice notes are separate below.</p><VoiceDictationButton getValue={() => workPerformed} setValue={(next) => { setWorkPerformed(next.slice(0, 6000)); setWorkChanged(true); }} /></label></> : null}
 
       <label className="block space-y-1"><span className="text-xs text-zinc-400">Customer notes (shown on quote / invoice)</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} rows={3} className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /><div className="flex flex-wrap items-center gap-2"><VoiceDictationButton getValue={() => notes} setValue={(next) => setNotes(next.slice(0, 2000))} /><AiTextAssist getValue={() => notes} setValue={(next) => setNotes(next.slice(0, 2000))} /></div></label>
 

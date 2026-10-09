@@ -40,7 +40,7 @@ function refresh(token?: string | null) {
   }
 }
 
-export async function replaceEstimateLinesForManagerAction(invoiceId: string, lines: OwnerEstimateRevisionLine[], notes: string, equipmentId?: string | null): Promise<Result> {
+export async function replaceEstimateLinesForManagerAction(invoiceId: string, lines: OwnerEstimateRevisionLine[], notes: string, equipmentId?: string | null, workPerformed?: string): Promise<Result> {
   const profile = await getCurrentStaffProfile();
   if (!profile || profile.role !== "manager") return { ok: false, error: "Manager access required." };
   if (!invoiceId) return { ok: false, error: "Estimate is required." };
@@ -49,6 +49,8 @@ export async function replaceEstimateLinesForManagerAction(invoiceId: string, li
   if (!checked.ok) return checked;
   const cleanNotes = String(notes ?? "").trim();
   if (cleanNotes.length > 2000) return { ok: false, error: "Customer notes must be 2,000 characters or fewer." };
+  const cleanWork = workPerformed === undefined ? null : String(workPerformed).trim();
+  if (cleanWork && cleanWork.length > 6000) return { ok: false, error: "On-site notes must be 6,000 characters or fewer." };
 
   const supabase = createServiceRoleClient();
   const { data: invoice } = await supabase
@@ -68,13 +70,15 @@ export async function replaceEstimateLinesForManagerAction(invoiceId: string, li
       const { data: unit } = await supabase.from("chillbros_equipment").select("id,customer_id").eq("id", equipmentId).maybeSingle();
       if (!unit || unit.customer_id !== job.customer_id) return { ok: false, error: "Selected equipment does not belong to this customer." };
     }
-    const { error: equipmentError } = await supabase.from("chillbros_jobs").update({ equipment_id: equipmentId || null, updated_at: new Date().toISOString() }).eq("id", invoice.job_id);
-    if (equipmentError) return { ok: false, error: equipmentError.message };
   }
 
-  const { error } = await supabase.rpc("chillbros_manager_replace_estimate_lines", {
+  const { error } = await supabase.rpc("chillbros_manager_edit_document", {
     p_invoice_id: invoiceId,
     p_notes: cleanNotes || null,
+    p_equipment_id: equipmentId || null,
+    p_work_performed: cleanWork,
+    p_update_equipment: equipmentId !== undefined,
+    p_update_work: workPerformed !== undefined,
     p_line_items: checked.lines.map((line) => ({
       label: line.label,
       description: line.description || null,
@@ -90,7 +94,7 @@ export async function replaceEstimateLinesForManagerAction(invoiceId: string, li
     invoice_id: invoiceId,
     actor_id: profile.id,
     stage: "owner_quote_revised",
-    message: "Manager/owner revised quote line items and pricing before customer approval.",
+    message: "Manager/owner revised document equipment, on-site notes, customer notes and pricing before customer approval.",
   });
 
   refresh(invoice.portal_token);

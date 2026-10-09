@@ -87,6 +87,10 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
     s.from("chillbros_service_agreements").select("id,customer_id,agreement_number,portal_token,title,status,visits_per_month,preferred_days,preferred_time_window,start_date").in("customer_id", customerIds).in("status", ["proposed", "accepted", "active"]),
   ]);
 
+  if ([customers, jobs, invoices, equipment, agreements].some((result) => result.error)) {
+    throw new Error("Your account records could not be loaded. Please try again.");
+  }
+
   const locations: HomeLocation[] = (customers.data ?? []).map((c) => ({ id: c.id, name: c.name, address: c.address, phone: c.phone }));
   const nameOf = new Map(locations.map((l) => [l.id, l.name]));
   const units = equipment.data ?? [];
@@ -96,9 +100,13 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
   // pay/approve page uses, so what the customer sees here always matches.
   const due: HomeDocument[] = [];
   const paid: HomeDocument[] = [];
-  const invoiceRows = (invoices.data ?? []).filter((i) => i.portal_token);
-  const detailed = await Promise.all(invoiceRows.slice(0, 40).map((i) => getInvoiceV2ByToken(i.portal_token).catch(() => null)));
-  invoiceRows.slice(0, 40).forEach((row, index) => {
+  const invoiceRows = (invoices.data ?? []).filter((i) => i.portal_token && i.status !== "draft" && !(i.converted_invoice_id && !i.issued_at));
+  const detailed: Awaited<ReturnType<typeof getInvoiceV2ByToken>>[] = [];
+  for (let offset = 0; offset < invoiceRows.length; offset += 10) {
+    detailed.push(...await Promise.all(invoiceRows.slice(offset, offset + 10).map((i) => getInvoiceV2ByToken(i.portal_token))));
+  }
+  if (detailed.some((invoice) => !invoice)) throw new Error("Your billing records could not be loaded. Please try again.");
+  invoiceRows.forEach((row, index) => {
     const inv = detailed[index];
     if (!inv) return;
     const totals = invoiceTotals(inv);
@@ -186,7 +194,7 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
     };
   });
 
-  return { locations, due, paid: paid.slice(0, 10), upcoming, plans, units: homeUnits, history };
+  return { locations, due, paid, upcoming, plans, units: homeUnits, history };
 }
 
 export async function getCustomerUnit(customerIds: string[], unitId: string) {

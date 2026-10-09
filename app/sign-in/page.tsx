@@ -1,4 +1,5 @@
 import { LogoBadge } from "@/components/logo-badge";
+import Link from "next/link";
 import { SignInForm } from "./sign-in-form";
 
 type SignInPageProps = {
@@ -25,7 +26,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             </p>
           ) : null}
           <SignInForm next={next && next.startsWith("/") ? next : "/"} />
-          <p className="sub text-center text-xs">Client portal links don&apos;t need an account — use the link sent for your invoice.</p>
+          <p className="sub text-center text-sm">Customer? <Link href="/my/sign-in" className="font-semibold text-[#9CCBFF] underline">Open your customer portal</Link></p>
         </div>
       </div>
     </div>

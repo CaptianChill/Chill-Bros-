@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false },
   title: "Chill Pros · Your account",
   description: "Request service, pay invoices, approve estimates, and see your equipment history with Chill Pros.",
   applicationName: "Chill Pros",
