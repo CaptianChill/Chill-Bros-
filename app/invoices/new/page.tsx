@@ -33,6 +33,7 @@ export default async function NewInvoicePage({ searchParams }: Props) {
         <Link href="/invoices/new?type=quote" className={`rounded-2xl border px-4 py-3 text-center text-sm font-semibold ${isQuote ? "border-[#8ffafa]/60 bg-[#2d7dff]/20 text-white" : "border-[#2d7dff]/25 text-[#d9fbff]"}`}>Create Quote</Link>
         <Link href="/invoices/new?type=invoice" className={`rounded-2xl border px-4 py-3 text-center text-sm font-semibold ${!isQuote ? "border-[#8ffafa]/60 bg-[#2d7dff]/20 text-white" : "border-[#2d7dff]/25 text-[#d9fbff]"}`}>Create Invoice</Link>
       </div>
+      <Link href={`/invoices/voice?type=${documentType}`} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-[#8ffafa]/60 bg-[#2d7dff]/25 px-4 py-3 text-base font-semibold text-white">🎙 Talk it in — say the whole {isQuote ? "quote" : "invoice"}</Link>
       <div className="flex flex-wrap gap-2">
         <Link href="/invoices" className="rounded-xl border border-[#2d7dff]/25 px-4 py-2 text-sm text-[#d9fbff]">Manage documents</Link>
         <Link href="/inventory" className="rounded-xl border border-[#2d7dff]/25 px-4 py-2 text-sm text-[#d9fbff]">Inventory / Price Book</Link>

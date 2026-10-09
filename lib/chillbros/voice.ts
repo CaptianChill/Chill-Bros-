@@ -65,14 +65,14 @@ export function sameOrigin(request: Request) {
 }
 
 // Turns a recorded question into text (OpenAI). Shared by /api/voice/transcribe and /api/voice/ask.
-export async function transcribeAudio(audio: File, signal?: AbortSignal): Promise<{ ok: true; text: string } | { ok: false; status: number; error: string }> {
+export async function transcribeAudio(audio: File, signal?: AbortSignal, prompt?: string): Promise<{ ok: true; text: string } | { ok: false; status: number; error: string }> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) return { ok: false, status: 503, error: "Voice isn't configured." };
   const body = new FormData();
   body.append("file", audio, audio.name || "chill.webm");
   body.append("model", "gpt-4o-mini-transcribe");
   body.append("language", "en");
-  body.append("prompt", "A short question to the Chill Pros HVAC/R service-business assistant. Preserve customer names, equipment brands, model numbers, refrigerants (R-410A, R-404A, R-134a), and dollar amounts.");
+  body.append("prompt", prompt ?? "A short question to the Chill Pros HVAC/R service-business assistant. Preserve customer names, equipment brands, model numbers, refrigerants (R-410A, R-404A, R-134a), and dollar amounts.");
   try {
     const response = await fetch("https://api.openai.com/v1/audio/transcriptions", { method: "POST", headers: { Authorization: `Bearer ${apiKey}` }, body, cache: "no-store", signal: signal ?? AbortSignal.timeout(30000) });
     const payload = await response.json().catch(() => ({}));

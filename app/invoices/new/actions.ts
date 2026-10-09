@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
+import { sendInvoiceCommunicationAction } from "@/lib/chillbros/billing-actions";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
@@ -51,12 +52,14 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   const catalog = new Map((catalogRows ?? []).map((row) => [String(row.id), row]));
   const priceBook = new Map((catalogRows ?? []).filter((row) => String(row.part_number ?? "").startsWith("PB-")).map((row) => [String(row.part_number), row]));
   const fees = new Map((feeRows ?? []).map((row) => [String(row.id), row]));
-  const lines: DirectLine[] = Array.from({ length: 8 }, (_, i) => {
+  const lines: DirectLine[] = Array.from({ length: 20 }, (_, i) => {
     const preset = text(formData, `itemPreset${i}`); let presetLabel = ""; let presetDescription = ""; let presetPrice: number | null = null; let inventoryPartId: string | null = null;
     if (preset.startsWith("part:")) { const row = catalog.get(preset.slice(5)); if (row) { presetLabel = row.name; presetDescription = row.part_number || "Inventory part"; presetPrice = Number(row.retail_price ?? 0); if (row.track_inventory) inventoryPartId = String(row.id); } }
     else if (preset.startsWith("fee:")) { const row = fees.get(preset.slice(4)); if (row) { presetLabel = row.label; presetDescription = "Service fee"; presetPrice = Number(row.amount ?? 0); } }
     else if (preset.startsWith("pb:")) { const row = priceBook.get(preset.slice(3)); if (row) { presetLabel = row.name; presetDescription = row.part_number || "Price book"; presetPrice = Number(row.retail_price ?? 0); } }
-    return { label: presetLabel || text(formData, `itemLabel${i}`), description: text(formData, `itemDescription${i}`) || presetDescription, quantity: money(formData, `itemQty${i}`), unit_price: presetPrice ?? money(formData, `itemPrice${i}`), taxable: formData.get(`itemTaxable${i}`) === "on", inventoryPartId };
+    // Voice drafts keep the catalog link (inventory) but may carry the price the owner said or charged before.
+    const priceOverride = formData.get(`itemPriceOverride${i}`) === "1" && text(formData, `itemPrice${i}`) !== "";
+    return { label: presetLabel || text(formData, `itemLabel${i}`), description: text(formData, `itemDescription${i}`) || presetDescription, quantity: money(formData, `itemQty${i}`), unit_price: priceOverride ? money(formData, `itemPrice${i}`) : presetPrice ?? money(formData, `itemPrice${i}`), taxable: formData.get(`itemTaxable${i}`) === "on", inventoryPartId };
   }).filter((row) => row.label);
   if (!lines.length) fail(`Add at least one ${type} line item.`, type);
   for (const row of lines) { if (row.quantity <= 0 || row.unit_price < 0 || row.label.length > 200) fail("Check each line item, quantity, and price.", type); if (row.inventoryPartId && (!Number.isInteger(row.quantity) || row.quantity > 100)) fail("Inventory quantities must be whole units between 1 and 100 per invoice line.", type); }
@@ -106,5 +109,14 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
   }
   if (requestedPaid) { try { await supabase.from("chillbros_workflow_events").insert({ job_id: job.id, invoice_id: invoice.estimate_id, actor_id: profile.id, stage: "payment_pending_review", message: "Paid-now was requested during direct invoice creation; the invoice was issued unpaid. Record the payment from Billing." }); } catch {} }
   for (const path of ["/create","/invoices/new","/invoices","/inventory","/payments","/reports","/customers","/dispatch","/"]) revalidatePath(path);
+  const autoSend = text(formData, "autoSend");
+  if (autoSend === "email" || autoSend === "sms") {
+    let sendNote: string;
+    try {
+      const sent = await sendInvoiceCommunicationAction(invoice.estimate_id, autoSend);
+      sendNote = sent.ok ? `&sent=${autoSend}&success=${encodeURIComponent(`${type === "quote" ? "Quote" : "Invoice"} ${number} ${autoSend === "email" ? "emailed" : "texted"} to ${sent.data.recipient ?? "the customer"}.`)}` : `&error=${encodeURIComponent(`Saved, but not sent: ${sent.error}`)}`;
+    } catch (sendError) { sendNote = `&error=${encodeURIComponent(`Saved, but not sent: ${sendError instanceof Error ? sendError.message : "delivery failed"}`)}`; }
+    redirect(`/invoices?focus=${encodeURIComponent(invoice.estimate_id)}&created=1${sendNote}`);
+  }
   redirect(`/invoices?focus=${encodeURIComponent(invoice.estimate_id)}&created=1`);
 }
