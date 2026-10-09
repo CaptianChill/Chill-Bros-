@@ -46,7 +46,16 @@ export async function createDirectInvoiceAction(formData: FormData): Promise<nev
       const { data: customer, error } = await supabase.from("chillbros_customers").insert({ name: name.slice(0,200), phone: phone.slice(0,50) || null, email: email || null, address: text(formData,"customerAddress").slice(0,500) || null, created_by: profile.id }).select("id").single();
       if (error || !customer) fail(error?.message ?? "Could not create customer.", type); customerId = customer.id;
     }
-  } else { const { data: customer } = await supabase.from("chillbros_customers").select("id").eq("id", customerId).maybeSingle(); if (!customer) fail("Customer record not found.", type); }
+  } else {
+    const { data: customer } = await supabase.from("chillbros_customers").select("id,email,phone").eq("id", customerId).maybeSingle();
+    if (!customer) fail("Customer record not found.", type);
+    // Only fills a missing email/phone (e.g. said out loud in Talk It In); never overwrites what's on file.
+    const email = text(formData, "customerEmail").toLowerCase(); const phone = text(formData, "customerPhone");
+    const fill: Record<string, string> = {};
+    if (!customer.email && email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fill.email = email.slice(0, 200);
+    if (!customer.phone && phoneKey(phone).length >= 7) fill.phone = phone.slice(0, 50);
+    if (Object.keys(fill).length) await supabase.from("chillbros_customers").update(fill).eq("id", customerId);
+  }
 
   const [{ data: catalogRows }, { data: feeRows }] = await Promise.all([supabase.from("chillbros_parts_catalog").select("id,name,part_number,retail_price,stock,track_inventory"), supabase.from("chillbros_fee_settings").select("id,label,amount")]);
   const catalog = new Map((catalogRows ?? []).map((row) => [String(row.id), row]));

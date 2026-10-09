@@ -1,10 +1,11 @@
 "use client";
 
-import { Loader2, Mail, MessageSquareText, Mic, Plus, Save, Square, Trash2, Wand2 } from "lucide-react";
+import { Loader2, Mail, MessageSquareText, Mic, Plus, Save, Square, Trash2, Volume2, VolumeX, Wand2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import type { PriceSource, VoiceDraft, VoiceLine } from "@/lib/chillbros/voice-billing";
+import type { PriceSource, VoiceDraft, VoiceIntent, VoiceLine } from "@/lib/chillbros/voice-billing";
+import { voiceDraftTotals } from "@/lib/chillbros/voice-billing-totals";
 
 type CustomerOption = { id: string; name: string; phone: string | null; email: string | null; address: string | null };
 type Props = { initialType: "quote" | "invoice"; customers: CustomerOption[]; action: (formData: FormData) => Promise<void> };
@@ -26,16 +27,21 @@ function pickMimeType() {
   return "";
 }
 
-export function totalsFor(d: VoiceDraft) {
-  const subtotal = d.lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
-  const taxable = d.lines.filter((l) => l.taxable).reduce((s, l) => s + l.quantity * l.unitPrice, 0);
-  const discount = Math.max(0, Math.min(d.discount, subtotal));
-  const taxableAfter = subtotal > 0 ? Math.max(0, taxable - discount * (taxable / subtotal)) : 0;
-  const tax = Math.round(taxableAfter * d.taxRate) / 100;
-  const total = Math.round((subtotal - discount + tax) * 100) / 100;
-  const down = d.downPaymentType === "percent" ? Math.round(total * d.downPaymentValue) / 100 : d.downPaymentType === "dollar" ? Math.min(d.downPaymentValue, total) : 0;
-  return { subtotal, discount, tax, total, down };
+const totalsFor = voiceDraftTotals;
+
+function blockedFor(draft: VoiceDraft | null) {
+  if (!draft) return "";
+  if (!draft.customer.id && !draft.customer.name.trim()) return "Pick or name the customer first.";
+  if (!draft.lines.length) return "Add at least one part, labor, or charge.";
+  if (draft.lines.some((l) => !l.label.trim() || l.quantity <= 0)) return "Every line needs a name and a quantity.";
+  if (draft.lines.some((l) => l.priceSource === "needs_price" && l.unitPrice <= 0)) return "Enter a price on the lines marked “Needs a price”.";
+  if (totalsFor(draft).subtotal <= 0) return "The total is $0 — check the prices.";
+  return "";
 }
+
+// Long silence after speaking = done talking (hands-free mode).
+const SILENCE_MS = 2200;
+const MAX_RECORD_MS = 120000;
 
 function SubmitButtons({ draft, blocked }: { draft: VoiceDraft; blocked: string }) {
   const { pending } = useFormStatus();
@@ -60,6 +66,14 @@ export function VoiceBillingBuilder({ initialType, customers, action }: Props) {
   const [status, setStatus] = useState<"idle" | "recording" | "working">("idle");
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState("");
+  const [speaking, setSpeaking] = useState(false);
+  const [handsFree, setHandsFree] = useState(true);
+  const [chillSays, setChillSays] = useState("");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const handsFreeRef = useRef(true);
+  const stopSilenceRef = useRef<() => void>(() => {});
+  const interruptedRef = useRef(false);
+  useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const pressedAtRef = useRef(0);
@@ -84,13 +98,46 @@ export function VoiceBillingBuilder({ initialType, customers, action }: Props) {
       const body = await res.json().catch(() => ({}));
       if (body.transcript) setTranscripts((t) => [...t, String(body.transcript)]);
       if (!res.ok || !body.draft) throw new Error(body.error || "Couldn't build the draft. Try again.");
-      setDraft(body.draft as VoiceDraft); setDocType((body.draft as VoiceDraft).documentType); setTyped("");
-      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-    } catch (e) { setError(e instanceof Error ? e.message : "Something went wrong."); }
-    finally { setStatus("idle"); }
+      const next = body.draft as VoiceDraft; const intent = (body.intent ?? "edit") as VoiceIntent; const reply = String(body.reply ?? "");
+      setTyped("");
+      if (intent === "cancel") { setDraft(null); draftRef.current = null; setTranscripts([]); setStatus("idle"); await speak(reply); return; }
+      setDraft(next); draftRef.current = next; setDocType(next.documentType);
+      if (intent === "edit") setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      setStatus("idle");
+      const channel = intent === "send_email" ? "email" : intent === "send_sms" ? "sms" : intent === "save" ? "none" : null;
+      const canFinish = channel && !blockedFor(next) && (channel !== "email" || next.customer.email) && (channel !== "sms" || next.customer.phone);
+      await speak(reply);
+      if (interruptedRef.current) return; // he was cut off by a mic tap; that tap already started listening
+      if (canFinish) { setTimeout(() => submitWith(channel), 150); return; }
+      if (handsFreeRef.current) void startRecording();
+    } catch (e) { setError(e instanceof Error ? e.message : "Something went wrong."); setStatus("idle"); }
+  }
+
+  // Chilly Bro's voice (BOODA voice via /api/voice/speak). Resolves when he finishes talking.
+  async function speak(text: string) {
+    setChillSays(text); interruptedRef.current = false;
+    if (!text) return;
+    try {
+      const res = await fetch("/api/voice/speak", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+      if (!res.ok) return;
+      const url = URL.createObjectURL(await res.blob());
+      const audio = audioRef.current ?? new Audio(); audioRef.current = audio;
+      audio.src = url; setSpeaking(true);
+      await new Promise<void>((resolve) => { audio.onended = () => resolve(); audio.onerror = () => resolve(); audio.onpause = () => resolve(); audio.play().catch(() => resolve()); });
+      URL.revokeObjectURL(url);
+    } catch { /* text is still shown */ }
+    finally { setSpeaking(false); }
+  }
+  function hush() { const a = audioRef.current; if (a && !a.paused) { interruptedRef.current = true; a.pause(); } }
+
+  function submitWith(channel: "email" | "sms" | "none") {
+    const form = formRef.current; if (!form) return;
+    const button = form.querySelector<HTMLButtonElement>(`button[name="autoSend"][value="${channel}"]`);
+    if (button && !button.disabled) form.requestSubmit(button);
   }
 
   async function startRecording() {
+    if (recorderRef.current?.state === "recording") return;
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") { setError("This browser can't record audio. Type it in the box instead."); return; }
     let stream: MediaStream;
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
@@ -100,12 +147,39 @@ export function VoiceBillingBuilder({ initialType, customers, action }: Props) {
     chunksRef.current = [];
     rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
     rec.onstop = () => {
+      stopSilenceRef.current();
       stream.getTracks().forEach((t) => t.stop());
       const blob = new Blob(chunksRef.current, { type: rec.mimeType || mimeType || "audio/webm" });
-      if (blob.size < 1500) { setStatus("idle"); setError("Didn't hear anything. Tap the mic, talk, then tap again to finish."); return; }
+      if (blob.size < 1500) { setStatus("idle"); if (!handsFreeRef.current) setError("Didn't hear anything. Tap the mic, talk, then tap again to finish."); return; }
       void send({ audio: blob });
     };
     recorderRef.current = rec; rec.start(1000); setSeconds(0); setError(""); setStatus("recording");
+    watchForSilence(stream, rec);
+  }
+
+  // Hands-free: stop on its own after you finish talking (or after 2 minutes).
+  function watchForSilence(stream: MediaStream, rec: MediaRecorder) {
+    const started = Date.now();
+    let ctx: AudioContext | null = null, timer = 0, heard = false, quietSince = 0;
+    try {
+      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return;
+      ctx = new Ctx(); const analyser = ctx.createAnalyser(); analyser.fftSize = 1024;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      const buf = new Float32Array(analyser.fftSize);
+      timer = window.setInterval(() => {
+        if (rec.state !== "recording") return;
+        analyser.getFloatTimeDomainData(buf);
+        let sum = 0; for (const v of buf) sum += v * v;
+        const loud = Math.sqrt(sum / buf.length) > 0.02;
+        const now = Date.now();
+        if (loud) { heard = true; quietSince = 0; } else if (!quietSince) quietSince = now;
+        if (now - started > MAX_RECORD_MS || (handsFreeRef.current && heard && quietSince && now - quietSince > SILENCE_MS)) rec.stop();
+        // Nothing said at all for 12 seconds in hands-free mode: stop listening quietly.
+        if (handsFreeRef.current && !heard && now - started > 12000) { chunksRef.current = []; rec.stop(); }
+      }, 120);
+    } catch { /* manual stop still works */ }
+    stopSilenceRef.current = () => { window.clearInterval(timer); void ctx?.close().catch(() => {}); };
   }
   function stopRecording() { const r = recorderRef.current; if (r && r.state !== "inactive") r.stop(); }
 
@@ -113,6 +187,7 @@ export function VoiceBillingBuilder({ initialType, customers, action }: Props) {
   const startedByPressRef = useRef(false);
   function onMicDown() {
     if (status === "working") return;
+    hush();
     pressedAtRef.current = Date.now();
     if (recorderRef.current?.state === "recording") { startedByPressRef.current = false; stopRecording(); return; }
     startedByPressRef.current = true; void startRecording();
@@ -131,7 +206,7 @@ export function VoiceBillingBuilder({ initialType, customers, action }: Props) {
   }
 
   const totals = draft ? totalsFor(draft) : null;
-  const blocked = !draft ? "" : !draft.customer.id && !draft.customer.name.trim() ? "Pick or name the customer first." : !draft.lines.length ? "Add at least one part, labor, or charge." : draft.lines.some((l) => !l.label.trim() || l.quantity <= 0) ? "Every line needs a name and a quantity." : draft.lines.some((l) => l.priceSource === "needs_price" && l.unitPrice <= 0) ? "Enter a price on the lines marked “Needs a price”." : (totals?.subtotal ?? 0) <= 0 ? "The total is $0 — check the prices." : "";
+  const blocked = blockedFor(draft);
 
   const recording = status === "recording";
   return <div className="mx-auto max-w-4xl space-y-4">
@@ -147,13 +222,15 @@ export function VoiceBillingBuilder({ initialType, customers, action }: Props) {
         {status === "working" ? <Loader2 className="h-12 w-12 animate-spin text-white" /> : recording ? <Square className="h-10 w-10 text-white" /> : <Mic className="h-12 w-12 text-white" />}
       </button>
       {recording ? <button type="button" onClick={stopRecording} className="mt-3 rounded-xl border border-rose-300/50 px-4 py-2 text-sm font-semibold text-rose-100">Done talking ({Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")})</button> : null}
-      <p className="mt-3 text-base font-semibold text-white">{status === "working" ? "Building it…" : recording ? "Listening — tap Done when finished" : draft ? "Tap to add or change something" : `Tap the mic and say the whole ${docType}`}</p>
+      <p className="mt-3 text-base font-semibold text-white">{speaking ? "Chilly Bro is talking — tap the mic to cut in" : status === "working" ? "Building it…" : recording ? "Listening — tap Done when finished" : draft ? "Tap to add or change something" : `Tap the mic and say the whole ${docType}`}</p>
       {!draft && !recording ? <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-400">Example: “Invoice for El Regio Tacos. Replaced a 45/5 dual run capacitor and a 40 amp contactor, part number 42-102. Two hours labor. 3 pounds of R-410A. 50% down, net 15. Email it to them.” Prices you don't say are filled in from what you've charged before.</p> : null}
-      {draft && !recording ? <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-400">Say things like “add a trip charge”, “change labor to 3 hours”, “remove the contactor”, “make the down payment $500”.</p> : null}
+      {draft && !recording ? <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-400">Say changes like “add a trip charge” or “change labor to 3 hours” — or finish with “email it”, “text it”, or “save it”.</p> : null}
       <div className="mx-auto mt-4 flex max-w-xl gap-2">
         <input value={typed} onChange={(e) => setTyped(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && typed.trim()) { e.preventDefault(); void send({ text: typed.trim() }); } }} placeholder={draft ? "Or type a change…" : "Or type it…"} className={input} disabled={status !== "idle"} />
         <button type="button" disabled={!typed.trim() || status !== "idle"} onClick={() => void send({ text: typed.trim() })} className="inline-flex items-center gap-1 rounded-xl border border-[#8ffafa]/40 px-3 text-sm font-semibold text-[#d9fbff] disabled:opacity-40"><Wand2 className="h-4 w-4" />Go</button>
       </div>
+      {chillSays ? <div className="mx-auto mt-4 flex max-w-xl items-start gap-2 rounded-2xl border border-[#8ffafa]/30 bg-black/50 p-3 text-left text-sm text-[#e6fdff]"><Volume2 className={`mt-0.5 h-4 w-4 shrink-0 ${speaking ? "animate-pulse text-[#8ffafa]" : "text-zinc-500"}`} /><p><span className="font-semibold text-white">Chilly Bro: </span>{chillSays}</p></div> : null}
+      <label className="mt-3 inline-flex items-center gap-2 text-xs text-zinc-400"><input type="checkbox" checked={handsFree} onChange={(e) => setHandsFree(e.target.checked)} />{handsFree ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}Hands-free: he listens again after he answers, and stops when you stop talking</label>
       {error ? <p role="alert" className="mt-3 text-sm text-rose-300">{error}</p> : null}
       {transcripts.length ? <details className="mx-auto mt-3 max-w-xl text-left text-xs text-zinc-500"><summary className="cursor-pointer">What I heard</summary>{transcripts.map((t, i) => <p key={i} className="mt-1">“{t}”</p>)}</details> : null}
     </section>
@@ -166,7 +243,7 @@ export function VoiceBillingBuilder({ initialType, customers, action }: Props) {
       <section className="rounded-3xl border border-[#2d7dff]/25 bg-black/45 p-4">
         <h2 className="text-lg font-semibold text-white">Customer</h2>
         <label className={`${label} mt-3 block`}>Existing customer<select value={draft.customer.id ?? ""} onChange={(e) => chooseCustomer(e.target.value)} className={`${input} mt-1`}><option value="">New customer</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-        {draft.customer.id ? <><input type="hidden" name="customerId" value={draft.customer.id} /><p className="mt-2 text-sm text-zinc-300">{[draft.customer.phone, draft.customer.email, draft.customer.address].filter(Boolean).join(" · ") || "No phone or email on file."}</p></>
+        {draft.customer.id ? <><input type="hidden" name="customerId" value={draft.customer.id} /><input type="hidden" name="customerEmail" value={draft.customer.email} /><input type="hidden" name="customerPhone" value={draft.customer.phone} /><p className="mt-2 text-sm text-zinc-300">{[draft.customer.phone, draft.customer.email, draft.customer.address].filter(Boolean).join(" · ") || "No phone or email on file."}</p></>
           : <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className={label}>Name<input name="customerName" value={draft.customer.name} onChange={(e) => updateCustomer({ name: e.target.value })} className={`${input} mt-1`} /></label>
             <label className={label}>Phone<input name="customerPhone" inputMode="tel" value={draft.customer.phone} onChange={(e) => updateCustomer({ phone: e.target.value })} className={`${input} mt-1`} /></label>

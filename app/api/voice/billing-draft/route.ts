@@ -32,5 +32,5 @@ export async function POST(request: Request) {
   if (!transcript) return Response.json({ error: "Say or type what goes on the quote or invoice." }, { status: 400 });
 
   const result = await buildVoiceDraft({ transcript, documentType, previous });
-  return result.ok ? Response.json({ transcript, draft: result.draft }) : Response.json({ error: result.error, transcript }, { status: 502 });
+  return result.ok ? Response.json({ transcript, draft: result.draft, intent: result.intent, reply: result.reply }) : Response.json({ error: result.error, transcript }, { status: 502 });
 }

@@ -2,6 +2,7 @@ import "server-only";
 
 import { askAI } from "@/lib/chillbros/ai";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { spokenMoney, voiceDraftTotals } from "@/lib/chillbros/voice-billing-totals";
 
 // Voice quote/invoice drafting.
 // The owner talks; the AI turns it into a structured draft; the server fills in any price he
@@ -40,6 +41,7 @@ export type VoiceDraft = {
   sendVia: "none" | "email" | "sms";
   warnings: string[];
 };
+export type VoiceIntent = "edit" | "send_email" | "send_sms" | "save" | "cancel";
 
 type CatalogRow = { id: string; name: string; part_number: string | null; retail_price: number | null };
 type FeeRow = { id: string; label: string; amount: number | null };
@@ -130,7 +132,8 @@ Return ONLY one JSON object, no prose, with this shape:
  "lines":[{"label":"","partNumber":"","description":"","quantity":1,"unitPrice":null,"taxable":null,"catalog":null|"P12"|"F3"}],
  "discount":0,"taxRate":null,"downPaymentType":""|"percent"|"dollar","downPaymentValue":0,
  "paymentTerms":"due_on_receipt"|"net_7"|"net_15"|"net_30"|"custom","customDueDate":"YYYY-MM-DD or empty",
- "notes":"","sendVia":"none"|"email"|"sms","warnings":[]}
+ "notes":"","sendVia":"none"|"email"|"sms","warnings":[],
+ "intent":"edit"|"send_email"|"send_sms"|"save"|"cancel","question":""}
 Rules:
 - customer.index: the number of the matching existing customer from the CUSTOMERS list (allow for speech-to-text misspellings). null if it's a new customer; then fill name/phone/email/address from what was said.
 - One line per part, labor, trip/service fee, material or charge. Keep part numbers exactly as spoken (e.g. "P291-4553RS", "POE 45/5"). Spell out numbers said as words.
@@ -144,9 +147,11 @@ Rules:
 - sendVia "email" or "sms" only if they say to email/text/send it; "none" otherwise.
 - notes: customer-facing summary, warranty or terms they dictate. workPerformed: internal tech notes they dictate.
 - If a PREVIOUS DRAFT is given, the new words are changes to it: return the full updated draft, keeping everything not changed (keep existing unitPrice values unless they change them). "Remove X", "change Y to Z", "add another hour" all edit the previous draft.
-- warnings: short notes about anything unclear (e.g. "Didn't catch the customer's email").`;
+- warnings: short notes about anything unclear (e.g. "Didn't catch the customer's email").
+- intent: "send_email"/"send_sms"/"save" ONLY when there is a PREVIOUS DRAFT and the new words are the owner telling you to finish it ("email it", "send it" → send_email, "text it" → send_sms, "save it", "just create it" → save). If the same words also change something, still set the intent. "cancel" if they say start over/cancel. Otherwise "edit". With no previous draft, "email it to them" goes in sendVia, intent "edit".
+- question: ONE short spoken question for the single most important missing thing (e.g. "What's their email?" or "What do you charge for the widget?"), or "" if nothing is missing.`;
 
-export async function buildVoiceDraft(input: { transcript: string; documentType: "quote" | "invoice"; previous: VoiceDraft | null }): Promise<{ ok: true; draft: VoiceDraft } | { ok: false; error: string }> {
+export async function buildVoiceDraft(input: { transcript: string; documentType: "quote" | "invoice"; previous: VoiceDraft | null }): Promise<{ ok: true; draft: VoiceDraft; intent: VoiceIntent; reply: string } | { ok: false; error: string }> {
   const ctx = await loadContext();
   const customerList = ctx.customers.map((c, i) => `${i}: ${c.name}${c.phone ? ` | ${c.phone}` : ""}${c.address ? ` | ${c.address.slice(0, 60)}` : ""}`).join("\n");
   const catalogList = ctx.catalog.slice(0, 700).map((p, i) => `P${i}: ${p.name}${p.part_number ? ` | ${p.part_number}` : ""} | $${Number(p.retail_price ?? 0)}`).join("\n");
@@ -163,7 +168,10 @@ export async function buildVoiceDraft(input: { transcript: string; documentType:
   if (!ai.ok) return { ok: false, error: ai.error };
   const raw = extractJson(ai.text);
   if (!raw) return { ok: false, error: "The AI answer couldn't be read. Try saying it again." };
-  return { ok: true, draft: finalizeDraft(raw, ctx, input) };
+  const draft = finalizeDraft(raw, ctx, input);
+  const intents = new Set(["edit", "send_email", "send_sms", "save", "cancel"]);
+  const intent = (input.previous && intents.has(String(raw.intent)) ? String(raw.intent) : "edit") as VoiceIntent;
+  return { ok: true, draft, intent, reply: spokenReply(draft, intent, str(raw.question, 200)) };
 }
 
 export function finalizeDraft(raw: Record<string, unknown>, ctx: { customers: CustomerRow[]; catalog: CatalogRow[]; fees: FeeRow[]; history: HistoryLine[] }, input: { documentType: "quote" | "invoice"; previous: VoiceDraft | null }): VoiceDraft {
@@ -175,7 +183,8 @@ export function finalizeDraft(raw: Record<string, unknown>, ctx: { customers: Cu
   // Safety net: exact phone/email/name match even if the AI said "new".
   if (!match) match = ctx.customers.find((c) => (spoken.email && normText(c.email) === normText(spoken.email)) || (digits(spoken.phone).length >= 7 && digits(c.phone) === digits(spoken.phone)) || (spoken.name && normText(c.name) === normText(spoken.name))) ?? null;
   const customer = match
-    ? { id: match.id, name: match.name, phone: match.phone ?? "", email: match.email ?? "", address: match.address ?? "" }
+    // A spoken email/phone fills a gap on an existing customer (saved to their record on create).
+    ? { id: match.id, name: match.name, phone: match.phone || spoken.phone || (input.previous?.customer.id === match.id ? input.previous.customer.phone : "") || "", email: match.email || spoken.email || (input.previous?.customer.id === match.id ? input.previous.customer.email : "") || "", address: match.address || spoken.address || "" }
     : { id: null, ...spoken };
   if (!customer.id && !customer.name) warnings.push("No customer was named — pick one before creating.");
 
@@ -238,4 +247,30 @@ export function finalizeDraft(raw: Record<string, unknown>, ctx: { customers: Cu
     sendVia: raw.sendVia === "email" || raw.sendVia === "sms" ? raw.sendVia : "none",
     warnings,
   };
+}
+
+// What Chilly Bro says back. Built from the final numbers (not the AI's guess) so totals are always right.
+export function spokenReply(d: VoiceDraft, intent: VoiceIntent, question: string) {
+  const noun = d.documentType === "quote" ? "quote" : "invoice";
+  const who = d.customer.name || "a new customer";
+  if (intent === "cancel") return "No problem. Cleared it. Tap the mic when you're ready to start a new one.";
+  const t = voiceDraftTotals(d);
+  const needsPrice = d.lines.filter((l) => l.priceSource === "needs_price" && l.unitPrice <= 0);
+  const blocker = !d.customer.id && !d.customer.name ? "Who is this for?"
+    : !d.lines.length ? "What parts, labor, or charges should I put on it?"
+    : needsPrice.length ? `What do you charge for ${needsPrice.map((l) => l.label).slice(0, 2).join(" and ")}?` : "";
+  if (intent === "send_email" || intent === "send_sms" || intent === "save") {
+    if (blocker) return `Before I ${intent === "save" ? "save" : "send"} it: ${blocker}`;
+    if (intent === "send_email" && !d.customer.email) return `I don't have an email for ${who}. Say their email address, or tell me to text it.`;
+    if (intent === "send_sms" && !d.customer.phone) return `I don't have a phone number for ${who}. Say their number, or tell me to email it.`;
+    return intent === "save" ? `Saving the ${noun} for ${who} now.` : `Sending the ${noun} to ${who} by ${intent === "send_email" ? "email" : "text"} now.`;
+  }
+  const learned = d.lines.filter((l) => l.priceSource === "customer_history" || l.priceSource === "your_history").length;
+  const parts = [
+    `Got it. ${noun === "quote" ? "Quote" : "Invoice"} for ${who}, ${d.lines.length} ${d.lines.length === 1 ? "line" : "lines"}, total ${spokenMoney(t.total)}.`,
+    t.down ? `${spokenMoney(t.down)} due upfront.` : "",
+    learned ? `I used your usual price on ${learned === 1 ? "one item" : `${learned} items`}.` : "",
+    blocker || question || `Want me to email it, text it, or just save it?`,
+  ];
+  return parts.filter(Boolean).join(" ");
 }
