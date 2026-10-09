@@ -43,7 +43,9 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   const approved = invoice.status === "approved";
   const downPaymentRequired = !invoice.convertedInvoiceId && invoice.downPaymentAmount > 0;
   const downPaymentPaid = invoice.downPaymentStatus === "paid";
-  const downPaymentDue = approved && !issued && downPaymentRequired && !downPaymentPaid;
+  // Owners can add a down payment to an issued invoice too; it's payable right away.
+  const downPaymentDue = approved && !paid && downPaymentRequired && !downPaymentPaid;
+  const downPaymentNow = Math.min(invoice.downPaymentAmount, totals.total);
   const tab: PortalTab = query.tab === "photos" || query.tab === "equipment" ? query.tab : "overview";
   const scheduled = job?.scheduledWindow && !/^(Approved|Standalone)/.test(job.scheduledWindow) ? job.scheduledWindow : null;
 
@@ -51,7 +53,9 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   if (paid) {
     [statusLabel, statusTone, headline, subline] = ["Paid", "success", "Thank you — this invoice is paid.", "Your receipt is available below. Keep this link for your records."];
   } else if (issued) {
-    [statusLabel, statusTone, headline, subline] = ["Payment due", "attention", "Your service is complete.", "Review the work and pricing below, then choose how you'd like to pay."];
+    [statusLabel, statusTone, headline, subline] = downPaymentDue
+      ? ["Down payment due", "attention", "Your down payment is ready to pay.", "Pay the down payment below to get started. It comes off your total — the rest is due when the work is done."]
+      : ["Payment due", "attention", "Your service is complete.", "Review the work and pricing below, then choose how you'd like to pay."];
   } else if (approved) {
     [statusLabel, statusTone, headline] = ["Approved", "success", "Thank you — your estimate is approved."];
     subline = downPaymentDue
@@ -65,8 +69,9 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   if (invoice.discountAmount > 0) totalRows.push({ label: `Discount${invoice.discountType === "percent" ? ` (${invoice.discountValue}%)` : ""}`, value: -invoice.discountAmount, tone: "success" });
   if (invoice.taxAmount > 0) totalRows.push({ label: `Sales tax (${invoice.taxRate}%)`, value: invoice.taxAmount });
   if (invoice.creditAmount > 0) totalRows.push({ label: "Credit applied", value: -invoice.creditAmount, tone: "success" });
-  if (downPaymentRequired) totalRows.push({ label: downPaymentPaid ? "Down payment received" : "Down payment due now", value: Math.min(invoice.downPaymentAmount, totals.total), tone: downPaymentPaid ? "success" : "attention" });
-  totalRows.push({ label: issued ? "Amount due" : "Estimate total", value: issued ? totals.amountDueNow : totals.total });
+  if (downPaymentRequired) totalRows.push({ label: downPaymentPaid ? "Down payment received" : "Down payment due now", value: downPaymentPaid ? -downPaymentNow : downPaymentNow, tone: downPaymentPaid ? "success" : "attention" });
+  if (downPaymentRequired && !downPaymentPaid) totalRows.push({ label: "Balance after down payment", value: totals.balanceAfterDownPayment });
+  totalRows.push({ label: issued ? (downPaymentPaid ? "Balance due" : "Invoice total") : "Estimate total", value: issued ? totals.amountDueNow : totals.total });
 
   const data: PortalViewData = {
     token,
@@ -78,8 +83,8 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
     statusTone,
     headline,
     subline,
-    amountLabel: paid ? "Paid in full" : issued ? "Amount due" : downPaymentDue ? "Down payment due" : "Estimate total",
-    amount: paid ? totals.total : issued ? totals.amountDueNow : downPaymentDue ? Math.min(invoice.downPaymentAmount, totals.total) : totals.total,
+    amountLabel: paid ? "Paid in full" : downPaymentDue ? "Down payment due now" : issued ? "Amount due" : "Estimate total",
+    amount: paid ? totals.total : downPaymentDue ? downPaymentNow : issued ? totals.amountDueNow : totals.total,
     dueLabel: issued && !paid ? [PAYMENT_TERMS_LABELS[invoice.paymentTerms], date(invoice.dueAt) ? `due ${date(invoice.dueAt)}` : null].filter(Boolean).join(" · ") : null,
     scheduledLabel: scheduled,
     lines: invoice.lineItems.map((item) => ({ id: item.id, label: item.label, description: item.description, quantity: item.quantity, unitPrice: item.unitPrice, amount: item.amount })),
@@ -106,6 +111,15 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
       <h2 className="text-lg font-bold">Approve this estimate</h2>
       <DocumentSignatureForm kind="estimate" token={token} initialSignature={invoice.signatureName} initialSignedAt={invoice.signedAt} alreadyApproved={false} />
     </div>
+  ) : issued && downPaymentDue ? (
+    <div className="space-y-3">
+      <h2 className="text-lg font-bold">Pay your down payment</h2>
+      <DocumentPaymentMethods token={token} initialMethod={invoice.downPaymentMethod} paymentStatus={invoice.downPaymentStatus} amountDue={downPaymentNow} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} kind="down_payment" squareCheckout={squareCheckoutConfigured()} />
+      <details className="rounded-xl border border-[#C7D3E2] bg-white p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-[#0A1A33]">Or pay the full invoice now</summary>
+        <div className="mt-3"><DocumentPaymentMethods token={token} initialMethod={invoice.paymentMethod} paymentStatus={invoice.paymentStatus} amountDue={totals.amountDueNow} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} squareCheckout={squareCheckoutConfigured()} /></div>
+      </details>
+    </div>
   ) : issued && !paid ? (
     <div className="space-y-2">
       <h2 className="text-lg font-bold">Pay your invoice</h2>
@@ -114,7 +128,7 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   ) : downPaymentDue ? (
     <div className="space-y-2">
       <h2 className="text-lg font-bold">Pay your down payment</h2>
-      <DocumentPaymentMethods token={token} initialMethod={invoice.downPaymentMethod} paymentStatus={invoice.downPaymentStatus} amountDue={invoice.downPaymentAmount} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} kind="down_payment" squareCheckout={squareCheckoutConfigured()} />
+      <DocumentPaymentMethods token={token} initialMethod={invoice.downPaymentMethod} paymentStatus={invoice.downPaymentStatus} amountDue={downPaymentNow} invoiceNumber={invoice.invoiceNumber} settings={paymentSettings} kind="down_payment" squareCheckout={squareCheckoutConfigured()} />
     </div>
   ) : (
     <DocumentSignatureForm kind="estimate" token={token} initialSignature={invoice.signatureName} initialSignedAt={invoice.signedAt} alreadyApproved />

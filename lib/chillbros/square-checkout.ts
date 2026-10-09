@@ -1,7 +1,8 @@
 import "server-only";
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
+import { sendOwnerPaymentReviewAlert } from "@/lib/chillbros/approval-notifications";
 import { createReceiptForPaidInvoice } from "@/lib/chillbros/billing-receipts";
 import { getInvoiceV2ById, getInvoiceV2ByToken, invoiceTotals } from "@/lib/chillbros/invoice-v2";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
@@ -50,6 +51,10 @@ async function squareFetch<T>(path: string, init: { method: "GET" | "POST"; body
 
 export type SquareCheckoutKind = "invoice" | "down_payment";
 
+function downPaymentCents(invoice: { downPaymentAmount: number }, total: number) {
+  return Math.round(Math.min(invoice.downPaymentAmount, total) * 100);
+}
+
 /** What the customer owes right now on this document, or an explanation. */
 async function amountDue(token: string, kind: SquareCheckoutKind) {
   const invoice = await getInvoiceV2ByToken(token);
@@ -57,13 +62,14 @@ async function amountDue(token: string, kind: SquareCheckoutKind) {
   if (invoice.convertedInvoiceId) return { ok: false as const, error: "This quote has been converted. Use the new invoice payment link." };
   if (invoice.status !== "approved") return { ok: false as const, error: "Approve the estimate before paying." };
   const totals = invoiceTotals(invoice);
+  if (invoice.paymentStatus === "paid") return { ok: false as const, error: "This invoice is already paid. Thank you!" };
   if (kind === "down_payment") {
-    if (invoice.issuedAt) return { ok: false as const, error: "The final invoice is ready — pay it from the invoice page." };
+    // A down payment can be paid any time before the invoice is paid in full,
+    // including after the owner adds one to an invoice that is already issued.
     if (invoice.downPaymentAmount <= 0 || invoice.downPaymentStatus === "paid") return { ok: false as const, error: "No down payment is due." };
-    return { ok: true as const, invoice, cents: Math.round(Math.min(invoice.downPaymentAmount, totals.total) * 100) };
+    return { ok: true as const, invoice, cents: downPaymentCents(invoice, totals.total) };
   }
   if (!invoice.issuedAt) return { ok: false as const, error: "Payment opens once the work is complete and the invoice is issued." };
-  if (invoice.paymentStatus === "paid") return { ok: false as const, error: "This invoice is already paid. Thank you!" };
   return { ok: true as const, invoice, cents: Math.round(totals.amountDueNow * 100) };
 }
 
@@ -81,7 +87,9 @@ export async function createSquareCheckout(token: string, kind: SquareCheckoutKi
   const label = kind === "down_payment" ? `Down payment · ${invoice.invoiceNumber}` : `Chill Pros ${invoice.invoiceNumber}`;
   // Same invoice + kind + amount reuses the same Square checkout instead of
   // creating a new one on every tap.
-  const idempotencyKey = `cp-${invoice.id}-${kind}-${cents}`.slice(0, 45);
+  // Square caps the key at 45 characters, so hash the parts: a changed amount
+  // (owner edited the invoice) must get a NEW checkout, never the old price.
+  const idempotencyKey = `cp-${createHash("sha256").update(`${invoice.id}|${kind}|${cents}`).digest("hex").slice(0, 40)}`;
   const result = await squareFetch<{ payment_link?: { url?: string; order_id?: string } }>("/v2/online-checkout/payment-links", {
     method: "POST",
     body: {
@@ -135,13 +143,15 @@ export async function recordSquarePayment(payment: SquarePayment) {
 
   const paidCents = Number(payment.amount_money?.amount ?? 0);
   const totals = invoiceTotals(invoice);
-  const expectedCents = kind === "down_payment" ? Math.round(Math.min(invoice.downPaymentAmount, totals.total) * 100) : Math.round(totals.amountDueNow * 100);
+  const expectedCents = kind === "down_payment" ? downPaymentCents(invoice, totals.total) : Math.round(totals.amountDueNow * 100);
   const supabase = createServiceRoleClient();
   const now = new Date().toISOString();
 
   if (paidCents !== expectedCents) {
     // Don't guess — flag it for the office instead of marking it paid.
-    await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.jobId, invoice_id: invoiceId, stage: "square_payment_review", message: `Square payment ${payment.id} of $${(paidCents / 100).toFixed(2)} doesn't match the $${(expectedCents / 100).toFixed(2)} due. Review in Square before marking paid.` });
+    const message = `Square payment ${payment.id} of $${(paidCents / 100).toFixed(2)} for ${kind === "down_payment" ? "the down payment" : "the invoice"} doesn't match the $${(expectedCents / 100).toFixed(2)} due now (the invoice may have been edited after the customer opened checkout). The money is in Square — review it, then record it in Payments.`;
+    await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.jobId, invoice_id: invoiceId, stage: "square_payment_review", message });
+    try { await sendOwnerPaymentReviewAlert({ invoiceNumber: invoice.invoiceNumber, customerName: invoice.customerName, message, invoiceId }); } catch (error) { console.error("[square] review alert failed", error); }
     return { recorded: false, reason: "amount mismatch" };
   }
 
@@ -149,6 +159,16 @@ export async function recordSquarePayment(payment: SquarePayment) {
     const { data } = await supabase.from("chillbros_invoices").update({ down_payment_status: "paid", down_payment_method: "card", down_payment_paid_at: now, updated_at: now }).eq("id", invoiceId).neq("down_payment_status", "paid").select("id").maybeSingle();
     if (!data) return { recorded: false, reason: "already recorded" };
     await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.jobId, invoice_id: invoiceId, stage: "down_payment_paid", message: `Down payment of $${(paidCents / 100).toFixed(2)} paid by card through Square (payment ${payment.id}).` });
+    // A down payment that covers the whole issued invoice settles it.
+    if (invoice.issuedAt && Math.round(totals.total * 100) <= paidCents) {
+      const { data: settled } = await supabase.from("chillbros_invoices").update({ payment_status: "paid", payment_method: "card", paid_at: now, paid_recorded_by: null, updated_at: now }).eq("id", invoiceId).neq("payment_status", "paid").select("id").maybeSingle();
+      if (settled) {
+        const receipt = await createReceiptForPaidInvoice(invoiceId, null);
+        await supabase.from("chillbros_receipts").update({ payment_reference: payment.id, payment_notes: "Paid in full by card through Square (down payment covered the total)." }).eq("id", receipt.id);
+        await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.jobId, invoice_id: invoiceId, stage: "paid", message: "Down payment covered the full invoice — marked paid." });
+        return { recorded: true, invoice, amount: paidCents / 100, kind: "invoice" as const };
+      }
+    }
     return { recorded: true, invoice, amount: paidCents / 100, kind };
   }
 

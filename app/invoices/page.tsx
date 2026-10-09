@@ -13,6 +13,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { PAYMENT_TERMS_LABELS } from "@/lib/chillbros/types";
 import { getEquipmentByCustomer } from "@/lib/chillbros/equipment-queries";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { getJob, getPartsCatalog } from "@/lib/chillbros/queries";
 
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ q?: string; status?: string; focus?: string; edit?: string; success?: string; error?: string; missingEmail?: string; created?: string; sent?: string }> };
@@ -37,9 +38,14 @@ function visible(row: InvoiceCenterRow, filter: string, query: string) {
 export default async function InvoicesPage({ searchParams }: Props) {
   const profile = await getCurrentStaffProfile(); if (!profile || !["manager","office"].includes(profile.role)) redirect("/");
   const params = await searchParams;
-  const editInvoice = profile.role === "manager" && params.focus && params.edit === "1" ? await getInvoiceV2ById(params.focus) : null;
-  const editEquipment = editInvoice ? await getEquipmentByCustomer(editInvoice.customerId) : [];
-  const editJobEquipmentId = editInvoice?.jobId ? (await createServiceRoleClient().from("chillbros_jobs").select("equipment_id").eq("id", editInvoice.jobId).maybeSingle()).data?.equipment_id ?? null : null;
+  const editInvoice = params.focus && params.edit === "1" ? await getInvoiceV2ById(params.focus) : null;
+  const editable = Boolean(editInvoice && editInvoice.paymentStatus !== "paid" && !editInvoice.convertedInvoiceId);
+  const [editEquipment, editJobEquipmentId, editJob, editCatalog] = editable && editInvoice ? await Promise.all([
+    getEquipmentByCustomer(editInvoice.customerId),
+    editInvoice.jobId ? createServiceRoleClient().from("chillbros_jobs").select("equipment_id").eq("id", editInvoice.jobId).maybeSingle().then(({ data }) => data?.equipment_id ?? null) : Promise.resolve(null),
+    editInvoice.jobId ? getJob(editInvoice.jobId) : Promise.resolve(null),
+    getPartsCatalog(),
+  ]) : [[], null, null, []];
   const filter = FILTERS.some(([value]) => value === params.status) ? String(params.status) : "active";
   const query = String(params.q || "").trim().toLowerCase();
   const { rows, metrics, loadError } = await getInvoiceCenterData();
@@ -74,7 +80,8 @@ export default async function InvoicesPage({ searchParams }: Props) {
       {params.success ? <p className="text-sm text-emerald-200">{params.success}</p> : null}
       {params.error ? <p className="text-sm text-rose-200">{params.error}</p> : null}
       {loadError ? <p role="alert" className="rounded-2xl border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-100">The invoice list could not be loaded, so documents below may be missing. Your invoices are not deleted. Refresh, and if this stays, send this message to support: {loadError}</p> : null}
-      {editInvoice && ["draft", "awaiting_approval"].includes(editInvoice.status) && editInvoice.paymentStatus !== "paid" ? <OwnerEstimateEditor key={editInvoice.id} invoice={editInvoice} equipment={editEquipment.map((unit) => ({ id: unit.id, label: [[unit.manufacturer, unit.model].filter(Boolean).join(" ") || unit.equipmentType, unit.serialNumber ? `S/N ${unit.serialNumber}` : null].filter(Boolean).join(" · ") }))} currentEquipmentId={editJobEquipmentId} /> : null}
+      {editInvoice && editable ? <OwnerEstimateEditor key={editInvoice.id} invoice={editInvoice} equipment={editEquipment.map((unit) => ({ id: unit.id, label: [[unit.manufacturer, unit.model].filter(Boolean).join(" ") || unit.equipmentType, unit.serialNumber ? `S/N ${unit.serialNumber}` : null].filter(Boolean).join(" · ") }))} currentEquipmentId={editJobEquipmentId} jobParts={editJob?.parts ?? []} catalog={editCatalog.map((part) => ({ id: part.id, name: part.name, partNumber: part.partNumber, retailPrice: part.retailPrice }))} /> : null}
+      {editInvoice && !editable ? <p role="alert" className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-100">{editInvoice.paymentStatus === "paid" ? "This invoice is paid, so it's locked. Use a credit or refund under Manager billing controls." : "This quote was converted. Open the invoice to edit it."}</p> : null}
       {focused ? <><section role="status" className="rounded-3xl border border-emerald-400/30 bg-emerald-500/[0.06] p-4"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">{params.created ? `${focused.invoiceNumber.toUpperCase().startsWith("Q-") || !focused.issuedAt ? "Quote" : "Invoice"} ${focused.invoiceNumber} created — saved` : `${focused.invoiceNumber.toUpperCase().startsWith("Q-") || !focused.issuedAt ? "Quote" : "Invoice"} ready`}</p><h2 className="mt-1 text-2xl font-semibold text-white">{params.created && params.sent ? `Sent to the customer` : params.created ? `Now send the ${focused.invoiceNumber.toUpperCase().startsWith("Q-") || !focused.issuedAt ? "quote" : "invoice"} to the customer` : `Open and send ${focused.invoiceNumber.toUpperCase().startsWith("Q-") || !focused.issuedAt ? "quote" : "invoice"}`}</h2>{params.created && params.sent ? <p className="mt-1 text-sm text-emerald-100">Sent by {params.sent === "sms" ? "text" : "email"}. Don&apos;t create it again.</p> : params.created ? <p className="mt-1 text-sm text-zinc-300">It is not sent yet. Use Email or Text below. Don&apos;t create it again.</p> : null}</section>{renderCard(focused,true)}<div className="flex gap-2"><Link href="/invoices/new?type=invoice" className="rounded-xl border border-[#8ffafa]/35 px-4 py-3 text-sm text-white"><Plus className="mr-1 inline h-4 w-4"/>New invoice</Link><Link href="/invoices" className="rounded-xl border border-[#2d7dff]/25 px-4 py-3 text-sm text-zinc-300">Back</Link></div></> : <>
         <Link href="/invoices/voice" className="block rounded-2xl border border-[#8ffafa]/60 bg-[#2d7dff]/25 p-3 text-center text-base font-semibold text-white sm:p-4">🎙 Talk it in — voice quote / invoice</Link><div className="grid grid-cols-2 gap-3"><Link href="/invoices/new?type=invoice" className="rounded-2xl border border-[#8ffafa]/45 bg-[#2d7dff]/15 p-3 text-center text-sm font-semibold text-white sm:p-4 sm:text-base">+ New Invoice</Link><Link href="/invoices/new?type=quote" className="rounded-2xl border border-[#2d7dff]/25 p-3 text-center text-sm font-semibold text-[#d9fbff] sm:p-4 sm:text-base">+ New Quote</Link></div>
         <SectionCard eyebrow="Receivables" title="Billing dashboard" description="Only active work stays in your face."><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[["Active",String(activeCount)],["Outstanding",money.format(metrics.outstandingValue)],["Overdue",money.format(metrics.overdueValue)],["Archived",String(archiveCount)]].map(([l,v]) => <div key={l} className="rounded-2xl border border-[#2d7dff]/20 bg-black/40 p-3"><p className="text-xs text-zinc-500">{l}</p><p className="mt-2 text-xl font-semibold text-white">{v}</p></div>)}</div></SectionCard>

@@ -161,11 +161,21 @@ export async function sendInvoicePaidNotification(input: { invoiceNumber: string
   ], input.invoiceId);
 }
 
+export async function sendOwnerPaymentReviewAlert(input: { invoiceNumber: string; customerName?: string | null; message: string; invoiceId: string }) {
+  return sendOwnerAlertEmail(safeHeader(`Check this payment — ${input.invoiceNumber}`), [
+    "A customer paid through Square, but the amount didn't match what's due, so the app did NOT mark it paid.",
+    "",
+    `Document: ${input.invoiceNumber}`,
+    input.customerName ? `Customer: ${input.customerName}` : null,
+    input.message,
+  ], input.invoiceId);
+}
+
 export async function sendDownPaymentReceivedNotification(input: { invoiceNumber: string; customerName?: string | null; amount: number; method: string; invoiceId: string }) {
-  return sendOwnerAlertEmail(safeHeader(`Down payment received — Quote ${input.invoiceNumber}`), [
+  return sendOwnerAlertEmail(safeHeader(`Down payment received — ${input.invoiceNumber}`), [
     "Chill Pros down payment received.",
     "",
-    `Quote: ${input.invoiceNumber}`,
+    `Document: ${input.invoiceNumber}`,
     input.customerName ? `Customer: ${input.customerName}` : null,
     `Amount: ${input.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}`,
     `Method: ${input.method.replace(/_/g, " ")}`,

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Archive, Mail, MessageSquareText, RefreshCw, ReceiptText, Send, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { overrideQuoteToEstimateAction, convertQuoteToInvoiceAction, finalizeInvoiceAction, reopenInvoiceAction, saveCustomerEmailAndSendAction, ensureInvoiceArchiveAction, recordInvoiceAdjustmentAction, sendInvoiceCommunicationAction, updateInvoiceBillingSettingsAction } from "@/lib/chillbros/billing-actions";
+import { overrideQuoteToEstimateAction, convertQuoteToInvoiceAction, finalizeInvoiceAction, saveCustomerEmailAndSendAction, ensureInvoiceArchiveAction, recordInvoiceAdjustmentAction, sendInvoiceCommunicationAction, updateInvoiceBillingSettingsAction } from "@/lib/chillbros/billing-actions";
 import { markInvoicePaidV2Action } from "@/lib/chillbros/estimate-actions-v2";
 import { revokeEstimateAction } from "@/lib/chillbros/mutations";
 import type { InvoiceAdjustmentType, InvoiceStatus, PaymentStatus, PaymentTerms } from "@/lib/chillbros/types";
@@ -125,12 +125,11 @@ export function InvoiceAdminControls(props: Props) {
       <label>or number<input type="tel" inputMode="tel" value={sendToPhone} onChange={(e) => setSendToPhone(e.target.value)} placeholder="Optional, this send only" className="ml-2 rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-2.5 py-1.5 text-white" /></label>
     </div>
     <div className="flex flex-wrap gap-2">
+      {props.status !== "void" && props.paymentStatus !== "paid" ? <Link href={"/invoices?focus=" + props.invoiceId + "&edit=1"} className="inline-flex items-center rounded-xl border border-[#8ffafa]/50 bg-[#2d7dff]/15 px-3 py-2 text-xs font-semibold text-white">Edit (parts, prices, down payment)</Link> : null}
       {["draft", "awaiting_approval"].includes(props.status) && props.paymentStatus !== "paid" ? <>
-        {props.canManage ? <Link href={"/invoices?focus=" + props.invoiceId + "&edit=1"} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff]">Edit document</Link> : null}
         <button type="button" disabled={pending} onClick={() => void run(() => finalizeInvoiceAction(props.invoiceId), "Invoice finalized. Review the Document link below, then Email or Text it to the customer.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Finalize invoice (review before sending)</button>
       </> : null}
 
-      {props.canManage && props.status === "approved" && props.paymentStatus === "unpaid" ? <button type="button" disabled={pending} onClick={() => void run(() => reopenInvoiceAction(props.invoiceId), "Invoice reopened. Select Edit document to correct equipment, notes, or pricing, then Finalize & email.")} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Reopen to edit</button> : null}
       {props.canManage && props.status === "approved" && props.paymentStatus !== "paid" ? <button type="button" disabled={pending} onClick={() => void run(() => markInvoicePaidV2Action(props.invoiceId), "Payment recorded.", true)} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-xs text-emerald-100 disabled:opacity-40">Mark paid</button> : null}
       <button type="button" disabled={pending} onClick={() => void send("email")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><Mail className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Email receipt" : isQuote ? "Email quote to customer" : "Email invoice to customer"}</button>
       <button type="button" disabled={pending} onClick={() => void send("sms")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><MessageSquareText className="h-3.5 w-3.5" />{props.paymentStatus === "paid" ? "Text receipt" : isQuote ? "Text quote to customer" : "Text invoice to customer"}</button>
@@ -150,7 +149,7 @@ export function InvoiceAdminControls(props: Props) {
           <label className="mt-5 inline-flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" checked={taxExempt} onChange={(e) => setTaxExempt(e.target.checked)} disabled={taxLocked || pending} className="h-4 w-4" />Customer tax exempt</label>
         </div>
         <label className="block text-xs text-zinc-400">Tax-exempt note<input value={taxExemptNote} onChange={(e) => setTaxExemptNote(e.target.value)} maxLength={500} disabled={taxLocked || pending || !taxExempt} placeholder="Certificate / exemption note" className="mt-1 w-full rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white disabled:opacity-45" /></label>
-        {taxLocked ? <p className="text-xs text-amber-100">Finalized prices are locked. Reopen an unpaid invoice to edit; paid invoices require a credit/refund.</p> : null}
+        {taxLocked ? <p className="text-xs text-amber-100">Tax is locked once finalized. Use Edit above to change parts, prices, or the down payment — the invoice stays ready to pay. Paid invoices require a credit/refund.</p> : null}
         <button type="button" disabled={pending} onClick={() => void run(async () => { const result = await updateInvoiceBillingSettingsAction(props.invoiceId, { taxRate: Number(taxRate || 0), paymentTerms, dueDate: dueDate || null, taxExempt, taxExemptNote }); return result.ok ? { ok: true } : { ok: false, error: result.error }; }, "Billing settings saved.")} className="inline-flex items-center gap-2 rounded-xl border border-[#2d7dff]/35 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40"><ShieldCheck className="h-3.5 w-3.5" />Save billing settings</button>
 
         <div className="border-t border-[#2d7dff]/15 pt-4">

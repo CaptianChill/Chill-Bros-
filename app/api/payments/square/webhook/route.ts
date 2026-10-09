@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
-import { sendInvoicePaidNotification } from "@/lib/chillbros/approval-notifications";
+import { sendDownPaymentReceivedNotification, sendInvoicePaidNotification } from "@/lib/chillbros/approval-notifications";
 import { sendBillingDeliveryRecorded } from "@/lib/chillbros/billing-delivery";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { recordSquarePayment, verifySquareSignature } from "@/lib/chillbros/square-checkout";
@@ -41,7 +41,10 @@ export async function POST(request: Request) {
         } catch (error) { console.error("[square-webhook] receipt delivery failed", error); }
         try { await archiveInvoicePdf(invoice.id, "paid"); } catch { /* payment stays recorded */ }
       }
-      try { await sendInvoicePaidNotification({ invoiceNumber: invoice.invoiceNumber, customerName: invoice.customerName, amount: result.amount ?? 0, method: "card (Square)", invoiceId: invoice.id }); } catch (error) { console.error("[square-webhook] owner notification failed", error); }
+      try {
+        const alert = { invoiceNumber: invoice.invoiceNumber, customerName: invoice.customerName, amount: result.amount ?? 0, method: "card (Square)", invoiceId: invoice.id };
+        if (result.kind === "down_payment") await sendDownPaymentReceivedNotification(alert); else await sendInvoicePaidNotification(alert);
+      } catch (error) { console.error("[square-webhook] owner notification failed", error); }
       for (const path of ["/invoices", "/payments", "/reports", "/", `/portal/${invoice.portalToken}`, `/portal/${invoice.portalToken}/receipt`]) revalidatePath(path);
     }
     return NextResponse.json({ received: true });

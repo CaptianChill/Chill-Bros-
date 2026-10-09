@@ -36,7 +36,7 @@ export function PaymentMethodTabs({ token, amountDue, invoiceNumber, paymentStat
   squareCheckout?: boolean;
 }) {
   const isDownPayment = kind === "down_payment";
-  const documentLabel = isDownPayment ? "Quote" : "Invoice";
+  const documentLabel = /^(Q|E|EST)-/i.test(invoiceNumber) ? "Quote" : "Invoice";
   const money = amountDue.toLocaleString("en-US", { style: "currency", currency: "USD" });
   const startTab = TABS.some((tab) => tab.key === initialMethod) ? (initialMethod as PaymentMethod) : "card";
   const [active, setActive] = useState<PaymentMethod>(startTab);

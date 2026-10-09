@@ -118,10 +118,11 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
       // Not sent to the customer yet.
     } else if (!approved) {
       due.push({ ...base, action: "approve", amount: issued ? totals.amountDueNow : totals.total, label: firstItem ?? "Estimate" });
+    } else if (!inv.convertedInvoiceId && inv.downPaymentAmount > 0 && inv.downPaymentStatus !== "paid") {
+      // Down payment first — also on issued invoices the owner added one to.
+      due.push({ ...base, action: "down_payment", amount: Math.min(inv.downPaymentAmount, totals.total), label: firstItem ?? "Down payment" });
     } else if (issued) {
       if (totals.amountDueNow > 0) due.push({ ...base, action: "pay", amount: totals.amountDueNow, label: firstItem ?? "Service" });
-    } else if (!inv.convertedInvoiceId && inv.downPaymentAmount > 0 && inv.downPaymentStatus !== "paid") {
-      due.push({ ...base, action: "down_payment", amount: Math.min(inv.downPaymentAmount, totals.total), label: firstItem ?? "Down payment" });
     }
   });
 

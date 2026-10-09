@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ChangeTechnician, CloseCallButton, NextStepButton, TechNotes } from "@/components/job-screen-actions";
 import { JobPartsCard } from "@/components/job-parts-card";
+import { JobTimeCard } from "@/components/job-time-card";
 import { MediaAccordion } from "@/components/media-accordion";
 import { WorkLocationTracker } from "@/components/work-location-tracker";
 import { getPartsCatalog } from "@/lib/chillbros/queries";
@@ -80,6 +81,10 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   const quoteHref = `/jobs/${encodeURIComponent(job.id)}/quote`;
   const partsPro = partsProHref({ details: job.scope, back: `/jobs/${job.id}` });
   const fieldNext = FIELD_NEXT[step];
+  // Parts and time stay editable after the call is closed while its invoice is
+  // unpaid, so a new issue on an existing call can still be billed.
+  const billingOpen = active || Boolean(invoice && !paid && invoice.status !== "void");
+  const canEditInvoice = isOffice && Boolean(invoice && !paid && invoice.status !== "void" && !invoice.convertedInvoiceId);
 
   // The one primary action for the job's next step.
   let primary: React.ReactNode = null;
@@ -230,7 +235,13 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
 
         <section className="cb-card p-3.5">
           <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 1</p><h2 className="text-xl font-bold text-[#0A1A33]">Parts & materials</h2><p className="mt-1 text-sm text-[#2B3F5C]">Add every part used or needed on this call here. These stay attached to the job for billing.</p></div>
-          <JobPartsCard jobId={job.id} parts={job.parts} catalog={partsCatalog} canEdit={canEditParts && active} canAddCustom={profile.role === "manager"} partsProHref={partsPro} />
+          <JobPartsCard jobId={job.id} parts={job.parts} catalog={partsCatalog} canEdit={canEditParts && (active || (profile.role === "manager" && billingOpen))} canAddCustom={profile.role === "manager"} partsProHref={partsPro} />
+          {canEditInvoice && invoice ? <Link href={`/invoices?focus=${invoice.id}&edit=1`} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] px-3 font-semibold text-white"><ReceiptText className="h-4 w-4" aria-hidden="true" />Put parts on {invoice.invoiceNumber} &amp; set down payment</Link> : null}
+        </section>
+
+        <section className="cb-card p-3.5">
+          <div className="mb-3"><h2 className="text-xl font-bold text-[#0A1A33]">Time on this call</h2><p className="mt-1 text-sm text-[#2B3F5C]">Update when you&apos;re done. Stays editable until the invoice is paid.</p></div>
+          <JobTimeCard jobId={job.id} laborHours={job.laborHours} driveHours={job.driveHours} canEdit={(isField || isOffice) && billingOpen} />
         </section>
 
         <section className="cb-card p-3.5">
