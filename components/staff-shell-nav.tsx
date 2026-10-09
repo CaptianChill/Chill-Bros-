@@ -111,6 +111,7 @@ export function StaffHeader({
           </>
         )}
       </header>
+      {user.role !== "technician" ? <nav aria-label="Service plan quotes" className="px-4 py-3 lg:px-5"><Link href="/agreements" className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#1B3FD0]/30 bg-white px-4 py-2 text-sm font-bold text-[#1B3FD0]"><FilePenLine className="h-4 w-4" aria-hidden="true" />Create / continue service-plan quote</Link></nav> : null}
       {showNewInvoice ? (
         <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-2 lg:bottom-6">
           <Link

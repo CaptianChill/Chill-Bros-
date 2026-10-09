@@ -24,6 +24,7 @@ export async function updateTechnicianJobV2Action(input: {
   workPerformed?: string;
   laborHours?: number;
   driveHours?: number;
+  equipmentId?: string | null;
 }): Promise<Result> {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["technician", "manager"].includes(profile.role)) return { ok: false, error: "Technician or manager access required." };
@@ -44,13 +45,17 @@ export async function updateTechnicianJobV2Action(input: {
   const { data: job } = await jobQuery.maybeSingle();
   if (!job) return { ok: false, error: profile.role === "manager" ? "Job not found." : "This job is not assigned to you." };
   if (!JOB_ACTIVE_STATUSES.includes(job.status as JobStatus)) return { ok: false, error: "This job is closed and locked from field edits." };
+  if (input.equipmentId) {
+    const { data: unit, error: unitError } = await supabase.from("chillbros_equipment").select("id,customer_id").eq("id", input.equipmentId).maybeSingle();
+    if (unitError || !unit || unit.customer_id !== job.customer_id) return { ok: false, error: "Selected equipment does not belong to this customer." };
+  }
 
   const nextStatus = input.status ?? job.status as JobStatus;
   if (nextStatus !== job.status && !TECHNICIAN_STATUSES.includes(nextStatus)) return { ok: false, error: "Choose On my way, On site, or Work done." };
   const work = clean(input.workPerformed, 6000);
   let updateQuery = supabase
     .from("chillbros_jobs")
-    .update({ status: nextStatus, work_performed: work, labor_hours: labor, drive_hours: drive, updated_at: new Date().toISOString() })
+    .update({ status: nextStatus, work_performed: work, labor_hours: labor, drive_hours: drive, ...(input.equipmentId !== undefined ? { equipment_id: input.equipmentId || null } : {}), updated_at: new Date().toISOString() })
     .eq("id", input.jobId)
     .eq("status", job.status);
   if (profile.role === "technician") updateQuery = updateQuery.eq("assigned_tech_id", profile.id);

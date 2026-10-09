@@ -59,6 +59,7 @@ const nextConfig: NextConfig = {
       { source: "/sign-in", headers: privateNoStoreHeaders },
       { source: "/security/:path*", headers: privateNoStoreHeaders },
       { source: "/portal/:path*", headers: privateNoStoreHeaders },
+      { source: "/my/:path*", headers: privateNoStoreHeaders },
       { source: "/agreement/:path*", headers: privateNoStoreHeaders },
     ];
   },

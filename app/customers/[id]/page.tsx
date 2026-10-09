@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { CustomerEditor } from "@/components/customer-editor";
+import { CustomerPortalInvite } from "@/components/customer-portal-invite";
 import { EquipmentAdmin } from "@/components/equipment-admin";
 import { JobDispatchControl } from "@/components/job-dispatch-control";
 import { OpenFormDrafts } from "@/components/open-form-drafts";
@@ -36,6 +37,7 @@ export default async function CustomerProfilePage({ params }: Props) {
   >
     <div className="space-y-4">
       <SectionCard eyebrow="Customer record" title="Contact & service history" description="Edit the customer record here. All equipment, documents, calls, and plans remain tied to this customer ID."><CustomerEditor customer={data.customer} /></SectionCard>
+      <SectionCard eyebrow="Customer portal" title="Invite this customer" description="Give the customer access to their own account."><CustomerPortalInvite customerId={data.customer.id} /></SectionCard>
       <Link href={`/jobs/new?customer=${data.customer.id}`} className="cb-new flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-base font-semibold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8]">
         <Plus className="h-5 w-5" aria-hidden="true" />
         New call for this customer

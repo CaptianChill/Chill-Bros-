@@ -55,6 +55,7 @@ export function CustomerSignInForm({ initialEmail = "", link = null }: { initial
         </label>
         {error ? <p role="alert" className="text-sm font-semibold text-[#B42318]">{error}</p> : null}
         <button type="submit" disabled={pending} className={primary}><Mail className="h-5 w-5" aria-hidden="true" />{pending ? "Sending…" : "Email me a code"}</button>
+        <p className="rounded-xl bg-[#EAF3FF] px-4 py-3 text-sm text-[#1452C2]">Verify your email once. This browser keeps you signed in for 60 days unless you sign out or clear its cookies. On a shared device, sign out when finished.</p>
         <p className="text-center text-sm text-[#3D5170]">{link ? "No password needed. Use any email you check — we'll send a 6-digit code to confirm it." : "No password needed. Use the email we have on file for your business to see your history."}</p>
       </form>
     );

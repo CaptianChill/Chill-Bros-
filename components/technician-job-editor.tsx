@@ -3,6 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { CheckCircle2, ChevronDown, Navigation, PackagePlus, Save, Trash2, Wrench } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ServiceEquipmentPicker, type EquipmentOption } from "@/components/service-equipment-picker";
 
 import { updateTechnicianJobV2Action } from "@/lib/chillbros/job-workflow-v2";
 import { addJobPartAtomicAction, removeJobPartAtomicAction, setJobPartQuantityAtomicAction } from "@/lib/chillbros/job-parts";
@@ -19,13 +20,14 @@ const NEXT_ACTION: Partial<Record<JobStatus, { status: JobStatus; label: string;
   ...Object.fromEntries(["in_progress", "arrived", "diagnosing", "awaiting_approval", "approved", "parts_required", "return_visit_needed", "repairing"].map(status => [status, { status: "work_complete", label: "Work done", icon: "done" }])),
 };
 
-export function TechnicianJobEditor({ job, partsCatalog }: { job: Job; partsCatalog: PartsCatalogItem[] }) {
+export function TechnicianJobEditor({ job, partsCatalog, equipment = [] }: { job: Job; partsCatalog: PartsCatalogItem[]; equipment?: EquipmentOption[] }) {
   const router = useRouter();
   const mounted = useRef(false);
   const [pending, startTransition] = useTransition();
   const initialStatus = job.status;
   const [status, setStatus] = useState<JobStatus>(initialStatus);
   const [workPerformed, setWorkPerformed] = useState(job.workPerformed ?? "");
+  const [equipmentId, setEquipmentId] = useState(job.equipmentId ?? "");
   const [laborHours, setLaborHours] = useState(String(job.laborHours ?? 0));
   const [driveHours, setDriveHours] = useState(String(job.driveHours ?? 0));
   const [partId, setPartId] = useState(partsCatalog[0]?.id ?? "");
@@ -53,14 +55,14 @@ export function TechnicianJobEditor({ job, partsCatalog }: { job: Job; partsCata
   };
 
   const saveTicket = (showMessage = false) => run(
-    () => updateTechnicianJobV2Action({ jobId: job.id, workPerformed, laborHours: Number(laborHours || 0), driveHours: Number(driveHours || 0) }),
+    () => updateTechnicianJobV2Action({ jobId: job.id, workPerformed, equipmentId: equipmentId || null, laborHours: Number(laborHours || 0), driveHours: Number(driveHours || 0) }),
     showMessage ? "Service notes saved." : "Autosaved.",
     true,
   );
 
   const changeStage = (nextStatus: JobStatus) => {
     run(async () => {
-      const result = await updateTechnicianJobV2Action({ jobId: job.id, status: nextStatus, workPerformed, laborHours: Number(laborHours || 0), driveHours: Number(driveHours || 0) });
+      const result = await updateTechnicianJobV2Action({ jobId: job.id, status: nextStatus, workPerformed, equipmentId: equipmentId || null, laborHours: Number(laborHours || 0), driveHours: Number(driveHours || 0) });
       if (result.ok) setStatus(nextStatus);
       return result;
     }, "Job updated: " + JOB_STATUS_LABELS[nextStatus] + ".");
@@ -76,7 +78,7 @@ export function TechnicianJobEditor({ job, partsCatalog }: { job: Job; partsCata
     }
     const timer = window.setTimeout(() => autosaveTicket(), 900);
     return () => window.clearTimeout(timer);
-  }, [workPerformed, laborHours, driveHours]);
+  }, [workPerformed, laborHours, driveHours, equipmentId]);
 
   useEffect(() => {
     const listener = () => saveFromHeader();
@@ -107,6 +109,7 @@ export function TechnicianJobEditor({ job, partsCatalog }: { job: Job; partsCata
       <label className="space-y-1"><span className="text-xs text-zinc-400">Labor hours</span><input type="number" min="0" step="0.25" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /></label>
       <label className="space-y-1"><span className="text-xs text-zinc-400">Drive hours</span><input type="number" min="0" step="0.25" value={driveHours} onChange={(e) => setDriveHours(e.target.value)} className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /></label>
     </div>
+    <ServiceEquipmentPicker customerId={job.customerId} equipment={equipment} value={equipmentId} onChange={setEquipmentId} disabled={pending} />
     <label className="block space-y-1"><span className="text-xs text-zinc-400">Diagnostics / work performed</span><textarea value={workPerformed} onChange={(e) => setWorkPerformed(e.target.value)} rows={6} placeholder="Complaint, diagnosis, readings, repair performed, recommendations..." className="w-full rounded-xl border border-[#2d7dff]/20 bg-black px-3 py-2 text-white" /></label>
     <button onClick={() => saveTicket(true)} disabled={pending} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#2d7dff]/30 px-4 py-2.5 text-sm text-[#d9fbff] disabled:opacity-50"><Save className="h-4 w-4" />Save service notes</button>
 

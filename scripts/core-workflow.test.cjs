@@ -51,6 +51,7 @@ function harness(seed = {}, delivery = { status: 'sent', recipient: 'test@exampl
     'next/navigation': { redirect(location) { throw Object.assign(new Error('redirect'), { location }); } },
     '@/lib/supabase/auth-server': { getCurrentStaffProfile: async () => role === null ? null : profile },
     '@/lib/supabase/service-client': { createServiceRoleClient: () => db },
+    '@/lib/chillbros/customer-account': { normalizeEmail: value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value ?? '').trim()) ? String(value).trim().toLowerCase() : null },
     '@/lib/chillbros/assignment-notifications': {
       verifyTechnicianAssignment: async () => ({ ok: true }),
       sendTechnicianAssignmentEmail: async () => ({ sent: delivery.status === 'sent', ...delivery }),
@@ -265,4 +266,50 @@ test('owner conversion returns invoice ID for immediate navigation and passes au
   const result = await billing.convertQuoteToInvoiceAction('quote');
   assert.deepEqual(result, { ok: true, data: { invoiceId: 'converted-id' } });
   assert.deepEqual(h.calls[0], { rpc: 'chillbros_owner_convert_quote', args: { p_quote_id: 'quote', p_actor_id: 'tech' } });
+});
+
+test('portal invitations require office/manager and retain a usable private link when email fails', async () => {
+  for (const role of ['technician', null]) {
+    const h = harness({}, undefined, role);
+    assert.equal((await h.load('lib/chillbros/customer-invite-actions.ts').createCustomerInviteAction('customer', false)).ok, false);
+    assert.equal(h.calls.length, 0);
+  }
+  const h = harness({ chillbros_customers: [{ id: 'customer', name: 'Test business', email: 'TEST@example.com' }] }, { status: 'failed' }, 'office');
+  const result = await h.load('lib/chillbros/customer-invite-actions.ts').createCustomerInviteAction('customer', true);
+  assert.equal(result.ok, true); assert.equal(result.emailed, false);
+  const token = new URL(result.url).searchParams.get('invite');
+  assert.equal(token.length, 43);
+  assert.equal(h.tables.chillbros_customer_invites[0].token_hash, require('node:crypto').createHash('sha256').update(token).digest('hex'));
+  assert.ok(!JSON.stringify(h.tables.chillbros_customer_invites).includes(token), 'only token digest is stored');
+});
+
+test('document revision uses atomic equipment/notes RPC and preserves untouched field notes', async () => {
+  const lines = [{ label: 'Service', quantity: 1, unitPrice: 100 }];
+  const h = harness({ chillbros_invoices: [invoice()], chillbros_jobs: [job('work_complete')], chillbros_equipment: [{ id: 'unit', customer_id: 'customer' }, { id: 'other', customer_id: 'other-customer' }] });
+  const action = h.load('lib/chillbros/owner-estimate-actions.ts').replaceEstimateLinesForManagerAction;
+  assert.equal((await action('invoice', lines, 'Customer notes', 'other', 'New field notes')).ok, false);
+  assert.equal(h.calls.filter(c => c.rpc).length, 0);
+  assert.equal((await action('invoice', lines, 'Customer notes', 'unit', 'New field notes')).ok, true);
+  const rpc = h.calls.find(c => c.rpc);
+  assert.equal(rpc.rpc, 'chillbros_manager_edit_document');
+  assert.equal(rpc.args.p_equipment_id, 'unit'); assert.equal(rpc.args.p_work_performed, 'New field notes');
+  assert.equal(rpc.args.p_update_equipment, true); assert.equal(rpc.args.p_update_work, true);
+  assert.equal(h.calls.filter(c => c.table === 'chillbros_jobs' && c.operation === 'update').length, 0, 'no partial job save before RPC');
+  h.calls.length = 0;
+  assert.equal((await action('invoice', lines, 'Pricing only')).ok, true);
+  assert.equal(h.calls.find(c => c.rpc).args.p_update_work, false);
+  assert.equal(h.calls.find(c => c.rpc).args.p_update_equipment, false);
+});
+
+test('field equipment selection rejects another customer unit and unassigned technician', async () => {
+  const seed = { chillbros_jobs: [job('arrived')], chillbros_equipment: [{ id: 'unit', customer_id: 'customer' }, { id: 'other', customer_id: 'other-customer' }] };
+  const h = harness(seed, undefined, 'technician');
+  const action = h.load('lib/chillbros/job-workflow-v2.ts').updateTechnicianJobV2Action;
+  assert.equal((await action({ jobId: 'job', equipmentId: 'other', workPerformed: 'On-site notes' })).ok, false);
+  assert.equal((await action({ jobId: 'job', equipmentId: 'unit', workPerformed: 'On-site notes' })).ok, true);
+  assert.equal(h.tables.chillbros_jobs[0].equipment_id, 'unit');
+  assert.equal(h.tables.chillbros_jobs[0].work_performed, 'On-site notes');
+  h.tables.chillbros_jobs[0].assigned_tech_id = 'someone-else';
+  assert.equal((await action({ jobId: 'job', equipmentId: null })).ok, false);
+  assert.equal(h.tables.chillbros_jobs[0].equipment_id, 'unit');
 });
