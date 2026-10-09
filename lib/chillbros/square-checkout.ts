@@ -147,9 +147,18 @@ export async function recordSquarePayment(payment: SquarePayment) {
   const supabase = createServiceRoleClient();
   const now = new Date().toISOString();
 
-  if (paidCents !== expectedCents) {
+  // Paid in full already (e.g. customer paid the whole invoice, then also
+  // finished a down-payment checkout they had open): never record it silently.
+  // Square sends payment.created AND payment.updated for the same payment —
+  // a repeat of one we already recorded is not a second payment.
+  const { data: seen } = await supabase.from("chillbros_workflow_events").select("id").eq("invoice_id", invoiceId).in("stage", ["paid", "down_payment_paid", "square_payment_review"]).ilike("message", `%${payment.id}%`).limit(1).maybeSingle();
+  if (seen) return { recorded: false, reason: "already recorded" };
+  const alreadySettled = invoice.paymentStatus === "paid";
+  if (alreadySettled || paidCents !== expectedCents) {
     // Don't guess — flag it for the office instead of marking it paid.
-    const message = `Square payment ${payment.id} of $${(paidCents / 100).toFixed(2)} for ${kind === "down_payment" ? "the down payment" : "the invoice"} doesn't match the $${(expectedCents / 100).toFixed(2)} due now (the invoice may have been edited after the customer opened checkout). The money is in Square — review it, then record it in Payments.`;
+    const message = alreadySettled
+      ? `Square payment ${payment.id} of $${(paidCents / 100).toFixed(2)} arrived for ${invoice.invoiceNumber}, which was already paid in full. The customer may have paid twice — check Square and refund if needed.`
+      : `Square payment ${payment.id} of $${(paidCents / 100).toFixed(2)} for ${kind === "down_payment" ? "the down payment" : "the invoice"} doesn't match the $${(expectedCents / 100).toFixed(2)} due now (the invoice may have been edited after the customer opened checkout). The money is in Square — review it, then record it in Payments.`;
     await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.jobId, invoice_id: invoiceId, stage: "square_payment_review", message });
     try { await sendOwnerPaymentReviewAlert({ invoiceNumber: invoice.invoiceNumber, customerName: invoice.customerName, message, invoiceId }); } catch (error) { console.error("[square] review alert failed", error); }
     return { recorded: false, reason: "amount mismatch" };
