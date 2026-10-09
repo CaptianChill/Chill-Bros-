@@ -9,9 +9,12 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
+// Pay is owner-only: several staff (including the techs being paid) have the
+// manager role, and nobody should approve their own pay.
+const OWNER_PROFILE_ID = "8c81f12a-ad86-4ceb-bca1-3924be1cbfec";
 async function requireOwner() {
   const profile = await getCurrentStaffProfile();
-  if (!profile || profile.role !== "manager") return null;
+  if (!profile || profile.id !== OWNER_PROFILE_ID) return null;
   return profile;
 }
 

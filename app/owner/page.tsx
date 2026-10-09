@@ -26,7 +26,7 @@ const ownerToolGroups: { title: string; description: string; tools: OwnerTool[] 
       { href: "/reports", title: "Reports", description: "Revenue, outstanding balances, jobs, technician time, and inventory value.", icon: BarChart3 },
       { href: "/manager", title: "Manager controls", description: "Estimates, approvals, collections, and staff status.", icon: SlidersHorizontal },
       { href: "/inventory", title: "Parts, price book & fees", description: "Stock, cost, retail prices, and fee presets used in estimates.", icon: Package },
-      { href: "/payroll", title: "Payroll & paystubs", description: "Open the payroll workspace.", icon: Wallet },
+      { href: "/payroll", title: "Payroll & piece pay", description: "Work out and approve tech pay per job, plus paystubs.", icon: Wallet },
       { href: "/timesheet", title: "Clock & timesheets", description: "Clock in or out and review hours.", icon: Clock3 },
       { href: "/revenue-radar/opportunities", title: "Sales pipeline & closeout", description: "Full Revenue Radar pipeline, audit, and do-not-contact review.", icon: Radar },
     ],

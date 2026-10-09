@@ -25,7 +25,8 @@ type Props = { searchParams: Promise<{ invoice?: string }> };
 export default async function PayrollPage({ searchParams }: Props) {
   const profile = await getCurrentStaffProfile();
   if (!profile) redirect("/sign-in?next=%2Fpayroll");
-  if (profile.role !== "manager") redirect("/");
+  // Owner only — staff with the manager role (including technicians being paid) can't see or approve pay.
+  if (profile.id !== "8c81f12a-ad86-4ceb-bca1-3924be1cbfec") redirect("/");
   const { invoice: focus } = await searchParams;
   const focusId = focus && /^[0-9a-f-]{36}$/i.test(focus) ? focus : null;
 

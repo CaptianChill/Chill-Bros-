@@ -242,7 +242,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
         <section className="cb-card p-3.5">
           <div className="mb-3"><h2 className="text-xl font-bold text-[#0A1A33]">Time on this call</h2><p className="mt-1 text-sm text-[#2B3F5C]">Update when you&apos;re done. Stays editable until the invoice is paid.</p></div>
           <JobTimeCard jobId={job.id} laborHours={job.laborHours} driveHours={job.driveHours} canEdit={(isField || isOffice) && billingOpen} />
-          {profile.role === "manager" && invoice && invoiceIssued && invoice.status === "approved" ? <Link href={`/payroll?invoice=${invoice.id}`} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] px-4 font-semibold text-[#1B3FD0]">Work out tech pay for this job</Link> : null}
+          {profile.id === "8c81f12a-ad86-4ceb-bca1-3924be1cbfec" && invoice && invoiceIssued && invoice.status === "approved" ? <Link href={`/payroll?invoice=${invoice.id}`} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] px-4 font-semibold text-[#1B3FD0]">Work out tech pay for this job</Link> : null}
         </section>
 
         <section className="cb-card p-3.5">
