@@ -46,11 +46,17 @@ function mapSaved(row: Record<string, unknown>, names: Map<string, string>, invo
 export async function getPieceJobs(focusInvoiceId?: string | null): Promise<PieceJob[]> {
   const supabase = createServiceRoleClient();
   const since = new Date(Date.now() - 120 * 24 * 3600 * 1000).toISOString();
-  let query = supabase.from("chillbros_invoices").select("id").eq("status", "approved").is("revoked_at", null).not("issued_at", "is", null).gte("issued_at", since).order("issued_at", { ascending: false }).limit(40);
-  if (focusInvoiceId) query = supabase.from("chillbros_invoices").select("id").eq("id", focusInvoiceId).limit(1);
-  const [{ data: rows }, { data: profiles }] = await Promise.all([query, supabase.from("chillbros_profiles").select("id,full_name")]);
+  const loadIds = async (): Promise<{ id: string }[]> => {
+    if (focusInvoiceId) {
+      const { data } = await supabase.from("chillbros_invoices").select("id").eq("id", focusInvoiceId).limit(1);
+      return (data ?? []) as { id: string }[];
+    }
+    const { data } = await supabase.from("chillbros_invoices").select("id").eq("status", "approved").is("revoked_at", null).not("issued_at", "is", null).gte("issued_at", since).order("issued_at", { ascending: false }).limit(40);
+    return (data ?? []) as { id: string }[];
+  };
+  const [rows, { data: profiles }] = await Promise.all([loadIds(), supabase.from("chillbros_profiles").select("id,full_name")]);
   const names = new Map((profiles ?? []).map((p) => [p.id, p.full_name ?? "Staff"]));
-  const ids = (rows ?? []).map((r) => r.id);
+  const ids = rows.map((r) => r.id);
   if (!ids.length) return [];
   const { data: savedRows } = await supabase.from("chillbros_piece_pay").select("*").in("invoice_id", ids);
 
