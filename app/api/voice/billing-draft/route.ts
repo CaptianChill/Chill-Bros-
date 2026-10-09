@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-const BILLING_PROMPT = "An HVAC/R business owner dictating a quote or invoice: customer name, phone, email, address, parts with part numbers (e.g. P291-4553RS, 45/5 MFD capacitor, contactor 40 amp 24V coil), quantities, labor hours, prices in dollars, refrigerant pounds (R-410A, R-404A, R-454B), down payment percent or dollars, and payment terms.";
+const BILLING_PROMPT = "Chill Pros, quote, invoice, down payment, labor hours, trip charge, capacitor, contactor, compressor, condenser fan motor, TXV, R-410A, R-404A, R-454B, R-134a, part number, MFD, Net 15, Net 30.";
 
 // Owner/office speaks (or types) → returns a structured quote/invoice draft. Creates nothing.
 export async function POST(request: Request) {

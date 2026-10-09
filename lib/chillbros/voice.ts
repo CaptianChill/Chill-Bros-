@@ -64,6 +64,24 @@ export function sameOrigin(request: Request) {
   try { return new URL(origin).host === new URL(request.url).host; } catch { return false; }
 }
 
+// Vocabulary hint for the transcriber. Kept as plain terms, not sentences:
+// on a silent or too-short clip the model can return its prompt verbatim,
+// which then showed up as if the owner had said it.
+const DEFAULT_TRANSCRIBE_PROMPT = "Chill Pros, Chilly Bro, HVAC, refrigeration, R-410A, R-404A, R-134a, compressor, condenser, evaporator, walk-in, reach-in, invoice, quote, down payment.";
+
+function words(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/\s+/).filter((w) => w.length > 2);
+}
+
+/** True when the "transcript" is really the prompt echoed back (no real speech). */
+export function isPromptEcho(text: string, prompt: string) {
+  const heard = words(text);
+  if (!heard.length) return true;
+  const hint = new Set(words(prompt));
+  const overlap = heard.filter((w) => hint.has(w)).length / heard.length;
+  return heard.length >= 4 && overlap >= 0.7;
+}
+
 // Turns a recorded question into text (OpenAI). Shared by /api/voice/transcribe and /api/voice/ask.
 export async function transcribeAudio(audio: File, signal?: AbortSignal, prompt?: string): Promise<{ ok: true; text: string } | { ok: false; status: number; error: string }> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
@@ -72,7 +90,8 @@ export async function transcribeAudio(audio: File, signal?: AbortSignal, prompt?
   body.append("file", audio, audio.name || "chill.webm");
   body.append("model", "gpt-4o-mini-transcribe");
   body.append("language", "en");
-  body.append("prompt", prompt ?? "A short question to the Chill Pros HVAC/R service-business assistant. Preserve customer names, equipment brands, model numbers, refrigerants (R-410A, R-404A, R-134a), and dollar amounts.");
+  const hint = prompt ?? DEFAULT_TRANSCRIBE_PROMPT;
+  body.append("prompt", hint);
   try {
     const response = await fetch("https://api.openai.com/v1/audio/transcriptions", { method: "POST", headers: { Authorization: `Bearer ${apiKey}` }, body, cache: "no-store", signal: signal ?? AbortSignal.timeout(30000) });
     const payload = await response.json().catch(() => ({}));
@@ -81,7 +100,8 @@ export async function transcribeAudio(audio: File, signal?: AbortSignal, prompt?
       return { ok: false, status: 502, error: "Chilly Bro couldn't hear that clearly. Try again." };
     }
     const text = typeof payload?.text === "string" ? payload.text.trim() : "";
-    return text ? { ok: true, text } : { ok: false, status: 422, error: "No speech was detected." };
+    if (!text || isPromptEcho(text, hint) || isPromptEcho(text, DEFAULT_TRANSCRIBE_PROMPT)) return { ok: false, status: 422, error: "I didn't catch that. Hold the mic, talk, then let go." };
+    return { ok: true, text };
   } catch (error) {
     console.error("Chill transcription error", error);
     return { ok: false, status: 500, error: "Listening failed. Try again." };

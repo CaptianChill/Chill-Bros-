@@ -80,7 +80,7 @@ export async function AppShell({ children, title, description, highlight, lead, 
             />
           ) : null}
 
-          <div className="cb-page flex-1 px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-4 lg:px-0 lg:pb-8">
+          <div className="cb-page flex-1 px-4 pb-[calc(180px+env(safe-area-inset-bottom))] pt-4 lg:px-0 lg:pb-28">
             {user ? <SectionTabs role={user.role} /> : null}
             {lead ? <div className="mb-3.5">{lead}</div> : null}
             {highlight ? <div className="mb-3.5">{highlight}</div> : null}

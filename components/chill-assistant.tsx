@@ -256,7 +256,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
 
   return <>
     {!open ? (
-      <button type="button" onClick={openPanel} aria-label="Talk to Chilly Bro, the Chill Pros assistant" className="chill-launcher fixed bottom-[calc(92px+env(safe-area-inset-bottom))] right-3 z-40 h-[76px] w-[76px] rounded-full border-2 border-white bg-[#1B3FD0]/90 shadow-[0_8px_24px_rgba(4,28,78,0.35)] lg:bottom-6 lg:right-6 lg:h-[88px] lg:w-[88px]">
+      <button type="button" onClick={openPanel} aria-label="Talk to Chilly Bro, the Chill Pros assistant" className="chill-launcher fixed bottom-[calc(104px+env(safe-area-inset-bottom))] right-3 z-40 h-[60px] w-[60px] rounded-full border-2 border-white bg-[#1B3FD0]/90 shadow-[0_6px_18px_rgba(4,28,78,0.35)] lg:bottom-6 lg:right-6 lg:h-[64px] lg:w-[64px]">
         <img src={src("idle")} alt="" className="chill-bob chill-launcher-peek h-full w-full object-contain p-1" />
       </button>
     ) : null}
@@ -289,7 +289,8 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
           {error ? <p role="alert" className="rounded-xl border border-[#f5b5b0] bg-[#fef2f1] px-3 py-2 text-xs text-[#b42318]">{error}</p> : null}
         </div>
 
-        <div className="flex items-center gap-2 border-t border-[#0a1a33]/10 p-2.5">
+        {/* One input row: hold the mic to talk, or type and press Enter. */}
+        <form className="flex items-center gap-2 border-t border-[#0a1a33]/10 p-2.5" data-no-draft onSubmit={(e) => { e.preventDefault(); unlockAudio(); const q = text; setText(""); void ask(q); }}>
           <button
             type="button"
             disabled={busy}
@@ -304,11 +305,11 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
             style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
             className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-50 ${recording ? "scale-110 animate-pulse bg-[#e3261c]" : "bg-[#1B3FD0]"}`}
           ><Mic className="h-6 w-6" /></button>
-          <form className="flex min-w-0 flex-1 gap-2" data-no-draft onSubmit={(e) => { e.preventDefault(); unlockAudio(); const q = text; setText(""); void ask(q); }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} disabled={busy || recording} placeholder="Or type a question…" aria-label="Type a question for Chilly Bro" className="min-w-0 flex-1 rounded-full border border-[#c7d3e2] bg-[#f8fafd] px-3.5 py-2.5 text-sm text-[#0a1a33]" />
-            <button type="submit" disabled={busy || recording || text.trim().length < 2} aria-label="Send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#1B3FD0]/10 text-[#1B3FD0] disabled:opacity-40"><Send className="h-5 w-5" /></button>
-          </form>
-        </div>
+          <div className="relative min-w-0 flex-1">
+            <input value={text} onChange={(e) => setText(e.target.value)} disabled={busy || recording} placeholder={recording ? "Listening…" : "Hold the mic, or type here"} aria-label="Type a question for Chilly Bro" className="h-12 w-full rounded-full border border-[#c7d3e2] bg-[#f8fafd] pl-4 pr-12 text-sm text-[#0a1a33]" />
+            {text.trim().length >= 2 ? <button type="submit" disabled={busy || recording} aria-label="Send" className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#1B3FD0] text-white disabled:opacity-40"><Send className="h-4 w-4" /></button> : null}
+          </div>
+        </form>
       </section>
     ) : null}
   </>;
