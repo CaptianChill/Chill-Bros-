@@ -42,6 +42,9 @@ jobs:
           '
           npm audit --omit=dev --audit-level=high
 
+      - name: Payment tests (frozen — see CLAUDE.md)
+        run: npm run test:payments
+
       - name: Lint
         run: npm run lint
 
