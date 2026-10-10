@@ -17,7 +17,7 @@ function harness({ invoice, order }) {
     const filters = []; let op = 'read', values, single = false;
     const q = {
       select() { return q; }, eq(k, v) { filters.push(r => r[k] === v); return q; }, neq(k, v) { filters.push(r => r[k] !== v); return q; },
-      update(v) { op = 'update'; values = v; return q; }, insert(v) { op = 'insert'; values = v; return q; }, maybeSingle() { single = true; return q; },
+      update(v) { op = 'update'; values = v; return q; }, insert(v) { op = 'insert'; values = v; return q; }, maybeSingle() { single = true; return q; }, order() { return q; }, limit() { return q; }, in() { return q; }, ilike() { return q; },
       then(res, rej) { const rows = tables[table] ??= []; let m = rows.filter(r => filters.every(f => f(r)));
         if (op === 'insert') { const row = { id: String(rows.length + 1), ...values }; rows.push(row); m = [row]; }
         if (op === 'update') m.forEach(r => Object.assign(r, values));
@@ -87,4 +87,31 @@ test('down payment checkout marks only the down payment paid', async () => {
   assert.equal(result.recorded, true);
   assert.equal(tables.chillbros_invoices[0].down_payment_status, 'paid');
   assert.equal(tables.chillbros_invoices[0].payment_status, 'unpaid');
+});
+
+test('repeat "Pay by card" taps reuse the saved Square link instead of failing', async () => {
+  const invoice = { id: 'inv', jobId: 'job', customerId: 'c1', invoiceNumber: 'I-012', customerName: 'Nordstrom', status: 'approved', paymentStatus: 'unpaid', issuedAt: '2026-10-09', downPaymentAmount: 0, total: 1344 };
+  const { tables, lib } = harness({ invoice });
+  let calls = 0; const keys = new Set();
+  global.fetch = async (_url, init) => { calls++; const key = JSON.parse(init.body).idempotency_key;
+    if (keys.has(key)) return { ok: false, status: 400, json: async () => ({ errors: [{ detail: 'This idempotency key has already been used to create a Payment Link' }] }) };
+    keys.add(key); return { ok: true, json: async () => ({ payment_link: { url: 'https://square.link/u/first' } }) }; };
+  const a = await lib.createSquareCheckout('tok', 'invoice', 'https://x/portal/tok');
+  const b = await lib.createSquareCheckout('tok', 'invoice', 'https://x/portal/tok');
+  assert.deepEqual(a, { ok: true, url: 'https://square.link/u/first' });
+  assert.deepEqual(b, { ok: true, url: 'https://square.link/u/first' });
+  assert.equal(calls, 1);
+  assert.equal(tables.chillbros_workflow_events.length, 1);
+});
+
+test('a link made before links were saved gets a fresh checkout instead of an error', async () => {
+  const invoice = { id: 'inv', jobId: 'job', customerId: 'c1', invoiceNumber: 'I-012', customerName: 'Nordstrom', status: 'approved', paymentStatus: 'unpaid', issuedAt: '2026-10-09', downPaymentAmount: 0, total: 1344 };
+  const { lib } = harness({ invoice });
+  let calls = 0;
+  global.fetch = async () => { calls++;
+    if (calls === 1) return { ok: false, status: 400, json: async () => ({ errors: [{ detail: 'This idempotency key has already been used to create a Payment Link' }] }) };
+    return { ok: true, json: async () => ({ payment_link: { url: 'https://square.link/u/fresh' } }) }; };
+  const r = await lib.createSquareCheckout('tok', 'invoice', 'https://x/portal/tok');
+  assert.deepEqual(r, { ok: true, url: 'https://square.link/u/fresh' });
+  assert.equal(calls, 2);
 });
