@@ -90,10 +90,29 @@ export async function createSquareCheckout(token: string, kind: SquareCheckoutKi
   // Square caps the key at 45 characters, so hash the parts: a changed amount
   // (owner edited the invoice) must get a NEW checkout, never the old price.
   const idempotencyKey = `cp-${createHash("sha256").update(`${invoice.id}|${kind}|${cents}`).digest("hex").slice(0, 40)}`;
-  const result = await squareFetch<{ payment_link?: { url?: string; order_id?: string } }>("/v2/online-checkout/payment-links", {
+  const refTag = `[ref:${idempotencyKey}]`;
+
+  // Square's Payment Links API does NOT return the original link when an
+  // idempotency key is reused — it errors ("This idempotency key has already
+  // been used to create a Payment Link"). So remember each link we create and
+  // hand the same one back on every later tap.
+  const { data: priorEvents } = await supabase
+    .from("chillbros_workflow_events")
+    .select("message")
+    .eq("invoice_id", invoice.id)
+    .eq("stage", "square_checkout_opened")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  const prior = (Array.isArray(priorEvents) ? priorEvents : [])
+    .map((row) => String((row as { message?: string }).message ?? ""))
+    .find((message) => message.includes(refTag));
+  const savedUrl = prior?.match(/https:\/\/\S+/)?.[0];
+  if (savedUrl) return { ok: true as const, url: savedUrl };
+
+  const createLink = (key: string) => squareFetch<{ payment_link?: { url?: string; order_id?: string } }>("/v2/online-checkout/payment-links", {
     method: "POST",
     body: {
-      idempotency_key: idempotencyKey,
+      idempotency_key: key,
       order: {
         location_id: locationId,
         reference_id: invoice.id,
@@ -105,13 +124,22 @@ export async function createSquareCheckout(token: string, kind: SquareCheckoutKi
       payment_note: `${invoice.invoiceNumber} · ${invoice.customerName}`.slice(0, 500),
     },
   });
+  let result: Awaited<ReturnType<typeof createLink>>;
+  try {
+    result = await createLink(idempotencyKey);
+  } catch (error) {
+    // A link was made under this key before we started saving links (or the
+    // save failed). Make a fresh one rather than blocking the customer.
+    if (!/idempotency key has already been used/i.test(error instanceof Error ? error.message : String(error))) throw error;
+    result = await createLink(`cp-${createHash("sha256").update(`${invoice.id}|${kind}|${cents}|${Date.now()}`).digest("hex").slice(0, 40)}`);
+  }
   const url = result.payment_link?.url;
   if (!url) return { ok: false as const, error: "Square didn't return a checkout page. Please try again." };
   await supabase.from("chillbros_workflow_events").insert({
     job_id: invoice.jobId,
     invoice_id: invoice.id,
     stage: "square_checkout_opened",
-    message: `Customer opened Square checkout for ${kind === "down_payment" ? "the down payment" : "the invoice"} ($${(cents / 100).toFixed(2)}).`,
+    message: `Customer opened Square checkout for ${kind === "down_payment" ? "the down payment" : "the invoice"} ($${(cents / 100).toFixed(2)}). ${refTag} ${url}`.slice(0, 1000),
   });
   return { ok: true as const, url };
 }
