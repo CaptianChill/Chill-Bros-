@@ -26,6 +26,7 @@ function harness({ invoice, order }) {
   const totals = inv => ({ total: inv.total, amountDueNow: inv.total });
   const mocks = {
     'server-only': {},
+    '@/lib/chillbros/approval-notifications': { sendOwnerPaymentReviewAlert: async () => {} },
     '@/lib/supabase/service-client': { createServiceRoleClient: () => db },
     '@/lib/chillbros/billing-receipts': { createReceiptForPaidInvoice: async () => { tables.chillbros_receipts.push({ id: 'r1' }); return { id: 'r1' }; } },
     '@/lib/chillbros/invoice-v2': { getInvoiceV2ById: async () => invoice, getInvoiceV2ByToken: async () => invoice, invoiceTotals: totals },
