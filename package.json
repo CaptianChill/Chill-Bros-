@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run test:payments && next build",
+    "test:payments": "node --test scripts/square-checkout.test.cjs scripts/square-payments.test.cjs",
     "start": "next start",
     "lint": "eslint"
   },

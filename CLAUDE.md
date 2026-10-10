@@ -1,5 +1,32 @@
 @AGENTS.md
 
+# PAYMENT CODE IS FROZEN — read before touching anything that takes money
+
+Customer card payments broke in production on 2026-10-10 (every "Pay by
+card" tap after the first failed; fixed in PR #216). The owner has frozen
+the payment path. **Do not edit these files unless the owner explicitly
+asks for a payment change in that conversation:**
+
+- `lib/chillbros/square-checkout.ts`
+- `lib/chillbros/square-payment.ts`
+- `lib/chillbros/customer-payment-actions.ts`
+- `lib/chillbros/payment-settings.ts`
+- `app/api/portal/[token]/square-checkout/route.ts`
+- `app/api/payments/square/webhook/route.ts`
+- `app/portal/[token]/` (customer pay page, receipt, document)
+- `scripts/square-checkout.test.cjs`, `scripts/square-payments.test.cjs`
+
+Never weaken, skip, or delete a payment test, and never remove
+`npm run test:payments` from the `build` script: it is the deploy gate. If
+payment tests fail, Vercel's build fails and the last working version stays
+live — that is intended.
+
+When the owner does ask for a payment change: (1) add a test that fails on
+the old code, (2) `npm run test:payments` passes, (3) after deploy, open a
+real invoice's portal link, tap "Pay by card" **twice**, confirm both reach
+Square's checkout page (do not pay), and check Vercel runtime logs for
+`[square-checkout]` errors.
+
 # Chill Pros ("Chill Bros" repo) — read this before touching data
 
 **There are two database projects for this app, and only one is live.**
