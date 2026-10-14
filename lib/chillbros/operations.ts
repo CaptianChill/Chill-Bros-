@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { PRICE_BOOK_SEED_BY_CODE } from "@/lib/chillbros/price-book";
+import { normalizeEmailListInput } from "@/lib/chillbros/email-list";
 
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -40,14 +41,18 @@ export async function createCustomerAction(input: { name: string; address?: stri
   refreshCustomerViews(); return { ok: true, data: { customerId: data.id } };
 }
 
-export async function updateCustomerAction(input: { id: string; name: string; address?: string; phone?: string; email?: string }): Promise<Result> {
+export async function updateCustomerAction(input: { id: string; name: string; address?: string; phone?: string; email?: string; ccEmails?: string }): Promise<Result> {
   const guard = await requireOfficeOrManager(); if (!guard.ok) return guard;
   const name = String(input.name ?? "").trim(); const email = cleanText(input.email, 320)?.toLowerCase() ?? null;
   if (!input.id) return { ok: false, error: "Customer record is required." };
   if (!name || name.length > 200) return { ok: false, error: "Customer name is required and must be 200 characters or fewer." };
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "Enter a valid customer email address." };
+  // CC list is only touched when the form sends it (older callers leave it as is).
+  const ccList = input.ccEmails === undefined ? null : normalizeEmailListInput(input.ccEmails);
+  if (ccList && !ccList.ok) return { ok: false, error: `CC emails: ${ccList.error}` };
+  const ccPatch = ccList && ccList.ok ? { cc_emails: ccList.emails.filter((address) => address !== email).join(", ") || null } : {};
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_customers").update({ name, address: cleanText(input.address, 500), phone: cleanText(input.phone, 50), email, updated_at: new Date().toISOString() }).eq("id", input.id).select("id").maybeSingle();
+  const { data, error } = await supabase.from("chillbros_customers").update({ name, address: cleanText(input.address, 500), phone: cleanText(input.phone, 50), email, ...ccPatch, updated_at: new Date().toISOString() }).eq("id", input.id).select("id").maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "Customer record not found." };
   refreshCustomerViews(); revalidatePath(`/customers/${input.id}`); return { ok: true, data: undefined };
 }

@@ -117,11 +117,11 @@ export function InvoiceAdminControls(props: Props) {
     </div> : null}
 
     {needsEmail || props.missingEmail ? <form data-no-draft onSubmit={(event) => { event.preventDefault(); void run(() => saveCustomerEmailAndSendAction(props.invoiceId, email), "Email saved."); }} className="flex flex-wrap gap-2">
-      <label className="text-xs text-zinc-400">Customer email<input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="ml-2 rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white" /></label>
+      <label className="text-xs text-zinc-400">Customer email<input required type="email" multiple value={email} onChange={(event) => setEmail(event.target.value)} className="ml-2 rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white" /></label>
       <button type="submit" disabled={pending} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Save email & send</button>
     </form> : null}
     <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-      <label>Send to a different email<input type="email" value={sendToEmail} onChange={(e) => setSendToEmail(e.target.value)} placeholder="Optional, this send only" className="ml-2 rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-2.5 py-1.5 text-white" /></label>
+      <label>Send to a different email<input type="email" multiple value={sendToEmail} onChange={(e) => setSendToEmail(e.target.value)} placeholder="Optional, this send only (a@x.com, b@y.com)" className="ml-2 rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-2.5 py-1.5 text-white" /></label>
       <label>or number<input type="tel" inputMode="tel" value={sendToPhone} onChange={(e) => setSendToPhone(e.target.value)} placeholder="Optional, this send only" className="ml-2 rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-2.5 py-1.5 text-white" /></label>
     </div>
     <div className="flex flex-wrap gap-2">

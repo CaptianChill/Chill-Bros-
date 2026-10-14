@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 
+import { parseEmailList } from "@/lib/chillbros/email-list";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 /**
@@ -105,8 +106,14 @@ export async function verifyLoginCode(email: string, code: string): Promise<"ok"
 export async function findCustomerIdsByEmail(email: string): Promise<string[]> {
   const s = createServiceRoleClient();
   const pattern = `%${email.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const { data } = await s.from("chillbros_customers").select("id,email").ilike("email", pattern).limit(50);
-  return (data ?? []).filter((r) => normalizeEmail(r.email) === email).map((r) => r.id as string);
+  // The main email, or anyone on the record's CC list, gets access.
+  const [main, cc] = await Promise.all([
+    s.from("chillbros_customers").select("id,email,cc_emails").ilike("email", pattern).limit(50),
+    s.from("chillbros_customers").select("id,email,cc_emails").ilike("cc_emails", pattern).limit(50),
+  ]);
+  const rows = [...(main.data ?? []), ...(cc.data ?? [])];
+  const ids = rows.filter((r) => normalizeEmail(r.email) === email || parseEmailList(r.cc_emails).includes(email)).map((r) => r.id as string);
+  return [...new Set(ids)];
 }
 
 /** Finds or creates the account for a verified email and links matching customers. */

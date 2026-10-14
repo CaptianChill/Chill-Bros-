@@ -40,7 +40,9 @@ async function command(socket: tls.TLSSocket, text: string, expected: string[]) 
   return response;
 }
 
-export async function sendCompanyEmail(to: string, subject: string, text: string, html?: string) {
+export async function sendCompanyEmail(to: string, subject: string, text: string, html?: string, cc: string[] = []) {
+  // CC addresses get the same message; the main recipient is never repeated in CC.
+  const ccList = [...new Set(cc.map((address) => safeHeader(address).toLowerCase()).filter((address) => address && address !== safeHeader(to).toLowerCase()))];
   const user = String(process.env.GMAIL_SMTP_USER || "").trim();
   const password = String(process.env.GMAIL_SMTP_APP_PASSWORD || "").replace(/\s+/g, "");
   if (!user || !password) return { sent: false as const, status: "configuration_required" as const, error: "Missing environment variable(s): " + [!user && "GMAIL_SMTP_USER", !password && "GMAIL_SMTP_APP_PASSWORD"].filter(Boolean).join(", ") };
@@ -56,11 +58,13 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
     await command(socket, Buffer.from(password).toString("base64"), ["235"]);
     await command(socket, `MAIL FROM:<${safeHeader(user)}>`, ["250"]);
     await command(socket, `RCPT TO:<${safeHeader(to)}>`, ["250", "251"]);
+    for (const address of ccList) await command(socket, `RCPT TO:<${address}>`, ["250", "251"]);
     await command(socket, "DATA", ["354"]);
 
     const headers = [
       `From: Chill Pros <${safeHeader(user)}>`,
       `To: ${safeHeader(to)}`,
+      ...(ccList.length ? [`Cc: ${ccList.join(", ")}`] : []),
       `Subject: ${safeHeader(subject)}`,
       "MIME-Version: 1.0",
     ];
