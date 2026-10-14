@@ -10,6 +10,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { InvoiceAdjustmentType, PaymentTerms } from "@/lib/chillbros/types";
 import { JOB_ACTIVE_STATUSES } from "@/lib/chillbros/types";
 import { approvalDueAt } from "@/lib/chillbros/billing-terms";
+import { normalizeEmailListInput, parseEmailList } from "@/lib/chillbros/email-list";
 
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string; status?: string };
 const TERMS = new Set<PaymentTerms>(["due_on_receipt", "net_7", "net_15", "net_30", "custom"]);
@@ -125,7 +126,7 @@ export async function sendInvoiceCommunicationAction(invoiceId: string, channel:
   const guard = await requireOfficeOrManager();
   if (!guard.ok) return guard;
   if (channel !== "email" && channel !== "sms") return { ok: false, error: "Choose email or text delivery." };
-  const recipient = String(overrideRecipient ?? "").trim().slice(0, 320) || undefined;
+  const recipient = String(overrideRecipient ?? "").trim().slice(0, 1000) || undefined;
   const invoice = await getInvoiceV2ById(invoiceId);
   if (!invoice) return { ok: false, error: "Active invoice was not found." };
   if (reminder && (invoice.status !== "approved" || invoice.paymentStatus === "paid")) return { ok: false, error: "Reminders are only for approved unpaid invoices." };
@@ -192,11 +193,22 @@ export async function reopenInvoiceAction(invoiceId: string): Promise<Result> {
 export async function saveCustomerEmailAndSendAction(invoiceId: string, input: string): Promise<Result<{ status: string; recipient: string | null }>> {
   const guard = await requireOfficeOrManager();
   if (!guard.ok) return guard;
-  const email = String(input ?? "").trim().toLowerCase();
-  if (email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "Enter a valid customer email address." };
+  // "a@x.com, b@y.com": the first becomes the main email (single address,
+  // Square checkout uses it); the rest are added to the customer's CC list.
+  const emailList = normalizeEmailListInput(input);
+  if (!emailList.ok) return { ok: false, error: emailList.error };
+  const [email, ...extra] = emailList.emails;
+  if (!email) return { ok: false, error: "Enter a valid customer email address." };
   const invoice = await getInvoiceV2ById(invoiceId);
   if (!invoice) return { ok: false, error: "Active invoice was not found." };
-  const { data, error } = await createServiceRoleClient().from("chillbros_customers").update({ email }).eq("id", invoice.customerId).select("id").maybeSingle();
+  const supabase = createServiceRoleClient();
+  const patch: { email: string; cc_emails?: string | null } = { email };
+  if (extra.length) {
+    const { data: current } = await supabase.from("chillbros_customers").select("cc_emails").eq("id", invoice.customerId).maybeSingle();
+    const merged = [...new Set([...parseEmailList(current?.cc_emails), ...extra])].filter((address) => address !== email);
+    patch.cc_emails = merged.join(", ").slice(0, 1000) || null;
+  }
+  const { data, error } = await supabase.from("chillbros_customers").update(patch).eq("id", invoice.customerId).select("id").maybeSingle();
   if (error || !data) return { ok: false, error: error?.message ?? "Customer not found." };
   revalidatePath(`/customers/${invoice.customerId}`);
   revalidatePath("/customers");

@@ -41,7 +41,7 @@ export type CustomerProfileData = {
 
 export async function getCustomerProfile(customerId: string): Promise<CustomerProfileData | null> {
   const supabase = createServiceRoleClient();
-  const { data: customer, error } = await supabase.from("chillbros_customers").select("id,name,address,phone,email").eq("id", customerId).maybeSingle();
+  const { data: customer, error } = await supabase.from("chillbros_customers").select("id,name,address,phone,email,cc_emails").eq("id", customerId).maybeSingle();
   if (error || !customer) return null;
 
   const [{ data: history }, { data: jobs }, { data: documents }, equipment, agreements] = await Promise.all([
@@ -76,6 +76,7 @@ export async function getCustomerProfile(customerId: string): Promise<CustomerPr
       address: customer.address,
       phone: customer.phone,
       email: customer.email,
+      ccEmails: customer.cc_emails ?? null,
       history: (history ?? []).map((entry) => `${new Date(entry.occurred_on).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • ${entry.note}`),
     },
     equipment,

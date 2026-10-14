@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sendCompanyEmail } from "@/lib/chillbros/approval-notifications";
+import { splitEmailList, isValidEmail, parseEmailList } from "@/lib/chillbros/email-list";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export type BillingDeliveryType = "estimate" | "invoice" | "reminder" | "receipt";
@@ -87,7 +88,7 @@ function formatDue(value: string | null) {
 
 export async function sendBillingDelivery(invoiceId: string, deliveryType: BillingDeliveryType, channel: BillingDeliveryChannel, overrideRecipient?: string): Promise<DeliveryResult> {
   const supabase = createServiceRoleClient();
-  const { data: invoice } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,due_at,customer:chillbros_customers(name,email,phone),job:chillbros_jobs(location)").eq("id", invoiceId).maybeSingle();
+  const { data: invoice } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,due_at,customer:chillbros_customers(name,email,cc_emails,phone),job:chillbros_jobs(location)").eq("id", invoiceId).maybeSingle();
   if (!invoice) return { channel, recipient: null, status: "failed", error: "Invoice was not found." };
 
   const effectiveType: BillingDeliveryType = (invoice.invoice_number.startsWith("I-") || invoice.invoice_number.startsWith("INV-")) && deliveryType === "estimate" ? "invoice" : deliveryType;
@@ -123,10 +124,15 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
   const html = `<!doctype html><html><body style="margin:0;background:#eef4fb;font-family:Arial,Helvetica,sans-serif;color:#0a1a33"><div style="max-width:600px;margin:0 auto;padding:24px 16px"><div style="background:#05070a;border-radius:14px 14px 0 0;padding:14px 24px;border-bottom:3px solid #1f6feb"><img src="${esc(base)}/brand/chill-pros-ice-logo-240.png" alt="Chill Pros" width="84" height="84" style="display:block;border:0"></div><div style="background:#ffffff;border:1px solid #d5deea;border-top:0;border-radius:0 0 14px 14px;padding:24px"><p style="font-size:16px;line-height:1.6;margin:0 0 12px">Hello ${esc(customerName)},</p><p style="font-size:16px;line-height:1.6;margin:0 0 16px">${esc(intro)}</p>${due && effectiveType === "invoice" ? `<p style="font-size:14px;color:#4a5b74;margin:0 0 16px">Due: ${esc(due)}</p>` : ""}<p style="margin:22px 0"><a href="${esc(link)}" style="display:inline-block;background:#1f6feb;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:10px">${esc(button)}</a></p><p style="font-size:12px;color:#4a5b74;word-break:break-all;margin:0 0 20px">${esc(link)}</p><div style="border-top:1px solid #e3eaf3;padding-top:16px;margin:0 0 20px"><p style="font-size:14px;line-height:1.6;color:#3d5170;margin:0 0 10px">${esc(accountLine)}</p><a href="${esc(accountUrl)}" style="display:inline-block;background:#05070a;color:#ffffff;text-decoration:none;font-weight:bold;padding:10px 18px;border-radius:10px">Open your Chill Pros account</a></div><p style="font-size:14px;line-height:1.6;color:#3d5170;margin:0">Chill Pros<br>Chill Professionals LLC · San Antonio, Texas<br>Questions? Just reply to this email.</p></div></div></body></html>`;
 
   if (channel === "email") {
-    const override = String(overrideRecipient || "").trim().toLowerCase();
-    if (override && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(override)) return { channel, recipient: null, status: "failed", error: "That override email address is not valid." };
-    const recipient = override || String(customer?.email || "").trim();
-    if (!recipient) {
+    // Main email gets it; the customer's CC list is copied. An override
+    // ("send to a different email") can be a list too: first = To, rest = CC.
+    const overrideParts = splitEmailList(overrideRecipient);
+    const badOverride = overrideParts.find((part) => !isValidEmail(part));
+    if (badOverride) return { channel, recipient: null, status: "failed", error: `That override email address is not valid: ${badOverride.slice(0, 80)}` };
+    const recipients = overrideParts.length ? overrideParts : [...new Set([...parseEmailList(customer?.email), ...parseEmailList(customer?.cc_emails)])];
+    const [to, ...cc] = recipients;
+    const recipient = recipients.join(", ");
+    if (!to) {
       const result: DeliveryResult = { channel, recipient: null, status: "skipped", error: "Customer has no email address." };
       await logDelivery(invoiceId, channel, effectiveType, "", result);
       await logBillingEmail(invoiceId, subject, "", result);
@@ -134,7 +140,7 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
     }
     let result: DeliveryResult;
     try {
-      const sent = await sendCompanyEmail(recipient, subject, text, html);
+      const sent = await sendCompanyEmail(to, subject, text, html, cc);
       result = { channel, recipient, status: sent.status, error: "error" in sent ? sent.error : undefined };
     } catch (error) {
       result = { channel, recipient, status: "failed", error: error instanceof Error ? error.message : "Email delivery failed." };

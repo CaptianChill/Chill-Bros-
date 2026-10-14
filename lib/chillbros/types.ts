@@ -1,7 +1,7 @@
 export type StaffRole = "manager" | "technician" | "office";
 export type StaffStatus = "active" | "inactive";
 export type StaffAccount = { id: string; fullName: string; email: string; role: StaffRole; status: StaffStatus; phone: string | null; lastClockEvent: string | null; assignedJobs: number };
-export type Customer = { id: string; name: string; address: string | null; phone: string | null; email: string | null; history: string[] };
+export type Customer = { id: string; name: string; address: string | null; phone: string | null; email: string | null; /** Extra people copied on customer emails, "a@x.com, b@y.com". */ ccEmails?: string | null; history: string[] };
 export type PartsCatalogItem = { id: string; name: string; partNumber: string; defaultCost: number; retailPrice: number; stock: number; trackInventory: boolean };
 export type PriceBookValueKind = "money" | "multiplier" | "formula" | "policy";
 export type PriceBookEntry = { code: string; category: string; categoryKey: string; title: string; marketPrice: string; currentValue: number; description: string; kind: PriceBookValueKind };
