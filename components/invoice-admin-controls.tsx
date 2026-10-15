@@ -26,6 +26,8 @@ type Props = {
   portalToken: string;
   invoiceNumber: string;
   customerPhone: string | null;
+  /** The customer's saved emails (main first, then CC list). */
+  customerEmails?: string[];
   issuedAt: string | null;
   convertedInvoiceId?: string | null;
 };
@@ -48,6 +50,10 @@ export function InvoiceAdminControls(props: Props) {
   const [needsEmail, setNeedsEmail] = useState(Boolean(props.missingEmail));
   const [email, setEmail] = useState("");
   const [sendToEmail, setSendToEmail] = useState("");
+  const savedEmails = props.customerEmails ?? [];
+  // Only the main email is ticked to start; tick anyone else who should get it.
+  const [pickedEmails, setPickedEmails] = useState<string[]>(savedEmails.slice(0, 1));
+  const togglePicked = (address: string) => setPickedEmails((current) => current.includes(address) ? current.filter((item) => item !== address) : [...current, address]);
   const [sendToPhone, setSendToPhone] = useState("");
   const taxLocked = props.status === "approved";
   const isAwaitingApproval = props.status === "awaiting_approval";
@@ -88,7 +94,13 @@ export function InvoiceAdminControls(props: Props) {
   };
 
   const send = (channel: "email" | "sms", reminder = false) => run(async () => {
-    const override = channel === "email" ? sendToEmail.trim() : sendToPhone.trim();
+    let override = sendToPhone.trim();
+    if (channel === "email") {
+      const extra = sendToEmail.split(/[\s,;]+/).map((item) => item.trim()).filter(Boolean);
+      const chosen = [...new Set([...pickedEmails, ...extra])];
+      if (savedEmails.length > 1 && !chosen.length) return { ok: false, error: "Tick at least one email to send to." };
+      override = chosen.join(", ");
+    }
     const result = await sendInvoiceCommunicationAction(props.invoiceId, channel, reminder, override || undefined);
     return result;
   }, reminder ? `Reminder sent by ${channel}.` : `${channel === "email" ? "Email" : "Text"} sent.`);
@@ -120,8 +132,17 @@ export function InvoiceAdminControls(props: Props) {
       <label className="text-xs text-zinc-400">Customer email<input required type="email" multiple value={email} onChange={(event) => setEmail(event.target.value)} className="ml-2 rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white" /></label>
       <button type="submit" disabled={pending} className="rounded-xl border border-[#2d7dff]/25 px-3 py-2 text-xs text-[#d9fbff] disabled:opacity-40">Save email & send</button>
     </form> : null}
+    {savedEmails.length > 1 ? <fieldset className="rounded-xl border border-[#2d7dff]/20 px-3 py-2">
+      <legend className="px-1 text-xs font-semibold text-[#d9fbff]">Email to</legend>
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {savedEmails.map((address) => <label key={address} className="flex items-center gap-2 text-xs text-zinc-200">
+          <input type="checkbox" checked={pickedEmails.includes(address)} onChange={() => togglePicked(address)} className="h-4 w-4 accent-[#2d7dff]" />
+          {address}
+        </label>)}
+      </div>
+    </fieldset> : null}
     <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-      <label>Send to a different email<input type="email" multiple value={sendToEmail} onChange={(e) => setSendToEmail(e.target.value)} placeholder="Optional, this send only (a@x.com, b@y.com)" className="ml-2 rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-2.5 py-1.5 text-white" /></label>
+      <label>{savedEmails.length > 1 ? "Also send to" : "Send to a different email"}<input type="email" multiple value={sendToEmail} onChange={(e) => setSendToEmail(e.target.value)} placeholder="Optional, this send only (a@x.com, b@y.com)" className="ml-2 rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-2.5 py-1.5 text-white" /></label>
       <label>or number<input type="tel" inputMode="tel" value={sendToPhone} onChange={(e) => setSendToPhone(e.target.value)} placeholder="Optional, this send only" className="ml-2 rounded-lg border border-[#2d7dff]/20 bg-zinc-950 px-2.5 py-1.5 text-white" /></label>
     </div>
     <div className="flex flex-wrap gap-2">
