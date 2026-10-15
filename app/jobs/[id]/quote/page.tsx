@@ -13,6 +13,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ type?: string }> };
 
+const INVOICE_SERVICE_FEE = 160;
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const STATUS_TEXT: Record<string, string> = {
   draft: "Draft",
@@ -91,8 +92,10 @@ export default async function JobQuotePage({ params, searchParams }: Props) {
     );
   }
 
-  const fees = await getFeeSettings();
-  const suggestions = [
+  // An invoice starts with just the service call fee; everything else is
+  // added by hand. A quote still starts from the job's parts and fee settings.
+  const fees = mode === "invoice" ? [] : await getFeeSettings();
+  const suggestions = mode === "invoice" ? [{ label: "Service fee", description: "", quantity: 1, unitPrice: INVOICE_SERVICE_FEE }] : [
     ...job.parts.map((part) => ({ label: part.name, description: part.partNumber ? `Part # ${part.partNumber}` : "", quantity: part.quantity, unitPrice: part.retailPrice })),
     ...fees.map((fee) => ({ label: fee.label, description: "Service fee", quantity: 1, unitPrice: fee.amount })),
   ].slice(0, 20);
