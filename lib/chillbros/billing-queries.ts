@@ -1,5 +1,6 @@
 import "server-only";
 
+import { parseEmailList } from "@/lib/chillbros/email-list";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { InvoiceAdjustmentType, InvoiceStatus, PaymentStatus, PaymentTerms } from "@/lib/chillbros/types";
 
@@ -14,6 +15,8 @@ export type InvoiceCenterRow = {
   customerId: string;
   customerName: string;
   customerEmail: string | null;
+  /** Main email first, then the customer's CC list, de-duplicated. */
+  customerEmails: string[];
   customerPhone: string | null;
   customerTaxExempt: boolean;
   customerTaxExemptNote: string | null;
@@ -78,7 +81,7 @@ export async function getInvoiceCenterData(): Promise<{ rows: InvoiceCenterRow[]
     supabase.from("chillbros_document_archives").select("invoice_id,stage").in("invoice_id", invoiceIds),
     supabase.from("chillbros_receipts").select("invoice_id,receipt_number").in("invoice_id", invoiceIds),
     supabase.from("chillbros_delivery_log").select("invoice_id,channel,delivery_type,status,created_at").in("invoice_id", invoiceIds).order("created_at", { ascending: false }),
-    customerIds.length ? supabase.from("chillbros_customers").select("id,name,email,phone,tax_exempt,tax_exempt_note").in("id", customerIds) : Promise.resolve({ data: [] }),
+    customerIds.length ? supabase.from("chillbros_customers").select("id,name,email,cc_emails,phone,tax_exempt,tax_exempt_note").in("id", customerIds) : Promise.resolve({ data: [] }),
     jobIds.length ? supabase.from("chillbros_jobs").select("id,status,location,scope,assigned_tech_id").in("id", jobIds) : Promise.resolve({ data: [] }),
     customerIds.length ? supabase.from("chillbros_equipment").select("id,customer_id,asset_tag,equipment_type,manufacturer,model,serial_number").in("customer_id", customerIds).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
   ]);
@@ -137,6 +140,7 @@ export async function getInvoiceCenterData(): Promise<{ rows: InvoiceCenterRow[]
       customerId: invoice.customer_id,
       customerName: customer?.name ?? "Unknown customer",
       customerEmail: customer?.email ?? null,
+      customerEmails: [...new Set([...parseEmailList(customer?.email), ...parseEmailList(customer?.cc_emails)])],
       customerPhone: customer?.phone ?? null,
       customerTaxExempt: Boolean(customer?.tax_exempt),
       customerTaxExemptNote: customer?.tax_exempt_note ?? null,
