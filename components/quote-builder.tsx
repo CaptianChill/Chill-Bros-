@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
-import { BadgeCheck, History, Plus, Save, Send, Sparkles, Trash2 } from "lucide-react";
+import { BadgeCheck, History, Plus, ReceiptText, Save, Send, Sparkles, Trash2 } from "lucide-react";
 
 import { createEstimateV2Action } from "@/lib/chillbros/estimate-actions-v2";
-import { approveQuoteVerballyAction } from "@/lib/chillbros/quote-actions";
+import { approveQuoteVerballyAction, createJobInvoiceAction } from "@/lib/chillbros/quote-actions";
 
 type Line = { id: string; label: string; description: string; quantity: string; unitPrice: string; taxable: boolean };
 export type QuoteSuggestion = { label: string; description?: string; quantity: number; unitPrice: number; taxable?: boolean };
@@ -25,9 +25,11 @@ const newLine = (item?: Partial<QuoteSuggestion>): Line => ({
 // One quote for one service call. Lines start from the job's parts and the
 // fee settings; anything else (a part priced online or locally, labor) is a
 // free line. The draft is kept on this device until the quote is sent.
-export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProHref }: { jobId: string; suggestions: QuoteSuggestion[]; canApproveVerbally: boolean; partsProHref: string }) {
+export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProHref, mode = "quote" }: { jobId: string; suggestions: QuoteSuggestion[]; canApproveVerbally: boolean; partsProHref: string; mode?: "quote" | "invoice" }) {
   const router = useRouter();
-  const storageKey = `chillbros-quote-draft-${jobId}`;
+  const isInvoice = mode === "invoice";
+  const docName = isInvoice ? "invoice" : "quote";
+  const storageKey = `chillbros-${docName}-draft-${jobId}`;
   const [lines, setLines] = useState<Line[]>(() => (suggestions.length ? suggestions.slice(0, 20).map(newLine) : [newLine()]));
   const [notes, setNotes] = useState("");
   const [taxRate, setTaxRate] = useState("8.25");
@@ -87,6 +89,20 @@ export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProH
     if (clean.some((line) => !line.label.trim())) return setError("Every line needs a name.");
     const payload = clean.map((line) => ({ label: line.label.trim(), description: line.description.trim(), quantity: Number(line.quantity), unitPrice: Number(line.unitPrice || 0), taxable: line.taxable }));
     const adjustments = { discountType: null, discountValue: 0, downPaymentType: null, downPaymentValue: 0, taxRate: Number(taxRate || 0) };
+    if (isInvoice) {
+      startTransition(async () => {
+        const result = await createJobInvoiceAction(jobId, payload, notes, adjustments);
+        if (!result.ok) return setError(result.error);
+        try {
+          window.localStorage.removeItem(storageKey);
+        } catch {
+          // Nothing to clean up.
+        }
+        router.push(result.data.redirectTo);
+        router.refresh();
+      });
+      return;
+    }
     startTransition(async () => {
       const result = verbal ? await approveQuoteVerballyAction(jobId, payload, notes, adjustments) : await createEstimateV2Action(jobId, payload, notes, adjustments);
       if (!result.ok) return setError(result.error);
@@ -105,12 +121,12 @@ export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProH
       {savedDraft && !restored && !edited ? (
         <button type="button" onClick={restore} className="cb-card flex min-h-12 w-full items-center justify-center gap-2 p-3 font-semibold text-[#1B3FD0]">
           <History className="h-5 w-5" aria-hidden="true" />
-          Pick up the quote you started on this phone
+          Pick up the {docName} you started on this phone
         </button>
       ) : null}
       <section className="cb-card overflow-hidden" aria-labelledby="quote-lines">
         <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
-          <h2 id="quote-lines" className="text-[28px] leading-none">Quote</h2>
+          <h2 id="quote-lines" className="text-[28px] leading-none">{isInvoice ? "Invoice" : "Quote"}</h2>
           <span className="text-lg font-bold text-[#0A1A33]">{money(subtotal + tax)}</span>
         </div>
         <ol className="divide-y divide-[#0A1A33]/10">
@@ -181,11 +197,17 @@ export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProH
 
       {error ? <p role="alert" className="cb-card p-3 text-sm font-semibold text-[#1B3FD0]">{error}</p> : null}
 
-      <button type="button" onClick={() => submit(false)} disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8] disabled:opacity-60">
+      {isInvoice ? (
+        <button type="button" onClick={() => submit(false)} disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8] disabled:opacity-60">
+          <ReceiptText className="h-5 w-5" aria-hidden="true" />
+          {pending ? "Creating invoice…" : "Create invoice"}
+        </button>
+      ) : null}
+      {isInvoice ? null : <button type="button" onClick={() => submit(false)} disabled={pending} className="flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] text-lg font-bold text-white shadow-[0_2px_8px_rgba(10,26,51,0.25)] transition hover:bg-[#1530A8] disabled:opacity-60">
         <Send className="h-5 w-5" aria-hidden="true" />
         {pending ? "Saving…" : "Send to customer for approval"}
-      </button>
-      {canApproveVerbally ? (
+      </button>}
+      {canApproveVerbally && !isInvoice ? (
         <button type="button" onClick={() => submit(true)} disabled={pending} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B3FD0] bg-[#F8FAFD] font-bold text-[#1B3FD0] disabled:opacity-60">
           <BadgeCheck className="h-5 w-5" aria-hidden="true" />
           Customer approved verbally · skip email

@@ -79,6 +79,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
   const slot = parseWindow(job.scheduledWindow);
   const fieldJob = { id: job.id, workPerformed: job.workPerformed, laborHours: job.laborHours, driveHours: job.driveHours };
   const quoteHref = `/jobs/${encodeURIComponent(job.id)}/quote`;
+  const invoiceHref = `${quoteHref}?type=invoice`;
   const partsPro = partsProHref({ details: job.scope, back: `/jobs/${job.id}` });
   const fieldNext = FIELD_NEXT[step];
   // Parts and time stay editable after the call is closed while its invoice is
@@ -115,7 +116,7 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
       );
     } else if (!invoice && isField) {
       primary = (
-        <Link href={quoteHref} className={primaryClass}>
+        <Link href={invoiceHref} className={primaryClass}>
           <ClipboardCheck className="h-5 w-5" aria-hidden="true" />
           Create invoice
         </Link>
@@ -257,8 +258,24 @@ export default async function JobWorkspacePage({ params, searchParams }: Props) 
 
         {isField || (isOffice && active) ? (
           <section className="cb-card p-3.5">
-            <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 4</p><h2 className="text-xl font-bold text-[#0A1A33]">Quote / invoice</h2><p className="mt-1 text-sm text-[#2B3F5C]">Create the customer document from this same service call. Do not start a second call.</p></div>
+            <div className="mb-3"><p className="text-[13px] font-medium text-[#2B3F5C]">Step 4</p><h2 className="text-xl font-bold text-[#0A1A33]">Quote / invoice</h2><p className="mt-1 text-sm text-[#2B3F5C]">Quote = price it for the customer to approve. Invoice = bill the work that&apos;s done. Both stay on this same service call.</p></div>
           <div className="grid grid-cols-2 gap-2.5">
+            {isField && !invoice && billingOpen ? (
+              <Link href={invoiceHref} className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] px-3 font-semibold text-white">
+                <ReceiptText className="h-4 w-4" aria-hidden="true" />
+                Create invoice
+              </Link>
+            ) : null}
+            {isField && invoice?.status === "approved" && !invoiceIssued ? (
+              <form data-no-draft action={issueInvoiceForCompletedWorkAction} className="col-span-2">
+                <input type="hidden" name="jobId" value={job.id} />
+                <input type="hidden" name="invoiceId" value={invoice.id} />
+                <button type="submit" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1B3FD0] px-3 font-semibold text-white">
+                  <ReceiptText className="h-4 w-4" aria-hidden="true" />
+                  Turn approved quote into invoice
+                </button>
+              </form>
+            ) : null}
             {isField ? (
               <Link href={quoteHref} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] px-3 font-semibold text-[#1B3FD0] ${isOffice && active ? "" : "col-span-2"}`}>
                 <FileText className="h-4 w-4" aria-hidden="true" />

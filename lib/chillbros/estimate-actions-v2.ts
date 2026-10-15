@@ -65,18 +65,23 @@ function calcAdjustments(subtotal: number, taxableSubtotal: number, input: Estim
   return { ok: true as const, discountAmount: Math.round(discountAmount * 100) / 100, downPaymentAmount: Math.round(downPaymentAmount * 100) / 100, taxAmount: Math.round(taxAmount * 100) / 100, taxRate, total };
 }
 
+// A tech can price the call at any point before it is invoiced or closed:
+// on the way, on site, or after marking the work done. Keep in step with the
+// status list in chillbros_create_estimate_v2.
+const ESTIMATE_OPEN_JOB_STATUSES = ["new", "needs_scheduling", "scheduled", "in_progress", "dispatched", "en_route", "arrived", "diagnosing", "awaiting_approval", "approved", "parts_required", "return_visit_needed", "repairing", "work_complete", "ready_to_invoice"];
+
 async function canEditEstimateJob(jobId: string) {
   const profile = await getCurrentStaffProfile();
   if (!profile) return { ok: false as const, error: "Not signed in." };
   if (profile.role === "manager") return { ok: true as const, profile };
   if (profile.role !== "technician") return { ok: false as const, error: "Estimate pricing is restricted to manager and assigned technician accounts." };
   const supabase = createServiceRoleClient();
-  const { data } = await supabase.from("chillbros_jobs").select("id").eq("id", jobId).eq("assigned_tech_id", profile.id).in("status", ["scheduled", "in_progress"]).maybeSingle();
+  const { data } = await supabase.from("chillbros_jobs").select("id").eq("id", jobId).eq("assigned_tech_id", profile.id).in("status", ESTIMATE_OPEN_JOB_STATUSES).maybeSingle();
   if (!data) return { ok: false as const, error: "This job is not assigned to you or is no longer active." };
   return { ok: true as const, profile };
 }
 
-export async function createEstimateV2Action(jobId: string, lines: EstimateDraftLine[], notes: string, adjustments: EstimateAdjustments, options: { sendToCustomer?: boolean } = {}): Promise<Result<{ estimateId: string; estimateNumber: string; portalToken: string }>> {
+export async function createEstimateV2Action(jobId: string, lines: EstimateDraftLine[], notes: string, adjustments: EstimateAdjustments, options: { sendToCustomer?: boolean; asInvoice?: boolean } = {}): Promise<Result<{ estimateId: string; estimateNumber: string; portalToken: string }>> {
   const allowed = await canEditEstimateJob(jobId);
   if (!allowed.ok) return allowed;
   const checked = validateLines(lines);
@@ -99,7 +104,7 @@ export async function createEstimateV2Action(jobId: string, lines: EstimateDraft
   if (!accessToken || tokenResult?.error) return { ok: false, error: "Your Neon session expired. Sign in and try again." };
 
   const userData = createUserScopedDataClient(accessToken);
-  const number = estimateNumber();
+  const number = options.asInvoice ? simpleDocumentNumber("invoice") : estimateNumber();
   const { data, error } = await userData.rpc("chillbros_create_estimate_v2", {
     p_job_id: jobId,
     p_invoice_number: number,
@@ -129,7 +134,7 @@ export async function updateEstimateAdjustmentsAction(invoiceId: string, adjustm
   if (invoice.status === "approved") return { ok: false, error: "Approved estimates are locked. Create a credit/refund adjustment instead of changing signed pricing." };
 
   if (profile.role === "technician") {
-    const { data: job } = await supabase.from("chillbros_jobs").select("id").eq("id", invoice.job_id).eq("assigned_tech_id", profile.id).in("status", ["scheduled", "in_progress"]).maybeSingle();
+    const { data: job } = await supabase.from("chillbros_jobs").select("id").eq("id", invoice.job_id).eq("assigned_tech_id", profile.id).in("status", ESTIMATE_OPEN_JOB_STATUSES).maybeSingle();
     if (!job) return { ok: false, error: "This estimate is not on your active assigned job." };
   }
 

@@ -11,7 +11,7 @@ import { getFeeSettings } from "@/lib/chillbros/queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ type?: string }> };
 
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const STATUS_TEXT: Record<string, string> = {
@@ -20,8 +20,9 @@ const STATUS_TEXT: Record<string, string> = {
   approved: "Approved",
 };
 
-export default async function JobQuotePage({ params }: Props) {
-  const [{ id }, profile] = await Promise.all([params, getCurrentStaffProfile()]);
+export default async function JobQuotePage({ params, searchParams }: Props) {
+  const [{ id }, profile, query] = await Promise.all([params, getCurrentStaffProfile(), searchParams]);
+  const mode = query.type === "invoice" ? "invoice" : "quote";
   if (!profile) redirect("/sign-in");
   const lifecycle = await getJobLifecycle(id);
   if (!lifecycle) notFound();
@@ -84,7 +85,7 @@ export default async function JobQuotePage({ params }: Props) {
       <AppShell title="Quote" description={job.customerName}>
         <div className="cb-new space-y-3.5">
           {backLink}
-          <p className="cb-card p-3.5 font-semibold text-[#0A1A33]">Quotes are priced by the owner or the assigned technician. This call doesn&apos;t have one yet.</p>
+          <p className="cb-card p-3.5 font-semibold text-[#0A1A33]">Quotes and invoices are priced by the owner or the assigned technician. This call doesn&apos;t have one yet.</p>
         </div>
       </AppShell>
     );
@@ -97,9 +98,9 @@ export default async function JobQuotePage({ params }: Props) {
   ].slice(0, 20);
 
   return (
-    <AppShell title="Build quote" description={`${job.customerName}${job.scope ? ` · ${job.scope}` : ""}`}>
+    <AppShell title={mode === "invoice" ? "Create invoice" : "Build quote"} description={`${job.customerName}${job.scope ? ` · ${job.scope}` : ""}`}>
       <div className="cb-new mb-3.5">{backLink}</div>
-      <QuoteBuilder jobId={job.id} suggestions={suggestions} canApproveVerbally={profile.role === "manager"} partsProHref={partsProHref({ details: job.scope, back: `/jobs/${job.id}/quote` })} />
+      <QuoteBuilder jobId={job.id} suggestions={suggestions} canApproveVerbally={profile.role === "manager"} partsProHref={partsProHref({ details: job.scope, back: `/jobs/${job.id}/quote${mode === "invoice" ? "?type=invoice" : ""}` })} mode={mode} />
     </AppShell>
   );
 }

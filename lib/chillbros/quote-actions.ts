@@ -74,3 +74,37 @@ export async function addCustomJobPartAction(input: { jobId: string; name: strin
   revalidatePath(`/jobs/${input.jobId}`);
   return { ok: true, data: undefined };
 }
+
+/**
+ * Bill the call now from the job page: the tech (or owner) prices the work
+ * that was done and the final invoice is created in one step — no customer
+ * quote approval round-trip. Same records as quote → approve → issue, so
+ * Billing, the customer link and payments all treat it like any invoice.
+ */
+export async function createJobInvoiceAction(jobId: string, lines: EstimateDraftLine[], notes: string, adjustments: EstimateAdjustments): Promise<Result<{ invoiceId: string; redirectTo: string }>> {
+  const profile = await getCurrentStaffProfile();
+  if (!profile || !["manager", "technician"].includes(profile.role)) return { ok: false, error: "Invoices from a job are created by the owner or the assigned technician." };
+  const created = await createEstimateV2Action(jobId, lines, notes, adjustments, { sendToCustomer: false, asInvoice: true });
+  if (!created.ok) return created;
+
+  const supabase = createServiceRoleClient();
+  const now = new Date().toISOString();
+  const { data: issued, error } = await supabase
+    .from("chillbros_invoices")
+    .update({ status: "approved", signature_name: `Invoiced on site by ${profile.fullName}`.slice(0, 200), signed_at: now, issued_at: now, due_at: now, payment_terms: "due_on_receipt", updated_at: now })
+    .eq("id", created.data.estimateId)
+    .eq("status", "awaiting_approval")
+    .is("revoked_at", null)
+    .select("id")
+    .maybeSingle();
+  if (error || !issued) return { ok: false, error: `The lines were saved as quote ${created.data.estimateNumber}, but it could not be turned into an invoice: ${error?.message ?? "update failed"}. Ask the office to finalize it in Billing.` };
+
+  await supabase.from("chillbros_jobs").update({ status: "completed", updated_at: now }).eq("id", jobId).in("status", ["new", "needs_scheduling", "scheduled", "in_progress", "dispatched", "en_route", "arrived", "diagnosing", "awaiting_approval", "approved", "parts_required", "return_visit_needed", "repairing", "work_complete", "ready_to_invoice"]);
+  await supabase.from("chillbros_workflow_events").insert({ job_id: jobId, invoice_id: created.data.estimateId, actor_id: profile.id, stage: "invoice_issued", message: `Invoice ${created.data.estimateNumber} created from the job by ${profile.fullName}.` });
+
+  for (const path of ["/", "/manager", "/dispatch", "/office", "/technician", "/work", "/schedule", "/invoices", `/jobs/${jobId}`, `/portal/${created.data.portalToken}`]) revalidatePath(path);
+  const redirectTo = profile.role === "manager"
+    ? `/invoices?focus=${encodeURIComponent(created.data.estimateId)}&created=1`
+    : `/jobs/${encodeURIComponent(jobId)}?success=${encodeURIComponent(`Invoice ${created.data.estimateNumber} created. The office will review and send it to the customer.`)}`;
+  return { ok: true, data: { invoiceId: created.data.estimateId, redirectTo } };
+}
