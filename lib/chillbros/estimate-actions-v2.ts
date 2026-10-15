@@ -2,14 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
-import { auth } from "@/lib/auth/server";
 import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications";
 import { sendBillingDeliveryRecorded } from "@/lib/chillbros/billing-delivery";
 import { createReceiptForPaidInvoice } from "@/lib/chillbros/billing-receipts";
 import { simpleDocumentNumber } from "@/lib/chillbros/document-number";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
-import { createServiceRoleClient, createUserScopedDataClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { approvalDueAt } from "@/lib/chillbros/billing-terms";
 import type { AdjustmentType, PaymentMethod, PaymentTerms } from "./types";
 
@@ -91,19 +90,11 @@ export async function createEstimateV2Action(jobId: string, lines: EstimateDraft
   const calc = calcAdjustments(checked.subtotal, checked.taxableSubtotal, adjustments);
   if (!calc.ok) return calc;
 
-  const authWithToken = auth as unknown as {
-    token?: () => Promise<{ data?: unknown; error?: unknown }>;
-  };
-  const tokenResult = authWithToken.token ? await authWithToken.token() : null;
-  const tokenData = tokenResult?.data;
-  const accessToken = typeof tokenData === "string"
-    ? tokenData
-    : tokenData && typeof tokenData === "object" && "token" in tokenData && typeof (tokenData as { token?: unknown }).token === "string"
-      ? (tokenData as { token: string }).token
-      : "";
-  if (!accessToken || tokenResult?.error) return { ok: false, error: "Your Neon session expired. Sign in and try again." };
-
-  const userData = createUserScopedDataClient(accessToken);
+  // canEditEstimateJob above already confirmed this is the owner or the
+  // technician assigned to this job. The database can't verify Neon Auth
+  // session tokens ("No suitable key or wrong key type"), so the insert runs
+  // with the server credential, the same as every other job write.
+  const userData = createServiceRoleClient();
   const number = options.asInvoice ? simpleDocumentNumber("invoice") : estimateNumber();
   const { data, error } = await userData.rpc("chillbros_create_estimate_v2", {
     p_job_id: jobId,

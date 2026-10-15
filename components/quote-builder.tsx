@@ -11,6 +11,7 @@ import { approveQuoteVerballyAction, createJobInvoiceAction } from "@/lib/chillb
 type Line = { id: string; label: string; description: string; quantity: string; unitPrice: string; taxable: boolean };
 export type QuoteSuggestion = { label: string; description?: string; quantity: number; unitPrice: number; taxable?: boolean };
 
+const compact = "min-h-10 w-full min-w-0 rounded-lg border border-[#C7D3E2] bg-white px-2.5 text-[15px] font-medium text-[#0A1A33] placeholder:text-[#5B6B82]";
 const field = "min-h-11 w-full rounded-xl border border-[#C7D3E2] bg-[#F8FAFD] px-3 text-base font-medium text-[#0A1A33] placeholder:text-[#5B6B82]";
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const newLine = (item?: Partial<QuoteSuggestion>): Line => ({
@@ -129,50 +130,46 @@ export function QuoteBuilder({ jobId, suggestions, canApproveVerbally, partsProH
           <h2 id="quote-lines" className="text-[28px] leading-none">{isInvoice ? "Invoice" : "Quote"}</h2>
           <span className="text-lg font-bold text-[#0A1A33]">{money(subtotal + tax)}</span>
         </div>
+        <div className="hidden grid-cols-[1fr_64px_96px_84px_36px] gap-2 px-3.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[#5B6B82] sm:grid">
+          <span>Item</span><span className="text-center">Qty</span><span>Price</span><span className="text-right">Amount</span><span />
+        </div>
         <ol className="divide-y divide-[#0A1A33]/10">
-          {lines.map((line, index) => (
-            <li key={line.id} className="space-y-2 bg-[#F8FAFD] px-3.5 py-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-semibold text-[#2B3F5C]">Line {index + 1}</span>
-                <button type="button" onClick={() => { touch(); setLines((current) => (current.length === 1 ? [newLine()] : current.filter((item) => item.id !== line.id))); }} aria-label={`Remove line ${index + 1}`} className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#1B3FD0]">
-                  <Trash2 className="h-5 w-5" aria-hidden="true" />
-                </button>
-              </div>
-              <label className="block text-sm font-semibold text-[#0A1A33]">
-                Item
-                <input value={line.label} onChange={(e) => update(line.id, { label: e.target.value })} maxLength={200} placeholder="Part, labor or fee" className={`${field} mt-1`} />
-              </label>
-              <label className="block text-sm font-semibold text-[#0A1A33]">
-                Part # or note (optional)
-                <input value={line.description} onChange={(e) => update(line.id, { description: e.target.value })} maxLength={1000} className={`${field} mt-1`} />
-              </label>
-              <div className="grid grid-cols-[88px_1fr] gap-2">
-                <label className="text-sm font-semibold text-[#0A1A33]">
-                  Qty
-                  <input type="number" inputMode="decimal" min="0.01" step="0.01" value={line.quantity} onChange={(e) => update(line.id, { quantity: e.target.value })} className={`${field} mt-1 text-center`} />
-                </label>
-                <label className="text-sm font-semibold text-[#0A1A33]">
-                  Price each
-                  <input type="number" inputMode="decimal" min="0" step="0.01" value={line.unitPrice} onChange={(e) => update(line.id, { unitPrice: e.target.value })} placeholder="$0.00" className={`${field} mt-1`} />
-                </label>
-              </div>
-              <label className="flex min-h-11 items-center gap-3 text-sm font-semibold text-[#0A1A33]">
-                <input type="checkbox" checked={line.taxable} onChange={(e) => update(line.id, { taxable: e.target.checked })} className="h-5 w-5 accent-[#1B3FD0]" />
-                Taxable
-              </label>
-            </li>
-          ))}
+          {lines.map((line, index) => {
+            const amount = (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0);
+            return (
+              <li key={line.id} className="bg-[#F8FAFD] px-3.5 py-2">
+                <div className="grid grid-cols-[1fr_36px] gap-2 sm:grid-cols-[1fr_64px_96px_84px_36px] sm:items-center">
+                  <input value={line.label} onChange={(e) => update(line.id, { label: e.target.value })} maxLength={200} placeholder="Part, labor or fee" aria-label={`Line ${index + 1} item`} className={compact} />
+                  <div className="col-span-2 row-start-2 grid grid-cols-[64px_1fr_auto] items-center gap-2 sm:contents">
+                    <input type="number" inputMode="decimal" min="0.01" step="0.01" value={line.quantity} onChange={(e) => update(line.id, { quantity: e.target.value })} aria-label={`Line ${index + 1} quantity`} className={`${compact} text-center`} />
+                    <input type="number" inputMode="decimal" min="0" step="0.01" value={line.unitPrice} onChange={(e) => update(line.id, { unitPrice: e.target.value })} placeholder="$0.00" aria-label={`Line ${index + 1} price each`} className={compact} />
+                    <span className="min-w-[72px] text-right text-sm font-bold text-[#0A1A33]">{money(amount)}</span>
+                  </div>
+                  <button type="button" onClick={() => { touch(); setLines((current) => (current.length === 1 ? [newLine()] : current.filter((item) => item.id !== line.id))); }} aria-label={`Remove line ${index + 1}`} className="col-start-2 row-start-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-[#1B3FD0] sm:col-start-auto sm:row-start-auto">
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="mt-1 flex items-center gap-3">
+                  <input value={line.description} onChange={(e) => update(line.id, { description: e.target.value })} maxLength={1000} placeholder="Part # or note (optional)" aria-label={`Line ${index + 1} part number or note`} className="min-h-8 flex-1 rounded-lg border border-transparent bg-transparent px-1 text-[13px] text-[#2B3F5C] placeholder:text-[#8A97AA] focus:border-[#C7D3E2] focus:bg-white" />
+                  <label className="flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-[#2B3F5C]">
+                    <input type="checkbox" checked={line.taxable} onChange={(e) => update(line.id, { taxable: e.target.checked })} className="h-4 w-4 accent-[#1B3FD0]" />
+                    Tax
+                  </label>
+                </div>
+              </li>
+            );
+          })}
         </ol>
-        <div className="grid grid-cols-2 gap-2 border-t border-[#0A1A33]/10 px-3.5 py-3">
-          <button type="button" onClick={() => { touch(); setLines((current) => [...current, newLine()]); }} disabled={lines.length >= 20} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] font-semibold text-[#1B3FD0] disabled:opacity-50">
+        <div className="grid grid-cols-2 gap-2 border-t border-[#0A1A33]/10 px-3.5 py-2.5">
+          <button type="button" onClick={() => { touch(); setLines((current) => [...current, newLine()]); }} disabled={lines.length >= 20} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-[#1B3FD0] bg-[#F8FAFD] text-sm font-semibold text-[#1B3FD0] disabled:opacity-50">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Add line
           </button>
-          <button type="button" onClick={() => { touch(); setLines((current) => [...current, newLine({ description: "Sourced part" })]); }} disabled={lines.length >= 20} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-[#1B3FD0] bg-[#F8FAFD] font-semibold text-[#1B3FD0] disabled:opacity-50">
+          <button type="button" onClick={() => { touch(); setLines((current) => [...current, newLine({ description: "Sourced part" })]); }} disabled={lines.length >= 20} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-[#1B3FD0] bg-[#F8FAFD] text-sm font-semibold text-[#1B3FD0] disabled:opacity-50">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Bought part
           </button>
-          <Link href={partsProHref} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-1.5 text-sm font-semibold text-[#1B3FD0]">
+          <Link href={partsProHref} className="col-span-2 inline-flex min-h-9 items-center justify-center gap-1.5 text-sm font-semibold text-[#1B3FD0]">
             <Sparkles className="h-4 w-4" aria-hidden="true" />
             Find the OEM part # with Parts Pro
           </Link>
