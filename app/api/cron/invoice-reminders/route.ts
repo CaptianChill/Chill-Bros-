@@ -29,7 +29,7 @@ export async function GET(request: Request) {
   let failed = 0;
   const details: Array<{ id: string; email: string; sms?: string }> = [];
   for (const invoice of data ?? []) {
-    const email = await sendBillingDelivery(invoice.id, "reminder", "email");
+    const email = await sendBillingDelivery(invoice.id, "reminder", "email", undefined, { mainEmailOnly: true });
     let smsStatus: string | undefined;
     if (String(process.env.BILLING_SMS_REMINDERS || "").toLowerCase() === "true") {
       const sms = await sendBillingDelivery(invoice.id, "reminder", "sms");

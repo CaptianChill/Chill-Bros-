@@ -86,7 +86,7 @@ function formatDue(value: string | null) {
   return new Date(value).toLocaleDateString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", year: "numeric" });
 }
 
-export async function sendBillingDelivery(invoiceId: string, deliveryType: BillingDeliveryType, channel: BillingDeliveryChannel, overrideRecipient?: string): Promise<DeliveryResult> {
+export async function sendBillingDelivery(invoiceId: string, deliveryType: BillingDeliveryType, channel: BillingDeliveryChannel, overrideRecipient?: string, options: { mainEmailOnly?: boolean } = {}): Promise<DeliveryResult> {
   const supabase = createServiceRoleClient();
   const { data: invoice } = await supabase.from("chillbros_invoices").select("id,invoice_number,portal_token,status,payment_status,due_at,customer:chillbros_customers(name,email,cc_emails,phone),job:chillbros_jobs(location)").eq("id", invoiceId).maybeSingle();
   if (!invoice) return { channel, recipient: null, status: "failed", error: "Invoice was not found." };
@@ -129,7 +129,8 @@ export async function sendBillingDelivery(invoiceId: string, deliveryType: Billi
     const overrideParts = splitEmailList(overrideRecipient);
     const badOverride = overrideParts.find((part) => !isValidEmail(part));
     if (badOverride) return { channel, recipient: null, status: "failed", error: `That override email address is not valid: ${badOverride.slice(0, 80)}` };
-    const recipients = overrideParts.length ? overrideParts : [...new Set([...parseEmailList(customer?.email), ...parseEmailList(customer?.cc_emails)])];
+    // mainEmailOnly: automatic reminders go to the main email, never the CC list.
+    const recipients = overrideParts.length ? overrideParts : options.mainEmailOnly ? parseEmailList(customer?.email).slice(0, 1) : [...new Set([...parseEmailList(customer?.email), ...parseEmailList(customer?.cc_emails)])];
     const [to, ...cc] = recipients;
     const recipient = recipients.join(", ");
     if (!to) {
