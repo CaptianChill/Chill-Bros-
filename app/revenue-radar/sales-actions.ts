@@ -16,7 +16,7 @@ const optional = (raw: string, max = 2000) => raw.slice(0, max) || null;
 
 async function salesUser() {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) throw new Error("Sales access required.");
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) throw new Error("Sales access required.");
   return profile;
 }
 
@@ -194,7 +194,7 @@ export async function assignRevenueSalesperson(form: FormData) {
     client.from("chillbros_profiles").select("id,full_name,role,status").eq("id", assigneeId).maybeSingle(),
   ]);
   if (leadError || !lead) throw new Error(leadError?.message || "Lead not found.");
-  if (staffError || !assignee || assignee.status !== "active" || !["manager", "office"].includes(assignee.role)) throw new Error("Salesperson must be active office or manager staff.");
+  if (staffError || !assignee || assignee.status !== "active" || !["manager", "office", "salesperson"].includes(assignee.role)) throw new Error("Salesperson must be active office, salesperson, or manager staff.");
 
   const { count: battleCount, error: battleError } = await client.from("chillbros_revenue_battle_cards").select("id", { count: "exact", head: true }).eq("lead_id", leadId).eq("is_current", true);
   if (battleError) throw new Error(battleError.message);

@@ -13,6 +13,14 @@ async function managerUser() {
   return profile;
 }
 
+// Closing a deal (Won/Lost) is the salesperson's own call to make on their
+// own lead - reopening a closed deal is a manager correction/override.
+async function closeoutUser() {
+  const profile = await getCurrentStaffProfile();
+  if (!profile || !["manager", "salesperson"].includes(profile.role)) throw new Error("Manager or salesperson access required.");
+  return profile;
+}
+
 async function audit(client: ReturnType<typeof createServiceRoleClient>, args: { leadId: string; actorId: string; action: string; previousValue: unknown; newValue: unknown; reason: string }) {
   const { error } = await client.from("chillbros_revenue_history").insert({
     lead_id: args.leadId,
@@ -29,7 +37,7 @@ async function audit(client: ReturnType<typeof createServiceRoleClient>, args: {
 }
 
 export async function closeRevenueOpportunity(form: FormData) {
-  const profile = await managerUser();
+  const profile = await closeoutUser();
   const leadId = value(form, "lead_id");
   const outcome = value(form, "outcome");
   const reason = value(form, "reason").slice(0, 2000);

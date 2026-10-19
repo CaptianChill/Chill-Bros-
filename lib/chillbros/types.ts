@@ -1,4 +1,4 @@
-export type StaffRole = "manager" | "technician" | "office";
+export type StaffRole = "manager" | "technician" | "office" | "salesperson";
 export type StaffStatus = "active" | "inactive";
 export type StaffAccount = { id: string; fullName: string; email: string; role: StaffRole; status: StaffStatus; phone: string | null; lastClockEvent: string | null; assignedJobs: number };
 export type Customer = { id: string; name: string; address: string | null; phone: string | null; email: string | null; /** Extra people copied on customer emails, "a@x.com, b@y.com". */ ccEmails?: string | null; history: string[] };

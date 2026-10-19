@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function RevenueLeadLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) redirect("/");
 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();

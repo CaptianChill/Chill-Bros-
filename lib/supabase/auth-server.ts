@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
 import { auth as neonAuth } from "@/lib/auth/server";
+import type { StaffRole } from "@/lib/chillbros/types";
 import { getSupabaseConfig } from "./config";
 import { createServiceRoleClient } from "./service-client";
 
@@ -11,7 +12,7 @@ export type StaffProfile = {
   id: string;
   fullName: string;
   email: string;
-  role: "manager" | "technician" | "office";
+  role: StaffRole;
   status: "active" | "inactive";
 };
 

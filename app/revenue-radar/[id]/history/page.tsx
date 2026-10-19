@@ -18,7 +18,7 @@ function pretty(value: unknown) {
 
 export default async function RevenueHistoryPage({ params }: { params: Promise<{ id: string }> }) {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) redirect("/");
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 

@@ -6,6 +6,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { explainLeadRanking } from "@/lib/chillbros/revenue-sales";
 import { updateProspect } from "../actions";
+import { closeRevenueOpportunity } from "../opportunity-actions";
 import {
   assignRevenueSalesperson,
   createRevenueTechnicianHandoff,
@@ -22,12 +23,12 @@ const area = `${input} resize-y`;
 
 export default async function ProspectPage({ params }: { params: Promise<{ id: string }> }) {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) redirect("/");
   const { id } = await params;
   const client = createServiceRoleClient();
   const [{ data: p }, { data: salesStaff }, { data: leadContacts }, { data: battleCard }] = await Promise.all([
     client.from("chillbros_revenue_prospects").select("*").eq("id", id).maybeSingle(),
-    client.from("chillbros_profiles").select("id,full_name,role,status").eq("status", "active").in("role", ["manager", "office"]).order("full_name"),
+    client.from("chillbros_profiles").select("id,full_name,role,status").eq("status", "active").in("role", ["manager", "office", "salesperson"]).order("full_name"),
     client.from("chillbros_revenue_contacts").select("id,name,role,phone,email,verification_status,source,is_primary,notes").eq("lead_id", id).order("is_primary", { ascending: false }).order("created_at", { ascending: true }),
     client.from("chillbros_revenue_battle_cards").select("id,content,created_at").eq("lead_id", id).eq("is_current", true).maybeSingle(),
   ]);
@@ -54,7 +55,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
   const plan = card?.suggestedPlan as { tier?: string; reason?: string } | undefined;
   const email = card?.introEmail as { subject?: string; body?: string } | undefined;
   const objections = Array.isArray(card?.objectionResponses) ? (card.objectionResponses as Array<{ objection?: string; response?: string }>) : [];
-  const canWorkLead = profile.role === "manager" || p.assigned_salesperson === profile.id;
+  const canWorkLead = profile.role === "manager" || profile.role === "salesperson" || p.assigned_salesperson === profile.id;
+  const canCloseLead = profile.role === "manager" || profile.role === "salesperson";
   const field = (label: string, name: string, type = "text") => <label key={name}>{label}<input className={input} name={name} type={type} defaultValue={p[name] ?? ""} /></label>;
 
   return <AppShell title={p.business_name} description="Revenue Radar sales execution, follow-up, and technical handoff."><div className="mx-auto max-w-3xl space-y-4 text-left">
@@ -130,19 +132,6 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
       </div> : null}
     </section>
 
-    {profile.role === "manager" ? <details className="rounded-2xl border border-white/10 bg-black/30 p-4">
-      <summary className="cursor-pointer font-semibold">Sales assignment</summary>
-      <h2 className="font-semibold">Sales assignment</h2>
-      <form action={assignRevenueSalesperson} className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <input type="hidden" name="lead_id" value={id} />
-        <select className={input} name="assigned_salesperson" defaultValue={p.assigned_salesperson ?? ""} required>
-          <option value="" disabled>Select salesperson</option>
-          {(salesStaff ?? []).map((staff) => <option key={staff.id} value={staff.id}>{staff.full_name} · {staff.role}</option>)}
-        </select>
-        <button className="min-h-11 shrink-0 rounded-xl border border-cyan-300/50 px-4 font-semibold text-cyan-100">Assign</button>
-      </form>
-    </details> : null}
-
     <details className="rounded-2xl border border-cyan-300/25 bg-black/40 p-4">
       <summary className="cursor-pointer text-lg font-semibold text-white">Log call / activity</summary>
       <form action={logRevenueActivity} className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -191,12 +180,37 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
       </form>
     </details>
 
+    {canCloseLead && !["won", "lost"].includes(String(salesStatus)) ? <details className="rounded-2xl border border-emerald-300/25 bg-emerald-400/5 p-4">
+      <summary className="cursor-pointer text-lg font-semibold text-emerald-100">Close the deal</summary>
+      <p className="mt-2 text-sm text-emerald-50/80">Mark this opportunity Won or Lost. Won requires the actual revenue so Revenue Radar can attribute results.</p>
+      <form action={closeRevenueOpportunity} className="mt-4 grid gap-3 sm:grid-cols-2">
+        <input type="hidden" name="lead_id" value={id} />
+        <label>Outcome<select className={input} name="outcome" defaultValue="won" required><option value="won">Won</option><option value="lost">Lost</option></select></label>
+        <label>Actual revenue (required if Won)<input className={input} name="actual_revenue" type="number" min="0" step="0.01" /></label>
+        <label className="sm:col-span-2">Reason<textarea className={area} name="reason" required rows={2} placeholder="What happened, and why" /></label>
+        <button className="min-h-12 rounded-xl bg-emerald-300 px-4 font-bold text-black sm:col-span-2">Close Opportunity</button>
+      </form>
+    </details> : null}
+
     {!p.do_not_contact ? <details className="rounded-2xl border border-red-400/20 bg-red-400/5 p-4">
       <summary className="cursor-pointer font-semibold text-red-100">Do Not Contact</summary>
       <form action={markRevenueDoNotContact} className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
         <input type="hidden" name="lead_id" value={id} />
         <input className={input} name="reason" required placeholder="Who requested it and why" />
         <button className="min-h-11 rounded-xl border border-red-400/40 px-4 font-semibold text-red-100">Mark DNC</button>
+      </form>
+    </details> : null}
+
+    {profile.role === "manager" ? <details className="rounded-2xl border border-white/10 bg-black/30 p-4">
+      <summary className="cursor-pointer font-semibold">Sales assignment</summary>
+      <h2 className="font-semibold">Sales assignment</h2>
+      <form action={assignRevenueSalesperson} className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input type="hidden" name="lead_id" value={id} />
+        <select className={input} name="assigned_salesperson" defaultValue={p.assigned_salesperson ?? ""} required>
+          <option value="" disabled>Select salesperson</option>
+          {(salesStaff ?? []).map((staff) => <option key={staff.id} value={staff.id}>{staff.full_name} · {staff.role}</option>)}
+        </select>
+        <button className="min-h-11 shrink-0 rounded-xl border border-cyan-300/50 px-4 font-semibold text-cyan-100">Assign</button>
       </form>
     </details> : null}
 

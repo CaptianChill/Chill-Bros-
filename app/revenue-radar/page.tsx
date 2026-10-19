@@ -52,7 +52,7 @@ async function fetchAllProspects(
 
 export default async function RevenueRadarPage() {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) redirect("/");
 
   const client = createServiceRoleClient();
   const { data, error } = await fetchAllProspects(client, profile.role, profile.id);
@@ -61,17 +61,17 @@ export default async function RevenueRadarPage() {
   const newCount = prospects.filter((p) => p.status === "new").length;
   const highPriority = prospects.filter((p) => Number(p.score) >= 65).length;
 
-  return <AppShell title="Revenue Radar" description={profile.role === "office" ? "Your assigned Revenue Radar leads, sales follow-up, and next actions." : "New leads first. Open one to work it and lock it in."}>
+  return <AppShell title="Revenue Radar" description={profile.role === "office" ? "Your assigned Revenue Radar leads, sales follow-up, and next actions." : profile.role === "salesperson" ? "Every Revenue Radar lead, yours to work start to finish." : "New leads first. Open one to work it and lock it in."}>
     <div className="mx-auto max-w-5xl space-y-5 text-left">
       {error ? <p className="rounded-xl border border-amber-400 p-3 text-amber-200">Revenue Radar storage is not ready. {error.message}</p> : null}
 
       <section className="rounded-3xl border border-cyan-300/30 bg-cyan-400/5 p-5 shadow-[0_0_30px_rgba(34,211,238,0.08)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200">{profile.role === "office" ? "My assigned sales queue" : "Automatic lead generation"}</p>
-            <h2 className="mt-1 text-2xl font-semibold text-white">{profile.role === "office" ? "Work the leads assigned to you." : "Let Revenue Radar hunt for you."}</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200">{profile.role === "office" ? "My assigned sales queue" : profile.role === "salesperson" ? "Your lead queue" : "Automatic lead generation"}</p>
+            <h2 className="mt-1 text-2xl font-semibold text-white">{profile.role === "office" ? "Work the leads assigned to you." : profile.role === "salesperson" ? "Work every lead, start to finish." : "Let Revenue Radar hunt for you."}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
-              {profile.role === "office" ? "This view is limited to your assigned Revenue Radar leads. Open a lead for its Battle Card, call logging, follow-up tasks, contacts, and technician handoff." : "Scan public commercial business data around San Antonio, identify businesses with strong HVAC/R, refrigeration, ice, and kitchen-equipment demand, remove duplicates, and rank the best prospects automatically."}
+              {profile.role === "office" ? "This view is limited to your assigned Revenue Radar leads. Open a lead for its Battle Card, call logging, follow-up tasks, contacts, and technician handoff." : profile.role === "salesperson" ? "Open a lead for its Battle Card, call logging, follow-up tasks, contacts, technician handoff, and closing the deal out Won or Lost." : "Scan public commercial business data around San Antonio, identify businesses with strong HVAC/R, refrigeration, ice, and kitchen-equipment demand, remove duplicates, and rank the best prospects automatically."}
             </p>
           </div>
           {profile.role === "manager" ? <ScanForLeadsButton action={scanForLeads} /> : null}

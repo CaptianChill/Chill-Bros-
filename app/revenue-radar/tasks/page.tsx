@@ -11,7 +11,7 @@ function currentTimeMs() { return Date.now(); }
 
 export default async function RevenueTasksPage() {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) redirect("/");
   const client = createServiceRoleClient();
   let query = client.from("chillbros_revenue_tasks").select("id,lead_id,task_type,description,due_at,status,assigned_user,created_at").in("status", ["open", "in_progress", "overdue"]).order("due_at", { ascending: true }).limit(100);
   if (profile.role !== "manager") query = query.eq("assigned_user", profile.id);

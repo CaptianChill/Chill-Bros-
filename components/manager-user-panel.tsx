@@ -52,7 +52,7 @@ export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts:
       <div className="grid gap-3 sm:grid-cols-2">
         <label>Name<input required name="name" maxLength={200} className={field} /></label>
         <label>Email<input required name="email" type="email" autoComplete="off" className={field} /></label>
-        <label>Role<select name="role" defaultValue="technician" className={field}><option value="technician">Technician</option><option value="office">Office / Dispatch</option><option value="manager">Manager</option></select></label>
+        <label>Role<select name="role" defaultValue="technician" className={field}><option value="technician">Technician</option><option value="office">Office / Dispatch</option><option value="salesperson">Salesperson (commission)</option><option value="manager">Manager</option></select></label>
         <label>Password (optional)<input name="password" type="password" autoComplete="new-password" minLength={12} maxLength={128} placeholder="Leave blank to generate one" className={field} /></label>
       </div>
       <button disabled={pending} className={button}>Add employee</button>

@@ -49,7 +49,7 @@ export const navItems: NavItem[] = [
   { href: "/dispatch", label: "Dispatch", shortLabel: "Dispatch", roles: ["manager", "office"], group: "command" },
   { href: "/invoices", label: "Invoices", shortLabel: "Invoices", roles: ["manager", "office"], group: "financial" },
   { href: "/customers", label: "Customers", shortLabel: "Customers", roles: ["manager", "office"], group: "crm" },
-  { href: "/revenue-radar", label: "Sales", shortLabel: "Sales", roles: ["manager", "office"], group: "sales" },
+  { href: "/revenue-radar", label: "Sales", shortLabel: "Sales", roles: ["manager", "office", "salesperson"], group: "sales" },
   { href: "/technician", label: "My Jobs", shortLabel: "My Jobs", roles: ["technician"], group: "operations" },
   { href: "/field-notes", label: "Notes", shortLabel: "Notes", roles: ["technician"], group: "operations" },
   { href: "/timesheet", label: "Clock", shortLabel: "Clock", roles: ["technician"], group: "operations" },
@@ -70,9 +70,9 @@ export const SECTION_TABS: SectionTab[][] = [
     { href: "/payments", label: "Payments", roles: ["manager", "office"] },
   ],
   [
-    { href: "/revenue-radar", label: "Leads", roles: ["manager", "office"] },
+    { href: "/revenue-radar", label: "Leads", roles: ["manager", "office", "salesperson"] },
     { href: "/agreements", label: "Service Plans", roles: ["manager", "office"] },
-    { href: "/revenue-radar/tasks", label: "Sales Tasks", roles: ["manager", "office"] },
+    { href: "/revenue-radar/tasks", label: "Sales Tasks", roles: ["manager", "office", "salesperson"] },
   ],
 ];
 
@@ -148,6 +148,14 @@ export function getPrimaryTabs(role: StaffRole): PrimaryTab[] {
     ];
   }
 
+  if (role === "salesperson") {
+    // Salesperson's whole job is Revenue Radar leads - no Work/Dispatch/Invoices
+    // tabs, just one focused primary tab for the full lead workflow.
+    return [
+      { href: "/revenue-radar", label: "Leads", icon: Radar, isActive: (p) => p === "/" || (isUnder(p, "/revenue-radar") && !isUnder(p, "/revenue-radar/handoffs")) },
+    ];
+  }
+
   const homeHref = role === "office" ? "/office" : "/";
 
   return [
@@ -160,5 +168,5 @@ export function getPrimaryTabs(role: StaffRole): PrimaryTab[] {
 }
 
 export function getHomeHref(role: StaffRole) {
-  return role === "office" ? "/office" : role === "technician" ? "/technician" : "/";
+  return role === "office" ? "/office" : role === "technician" ? "/technician" : role === "salesperson" ? "/revenue-radar" : "/";
 }

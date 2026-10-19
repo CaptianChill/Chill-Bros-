@@ -43,6 +43,7 @@ export default async function HomePage() {
   if (!profile) redirect("/sign-in");
   if (profile.role === "technician") redirect("/technician");
   if (profile.role === "office") redirect("/office");
+  if (profile.role === "salesperson") redirect("/revenue-radar");
 
   const [jobs, lifecycleJobs, invoiceCenter] = await Promise.all([
     getCalendarJobs(),

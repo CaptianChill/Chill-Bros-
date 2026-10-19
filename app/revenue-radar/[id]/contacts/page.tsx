@@ -10,7 +10,7 @@ const input = "min-h-11 w-full rounded-xl border border-cyan-400/30 bg-black/50 
 
 export default async function RevenueContactsPage({ params }: { params: Promise<{ id: string }> }) {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) redirect("/");
   const { id } = await params;
   const client = createServiceRoleClient();
   const [{ data: lead }, { data: contacts, error }] = await Promise.all([
