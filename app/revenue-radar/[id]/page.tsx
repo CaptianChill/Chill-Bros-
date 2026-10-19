@@ -81,6 +81,16 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
           <p className="mt-1 text-xs text-cyan-200">{[p.contact_phone, p.contact_email].filter(Boolean).join(" · ") || "Direct contact details pending"}</p>
         </div>
       </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {p.contact_phone ? <a href={`tel:${p.contact_phone.replace(/[^0-9+]/g, "")}`} className="inline-flex min-h-10 items-center gap-1 rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-3 text-sm font-semibold text-emerald-200">Call {p.contact_phone}</a> : null}
+        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([p.business_name, p.business_address || p.city].filter(Boolean).join(" "))}`} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center rounded-xl border border-white/15 bg-black/30 px-3 text-sm font-semibold text-zinc-200">Map</a>
+      </div>
+      {p.email_subject && p.email_draft ? <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-400/5 p-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Pre-written intro email</p>
+        <p className="mt-1 font-semibold text-white">{p.email_subject}</p>
+        <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-200">{p.email_draft}</p>
+        <SalesAssistEmail subject={p.email_subject} body={p.email_draft} to={p.contact_email ?? null} />
+      </div> : null}
       <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-400/5 p-3">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Why {p.score}/100</p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-200">
