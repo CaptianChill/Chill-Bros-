@@ -160,7 +160,14 @@ export function RevenueRadarList({ prospects }: { prospects: Prospect[] }) {
         No leads match these filters.
       </div> : visible.map((p) => {
         const card = buildBattleCard(p);
-        return <Link key={p.id} href={"/revenue-radar/" + p.id} className="block rounded-2xl border border-cyan-400/25 bg-black/40 p-4 transition hover:border-cyan-300">
+        const telHref = p.contact_phone ? `tel:${p.contact_phone.replace(/[^0-9+]/g, "")}` : null;
+        const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([p.business_name, p.business_address || p.city].filter(Boolean).join(" "))}`;
+        return <div key={p.id} className="space-y-2">
+        <div className="flex flex-wrap gap-2">
+          {telHref ? <a href={telHref} onClick={(e) => e.stopPropagation()} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 text-xs font-semibold text-emerald-200">Call {p.contact_phone}</a> : null}
+          <a href={mapHref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex min-h-9 items-center rounded-lg border border-white/15 bg-black/30 px-3 text-xs font-semibold text-zinc-200">Map</a>
+        </div>
+        <Link href={"/revenue-radar/" + p.id} className="block rounded-2xl border border-cyan-400/25 bg-black/40 p-4 transition hover:border-cyan-300">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <strong className="text-lg text-white">{p.business_name}</strong>
@@ -221,7 +228,8 @@ export function RevenueRadarList({ prospects }: { prospects: Prospect[] }) {
           <p className="mt-2 text-xs text-zinc-400">{p.status.replaceAll("_", " ")} · observed {new Date(p.signal_observed_at).toLocaleDateString()}</p>
           {p.follow_up_at ? <p className="mt-1 text-xs text-cyan-200">Follow up {new Date(p.follow_up_at).toLocaleString()}</p> : null}
         </details>
-      </Link>;
+      </Link>
+      </div>;
       })}
     </div>
   </section>;
