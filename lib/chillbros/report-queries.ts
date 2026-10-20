@@ -1,6 +1,9 @@
 import "server-only";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { DONE_JOB_STATUSES } from "@/lib/chillbros/track-record";
+
+const WAITING_JOB_STATUSES = new Set(["new", "needs_scheduling", "scheduled", "dispatched"]);
 
 export type ReportInvoice = { id: string; invoiceNumber: string; customerName: string; status: string; paymentStatus: string; total: number };
 export type OperationsReport = {
@@ -36,7 +39,8 @@ export async function getOperationsReport(): Promise<OperationsReport> {
     return { id: row.id, invoiceNumber: row.invoice_number, customerName: customer?.name ?? "Unknown customer", status: row.status, paymentStatus: row.payment_status, total };
   });
   return {
-    jobs: { scheduled: (jobs ?? []).filter((j) => j.status === "scheduled").length, inProgress: (jobs ?? []).filter((j) => j.status === "in_progress").length, completed: (jobs ?? []).filter((j) => j.status === "completed").length, cancelled: (jobs ?? []).filter((j) => j.status === "cancelled").length },
+    // Group every lifecycle status, so finished calls marked work_complete/invoice_sent/paid count as completed.
+    jobs: { scheduled: (jobs ?? []).filter((j) => WAITING_JOB_STATUSES.has(j.status)).length, inProgress: (jobs ?? []).filter((j) => !WAITING_JOB_STATUSES.has(j.status) && !DONE_JOB_STATUSES.has(j.status) && j.status !== "cancelled").length, completed: (jobs ?? []).filter((j) => DONE_JOB_STATUSES.has(j.status)).length, cancelled: (jobs ?? []).filter((j) => j.status === "cancelled").length },
     invoices: {
       total: invoiceRows.length,
       awaitingApproval: invoiceRows.filter((i) => i.status === "awaiting_approval").length,
