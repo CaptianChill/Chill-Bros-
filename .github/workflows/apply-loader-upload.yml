@@ -1,0 +1,46 @@
+name: Apply corrected loader artwork
+
+on:
+  push:
+    branches:
+      - fix/correct-loader-artwork
+    paths:
+      - ".loader-upload/READY"
+
+permissions:
+  contents: write
+
+jobs:
+  apply-loader:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild approved loader image
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .loader-upload/*.b64 | tr -d '\n\r ' | base64 --decode > public/chill-bros-load-screen.webp
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("public/chill-bros-load-screen.webp")
+          data = p.read_bytes()
+          assert len(data) > 300000, f"loader unexpectedly small: {len(data)} bytes"
+          assert data[:4] == b"RIFF" and data[8:12] == b"WEBP", "not a WebP"
+          print(f"validated {p} ({len(data)} bytes)")
+          PY
+
+      - name: Commit final loader asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -r .loader-upload
+          git add public/chill-bros-load-screen.webp
+          git commit -m "fix: replace loading screen with approved artwork"
+          git push origin HEAD:fix/correct-loader-artwork
