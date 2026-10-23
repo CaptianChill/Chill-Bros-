@@ -13,9 +13,11 @@ type Props = {
   initialSignature: string | null;
   initialSignedAt: string | null;
   alreadyApproved: boolean;
+  /** e.g. "$627.50 (50%)": the down payment the customer must pay right after signing. */
+  downPayment?: string | null;
 };
 
-export function DocumentSignatureForm({ kind, token, initialSignature, initialSignedAt, alreadyApproved }: Props) {
+export function DocumentSignatureForm({ kind, token, initialSignature, initialSignedAt, alreadyApproved, downPayment }: Props) {
   const router = useRouter();
   const [signature, setSignature] = useState(initialSignature ?? "");
   const [approved, setApproved] = useState(alreadyApproved);
@@ -38,8 +40,9 @@ export function DocumentSignatureForm({ kind, token, initialSignature, initialSi
   if (approved) return <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4"><div className="flex items-center gap-2 font-semibold text-emerald-800"><BadgeCheck className="h-5 w-5" />Signed & approved</div><p className="mt-2 text-sm text-zinc-800">Signed by <span className="font-semibold">{signature}</span></p>{signedAt ? <p className="mt-1 text-xs text-zinc-500">{new Date(signedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</p> : null}</div>;
 
   return <div className="rounded-xl border border-zinc-300 bg-zinc-50 p-4 print:border-0 print:bg-white print:p-0">
+    {kind === "estimate" && downPayment ? <div role="note" className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm leading-6 text-amber-900"><p className="font-semibold">{downPayment} down payment required</p><p>This job needs a down payment before we order parts or schedule the work. After you sign, you&apos;ll pay it right here. It comes off your total, and the rest is due when the work is done.</p></div> : null}
     <label className="block"><span className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600">Customer signature</span><input value={signature} onChange={(e) => setSignature(e.target.value)} autoComplete="name" placeholder="Type full name" className="mt-2 w-full rounded-lg border border-zinc-400 bg-white px-3 py-3 text-base text-zinc-950 outline-none focus:border-blue-600 print:border-0 print:border-b print:rounded-none" /></label>
     {error ? <p className="mt-2 text-xs font-medium text-rose-700">{error}</p> : null}
-    <button type="button" onClick={submit} disabled={pending} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 print:hidden"><BadgeCheck className="h-4 w-4" />{pending ? "Saving…" : kind === "estimate" ? "Sign & approve" : "Sign & accept plan"}</button>
+    <button type="button" onClick={submit} disabled={pending} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 print:hidden"><BadgeCheck className="h-4 w-4" />{pending ? "Saving…" : kind === "estimate" ? (downPayment ? "Sign & continue to down payment" : "Sign & approve") : "Sign & accept plan"}</button>
   </div>;
 }

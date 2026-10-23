@@ -7,6 +7,7 @@ import { JOB_ACTIVE_STATUSES } from "./types";
 import { routeApprovedJob } from "@/lib/chillbros/approved-job-routing";
 import { sendApprovalNotification } from "@/lib/chillbros/approval-notifications";
 import { archiveInvoicePdf } from "@/lib/chillbros/invoice-pdf";
+import { downPaymentBlockedMessage, downPaymentBlocksWork } from "@/lib/chillbros/down-payment-gate";
 import { captureCompletedJobKnowledge } from "@/lib/chillbros/knowledge-cases";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
@@ -15,6 +16,17 @@ import type { PaymentMethod, PaymentTerms } from "./types";
 type Result = { ok: true; data: undefined } | { ok: false; error: string };
 
 const MANUAL_PAYMENT_METHODS = new Set<PaymentMethod>(["cash", "check", "ach", "cash_app", "venmo", "zelle"]);
+
+type DepositRow = { down_payment_amount?: number | string | null; down_payment_status?: string | null; down_payment_type?: string | null; down_payment_value?: number | string | null; converted_invoice_id?: string | null };
+
+function depositFields(row: DepositRow) {
+  return { downPaymentAmount: Number(row.down_payment_amount ?? 0), downPaymentStatus: row.down_payment_status ?? null, downPaymentType: row.down_payment_type ?? null, downPaymentValue: Number(row.down_payment_value ?? 0), convertedInvoiceId: row.converted_invoice_id ?? null };
+}
+
+function depositGate(row: DepositRow) {
+  const fields = depositFields(row);
+  return { blocked: downPaymentBlocksWork(fields), label: `$${fields.downPaymentAmount.toFixed(2)}`, message: downPaymentBlockedMessage(fields) };
+}
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -38,7 +50,7 @@ async function activeInvoiceByToken(token: string) {
   const supabase = createServiceRoleClient();
   const { data } = await supabase
     .from("chillbros_invoices")
-    .select("id,job_id,customer_id,invoice_number,portal_token,status,payment_status,payment_terms,due_at,issued_at,revoked_at")
+    .select("id,job_id,customer_id,invoice_number,portal_token,status,payment_status,payment_terms,due_at,issued_at,revoked_at,down_payment_amount,down_payment_status,down_payment_type,down_payment_value,converted_invoice_id")
     .eq("portal_token", token)
     .is("revoked_at", null)
     .neq("status", "void")
@@ -85,7 +97,9 @@ export async function approveEstimateLifecycleAction(token: string, signatureNam
     job_id: invoice.job_id,
     invoice_id: invoice.id,
     stage: "approved_needs_action",
-    message: `Customer approved estimate as ${name}. Work is sold; choose Work Now or schedule the return visit.`,
+    message: depositGate(invoice).blocked
+      ? `Customer approved estimate as ${name}. Waiting on the ${depositGate(invoice).label} down payment — don't order parts or schedule until it's paid.`
+      : `Customer approved estimate as ${name}. Work is sold; choose Work Now or schedule the return visit.`,
   });
 
   const { data: customer } = await supabase.from("chillbros_customers").select("name").eq("id", invoice.customer_id).maybeSingle();
@@ -115,10 +129,11 @@ export async function startApprovedWorkAction(formData: FormData): Promise<never
   const allowed = await requireJobActor(jobId);
   if (!allowed.ok) jobMessage(jobId, "error", allowed.error);
   const supabase = createServiceRoleClient();
-  const { data: invoice, error: readError } = await supabase.from("chillbros_invoices").select("status,portal_token")
+  const { data: invoice, error: readError } = await supabase.from("chillbros_invoices").select("status,portal_token,down_payment_amount,down_payment_status,down_payment_type,down_payment_value,converted_invoice_id")
     .eq("id", invoiceId).eq("job_id", jobId).is("revoked_at", null).maybeSingle();
   if (readError) jobMessage(jobId, "error", readError.message);
   if (!invoice || invoice.status !== "approved") jobMessage(jobId, "error", "Finalize the invoice first", invoiceId);
+  if (depositGate(invoice).blocked) jobMessage(jobId, "error", depositGate(invoice).message, invoiceId);
   const { data: updated, error } = await supabase.from("chillbros_jobs").update({ status: "in_progress", updated_at: new Date().toISOString() })
     .eq("id", jobId).in("status", JOB_ACTIVE_STATUSES).is("archived_at", null).select("id").maybeSingle();
   if (error || !updated) jobMessage(jobId, "error", error?.message ?? "The call is closed or unavailable.");
@@ -136,9 +151,10 @@ export async function scheduleReturnVisitAction(formData: FormData): Promise<nev
   if (!allowed.ok) jobMessage(jobId, "error", allowed.error);
   if (allowed.profile.role === "technician") jobMessage(jobId, "error", "Office or manager access required.");
   const supabase = createServiceRoleClient();
-  const { data: invoice, error: readError } = await supabase.from("chillbros_invoices").select("status,portal_token").eq("id", invoiceId).eq("job_id", jobId).is("revoked_at", null).maybeSingle();
+  const { data: invoice, error: readError } = await supabase.from("chillbros_invoices").select("status,portal_token,down_payment_amount,down_payment_status,down_payment_type,down_payment_value,converted_invoice_id").eq("id", invoiceId).eq("job_id", jobId).is("revoked_at", null).maybeSingle();
   if (readError) jobMessage(jobId, "error", readError.message);
   if (!invoice || invoice.status !== "approved") jobMessage(jobId, "error", "Finalize the invoice first", invoiceId);
+  if (depositGate(invoice).blocked) jobMessage(jobId, "error", depositGate(invoice).message, invoiceId);
   if (technicianId) {
     const { data: technician, error } = await supabase.from("chillbros_profiles").select("id").eq("id", technicianId).in("role", ["technician", "manager"]).eq("status", "active").maybeSingle();
     if (error || !technician) jobMessage(jobId, "error", error?.message ?? "Choose an active technician.");

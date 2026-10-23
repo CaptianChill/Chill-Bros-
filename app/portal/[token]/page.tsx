@@ -7,6 +7,7 @@ import { DocumentSignatureForm } from "@/components/document-signature-form";
 import { PortalFrame } from "@/components/customer-portal/portal-frame";
 import { PortalView, type PortalTab, type PortalViewData } from "@/components/customer-portal/portal-view";
 import { getInvoiceV2ByToken, invoiceTotals } from "@/lib/chillbros/invoice-v2";
+import { downPaymentLabel } from "@/lib/chillbros/down-payment-gate";
 import { getPaymentSettings } from "@/lib/chillbros/payment-settings";
 import { squareCheckoutConfigured } from "@/lib/chillbros/square-checkout";
 import { getPortalEquipmentHistory } from "@/lib/chillbros/portal-queries";
@@ -59,10 +60,12 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   } else if (approved) {
     [statusLabel, statusTone, headline] = ["Approved", "success", "Thank you — your estimate is approved."];
     subline = downPaymentDue
-      ? "A down payment is due before work begins. You can pay it below."
+      ? "Pay your down payment below so we can order parts and schedule the work."
       : "We'll complete the approved work or schedule your visit. No payment is due until the work is finished.";
   } else {
-    [statusLabel, statusTone, headline, subline] = ["Awaiting your approval", "neutral", "Please review your estimate.", "Check the work and pricing below. Sign to approve and we'll schedule the work."];
+    [statusLabel, statusTone, headline, subline] = downPaymentRequired && !downPaymentPaid
+      ? ["Awaiting your approval", "neutral", "Please review your estimate.", `Check the work and pricing below. A ${downPaymentLabel(invoice, totals.total)} down payment is due when you approve so we can order parts and schedule the work.`]
+      : ["Awaiting your approval", "neutral", "Please review your estimate.", "Check the work and pricing below. Sign to approve and we'll schedule the work."];
   }
 
   const totalRows: PortalViewData["totals"] = [{ label: "Subtotal", value: totals.subtotal }];
@@ -109,7 +112,7 @@ export default async function PortalPage({ params, searchParams }: PortalPagePro
   ) : !approved ? (
     <div className="space-y-2">
       <h2 className="text-lg font-bold">Approve this estimate</h2>
-      <DocumentSignatureForm kind="estimate" token={token} initialSignature={invoice.signatureName} initialSignedAt={invoice.signedAt} alreadyApproved={false} />
+      <DocumentSignatureForm kind="estimate" token={token} initialSignature={invoice.signatureName} initialSignedAt={invoice.signedAt} alreadyApproved={false} downPayment={downPaymentRequired && !downPaymentPaid ? downPaymentLabel(invoice, totals.total) : null} />
     </div>
   ) : issued && downPaymentDue ? (
     <div className="space-y-3">
