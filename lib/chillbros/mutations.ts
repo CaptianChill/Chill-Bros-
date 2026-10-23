@@ -3,7 +3,8 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth/server";
-import { hasStaffLoginKeySecret, staffLoginKey } from "@/lib/auth/staff-login-key";
+import { generateStaffPin, hasStaffLoginKeySecret, isValidStaffPin, isWeakStaffPin, normalizeStaffName, staffLoginKey, staffPinKey } from "@/lib/auth/staff-login-key";
+import { loginIdentityHash } from "@/lib/chillbros/security-guards";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import type { StaffRole } from "./types";
@@ -210,6 +211,36 @@ export async function resetStaffPasswordAction(staffId: string, password?: strin
   revalidatePath("/owner");
   revalidatePath("/manager");
   return { ok: true, data: { tempPassword } };
+}
+
+/**
+ * Owner: give an employee a new 4-digit PIN for name + PIN sign-in.
+ * Leave `pin` empty to get a random one. Only the PIN comes back; the hidden
+ * login key it produces never leaves the server.
+ */
+export async function setStaffPinAction(staffId: string, pin?: string): Promise<ActionResult<{ pin: string; fullName: string }>> {
+  const guard = await requireCredentialAdministrator();
+  if (!guard.ok) return guard;
+  if (!hasStaffLoginKeySecret()) return { ok: false, error: "PIN sign-in isn't configured on the server." };
+
+  const chosen = String(pin ?? "").trim();
+  if (chosen && !isValidStaffPin(chosen)) return { ok: false, error: "A PIN is exactly 4 numbers." };
+  if (chosen && isWeakStaffPin(chosen)) return { ok: false, error: "That PIN is too easy to guess. Pick a different one." };
+  const newPin = chosen || generateStaffPin();
+
+  const service = createServiceRoleClient();
+  const { data: member } = await service.from("chillbros_profiles").select("email,full_name").eq("id", staffId).maybeSingle();
+  if (!member?.email) return { ok: false, error: "This employee record no longer exists. Refresh the staff list." };
+
+  const result = await resetStaffPasswordAction(staffId, staffPinKey(String(member.email), newPin));
+  if (!result.ok) return result;
+
+  // Clear old wrong-PIN strikes so the employee isn't locked out of the new PIN.
+  await service.from("chillbros_login_attempts").delete()
+    .eq("identity_hash", loginIdentityHash(`name:${normalizeStaffName(String(member.full_name ?? ""))}`))
+    .eq("success", false);
+
+  return { ok: true, data: { pin: newPin, fullName: String(member.full_name ?? "") } };
 }
 
 /** Owner: switch every active employee to email-code sign-in in one tap. */

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/server";
 import { checkLoginThrottle, recordLoginAttempt, safeInternalPath } from "@/lib/chillbros/security-guards";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { staffCodeKey, staffLoginKey } from "@/lib/auth/staff-login-key";
+import { isValidStaffPin, normalizeStaffName, staffCodeKey, staffLoginKey, staffPinKey } from "@/lib/auth/staff-login-key";
 import { createLoginCode, normalizeEmail, verifyLoginCode } from "@/lib/chillbros/customer-account";
 import { sendCompanyEmail } from "@/lib/chillbros/approval-notifications";
 
@@ -136,7 +136,7 @@ export async function verifyStaffCodeAction(_prev: StaffCodeState | null, formDa
     // No Neon login yet for this employee: create it with the server-held key.
     const signedUp = await auth.signUp.email({ email, password, name: staff.full_name || email }).catch(() => ({ data: null, error: { message: "sign-up failed" } }));
     if (signedUp.error) {
-      return { step: "code", email, error: "Your login needs a one-time switch. Ask Brae to tap \"Turn on email sign-in\" next to your name in the Owner screen, then try again." };
+      return { step: "code", email, error: "You sign in with your name and PIN now. Tap \"Sign in with name + PIN\". Forgot your PIN? Ask Brae for a new one." };
     }
     userId = signedUp.data?.user?.id;
   }
@@ -151,6 +151,80 @@ export async function verifyStaffCodeAction(_prev: StaffCodeState | null, formDa
     if (linkError) {
       await auth.signOut().catch(() => undefined);
       return { step: "code", email, error: "Your login couldn't be linked. Ask Brae for help." };
+    }
+  }
+
+  await recordLoginAttempt({ identityHash: throttle.identityHash, ipHash: throttle.ipHash, success: true }).catch(() => undefined);
+  redirect(next);
+}
+
+export type StaffPinState = { error?: string; name?: string } | null;
+
+const PIN_DAILY_FAILURE_LIMIT = 15;
+
+/**
+ * Staff sign in with their first and last name plus a 4-digit PIN.
+ * Wrong PINs are throttled (5 per 15 minutes per name, plus a daily cap) so a
+ * 4-digit PIN can't be guessed by trying them all.
+ */
+export async function pinSignInAction(_prev: StaffPinState, formData: FormData): Promise<StaffPinState> {
+  const typedName = String(formData.get("name") || "").slice(0, 200);
+  const pin = String(formData.get("pin") || "").trim();
+  const next = safeInternalPath(String(formData.get("next") || "/"));
+  const name = normalizeStaffName(typedName);
+
+  if (!name || !name.includes(" ")) return { name: typedName, error: "Type your first and last name." };
+  if (!isValidStaffPin(pin)) return { name: typedName, error: "Your PIN is 4 numbers." };
+
+  const throttle = await checkLoginThrottle(`name:${name}`);
+  if (!throttle.allowed) return { name: typedName, error: "Too many wrong PINs. Wait 15 minutes and try again." };
+
+  const service = createServiceRoleClient();
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: dailyFailures } = await service
+    .from("chillbros_login_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("identity_hash", throttle.identityHash)
+    .eq("success", false)
+    .gte("attempted_at", since);
+  if ((dailyFailures ?? 0) >= PIN_DAILY_FAILURE_LIMIT) {
+    return { name: typedName, error: "Too many wrong PINs today. Ask Brae to give you a new PIN." };
+  }
+
+  const fail = async (error: string): Promise<StaffPinState> => {
+    await recordLoginAttempt({ identityHash: throttle.identityHash, ipHash: throttle.ipHash, success: false }).catch(() => undefined);
+    return { name: typedName, error };
+  };
+
+  const { data: rows } = await service
+    .from("chillbros_profiles")
+    .select("id,full_name,email,auth_user_id,status")
+    .eq("status", "active");
+  const matches = (rows ?? []).filter((row) =>
+    normalizeStaffName(String(row.full_name ?? "")) === name
+    && String(row.email ?? "").trim().toLowerCase() !== OWNER_EMAIL
+    && !String(row.email ?? "").endsWith("@removed.invalid"));
+
+  // Same message whether the name or the PIN is wrong, so names can't be fished for.
+  const wrong = "That name and PIN don't match. Check both and try again.";
+  if (matches.length > 1) return { name: typedName, error: "Two staff accounts share that name. Ask Brae to fix it in the Owner screen." };
+  const staff = matches[0];
+  if (!staff) return fail(wrong);
+
+  const email = String(staff.email).trim().toLowerCase();
+  const signedIn = await auth.signIn.email({ email, password: staffPinKey(email, pin) }).catch(() => ({ data: null, error: { message: "sign-in failed" } }));
+  if (signedIn.error) return fail(wrong);
+
+  const userId = signedIn.data?.user?.id;
+  if (!userId) {
+    await auth.signOut().catch(() => undefined);
+    return { name: typedName, error: "Sign-in couldn't be finished. Try again." };
+  }
+  if (staff.auth_user_id !== userId) {
+    const { error: linkError } = await service.from("chillbros_profiles").update({ auth_user_id: userId }).eq("id", staff.id);
+    if (linkError) {
+      await auth.signOut().catch(() => undefined);
+      return { name: typedName, error: "Your login couldn't be linked. Ask Brae for help." };
     }
   }
 

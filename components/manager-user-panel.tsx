@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { StaffAccount, StaffRole } from "@/lib/chillbros/types";
-import { addStaffAccountAction, enableEmailSignInForAllAction, resetStaffPasswordAction, toggleStaffStatusAction } from "@/lib/chillbros/mutations";
+import { addStaffAccountAction, enableEmailSignInForAllAction, resetStaffPasswordAction, setStaffPinAction, toggleStaffStatusAction } from "@/lib/chillbros/mutations";
 import { deleteStaffAccountAction, removeAllEmployeesAction } from "@/lib/chillbros/staff-delete-actions";
 
 const OWNER_EMAIL = "chillprostx@gmail.com";
@@ -41,7 +41,7 @@ export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts:
         const email = String(fd.get("email") ?? "");
         const result = await addStaffAccountAction({ fullName: String(fd.get("name") ?? ""), email, role: String(fd.get("role")) as StaffRole });
         if (!result.ok) { setError(result.error); return; }
-        setMessage(`Employee added. They sign in at chill-bros.vercel.app/sign-in with ${email.trim().toLowerCase()} — a 6-digit code is emailed to them. No password needed.`); form.reset();
+        setMessage(`Employee added. Tap "New PIN" next to their name to give them a PIN — they sign in with their name and that PIN.`); form.reset();
       });
     }}>
       <h3 className="text-lg font-semibold">Add employee</h3>
@@ -50,7 +50,7 @@ export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts:
         <label>Email<input required name="email" type="email" autoComplete="off" className={field} /></label>
         <label>Role<select name="role" defaultValue="technician" className={field}><option value="technician">Technician</option><option value="office">Office / Dispatch</option><option value="manager">Manager</option></select></label>
       </div>
-      <p className="text-sm text-zinc-400">No password needed. Employees sign in with their email and a code sent to it.</p>
+      <p className="text-sm text-zinc-400">No password needed. After adding, tap &quot;New PIN&quot; — employees sign in with their first and last name and that 4-digit PIN.</p>
       <button disabled={pending} className={button}>Add employee</button>
     </form> : <p>Only the owner can add employees, change passwords, or delete accounts.</p>}
 
@@ -59,6 +59,7 @@ export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts:
       <p className="text-sm">{member.email} · {member.status}</p>
       {isOwner(member) ? <Link className="underline" href="/account/update-password">Change my owner password</Link> : <>
         <div className="flex flex-wrap gap-2">
+          {canManageCredentials ? <button disabled={pending || member.status !== "active"} className={button} onClick={() => run(async () => { const result = await setStaffPinAction(member.id); if (!result.ok) { setError(result.error); return; } setMessage(`New PIN for ${result.data.fullName}: ${result.data.pin}. They sign in at chill-bros.vercel.app/sign-in by typing "${result.data.fullName}" and this PIN. Their old PIN or email code stops working.`); })}>New PIN</button> : null}
           {canManageCredentials ? <button disabled={pending || member.status !== "active"} className={button} onClick={() => run(async () => { const result = await resetStaffPasswordAction(member.id); if (!result.ok) { setError(result.error); return; } setMessage(`Email sign-in is on for ${member.fullName}. They sign in with ${member.email} and the code we email them.`); })}>Turn on email sign-in</button> : null}
           <button disabled={pending} className={button} onClick={() => run(async () => { const result = await toggleStaffStatusAction(member.id); if (!result.ok) setError(result.error); else setMessage(member.status === "active" ? "Employee deactivated." : "Employee activated."); })}>{member.status === "active" ? "Deactivate" : "Activate"}</button>
           {canManageCredentials ? <button disabled={pending} className={button} onClick={() => setConfirmDelete(member.id)}>Delete employee</button> : null}
