@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth/server";
+import { hasStaffLoginKeySecret, staffLoginKey } from "@/lib/auth/staff-login-key";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import type { StaffRole } from "./types";
@@ -32,6 +33,12 @@ async function requireCredentialAdministrator() {
 
 function generateTempPassword() {
   return randomBytes(9).toString("base64url");
+}
+
+/** Staff sign in by email code; their hidden login key is derived on the server. */
+function loginKeyFor(email: string, chosen?: string) {
+  if (chosen) return chosen;
+  return hasStaffLoginKeySecret() ? staffLoginKey(email) : generateTempPassword();
 }
 
 type NeonAdminUser = { id: string; email?: string | null };
@@ -91,7 +98,7 @@ export async function addStaffAccountAction(input: { fullName: string; email: st
     return { ok: false, error: "This employee profile is linked to a different Neon login. Correct the account link before continuing." };
   }
 
-  const tempPassword = input.password || generateTempPassword();
+  const tempPassword = loginKeyFor(email, input.password);
   if (tempPassword.length < 12 || tempPassword.length > 128) return { ok: false, error: "Use a password between 12 and 128 characters." };
   let authUser = lookup.data;
   let createdHere = false;
@@ -173,20 +180,25 @@ export async function resetStaffPasswordAction(staffId: string, password?: strin
 
   const lookup = await findNeonUserByEmail(String(member.email).trim().toLowerCase());
   if (!lookup.ok) return lookup;
-  if (!lookup.data && !member.auth_user_id) return addStaffAccountAction({ fullName: member.full_name, email: member.email, role: member.role, password });
-  if (!lookup.data) return { ok: false, error: "The saved login link is stale. Delete this employee account and add it again." };
-
-  const linkedAuthUserId = typeof member.auth_user_id === "string" ? member.auth_user_id : "";
-  if (linkedAuthUserId && linkedAuthUserId !== lookup.data.id) {
-    return { ok: false, error: "This employee profile is linked to a different Neon login. Correct the account link before resetting its password." };
+  if (!lookup.data) {
+    // No Neon login for this email (or the saved link points at an old login
+    // system): clear the dead link and create a fresh login.
+    if (member.auth_user_id) {
+      const { error: clearError } = await service.from("chillbros_profiles").update({ auth_user_id: null }).eq("id", staffId);
+      if (clearError) return { ok: false, error: "The old login link could not be cleared. Try again." };
+    }
+    return addStaffAccountAction({ fullName: member.full_name, email: member.email, role: member.role, password });
   }
+
+  // The Neon login with this employee's email is the right one; relink to it
+  // if the saved link is missing or stale.
   const authUserId = lookup.data.id;
-  if (!linkedAuthUserId) {
+  if (member.auth_user_id !== authUserId) {
     const { error: linkError } = await service.from("chillbros_profiles").update({ auth_user_id: authUserId }).eq("id", staffId);
     if (linkError) return { ok: false, error: "The Neon login was found, but it could not be linked to this employee." };
   }
 
-  const tempPassword = password || generateTempPassword();
+  const tempPassword = loginKeyFor(String(member.email), password);
   if (tempPassword.length < 12 || tempPassword.length > 128) return { ok: false, error: "Use a password between 12 and 128 characters." };
   try {
     const { error } = await auth.admin.setUserPassword({ userId: authUserId, newPassword: tempPassword });
@@ -198,6 +210,24 @@ export async function resetStaffPasswordAction(staffId: string, password?: strin
   revalidatePath("/owner");
   revalidatePath("/manager");
   return { ok: true, data: { tempPassword } };
+}
+
+/** Owner: switch every active employee to email-code sign-in in one tap. */
+export async function enableEmailSignInForAllAction(): Promise<ActionResult<{ enabled: number; failed: string[] }>> {
+  const guard = await requireCredentialAdministrator();
+  if (!guard.ok) return guard;
+  const service = createServiceRoleClient();
+  const { data: staff, error } = await service.from("chillbros_profiles").select("id,full_name,email,status").eq("status", "active");
+  if (error) return { ok: false, error: `Could not load employees: ${error.message}` };
+  const employees = (staff ?? []).filter((row) => row.id !== OWNER_PROFILE_ID && row.id !== guard.profile.id && String(row.email).trim().toLowerCase() !== OWNER_EMAIL && !String(row.email).endsWith("@removed.invalid"));
+  let enabled = 0;
+  const failed: string[] = [];
+  for (const row of employees) {
+    const result = await resetStaffPasswordAction(row.id);
+    if (result.ok) enabled += 1; else failed.push(`${row.full_name}: ${result.error}`);
+  }
+  revalidatePath("/owner");
+  return { ok: true, data: { enabled, failed } };
 }
 
 export async function toggleStaffStatusAction(staffId: string): Promise<ActionResult> {
