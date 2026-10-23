@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "npm run test:payments && next build",
-    "test:payments": "node --test scripts/square-checkout.test.cjs scripts/square-payments.test.cjs",
+    "test:payments": "node --test scripts/square-checkout.test.cjs scripts/square-payments.test.cjs scripts/down-payment-gate.test.cjs",
     "start": "next start",
     "lint": "eslint"
   },
