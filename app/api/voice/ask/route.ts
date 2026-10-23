@@ -1,5 +1,5 @@
 import type { ClaudeMessage } from "@/lib/chillbros/claude";
-import { answerChill, snapshotFor } from "@/lib/chillbros/chill-brain";
+import { snapshotFor, streamChill } from "@/lib/chillbros/chill-brain";
 import { MAX_AUDIO_BYTES, sameOrigin, transcribeAudio } from "@/lib/chillbros/voice";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 
@@ -34,8 +34,25 @@ export async function POST(request: Request) {
   const heard = typed ? { ok: true as const, text: typed } : await transcribeAudio(audio as File);
   if (!heard.ok) return Response.json({ error: heard.error }, { status: heard.status });
 
-  const result = await answerChill(profile, heard.text, history, snapshot);
-  return result.ok
-    ? Response.json({ question: heard.text, answer: result.answer, links: result.links ?? [] })
-    : Response.json({ question: heard.text, error: result.error }, { status: 502 });
+  // Streamed back as one JSON object per line: the question, the answer as it is
+  // written ("delta"), then "done" (with any parts links) or "error".
+  const question = heard.text;
+  const encoder = new TextEncoder();
+  const line = (value: unknown) => encoder.encode(`${JSON.stringify(value)}\n`);
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      controller.enqueue(line({ type: "question", question }));
+      try {
+        for await (const event of streamChill(profile, question, history, snapshot)) {
+          if (event.type === "error") console.error("[chill-ask] answer failed:", event.error);
+          controller.enqueue(line(event));
+        }
+      } catch (error) {
+        console.error("[chill-ask] stream crashed:", error);
+        controller.enqueue(line({ type: "error", error: "Chilly Bro slipped on some ice. Try again." }));
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no" } });
 }

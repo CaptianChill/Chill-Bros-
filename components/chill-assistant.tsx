@@ -103,20 +103,22 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   useEffect(() => { for (const p of POSES) { const img = new Image(); img.src = src(p); } }, []);
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }); }, [messages, busy]);
 
-  // Answer audio plays as a short queue of parts: the first sentence starts while the rest is still being voiced.
+  // Answer audio plays as a short queue of parts: the first sentence starts while the rest is still being written and voiced.
   const queueRef = useRef<Promise<string | null>[]>([]);
   const speakRunRef = useRef(0);
+  const playingRef = useRef(false);
   const playNext = useCallback(async function playNextPart(): Promise<void> {
     const run = speakRunRef.current;
     const next = queueRef.current.shift();
-    if (!next) { setPose((p) => (p === "talking" ? "idle" : p)); return; }
+    if (!next) { playingRef.current = false; setPose((p) => (p === "talking" ? "idle" : p)); return; }
+    playingRef.current = true;
     const url = await next;
     if (run !== speakRunRef.current) return;
     if (!url) { await playNextPart(); return; }
     const audio = audioRef.current!;
     if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
     audio.src = url;
-    try { await audio.play(); } catch { setPose("idle"); setError("Your phone blocked the voice. Tap the speaker button, or read the answer above."); }
+    try { await audio.play(); } catch { playingRef.current = false; setPose("idle"); setError("Your phone blocked the voice. Tap the speaker button, or read the answer above."); }
   }, []);
 
   const unlockAudio = useCallback(() => {
@@ -133,43 +135,88 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     }
   }, [playNext]);
 
-
   const stopSpeaking = useCallback(() => {
     speakRunRef.current += 1;
     queueRef.current = [];
+    playingRef.current = false;
     audioRef.current?.pause();
     setPose((p) => (p === "talking" ? "idle" : p));
   }, []);
 
-  const speak = useCallback(async (answer: string) => {
-    if (!voiceOn) { setPose("success"); window.setTimeout(() => setPose((p) => (p === "success" ? "idle" : p)), 1400); return; }
+  // Voices one part of the answer (fetched right away) and plays it after anything already queued.
+  const enqueueSpeech = useCallback((part: string) => {
+    const clean = part.trim();
+    if (!clean || !voiceOn) return;
     if (!audioRef.current) unlockAudio();
-    const run = ++speakRunRef.current;
-    const fetchClip = async (part: string) => {
-      const response = await fetch("/api/voice/speak", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: part }) }).catch(() => null);
-      if (!response?.ok) return null;
+    const run = speakRunRef.current;
+    const clip = (async () => {
+      const response = await fetch("/api/voice/speak", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: clean }) }).catch(() => null);
+      if (!response?.ok) { if (run === speakRunRef.current) setError("Chilly Bro's voice is unavailable right now. The answer is shown above."); return null; }
       const voice = response.headers.get("X-Chill-Voice");
       const model = response.headers.get("X-Chill-Voice-Model");
       const reason = response.headers.get("X-Chill-Voice-Reason");
-      if (voice) setVoiceSource(voice === "elevenlabs" ? `BOODA voice${model && !model.startsWith("eleven_v3") ? " (Turbo)" : " (v3)"}` : `Backup voice${reason ? ` — ${reason}` : ""}`);
+      if (voice) setVoiceSource(voice === "elevenlabs" ? `BOODA voice${model?.startsWith("eleven_v3") ? " (v3)" : model?.includes("flash") ? " (Flash)" : " (Turbo)"}` : `Backup voice${reason ? ` — ${reason}` : ""}`);
       return URL.createObjectURL(await response.blob());
-    };
-    // Voice all parts at the same time; play them in order.
-    queueRef.current = splitForSpeech(answer).map(fetchClip);
-    const first = queueRef.current[0];
-    await playNext();
-    if (run === speakRunRef.current && first && !(await first)) {
-      setError("Chilly Bro's voice is unavailable right now. The answer is shown above.");
-    }
+    })();
+    queueRef.current.push(clip);
+    if (!playingRef.current) void playNext();
   }, [voiceOn, unlockAudio, playNext]);
 
-  // Shows the answer, reacts to its mood, and speaks it.
-  const deliver = useCallback(async (q: string, history: Message[], answer: string, links?: Link[]) => {
-    setMessages([...history, { role: "user", content: q }, { role: "assistant", content: answer, links: links?.length ? links : undefined }]);
-    const tag = firstVoiceTag(answer);
-    react(tag ? TAG_EMOTE[tag] : "bounce");
-    await speak(answer);
-  }, [react, speak]);
+  // Sends a question (typed or recorded) and reads the streamed answer: words show as
+  // they arrive, and the first sentence is voiced before the rest is even written.
+  const runAsk = useCallback(async (form: FormData, history: Message[], typed?: string) => {
+    setBusy(true);
+    setPose("thinking");
+    const run = speakRunRef.current;
+    let question = typed ?? "";
+    let answer = "";
+    let spokenUpTo = 0;
+    let reacted = false;
+    let links: Link[] = [];
+    let failure: string | null = null;
+    const show = () => setMessages([...history, ...(question ? [{ role: "user" as const, content: question }] : []), ...(answer ? [{ role: "assistant" as const, content: answer, links: links.length ? links : undefined }] : [])]);
+    const handle = (event: { type?: string; question?: string; text?: string; links?: unknown; error?: string }) => {
+      if (event.type === "question" && typeof event.question === "string") { question = event.question; show(); }
+      else if (event.type === "delta" && typeof event.text === "string") {
+        answer += event.text;
+        setBusy(false);
+        if (!reacted) { const tag = firstVoiceTag(answer); if (tag || answer.length > 24) { reacted = true; react(tag ? TAG_EMOTE[tag] : "bounce"); } }
+        // As soon as the first full sentence is in, start voicing it.
+        if (spokenUpTo === 0) { const parts = splitForSpeech(answer); if (parts.length > 1) { spokenUpTo = parts[0].length; enqueueSpeech(parts[0]); } }
+        show();
+      } else if (event.type === "done") { links = safeLinks(event.links); show(); }
+      else if (event.type === "error") failure = event.error ?? "Chilly Bro couldn't answer right now. Try again.";
+    };
+    const response = await fetch("/api/voice/ask", { method: "POST", body: form }).catch(() => null);
+    if (!response?.ok || !response.body || !response.headers.get("Content-Type")?.includes("ndjson")) {
+      const payload = response ? await response.json().catch(() => ({})) : {};
+      if (typeof payload?.question === "string") question = payload.question;
+      failure = payload?.error ?? "Chilly Bro couldn't answer right now. Try again.";
+    } else {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let nl: number;
+          while ((nl = buffer.indexOf("\n")) >= 0) {
+            const raw = buffer.slice(0, nl).trim();
+            buffer = buffer.slice(nl + 1);
+            if (raw) { try { handle(JSON.parse(raw)); } catch { /* skip a bad line */ } }
+          }
+        }
+      } catch { failure = failure ?? "The connection dropped. Try again."; }
+    }
+    setBusy(false);
+    if (run !== speakRunRef.current) return;
+    if (!answer) { show(); setPose("idle"); setError(failure ?? "Chilly Bro couldn't answer right now. Try again."); return; }
+    if (failure) setError(failure);
+    enqueueSpeech(answer.slice(spokenUpTo));
+    if (!voiceOn) { setPose("success"); window.setTimeout(() => setPose((p) => (p === "success" ? "idle" : p)), 1400); }
+  }, [enqueueSpeech, react, voiceOn]);
 
   const ask = useCallback(async (question: string) => {
     const q = question.trim();
@@ -178,17 +225,11 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     stopSpeaking();
     const history = messagesRef.current;
     setMessages([...history, { role: "user", content: q }]);
-    setBusy(true);
-    setPose("thinking");
     const form = new FormData();
     form.append("question", q);
-    form.append("history", JSON.stringify(history.slice(-8).map(({ role, content }) => ({ role, content }))));
-    const response = await fetch("/api/voice/ask", { method: "POST", body: form }).catch(() => null);
-    const payload = response ? await response.json().catch(() => ({})) : {};
-    setBusy(false);
-    if (!response?.ok || typeof payload?.answer !== "string") { setError(payload?.error ?? "Chilly Bro couldn't answer right now. Try again."); setPose("idle"); return; }
-    await deliver(q, history, payload.answer, safeLinks(payload.links));
-  }, [deliver, stopSpeaking]);
+    form.append("history", JSON.stringify(history.slice(-6).map(({ role, content }) => ({ role, content }))));
+    await runAsk(form, history, q);
+  }, [runAsk, stopSpeaking]);
 
   const stopRecording = useCallback(() => {
     holdingRef.current = false;
@@ -216,24 +257,12 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
       const type = recorder.mimeType || mimeType || "audio/webm";
       const blob = new Blob(chunksRef.current, { type });
       if (blob.size < 1200) { setPose("idle"); setError("I didn't hear anything. Hold the mic button while you talk, then let go."); return; }
-      setPose("thinking");
-      setBusy(true);
-      // One trip: the server hears the question and answers it.
+      // One trip: the server hears the question and streams the answer back.
       const history = messagesRef.current;
       const form = new FormData();
       form.append("audio", blob, `chill.${type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm"}`);
-      form.append("history", JSON.stringify(history.slice(-8).map(({ role, content }) => ({ role, content }))));
-      const response = await fetch("/api/voice/ask", { method: "POST", body: form }).catch(() => null);
-      const payload = response ? await response.json().catch(() => ({})) : {};
-      setBusy(false);
-      const question = typeof payload?.question === "string" ? payload.question : "";
-      if (!response?.ok || typeof payload?.answer !== "string") {
-        if (question) setMessages([...history, { role: "user", content: question }]);
-        setPose("idle");
-        setError(payload?.error ?? "I couldn't hear that. Try again.");
-        return;
-      }
-      await deliver(question, history, payload.answer, safeLinks(payload.links));
+      form.append("history", JSON.stringify(history.slice(-6).map(({ role, content }) => ({ role, content }))));
+      await runAsk(form, history);
     };
     recorderRef.current = recorder;
     // Let go before the mic was ready (for example during the permission prompt): don't record.
@@ -242,7 +271,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
     setRecording(true);
     setPose("listening");
     stopTimerRef.current = window.setTimeout(stopRecording, MAX_RECORD_MS);
-  }, [deliver, stopRecording, stopSpeaking, unlockAudio]);
+  }, [runAsk, stopRecording, stopSpeaking, unlockAudio]);
 
   const openPanel = () => {
     unlockAudio();
@@ -252,7 +281,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
   };
   const closePanel = () => { stopRecording(); stopSpeaking(); setOpen(false); setPose("idle"); };
 
-  const statusText = recording ? "Listening… let go when you're done" : busy ? (slow ? "Still digging… (parts lookups take up to a minute)" : "Thinking…") : pose === "talking" ? "Speaking…" : "Hold the mic and ask me anything";
+  const statusText = recording ? "Listening… let go when you're done" : busy ? (slow ? "Still digging… (parts lookups take up to a minute)" : "Brain freeze… one sec") : pose === "talking" ? "Speaking…" : "Hold the mic and ask me anything";
 
   return <>
     {!open ? (
@@ -280,7 +309,7 @@ export function ChillAssistant({ firstName }: { firstName: string }) {
 
         <div ref={listRef} className="min-h-[96px] flex-1 space-y-2 overflow-y-auto px-3 py-3">
           {messages.length === 0 ? <div className="space-y-2">
-            <p className="rounded-2xl bg-[#eef3ff] px-3 py-2 text-sm">Hi {firstName}. Ask me about today&apos;s jobs, who owes us money, a customer, or any HVAC or refrigeration question. Give me a brand, model and serial and I&apos;ll look up OEM parts too.</p>
+            <p className="rounded-2xl bg-[#eef3ff] px-3 py-2 text-sm">Hey hey, {firstName}! Chilly Bro here, cool as ever. Ask me about today&apos;s jobs, who owes us money, a customer, or any HVAC or refrigeration question. Give me a brand, model and serial and I&apos;ll look up OEM parts too.</p>
             <div className="grid grid-cols-2 gap-2">{["What needs my attention today?", "Who has overdue invoices?", "Which calls are unassigned?", "Walk-in cooler not cooling: where do I start?"].map((s) => <button key={s} type="button" disabled={busy || recording} onClick={() => { unlockAudio(); void ask(s); }} className="rounded-xl border border-[#1B3FD0]/20 bg-white px-2.5 py-2 text-left text-xs font-medium text-[#1B3FD0] disabled:opacity-50">{s}</button>)}</div>
           </div> : messages.map((m, i) => <div key={i} className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-6 ${m.role === "user" ? "ml-auto bg-[#1B3FD0] text-white" : "bg-[#eef3ff]"}`}>
             <p className="whitespace-pre-wrap">{m.role === "assistant" ? stripVoiceTags(m.content) : m.content}</p>

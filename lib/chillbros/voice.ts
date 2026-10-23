@@ -3,24 +3,25 @@ import "server-only";
 import { keepKnownVoiceTags, stripVoiceTags } from "@/lib/chillbros/voice-tags";
 
 // Chill's voice. Primary: the owner's custom ElevenLabs BOODA voice (the same
-// voice as the betting app), on Eleven v3 by default. Backup: OpenAI "cedar".
+// voice as the betting app), on Flash v2.5 by default because it starts talking
+// fastest (set CHILL_ELEVEN_MODEL=eleven_v3 for v3's acted emotion tags). Backup: OpenAI "cedar".
 // The professional, no-slang tone comes from what Chill says (see chill-assistant.ts).
 export const CHILL_VOICE = "cedar";
 export const CHILL_VOICE_INSTRUCTIONS =
-  "Speak as Chilly Bro, the Chill Pros assistant: deep, warm, masculine baritone; calm, polished, professional delivery; clear diction; relaxed but efficient tempo; friendly and confident. Plain professional English with no slang. An original voice, not an imitation of any real person. Lead with the answer and finish promptly.";
+  "Speak as Chilly Bro, the Chill Pros cartoon mascot: deep, warm, masculine baritone with big animated energy; playful, expressive and quick, like a cartoon sidekick landing a joke; clear diction; brisk, upbeat tempo. Plain clean English with no slang. An original voice, not an imitation of any real person. Lead with the answer and finish promptly.";
 export const MAX_SPEECH_CHARS = 900;
 export const MAX_AUDIO_BYTES = 12 * 1024 * 1024;
 
 export function elevenConfig() {
   const apiKey = (process.env.ELEVEN_API_KEY || process.env.ELEVENLABS_API_KEY || "").trim();
   const voiceId = (process.env.CHILL_ELEVEN_VOICE_ID || process.env.BOODA_ELEVEN_VOICE_ID || process.env.ELEVENLABS_VOICE_ID || "").trim();
-  const model = (process.env.CHILL_ELEVEN_MODEL || "eleven_v3").trim();
+  const model = (process.env.CHILL_ELEVEN_MODEL || "eleven_flash_v2_5").trim();
   return apiKey && voiceId ? { apiKey, voiceId, model } : null;
 }
 
-// Speaks with the owner's ElevenLabs voice. Tries the chosen model (v3 by default,
-// through text-to-dialogue with "Natural" stability), then the same voice on Turbo
-// v2.5 if v3 refuses it (for example a professional clone v3 can't use yet).
+// Speaks with the owner's ElevenLabs voice. Tries the chosen model (Flash v2.5 by
+// default; v3 goes through text-to-dialogue with "Natural" stability), then the same
+// voice on Turbo v2.5 if the chosen model refuses it.
 // Returns the audio response, or why ElevenLabs couldn't be used.
 export async function elevenSpeech(text: string, signal?: AbortSignal): Promise<{ ok: true; response: Response; model: string } | { ok: false; reason: string }> {
   const config = elevenConfig();
@@ -30,7 +31,7 @@ export async function elevenSpeech(text: string, signal?: AbortSignal): Promise<
     return { ok: false, reason: !hasKey && !hasVoice ? "ElevenLabs settings not found in this deployment" : !hasKey ? "ELEVEN_API_KEY not found in this deployment" : "BOODA_ELEVEN_VOICE_ID not found in this deployment" };
   }
   const headers = { "xi-api-key": config.apiKey, "Content-Type": "application/json", Accept: "audio/mpeg" };
-  const format = "output_format=mp3_44100_128";
+  const format = "output_format=mp3_44100_64";
   const attempt = (model: string) => model.startsWith("eleven_v3")
     ? fetch(`https://api.elevenlabs.io/v1/text-to-dialogue/stream?${format}`, {
         method: "POST", headers, signal, cache: "no-store",
@@ -38,7 +39,7 @@ export async function elevenSpeech(text: string, signal?: AbortSignal): Promise<
       })
     : fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(config.voiceId)}/stream?${format}`, {
         method: "POST", headers, signal, cache: "no-store",
-        body: JSON.stringify({ text: stripVoiceTags(text), model_id: model, voice_settings: { stability: 0.55, similarity_boost: 0.8, style: 0.15, speed: 1.0, use_speaker_boost: true } }),
+        body: JSON.stringify({ text: stripVoiceTags(text), model_id: model, voice_settings: { stability: 0.4, similarity_boost: 0.8, style: 0.45, speed: 1.1, use_speaker_boost: true } }),
       });
 
   const reasons: string[] = [];
