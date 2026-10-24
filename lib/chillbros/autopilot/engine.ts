@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sendCompanyEmail } from "@/lib/chillbros/approval-notifications";
+import { notifyOwner } from "@/lib/chillbros/notify";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 import { composeEmail, draftColdEmail, draftReactivation, type Draft } from "./brain";
@@ -244,6 +245,18 @@ export async function runAutopilot(now = new Date()): Promise<AutopilotRun> {
     // Both lanes share one daily cap.
     const room = Math.max(0, settings.cold_daily_cap - sentToday);
     run.cold = await runCold(client, settings, { cold_kitchen: Math.min(kitchen, room), cold_office: Math.min(office, Math.max(0, room - kitchen)) }).catch((e) => { console.error("[autopilot] cold outreach failed", e); return 0; });
+  }
+
+  if (run.cold + run.reactivation > 0) {
+    const { data: sentNow } = await client.from("chillbros_outreach_log").select("recipient,lane").in("lane", ["cold", "reactivation"]).eq("status", "sent").gte("created_at", run.ranAt).limit(50);
+    const names = (sentNow ?? []).map((r) => String(r.recipient ?? "").split("@")[1] ?? "").filter(Boolean).slice(0, 8).join(", ");
+    await notifyOwner({
+      title: `Autopilot sent ${run.cold + run.reactivation} email${run.cold + run.reactivation === 1 ? "" : "s"}`,
+      message: [run.cold ? `${run.cold} to new businesses` : null, run.reactivation ? `${run.reactivation} customer check-ins` : null].filter(Boolean).join(" · ") + (names ? `\n${names}` : "") + `\n${run.openSlots5Days} open slots in the next 5 days.`,
+      priority: 2,
+      tags: ["outbox_tray"],
+      path: "/owner/autopilot",
+    });
   }
 
   return run;
