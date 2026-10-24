@@ -1,5 +1,6 @@
 import "server-only";
 import { sendCompanyEmail } from "./approval-notifications";
+import { textStaffMember } from "./staff-sms";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 function appBaseUrl(){const x=String(process.env.NEXT_PUBLIC_APP_URL||"https://chill-bros.vercel.app").replace(/\/$/,"");return x.startsWith("http")?x:`https://${x}`;}
@@ -70,6 +71,9 @@ export async function sendTechnicianAssignmentEmail(jobId:string, kind:"assigned
 
   const techName=String(tech?.full_name??"Technician");
   const profileEmail=String(tech?.email??"").trim();
+  // Text the tech too (when Twilio is connected and they have a cell number on file).
+  const smsCustomer=String(customer?.name??"Customer");
+  await textStaffMember(job.assigned_tech_id,`Chill Pros: ${kind==="assigned"?"New call":"Call updated"} - ${smsCustomer}. ${job.scheduled_window||"Time not set"}. ${job.location||""} ${appBaseUrl()}/technician?job=${encodeURIComponent(job.id)}`.replace(/\s+/g," "));
   const resolved=await resolveCanonicalTechnicianEmail(supabase,job.assigned_tech_id,techName,profileEmail);
   if(!resolved){
     console.error(`[assignment-email] job=${jobId} technician_email_missing assigned=${job.assigned_tech_id}`);
