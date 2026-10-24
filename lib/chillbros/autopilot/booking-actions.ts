@@ -104,10 +104,14 @@ export async function bookServiceAction(input: BookingInput): Promise<Result<{ j
   }
 
   const urgency = classifyUrgency(problem);
+  // The new-customer offer applies only when nobody with this email/phone is on file yet.
+  const firstTime = createdCustomer && Boolean(settings.first_time_offer);
   const scope = [
     `Online booking (${propertyType}, ${SERVICE_LINES[serviceLine]}${urgency !== "routine" ? `, ${urgency.toUpperCase()}` : ""}): ${problem}`,
     `Contact: ${name} · ${phone}${email ? ` · ${email}` : ""}`,
-    `Service call quoted at booking: ${(propertyType === "commercial" ? settings.commercial_service_fee : settings.residential_service_fee) ?? "standard service fee"}.`,
+    firstTime
+      ? `FIRST-TIME CUSTOMER OFFER: ${settings.first_time_offer}. Bill the service call at the offer price.`
+      : `Service call quoted at booking: ${(propertyType === "commercial" ? settings.commercial_service_fee : settings.residential_service_fee) ?? "standard service fee"}.`,
   ].join("\n");
 
   const { data: job, error: jobError } = await s.from("chillbros_jobs").insert({
@@ -163,11 +167,12 @@ export async function bookServiceAction(input: BookingInput): Promise<Result<{ j
     `When: ${when}`,
     `Where: ${address}`,
     `Type: ${propertyType} · ${SERVICE_LINES[serviceLine]}${urgency !== "routine" ? ` · ${urgency.toUpperCase()}` : ""}`,
+    firstTime ? `First-time offer: ${settings.first_time_offer}` : null,
     `Problem: ${problem}`,
     `Phone: ${phone}${email ? `\nEmail: ${email}` : ""}`,
     ``,
     `It's on the schedule${job.job_number ? ` as ${job.job_number}` : ""}, unassigned. Assign a tech in Dispatch.`,
-  ].join("\n");
+  ].filter((line) => line !== null).join("\n");
   await sendCompanyEmail(OWNER_EMAIL(), `New service call: ${name.replace(/[^\x20-\x7E]/g, "")} - ${when}`, ownerBody).catch((e) => console.error("[autopilot] owner notice failed", e));
   if (email) await sendJobCustomerEmail(job.id, "appointment").catch((e) => console.error("[autopilot] customer confirmation failed", e));
 

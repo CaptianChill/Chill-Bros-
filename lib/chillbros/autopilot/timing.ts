@@ -11,7 +11,8 @@ export const LANE_WINDOWS: Record<Lane, { days: number[]; hours: number[] }> = {
   // Past customers: mid-morning, mid-week, when people read business email.
   reactivation: { days: [2, 3, 4], hours: [9, 10] },
   // Restaurants, kitchens, ice/walk-in owners: the lull between lunch and dinner rush.
-  cold_kitchen: { days: [1, 2, 3, 4], hours: [14, 15] },
+  // Restaurants run 7 days, so weekends count (Friday is their busiest prep day).
+  cold_kitchen: { days: [0, 1, 2, 3, 4, 6], hours: [14, 15] },
   // Offices, property managers, retail, medical: early business hours.
   cold_office: { days: [2, 3, 4], hours: [8, 9, 10] },
   // Nudges to inbound leads who haven't booked yet: daytime, every day.

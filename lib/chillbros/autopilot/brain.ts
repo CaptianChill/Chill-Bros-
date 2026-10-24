@@ -29,6 +29,10 @@ function feeLine(settings: PlaybookSettings, commercial: boolean) {
   return fee ? `Service calls are ${fee}, and you get a written quote before any repair work.` : "You get a written quote before any repair work, and nothing is done without your OK.";
 }
 
+function offerLine(settings: PlaybookSettings) {
+  return settings.first_time_offer ? `New customers: ${settings.first_time_offer}.` : null;
+}
+
 function firstName(name: string | null | undefined) {
   const n = String(name ?? "").trim().split(/\s+/)[0] ?? "";
   return /^[A-Za-z][A-Za-z'-]{1,20}$/.test(n) ? n : "";
@@ -91,6 +95,7 @@ Acknowledge their specific problem in one sentence, apply the triage rules, give
     emergency ? "If you smell gas or something burning, leave the area and call the gas company or 911 first. Once everyone is safe, book below and we'll get a technician to you." : null,
     urgent ? "That sounds like it can't wait. The booking page shows our soonest open times, so grab the first one that works." : "Pick a time that works for you on the booking page and a technician will be there to diagnose it.",
     `Our technician will diagnose it on site. ${feeLine(settings, lead.property_type === "commercial")}`,
+    offerLine(settings),
   ].filter(Boolean).join("\n\n");
   return {
     subject: urgent || emergency ? "Chill Pros: let's get you the soonest opening" : "Chill Pros: pick your service time",
@@ -133,7 +138,7 @@ Honest, specific, respectful of their time. Do not claim we noticed a problem at
   const name = firstName(prospect.contact_name);
   const opener = name ? `${name},` : `Hello ${prospect.business_name} team,`;
   const bodies = [
-    `${opener}\n\nChill Pros is a San Antonio service company for ${label}. When equipment goes down, every hour costs product, comfort or sales, so we keep it simple: pick an open time online and a technician comes out and diagnoses it. ${feeLine(settings, true)}\n\nWe also set up maintenance plans so problems get caught before they turn into emergency calls.`,
+    `${opener}\n\nChill Pros is a San Antonio service company for ${label}. When equipment goes down, every hour costs product, comfort or sales, so we keep it simple: pick an open time online and a technician comes out and diagnoses it. ${feeLine(settings, true)}${offerLine(settings) ? ` ${offerLine(settings)}` : ""}\n\nWe also set up maintenance plans so problems get caught before they turn into emergency calls.`,
     `${opener}\n\nFollowing up on my note. A lot of local businesses keep us as a backup for when their regular company is booked up in peak season, and some switch to us for preventive maintenance. Either way, our open times are online.`,
     `${opener}\n\nThis is my last note. If ${label} ever needs attention, the booking link below shows our real open times. Thanks for your time.`,
   ];

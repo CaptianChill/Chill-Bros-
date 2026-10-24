@@ -160,3 +160,17 @@ test('company, owner and test records never get check-ins', () => {
   assert.equal(audience.isInternalOrTestCustomer('Real Cafe', 'office@chillpros.com', 'office@chillpros.com'), true);
   assert.equal(audience.isInternalOrTestCustomer('Nordstrom', 'george.ogbidi@nordstrom.com', ''), false);
 });
+
+test('restaurants also get weekend afternoons; offices do not', () => {
+  assert.equal(timing.laneIsOpen('cold_kitchen', 6, 14), true); // Saturday
+  assert.equal(timing.laneIsOpen('cold_kitchen', 0, 15), true); // Sunday
+  assert.equal(timing.laneIsOpen('cold_office', 6, 9), false);
+});
+
+test('the new-customer offer is an approved price and appears in the playbook', () => {
+  const s = { residential_service_fee: '$155 (includes trip and the first hour of diagnostic)', commercial_service_fee: '$155', hood_cleaning_active: true, allow_reference_customers: false, first_time_offer: '$99 first service call (normally $155)' };
+  assert.equal(playbook.hasUnapprovedPrice('New customers pay $99 for the first service call.', s), false);
+  assert.equal(playbook.hasUnapprovedPrice('Get $50 off any repair.', s), true);
+  assert.match(playbook.buildPlaybook(s), /NEW-CUSTOMER OFFER/);
+  assert.doesNotMatch(playbook.buildPlaybook({ ...s, first_time_offer: null }), /NEW-CUSTOMER OFFER/);
+});
