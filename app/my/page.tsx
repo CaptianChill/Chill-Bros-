@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CalendarClock, Check, ChevronRight, Plus } from "lucide-react";
@@ -63,8 +64,27 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
 
   return (
     <CustomerFrame accountName={accountName} right={<CustomerSignOutButton />}>
-      <h1 className="text-[26px] font-bold leading-tight sm:text-[30px]">Hi, {multi ? primary?.name.split(" ")[0] ?? "there" : primary?.name ?? "there"}</h1>
-      <p className="mt-1 text-[15px] text-[#3D5170]">{multi ? names.join(" · ") : primary?.address ?? session.email}</p>
+      <section className="cb-frost relative -mx-4 -mt-5 overflow-hidden px-4 pb-5 pt-5 text-white sm:mx-0 sm:mt-0 sm:rounded-3xl sm:px-6 sm:pt-6">
+        <Image src="/brand/chill-pros-ice-logo-240.png" alt="" width={240} height={240} aria-hidden="true" className="pointer-events-none absolute -right-6 -top-4 h-40 w-40 opacity-[0.18] sm:h-48 sm:w-48" />
+        <p className="cb-display text-[13px] tracking-[0.2em] text-[#9CCBFF]">Welcome back</p>
+        <h1 className="relative mt-0.5 text-[28px] font-bold leading-tight sm:text-[32px]">{primary?.name ?? "Hi there"}</h1>
+        <p className="relative mt-0.5 truncate text-[14px] text-white/70">{multi ? names.join(" · ") : primary?.address ?? session.email}</p>
+
+        <div className="relative mt-4 grid grid-cols-2 gap-3">
+          <Link href="/my/request" className="flex h-[52px] min-w-0 items-center justify-center gap-2 rounded-2xl bg-[#1F6FEB] text-[15px] font-bold text-white shadow-[0_0_18px_rgba(31,111,235,0.6)] transition hover:bg-[#1a5fd0]">
+            <Plus className="h-5 w-5 shrink-0" aria-hidden="true" />Request service
+          </Link>
+          <Link href="/book" className="flex h-[52px] min-w-0 items-center justify-center gap-2 rounded-2xl border-[1.5px] border-[#9CCBFF]/70 bg-white/10 text-[15px] font-bold text-white backdrop-blur transition hover:bg-white/15">
+            <CalendarClock className="h-5 w-5 shrink-0" aria-hidden="true" />Pick a time
+          </Link>
+        </div>
+
+        <div className="relative mt-4 grid grid-cols-3 divide-x divide-white/15 rounded-2xl border border-white/10 bg-white/[0.06] py-2.5 text-center">
+          <Stat value={home.units.length} label="Units" />
+          <Stat value={home.history.length} label="Visits" />
+          <Stat value={home.upcoming.length} label="Upcoming" />
+        </div>
+      </section>
 
       {query.requested ? (
         <p role="status" className="mt-4 rounded-xl border border-[#B7E3C8] bg-[#E6F6EC] px-4 py-3 text-sm font-semibold text-[#11663A]">
@@ -83,14 +103,7 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
         </div>
       ) : null}
 
-      <div className="mt-4 mb-5 grid grid-cols-2 gap-3">
-        <Link href="/my/request" className="flex h-[54px] min-w-0 items-center justify-center gap-2 rounded-2xl bg-[#1F6FEB] text-[15px] font-bold text-white shadow-[0_4px_14px_rgba(31,111,235,0.35)] transition hover:bg-[#1a5fd0]">
-          <Plus className="h-5 w-5 shrink-0" aria-hidden="true" />Request service
-        </Link>
-        <Link href="/book" className="flex h-[54px] min-w-0 items-center justify-center gap-2 rounded-2xl border-[1.5px] border-[#1F6FEB] bg-white text-[15px] font-bold text-[#1452C2] transition hover:bg-[#F4F8FD]">
-          <CalendarClock className="h-5 w-5 shrink-0" aria-hidden="true" />Pick a time
-        </Link>
-      </div>
+      <div className="mb-5" />
 
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <div className="grid min-w-0 content-start gap-4">
@@ -121,7 +134,7 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
                   return (
                     <li key={v.id} className="flex gap-3 border-t border-[#E6EEF8] py-3 first:border-t-0 first:pt-0">
                       <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-[#EAF3FF] text-[12px] font-extrabold leading-tight text-[#1F6FEB]">
-                        {md ? (<><span>{md.m}</span><span className="text-[15px]">{md.d}</span></>) : <span className="text-[15px]">•</span>}
+                        {md ? (<><span>{md.m}</span><span className="text-[15px]">{md.d}</span></>) : <span className="text-[10px] tracking-wide">TBD</span>}
                       </div>
                       <div className="min-w-0">
                         <p className="text-[15px] font-bold">{v.title}</p>
@@ -233,5 +246,14 @@ function HistoryRow({ h }: { h: HomeHistory }) {
         <p className="truncate text-[13px] text-[#3D5170]">{[compactDate(h.date), h.unit ? titleCase(h.unit.split(" · ")[0]) : null].filter(Boolean).join(" · ")}</p>
       </div>
     </li>
+  );
+}
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <div>
+      <p className="text-[22px] font-extrabold leading-none tabular-nums">{value}</p>
+      <p className="cb-display mt-1 text-[11px] tracking-[0.16em] text-[#9CCBFF]">{label}</p>
+    </div>
   );
 }

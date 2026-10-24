@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Snowflake } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { BUSINESS } from "@/components/customer-portal/portal-frame";
@@ -42,6 +43,7 @@ export function CustomerFrame({ children, accountName, right }: { children: Reac
           <div className="min-w-0 text-sm">
             <p className="font-bold">{BUSINESS.legalName}</p>
             <p className="text-white/70">HVAC &amp; commercial refrigeration · {BUSINESS.city}</p>
+            <p className="cb-display mt-0.5 text-[13px] tracking-[0.18em] text-[#9CCBFF]">Keeping San Antonio chill</p>
             <a href={`mailto:${BUSINESS.email}`} style={{ color: "#9CCBFF" }} className="font-semibold underline-offset-2 hover:underline">{BUSINESS.email}</a>
           </div>
         </div>
@@ -50,10 +52,18 @@ export function CustomerFrame({ children, accountName, right }: { children: Reac
   );
 }
 
-export function Card({ children, className = "", title }: { children: ReactNode; className?: string; title?: string }) {
+export function Card({ children, className = "", title, action }: { children: ReactNode; className?: string; title?: string; action?: ReactNode }) {
   return (
-    <section className={`min-w-0 overflow-hidden rounded-2xl border border-[#D3E1F2] bg-white p-4 shadow-[0_1px_3px_rgba(5,7,10,0.08)] sm:p-5 ${className}`}>
-      {title ? <h2 className="mb-3 text-[13px] font-bold uppercase tracking-[0.14em] text-[#3D5170]">{title}</h2> : null}
+    <section className={`relative min-w-0 overflow-hidden rounded-2xl border border-[#D3E1F2] bg-white p-4 pt-5 shadow-[0_2px_10px_rgba(11,35,70,0.07)] sm:p-5 sm:pt-6 ${className}`}>
+      <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#1F6FEB] via-[#9CCBFF] to-[#1F6FEB]" aria-hidden="true" />
+      {title ? (
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="cb-display flex items-center gap-1.5 text-[17px] tracking-[0.06em] text-[#0B1220]">
+            <Snowflake className="h-4 w-4 text-[#1F6FEB]" aria-hidden="true" />{title}
+          </h2>
+          {action}
+        </div>
+      ) : null}
       {children}
     </section>
   );

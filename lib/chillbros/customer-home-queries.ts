@@ -11,7 +11,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
  */
 
 export type HomeLocation = { id: string; name: string; address: string | null; phone: string | null };
-export type HomeDocument = { id: string; number: string; token: string; kind: "Estimate" | "Invoice"; action: "pay" | "approve" | "view" | "down_payment"; amount: number; label: string; dueAt: string | null; paidAt: string | null; customerName: string };
+export type HomeDocument = { id: string; number: string; token: string; kind: "Quote" | "Invoice"; action: "pay" | "approve" | "view" | "down_payment"; amount: number; label: string; dueAt: string | null; paidAt: string | null; customerName: string };
 export type HomeVisit = { id: string; jobNumber: string | null; title: string; when: string | null; statusLabel: string; tone: "blue" | "amber" | "green"; customerName: string; dateKey: string | null };
 export type HomePlan = { id: string; token: string | null; title: string; detail: string; status: string; customerName: string };
 export type HomeUnit = { id: string; name: string; detail: string; tag: string | null; lastService: string | null; customerName: string };
@@ -62,13 +62,47 @@ function friendlyWindow(window: string | null) {
 
 function firstLine(text: string | null | undefined, max = 90) {
   const line = String(text ?? "").split("\n")[0].replace(/^Customer request \(.+?\):\s*/i, "").trim();
-  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+  const clipped = line.length > max ? `${line.slice(0, max - 1)}…` : line;
+  return clipped.charAt(0).toUpperCase() + clipped.slice(1);
+}
+
+// Typed CRM values like "n/a" or "unknown" mean "not on file" to a customer.
+const PLACEHOLDER = /^(n\/?a|none|unknown|tbd|-+|\?+)$/i;
+function clean(value: string | null | undefined) {
+  const v = String(value ?? "").replace(/\s+/g, " ").trim();
+  return v && !PLACEHOLDER.test(v) ? v : null;
+}
+
+/** "walk in freezer" -> "Walk In Freezer"; "jade range" -> "Jade Range". Leaves "ICE-O-Matic" alone. */
+export function niceName(value: string | null | undefined) {
+  const v = clean(value);
+  if (!v) return null;
+  return v.replace(/(^|[\s/-])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
+}
+
+/** Model numbers read as printed on the data plate: "sg14s" -> "SG14S". */
+export function niceModel(value: string | null | undefined) {
+  const v = clean(value);
+  return v ? v.toUpperCase() : null;
+}
+
+export function makeModel(u: { manufacturer: string | null; model: string | null }) {
+  return [niceName(u.manufacturer), niceModel(u.model)].filter(Boolean).join(" ");
 }
 
 function unitLabel(u: { equipment_type: string | null; manufacturer: string | null; model: string | null } | null) {
   if (!u) return null;
-  return [u.equipment_type, [u.manufacturer, u.model].filter(Boolean).join(" ")].filter(Boolean).join(" · ") || null;
+  return [niceName(u.equipment_type), makeModel(u)].filter(Boolean).join(" · ") || null;
 }
+
+/** Today's date in San Antonio as YYYY-MM-DD. */
+function todayCentral() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
+}
+
+// Visits that only make sense on their scheduled day. Once that day has passed
+// they are stale bookkeeping, not something "upcoming" for the customer.
+const PRE_VISIT = ["scheduled", "dispatched", "en_route", "arrived"];
 
 function dateKey(window: string | null) {
   return parseWindow(window)?.date ?? null;
@@ -107,7 +141,9 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
     const approved = inv.status === "approved";
     // A quote that was converted into an invoice is represented by that invoice.
     if (row.converted_invoice_id && !issued) return;
-    const kind: HomeDocument["kind"] = issued || isPaid ? "Invoice" : "Estimate";
+    // Anything still waiting on the customer's OK is a quote to them, even if
+    // the office already numbered it as an invoice.
+    const kind: HomeDocument["kind"] = isPaid || (issued && approved) ? "Invoice" : "Quote";
     const base = { id: inv.id, number: inv.invoiceNumber, token: row.portal_token, kind, dueAt: inv.dueAt, paidAt: row.paid_at, customerName: nameOf.get(row.customer_id) ?? "" };
     const firstItem = inv.lineItems[0]?.label ?? null;
     // Same order of checks as app/portal/[token]/page.tsx, so the button here
@@ -117,7 +153,7 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
     } else if (inv.status === "draft") {
       // Not sent to the customer yet.
     } else if (!approved) {
-      due.push({ ...base, action: "approve", amount: issued ? totals.amountDueNow : totals.total, label: firstItem ?? "Estimate" });
+      due.push({ ...base, action: "approve", amount: issued ? totals.amountDueNow : totals.total, label: firstItem ?? "Quote" });
     } else if (!inv.convertedInvoiceId && inv.downPaymentAmount > 0 && inv.downPaymentStatus !== "paid") {
       // Down payment first — also on issued invoices the owner added one to.
       due.push({ ...base, action: "down_payment", amount: Math.min(inv.downPaymentAmount, totals.total), label: firstItem ?? "Down payment" });
@@ -127,9 +163,11 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
   });
 
   const allJobs = jobs.data ?? [];
+  const today = todayCentral();
   const upcoming: HomeVisit[] = allJobs
     .filter((j) => ACTIVE.includes(j.status) && !["work_complete", "ready_to_invoice", "invoice_sent"].includes(j.status))
     .filter((j) => !BILLING_ONLY.test(String(j.scheduled_window ?? "")))
+    .filter((j) => { const d = dateKey(j.scheduled_window); return !(d && d < today && PRE_VISIT.includes(j.status)); })
     .map((j) => {
       const st = CUSTOMER_STATUS[j.status];
       const unit = unitLabel(unitById.get(j.equipment_id ?? "") ?? null);
@@ -167,8 +205,8 @@ export async function getCustomerHome(customerIds: string[]): Promise<CustomerHo
 
   const homeUnits: HomeUnit[] = units.map((u) => ({
     id: u.id,
-    name: u.equipment_type || "Equipment",
-    detail: [u.manufacturer, u.model].filter(Boolean).join(" "),
+    name: niceName(u.equipment_type) || "Equipment",
+    detail: makeModel(u),
     tag: u.asset_tag,
     lastService: lastServiceByUnit.get(u.id) ?? null,
     customerName: nameOf.get(u.customer_id) ?? "",
