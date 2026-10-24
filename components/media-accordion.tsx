@@ -55,7 +55,7 @@ function PhotoColumn({ jobId, phase, photos, label, readOnly, onOpen }: { jobId:
   );
 }
 
-export function MediaAccordion({ jobId, beforePhotos, afterPhotos, readOnly }: { jobId: string; beforePhotos: Photo[]; afterPhotos: Photo[]; readOnly?: boolean }) {
+export function MediaAccordion({ jobId, beforePhotos, afterPhotos, readOnly, bare }: { jobId: string; beforePhotos: Photo[]; afterPhotos: Photo[]; readOnly?: boolean; /** Render only the photo columns, for use inside another tap-to-open section. */ bare?: boolean }) {
   const [preview, setPreview] = useState<PreviewPhoto | null>(null);
 
   useEffect(() => {
@@ -72,7 +72,10 @@ export function MediaAccordion({ jobId, beforePhotos, afterPhotos, readOnly }: {
 
   return (
     <>
-      <details className="group rounded-3xl border border-[#2d7dff]/30 bg-black/40 p-4">
+      {bare ? <div className="grid gap-3 lg:grid-cols-2">
+        <PhotoColumn jobId={jobId} phase="before" photos={beforePhotos} label="Before photos" readOnly={readOnly} onOpen={setPreview} />
+        <PhotoColumn jobId={jobId} phase="after" photos={afterPhotos} label="After photos" readOnly={readOnly} onOpen={setPreview} />
+      </div> : <details className="group rounded-3xl border border-[#2d7dff]/30 bg-black/40 p-4">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
           <div className="min-w-0"><p className="text-sm font-medium text-white">Before &amp; After Photos</p><p className="mt-1 text-sm text-zinc-400">Tap any uploaded photo for a full-screen field view.</p></div>
           <div className="flex shrink-0 items-center gap-2"><StatusPill>{beforePhotos.length + afterPhotos.length} uploaded</StatusPill></div>
@@ -81,7 +84,7 @@ export function MediaAccordion({ jobId, beforePhotos, afterPhotos, readOnly }: {
           <PhotoColumn jobId={jobId} phase="before" photos={beforePhotos} label="Before photos" readOnly={readOnly} onOpen={setPreview} />
           <PhotoColumn jobId={jobId} phase="after" photos={afterPhotos} label="After photos" readOnly={readOnly} onOpen={setPreview} />
         </div>
-      </details>
+      </details>}
 
       {preview ? <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/90 p-3 backdrop-blur-md sm:p-6" role="dialog" aria-modal="true" aria-label="Field photo preview" onMouseDown={(event) => { if (event.currentTarget === event.target) setPreview(null); }}>
         <div className="relative h-[82dvh] w-full max-w-5xl overflow-hidden rounded-3xl border border-[#2d7dff]/40 bg-black shadow-[0_0_40px_rgba(45,125,255,0.24)]">
