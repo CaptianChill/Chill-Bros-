@@ -35,6 +35,7 @@ const DEFAULTS: AutopilotSettings = {
   sends_per_open_slot: 10,
   residential_service_fee: null,
   commercial_service_fee: null,
+  first_time_offer: null,
   hood_cleaning_active: true,
   allow_reference_customers: false,
   sender_postal_address: "Chill Professionals LLC, 15226 Preston Pass, San Antonio, TX 78247",

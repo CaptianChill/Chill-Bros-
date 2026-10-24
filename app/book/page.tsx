@@ -10,9 +10,17 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Chill Pros · Book service", description: "Pick an open time for Chill Pros HVAC, refrigeration, kitchen equipment or hood cleaning service in San Antonio." };
 
-function timeLabel(hhmm: string) {
+function hourLabel(hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number);
-  return new Date(Date.UTC(2026, 0, 1, h, m)).toLocaleTimeString("en-US", { timeZone: "UTC", hour: "numeric", minute: "2-digit" });
+  const h12 = ((h + 11) % 12) + 1;
+  return { text: m ? `${h12}:${String(m).padStart(2, "0")}` : String(h12), ampm: h < 12 ? "am" : "pm" };
+}
+
+/** "8–10am", "11am–1pm" */
+function timeLabel(start: string, end: string) {
+  const a = hourLabel(start);
+  const b = hourLabel(end);
+  return a.ampm === b.ampm ? `${a.text}–${b.text}${b.ampm}` : `${a.text}${a.ampm}–${b.text}${b.ampm}`;
 }
 
 function dayLabel(date: string, index: number) {
@@ -35,7 +43,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     date: slot.date,
     dayLabel: slot.date === today ? "Today" : slot.date === tomorrowIso ? "Tomorrow" : dayLabel(slot.date, 1),
     window: slot.window,
-    timeLabel: `${timeLabel(slot.start)} – ${timeLabel(slot.end)}`,
+    timeLabel: timeLabel(slot.start, slot.end),
   }));
 
   // An inbound lead's private link pre-fills what they already told us.
@@ -68,7 +76,10 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
   }
 
   const fee = settings.residential_service_fee;
-  const feeNote = fee ? `Service call: ${fee}. You get a written quote before any repair work, and nothing is done without your OK.` : "You get a written quote before any repair work, and nothing is done without your OK.";
+  const baseNote = fee ? `Service call ${fee}. Written quote before any repair.` : "Written quote before any repair. Nothing is done without your OK.";
+  // Existing customers (signed in, or reached through their own check-in link) don't see the new-customer offer.
+  const showOffer = Boolean(settings.first_time_offer) && !accountName && ref?.kind !== "c";
+  const feeNote = showOffer ? `New customer? ${settings.first_time_offer}. ${baseNote}` : baseNote;
 
   return (
     <CustomerFrame accountName={accountName}>

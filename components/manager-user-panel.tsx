@@ -7,6 +7,7 @@ import type { StaffAccount, StaffRole } from "@/lib/chillbros/types";
 import { addStaffAccountAction, enableEmailSignInForAllAction, resetStaffPasswordAction, setStaffPinAction, toggleStaffStatusAction } from "@/lib/chillbros/mutations";
 import { deleteStaffAccountAction, removeAllEmployeesAction } from "@/lib/chillbros/staff-delete-actions";
 import { EmployeeNameBadge } from "@/components/employee-name-badge";
+import { StaffPhoneField } from "@/components/staff-phone-field";
 
 const OWNER_EMAIL = "chillprostx@gmail.com";
 const OWNER_ID = "8c81f12a-ad86-4ceb-bca1-3924be1cbfec";
@@ -59,6 +60,7 @@ export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts:
       <EmployeeNameBadge name={member.fullName} subtitle={isOwner(member) ? "Owner (protected)" : member.role} size="lg" />
       <p className="text-sm">{member.email} · {member.status}</p>
       {isOwner(member) ? <Link className="underline" href="/account/update-password">Change my owner password</Link> : <>
+        {canManageCredentials && member.status === "active" ? <StaffPhoneField staffId={member.id} initial={member.phone} /> : null}
         <div className="flex flex-wrap gap-2">
           {canManageCredentials ? <button disabled={pending || member.status !== "active"} className={button} onClick={() => run(async () => { const result = await setStaffPinAction(member.id); if (!result.ok) { setError(result.error); return; } setMessage(`New PIN for ${result.data.fullName}: ${result.data.pin}. They sign in at chill-bros.vercel.app/sign-in by typing "${result.data.fullName}" and this PIN. Their old PIN or email code stops working.`); })}>New PIN</button> : null}
           {canManageCredentials ? <button disabled={pending || member.status !== "active"} className={button} onClick={() => run(async () => { const result = await resetStaffPasswordAction(member.id); if (!result.ok) { setError(result.error); return; } setMessage(`Email sign-in is on for ${member.fullName}. They sign in with ${member.email} and the code we email them.`); })}>Turn on email sign-in</button> : null}
