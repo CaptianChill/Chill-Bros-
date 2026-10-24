@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { StaffAccount, StaffRole } from "@/lib/chillbros/types";
 import { addStaffAccountAction, enableEmailSignInForAllAction, resetStaffPasswordAction, setStaffPinAction, toggleStaffStatusAction } from "@/lib/chillbros/mutations";
 import { deleteStaffAccountAction, removeAllEmployeesAction } from "@/lib/chillbros/staff-delete-actions";
+import { EmployeeNameBadge } from "@/components/employee-name-badge";
 
 const OWNER_EMAIL = "chillprostx@gmail.com";
 const OWNER_ID = "8c81f12a-ad86-4ceb-bca1-3924be1cbfec";
@@ -55,7 +56,7 @@ export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts:
     </form> : <p>Only the owner can add employees, change passwords, or delete accounts.</p>}
 
     {accounts.map(member => <section key={member.id} className="space-y-3 rounded-2xl border border-[#2d7dff]/30 p-4">
-      <h3 className="font-semibold">{member.fullName} · {isOwner(member) ? "Owner (protected)" : member.role}</h3>
+      <EmployeeNameBadge name={member.fullName} subtitle={isOwner(member) ? "Owner (protected)" : member.role} size="lg" />
       <p className="text-sm">{member.email} · {member.status}</p>
       {isOwner(member) ? <Link className="underline" href="/account/update-password">Change my owner password</Link> : <>
         <div className="flex flex-wrap gap-2">

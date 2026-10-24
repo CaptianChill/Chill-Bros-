@@ -6,6 +6,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import { markPiecePayPaidAction, removePiecePayAction, savePiecePayAction, saveStaffPaySettingAction } from "@/lib/chillbros/piece-pay-actions";
 import type { PieceJob, SavedPiecePay, StaffPaySetting } from "@/lib/chillbros/piece-pay";
+import { EmployeeNameBadge } from "@/components/employee-name-badge";
 
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 const field = "rounded-xl border border-[#2d7dff]/20 bg-zinc-950 px-3 py-2 text-white";
@@ -36,7 +37,7 @@ export function StaffPaySettings({ staff }: { staff: StaffPaySetting[] }) {
   return <div className="space-y-2">
     <Feedback error={error} message={message} />
     {rows.map((row, index) => <div key={row.profileId} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border border-[#2d7dff]/15 bg-black/40 p-3 sm:grid-cols-[1fr_140px_110px_auto]">
-      <p className="font-medium text-white">{row.fullName}</p>
+      <EmployeeNameBadge name={row.fullName} size="sm" />
       <select aria-label={`${row.fullName} pay type`} value={row.payType} onChange={(e) => setRows((cur) => cur.map((r, i) => i === index ? { ...r, payType: e.target.value as "hourly" | "piece" } : r))} className={field}><option value="piece">Piece pay</option><option value="hourly">Hourly</option></select>
       <label className={`flex items-center gap-1 text-sm text-zinc-300 ${row.payType === "piece" ? "" : "opacity-40"}`}><input aria-label={`${row.fullName} piece rate`} type="number" inputMode="decimal" min="0" max="100" step="0.5" value={row.ratePercent} disabled={row.payType !== "piece"} onChange={(e) => setRows((cur) => cur.map((r, i) => i === index ? { ...r, ratePercent: e.target.value } : r))} className={`${field} w-20`} />%</label>
       <button type="button" disabled={pending} onClick={() => save(index)} className="rounded-xl border border-[#8ffafa]/40 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">Save</button>
@@ -160,7 +161,7 @@ export function PiecePayLedger({ unpaid }: { unpaid: SavedPiecePay[] }) {
   return <div className="space-y-3">
     <Feedback error={error} message={message} />
     {groups.map(([id, g]) => { const total = g.rows.reduce((s, r) => s + r.payAmount, 0); return <div key={id} className="rounded-2xl border border-amber-300/30 bg-amber-500/[0.05] p-4">
-      <div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-white">{g.name}</p><p className="text-xs text-zinc-400">{g.rows.length} job{g.rows.length === 1 ? "" : "s"} approved, not paid yet</p></div><p className="text-2xl font-semibold text-amber-100">{money(total)}</p></div>
+      <div className="flex items-start justify-between gap-3"><EmployeeNameBadge name={g.name} subtitle={`${g.rows.length} job${g.rows.length === 1 ? "" : "s"} approved, not paid yet`} /><p className="text-2xl font-semibold text-amber-100">{money(total)}</p></div>
       <ul className="mt-3 space-y-1 text-sm">{g.rows.map((r) => <li key={r.id} className="flex justify-between gap-3 text-zinc-300"><span className="min-w-0 truncate">{r.invoiceNumber} · {r.customerName}{r.isCallback ? " · callback" : ""}</span><span className="shrink-0 text-white">{money(r.payAmount)}</span></li>)}</ul>
       <button type="button" disabled={pending} onClick={() => pay(g.rows.map((r) => r.id), g.name, total)} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/40 px-4 text-sm font-semibold text-emerald-100 disabled:opacity-40"><Check className="h-4 w-4" />Mark {money(total)} paid to {g.name.split(" ")[0]}</button>
     </div>; })}
