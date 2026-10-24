@@ -11,6 +11,10 @@ const PUBLIC_PATH_PREFIXES = [
   // Customer homepage: its own email-code sign-in (lib/chillbros/customer-account.ts), not Neon Auth.
   "/my",
   "/agreement",
+  // Lead Autopilot: public booking page, unsubscribe page, and secret-guarded lead intake.
+  "/book",
+  "/u",
+  "/api/leads",
   "/_next",
   "/favicon.ico",
   "/logo",
