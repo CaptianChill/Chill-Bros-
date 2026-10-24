@@ -133,6 +133,10 @@ test('website email extraction prefers the business domain and skips junk', () =
   assert.equal(extract.pickBusinessEmail(html, 'https://www.tacosrio.com/'), 'info@tacosrio.com');
   assert.equal(extract.pickBusinessEmail('contact us: joe [at] joesbbq.com', 'https://joesbbq.com'), 'joe@joesbbq.com');
   assert.equal(extract.pickBusinessEmail('<p>no emails here</p>', 'https://x.com'), null);
+  // A designer credit in plain text is not the business's contact; a linked group inbox is.
+  assert.equal(extract.pickBusinessEmail('Site by Astigmatic astigma@astigmatic.com', 'https://thestationcafe.com'), null);
+  assert.equal(extract.pickBusinessEmail('<a href="mailto:prw@joesfood.com">Email us</a>', 'https://paesanosriverwalk.com'), 'prw@joesfood.com');
+  assert.equal(extract.pickBusinessEmail('Call or email alamofarmsinc@gmail.com', 'https://alamofarms.com'), 'alamofarmsinc@gmail.com');
   assert.equal(extract.websiteFromSummary('Automatically discovered. Website: www.tacosrio.com. Office review.'), 'https://www.tacosrio.com/');
   assert.equal(extract.websiteFromSummary('No site listed.'), null);
 });
