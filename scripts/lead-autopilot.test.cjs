@@ -18,6 +18,7 @@ const slots = load('lib/chillbros/autopilot/slots.ts');
 const timing = load('lib/chillbros/autopilot/timing.ts');
 const playbook = load('lib/chillbros/autopilot/playbook.ts');
 const extract = load('lib/chillbros/autopilot/email-extract.ts');
+const audience = load('lib/chillbros/autopilot/audience.ts');
 
 const SETTINGS = { workday_start: '08:00', workday_end: '17:00', saturday_start: null, saturday_end: null, slot_minutes: 120, jobs_per_slot: null, booking_days_ahead: 7, min_lead_hours: 3 };
 // Monday 2026-10-26 07:00 Central = 12:00 UTC (CDT, UTC-5).
@@ -140,4 +141,22 @@ test('website email extraction prefers the business domain and skips junk', () =
   assert.equal(extract.pickBusinessEmail('Call or email alamofarmsinc@gmail.com', 'https://alamofarms.com'), 'alamofarmsinc@gmail.com');
   assert.equal(extract.websiteFromSummary('Automatically discovered. Website: www.tacosrio.com. Office review.'), 'https://www.tacosrio.com/');
   assert.equal(extract.websiteFromSummary('No site listed.'), null);
+});
+
+test('cold outreach skips placeholder, third-party and wrong-department addresses', () => {
+  for (const bad of ['johnsmith@gmail.com', 'info@mysite.com', 'press@linktr.ee', 'help@instacart.com', '05%7c02%7ckmartinez@parryspizza.com', 'sareservations@valenciagroup.com', 'media@moanarestaurantgroup.com', 'careers@acme.com', 'noreply@acme.com']) {
+    assert.equal(extract.isUsableOutreachEmail(bad), false, bad);
+  }
+  for (const good of ['admin@panasiamarket.com', 'alamofarmsinc@gmail.com', 'managers@acenar.com', 'guestservice@lafamiliacortez.com', 'hello@torokitchenandbar.com']) {
+    assert.equal(extract.isUsableOutreachEmail(good), true, good);
+  }
+});
+
+test('company, owner and test records never get check-ins', () => {
+  assert.equal(audience.isInternalOrTestCustomer('Chill Pros Customer', 'x@y.com', ''), true);
+  assert.equal(audience.isInternalOrTestCustomer('Demo Customer (Brae test)', 'someone@gmail.com', ''), true);
+  assert.equal(audience.isInternalOrTestCustomer('Blah blah', 'a@b.com', ''), true);
+  assert.equal(audience.isInternalOrTestCustomer('Real Cafe', 'chillprostx@gmail.com', ''), true);
+  assert.equal(audience.isInternalOrTestCustomer('Real Cafe', 'office@chillpros.com', 'office@chillpros.com'), true);
+  assert.equal(audience.isInternalOrTestCustomer('Nordstrom', 'george.ogbidi@nordstrom.com', ''), false);
 });

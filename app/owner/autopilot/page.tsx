@@ -58,6 +58,8 @@ export default async function AutopilotDashboardPage({ searchParams }: { searchP
             <Stat label={`Emails found (${days}d)`} value={d.leads.foundThisPeriod} />
             <Stat label="In a sequence now" value={d.leads.inSequence} />
             <Stat label="Inbound leads" value={d.leads.inboundLeads} />
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Stat label="Cold emails sent" value={d.sent.cold} />
             <Stat label="Check-ins sent" value={d.sent.reactivation} />
             <Stat label="Inbound replies sent" value={d.sent.inbound} />
@@ -81,15 +83,22 @@ export default async function AutopilotDashboardPage({ searchParams }: { searchP
           ) : <p className="text-sm text-zinc-400">No bookings yet in this period. The first cold emails go out Monday 2pm; customer check-ins start Tuesday morning.</p>}
         </SectionCard>
 
-        <SectionCard eyebrow="Owner only" title="Controls" description="Turn lanes on or off and set daily limits. Changes apply at the next hourly run.">
+        <SectionCard eyebrow="Owner only" title="Controls" description="On/off switches and daily limits. Changes apply at the next hourly run.">
+          <details className="text-left">
+            <summary className="cursor-pointer text-sm font-semibold text-[#8ffafa]">Autopilot is {s.enabled ? "ON" : "OFF"} · cold email {s.cold_email_enabled ? "on" : "off"} · {s.cold_daily_cap}/day · tap to change</summary>
+            <div className="mt-3">
           <AutopilotControls
             initial={{ enabled: s.enabled, inbound_enabled: s.inbound_enabled, reactivation_enabled: s.reactivation_enabled, cold_email_enabled: s.cold_email_enabled, hood_cleaning_active: s.hood_cleaning_active }}
             caps={{ cold: s.cold_daily_cap, reactivation: s.reactivation_daily_cap }}
           />
+            </div>
+          </details>
         </SectionCard>
 
         <SectionCard eyebrow="Latest" title="Recent activity" description="The last 25 things Autopilot did.">
           {d.activity.length ? (
+            <details className="text-left">
+              <summary className="cursor-pointer text-sm font-semibold text-[#8ffafa]">Latest: {d.activity[0].subject ?? LANE[d.activity[0].lane] ?? d.activity[0].lane} · {when(d.activity[0].at)} · show all</summary>
             <ul className="divide-y divide-zinc-800 text-left text-sm">
               {d.activity.map((a, i) => (
                 <li key={`${a.at}-${i}`} className="flex items-start justify-between gap-3 py-2">
@@ -98,6 +107,7 @@ export default async function AutopilotDashboardPage({ searchParams }: { searchP
                 </li>
               ))}
             </ul>
+            </details>
           ) : <p className="text-sm text-zinc-400">Nothing yet. The lead finder runs every hour.</p>}
         </SectionCard>
       </div>

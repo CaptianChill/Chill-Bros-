@@ -47,6 +47,9 @@ export function BookingForm({ slots, prefill, refParam, feeNote, hoodActive }: {
   const [address, setAddress] = useState(prefill.address ?? "");
   const [problem, setProblem] = useState(prefill.problem ?? "");
   const [website, setWebsite] = useState("");
+  // A signed-in customer's details are already known: show them compactly instead of a form.
+  const knownContact = Boolean(prefill.name && prefill.phone && prefill.address);
+  const [editContact, setEditContact] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ window: string; jobNumber: string | null } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -81,7 +84,7 @@ export function BookingForm({ slots, prefill, refParam, feeNote, hoodActive }: {
   };
 
   return (
-    <form className="space-y-6" noValidate onSubmit={(e) => { e.preventDefault(); if (!pending) submit(); }}>
+    <form className="space-y-5" noValidate onSubmit={(e) => { e.preventDefault(); if (!pending) submit(); }}>
       <fieldset>
         <legend className={label}>1. Pick a day</legend>
         <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
@@ -97,10 +100,10 @@ export function BookingForm({ slots, prefill, refParam, feeNote, hoodActive }: {
 
       <fieldset>
         <legend className={label}>2. Pick a time</legend>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
           {daySlots.map((s) => (
             <button key={s.window} type="button" aria-pressed={picked === s.window} onClick={() => { setPicked(s.window); setError(null); }}
-              className={`rounded-xl border px-2 py-3 text-[15px] font-semibold ${picked === s.window ? "border-[#1F6FEB] bg-[#1F6FEB] text-white" : "border-[#B9CBE3] bg-white text-[#0B1220]"}`}>
+              className={`rounded-xl border px-1 py-3 text-[15px] font-semibold ${picked === s.window ? "border-[#1F6FEB] bg-[#1F6FEB] text-white" : "border-[#B9CBE3] bg-white text-[#0B1220]"}`}>
               {s.timeLabel}
             </button>
           ))}
@@ -124,6 +127,12 @@ export function BookingForm({ slots, prefill, refParam, feeNote, hoodActive }: {
         <label className="block"><span className={label}>What&apos;s going on?</span>
           <textarea value={problem} onChange={(e) => setProblem(e.target.value)} rows={3} maxLength={2000} placeholder="AC is running but blowing warm air." className={`${field} resize-y`} />
         </label>
+        {knownContact && !editContact ? (
+          <div className="flex items-start justify-between gap-3 rounded-xl border border-[#B9CBE3] bg-[#F7FAFE] px-4 py-3">
+            <p className="min-w-0 text-[15px] text-[#0B1220]"><span className="block font-semibold">{name}</span><span className="block truncate text-[#3D5170]">{phone}{email ? ` · ${email}` : ""}</span><span className="block truncate text-[#3D5170]">{address}</span></p>
+            <button type="button" onClick={() => setEditContact(true)} className="shrink-0 text-sm font-semibold text-[#1F6FEB]">Change</button>
+          </div>
+        ) : <>
         <label className="block"><span className={label}>{propertyType === "commercial" ? "Business name and contact" : "Your name"}</span>
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={200} autoComplete="name" className={field} />
         </label>
@@ -131,13 +140,14 @@ export function BookingForm({ slots, prefill, refParam, feeNote, hoodActive }: {
           <label className="block"><span className={label}>Phone</span>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="tel" placeholder="(210) 555-0123" className={field} />
           </label>
-          <label className="block"><span className={label}>Email <span className="font-normal">(for your confirmation)</span></span>
+          <label className="block"><span className={label}>Email <span className="font-normal">(optional)</span></span>
             <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" className={field} />
           </label>
         </div>
         <label className="block"><span className={label}>Service address</span>
           <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} autoComplete="street-address" placeholder="Street, city" className={field} />
         </label>
+        </>}
         <input tabIndex={-1} autoComplete="off" aria-hidden="true" value={website} onChange={(e) => setWebsite(e.target.value)} className="absolute -left-[9999px] h-0 w-0 opacity-0" name="website" />
       </fieldset>
 

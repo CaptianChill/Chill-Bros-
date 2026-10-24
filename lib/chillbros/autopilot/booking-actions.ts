@@ -87,6 +87,15 @@ export async function bookServiceAction(input: BookingInput): Promise<Result<{ j
     customerId = (data ?? []).find((c) => c.phone && digits(String(c.phone)) === digits(phone))?.id ?? null;
   }
   let createdCustomer = false;
+  if (customerId) {
+    // Existing customer: fill in anything their record is missing, never overwrite.
+    const { data: existing } = await s.from("chillbros_customers").select("phone,email,address").eq("id", customerId).maybeSingle();
+    const patch: Record<string, string> = {};
+    if (existing && !existing.phone) patch.phone = phone;
+    if (existing && !existing.email && email) patch.email = email;
+    if (existing && !existing.address) patch.address = address;
+    if (Object.keys(patch).length) await s.from("chillbros_customers").update(patch).eq("id", customerId);
+  }
   if (!customerId) {
     const { data: created, error } = await s.from("chillbros_customers").insert({ name, phone, email: email || null, address }).select("id").single();
     if (error || !created) return { ok: false, error: "We couldn't save your booking. Please call us." };

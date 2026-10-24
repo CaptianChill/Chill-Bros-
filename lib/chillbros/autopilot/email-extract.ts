@@ -57,5 +57,27 @@ export function pickBusinessEmail(html: string, siteUrl: string): string | null 
     if (FREE_MAIL.test(domain)) s += 1; // small businesses often use these
     return s;
   };
-  return [...found].sort((a, b) => score(b) - score(a))[0];
+  const usable = [...found].filter((e) => isUsableOutreachEmail(e));
+  if (!usable.length) return null;
+  return usable.sort((a, b) => score(b) - score(a))[0];
+}
+
+// ---------- outreach address quality ----------
+// Business listings and websites carry placeholder, third-party and wrong-department
+// addresses. Cold outreach only goes to addresses that plausibly reach the business.
+
+const PLACEHOLDER_LOCAL = /^(john\.?smith|john\.?doe|jane\.?doe|jdoe|your\.?name|yourname|name|email|test|example|user|someone|first\.?last|info123)$/i;
+const PLACEHOLDER_DOMAIN = /^(mysite|example|domain|yourdomain|yoursite|email|site|website|company|test|sample)\.(com|net|org)$/i;
+const THIRD_PARTY_DOMAIN = /(^|\.)(linktr\.ee|instacart\.com|doordash\.com|ubereats\.com|grubhub\.com|toasttab\.com|squareup\.com|square\.site|yelp\.com|opentable\.com|resy\.com|facebook\.com|google\.com|wix\.com|wixsite\.com|godaddy\.com|shopify\.com|mailchimp\.com|sentry\.io|ezcater\.com|seamless\.com|postmates\.com|bentobox\.com|popmenu\.com|spothopperapp\.com)$/i;
+const WRONG_DEPT_LOCAL = /(reserv|booking|press|media|career|jobs?$|^hr$|recruit|donat|sponsor|privacy|legal|investor|wholesale|catering-orders|gift)/i;
+
+/** True when an address is worth a cold business email. */
+export function isUsableOutreachEmail(raw: string | null | undefined) {
+  const email = String(raw ?? "").trim().toLowerCase();
+  if (!/^[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/.test(email)) return false; // also rejects %7c-style junk
+  const [local, domain] = email.split("@");
+  if (PLACEHOLDER_LOCAL.test(local) || PLACEHOLDER_DOMAIN.test(domain) || THIRD_PARTY_DOMAIN.test(domain)) return false;
+  if (JUNK_LOCAL.test(local) || JUNK_DOMAIN.test(domain)) return false;
+  if (WRONG_DEPT_LOCAL.test(local)) return false;
+  return true;
 }

@@ -5,7 +5,8 @@ import { notifyOwner } from "@/lib/chillbros/notify";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 import { composeEmail, draftColdEmail, draftReactivation, type Draft } from "./brain";
-import { pickBusinessEmail, websiteFromSummary } from "./email-extract";
+import { isInternalOrTestCustomer } from "./audience";
+import { isUsableOutreachEmail, pickBusinessEmail, websiteFromSummary } from "./email-extract";
 import { runInboundFollowups } from "./inbound";
 import { bookingUrl, unsubscribeUrl } from "./links";
 import { centralNow, openSlotCount } from "./slots";
@@ -100,6 +101,8 @@ export async function enrichProspectEmails(client: Client, limit = 30) {
 
 // ---------- reactivation ----------
 
+
+
 async function runReactivation(client: Client, settings: AutopilotSettings, count: number) {
   if (count <= 0) return 0;
   const since = new Date(Date.now() - REACTIVATION_GAP_DAYS * 86_400_000).toISOString();
@@ -115,18 +118,37 @@ async function runReactivation(client: Client, settings: AutopilotSettings, coun
     if (!latest.has(j.customer_id)) latest.set(j.customer_id, j);
     if (!["completed", "cancelled", "paid", "work_complete", "invoice_sent", "ready_to_invoice"].includes(String(j.status))) open.add(j.customer_id);
   }
+
+  // One person can sit on several customer records (multiple locations). Judge them by
+  // the email: if ANY record under that email has open work, a recent visit, or a recent
+  // check-in, nobody under it gets one.
+  const primaryEmail = (value: unknown) => String(value ?? "").split(/[,;\s]+/)[0].trim().toLowerCase();
+  const byEmail = new Map<string, { ids: string[]; lastVisit: number; open: boolean; contacted: boolean }>();
+  for (const c of customers ?? []) {
+    const email = primaryEmail(c.email);
+    if (!email.includes("@")) continue;
+    const group = byEmail.get(email) ?? { ids: [], lastVisit: 0, open: false, contacted: false };
+    group.ids.push(c.id);
+    const last = latest.get(c.id);
+    if (last) group.lastVisit = Math.max(group.lastVisit, new Date(last.created_at).getTime());
+    if (open.has(c.id)) group.open = true;
+    if (contacted.has(c.id)) group.contacted = true;
+    byEmail.set(email, group);
+  }
   const recentCutoff = Date.now() - 60 * 86_400_000;
   const eligible = (customers ?? []).filter((c) => {
-    if (contacted.has(c.id) || open.has(c.id)) return false;
-    const last = latest.get(c.id);
-    return !last || new Date(last.created_at).getTime() < recentCutoff; // no visit in 60 days
+    const email = primaryEmail(c.email);
+    const group = byEmail.get(email);
+    if (!group || group.open || group.contacted) return false;
+    if (isInternalOrTestCustomer(c.name, email)) return false;
+    return group.lastVisit === 0 || group.lastVisit < recentCutoff; // no visit in 60 days on any of their records
   });
 
   const seenEmails = new Set<string>();
   let sent = 0;
   for (const c of eligible) {
     if (sent >= count) break;
-    const email = String(c.email).split(/[,;\s]+/)[0].toLowerCase();
+    const email = primaryEmail(c.email);
     if (!email.includes("@") || seenEmails.has(email) || (await isSuppressed(client, email))) continue;
     seenEmails.add(email);
     const last = latest.get(c.id);
@@ -142,6 +164,9 @@ async function runReactivation(client: Client, settings: AutopilotSettings, coun
 }
 
 // ---------- cold commercial email ----------
+
+/** Listings scored below this are usually national chains or hotels with corporate vendors. */
+const COLD_MIN_SCORE = 70;
 
 async function runCold(client: Client, settings: AutopilotSettings, allowance: { cold_kitchen: number; cold_office: number }) {
   const total = allowance.cold_kitchen + allowance.cold_office;
@@ -170,9 +195,20 @@ async function runCold(client: Client, settings: AutopilotSettings, allowance: {
     const lane = laneForServiceLine(p.service_line);
     if (used[lane] >= allowance[lane]) continue;
     const email = String(p.contact_email).trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || seenEmails.has(email) || customerEmails.has(email)) continue;
+    if (seenEmails.has(email) || customerEmails.has(email)) continue;
+    if (!isUsableOutreachEmail(email) || Number(p.score ?? 0) < COLD_MIN_SCORE) {
+      // Placeholder/third-party/wrong-department address, or a low-fit (chain/hotel) listing.
+      await client.from("chillbros_revenue_prospects").update({ outreach_done: true, status_reason: Number(p.score ?? 0) < COLD_MIN_SCORE ? "Autopilot skipped: low-fit listing" : "Autopilot skipped: unusable email address" }).eq("id", p.id);
+      continue;
+    }
     if (!coldStepDue(p.outreach_step, p.outreach_last_at)) continue;
     seenEmails.add(email);
+    // The same inbox can sit on several listings (locations, duplicates). Only one sequence per inbox.
+    const { data: other } = await client.from("chillbros_outreach_log").select("prospect_id").eq("lane", "cold").eq("recipient", email).neq("prospect_id", p.id).limit(1);
+    if (other?.length) {
+      await client.from("chillbros_revenue_prospects").update({ outreach_done: true, status_reason: "Autopilot skipped: same inbox already in a sequence" }).eq("id", p.id);
+      continue;
+    }
     if (await isSuppressed(client, email)) {
       await client.from("chillbros_revenue_prospects").update({ outreach_done: true, do_not_contact: true, do_not_contact_reason: "Unsubscribed" }).eq("id", p.id);
       continue;
@@ -198,8 +234,10 @@ async function runCold(client: Client, settings: AutopilotSettings, allowance: {
       used[lane]++;
       sent++;
     } else {
-      // A hard failure (bad address) ends this prospect's sequence.
-      await client.from("chillbros_revenue_prospects").update({ outreach_done: true, status_reason: `Outreach email failed: ${"error" in result ? String(result.error).slice(0, 200) : "unknown"}`, updated_at: now }).eq("id", p.id);
+      // Sending failed (mail server or connection problem, not this prospect's fault):
+      // stop this run and retry the same prospect next run instead of burning the list.
+      console.error(`[autopilot] cold send failed, stopping run: ${"error" in result ? result.error : "unknown"}`);
+      break;
     }
   }
   return sent;
