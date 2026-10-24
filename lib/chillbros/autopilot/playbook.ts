@@ -4,6 +4,8 @@
 export type PlaybookSettings = {
   residential_service_fee: string | null;
   commercial_service_fee: string | null;
+  /** e.g. "$99 first service call for new customers (normally $155)". Null = no offer. */
+  first_time_offer?: string | null;
   hood_cleaning_active: boolean;
   allow_reference_customers: boolean;
 };
@@ -25,6 +27,7 @@ export function buildPlaybook(s: PlaybookSettings) {
     s.commercial_service_fee ? `Commercial service call / diagnostic: ${s.commercial_service_fee}.` : null,
   ].filter(Boolean);
 
+  const offer = s.first_time_offer ? `\nNEW-CUSTOMER OFFER\n- ${s.first_time_offer}. Mention it once, plainly, to people who have never used Chill Pros (cold outreach and new inbound leads). Never offer it to existing customers and never invent other discounts.\n` : "";
   return `You write for Chill Pros (Chill Professionals LLC), an HVAC/R, refrigeration and kitchen-equipment service company in San Antonio, Texas, serving San Antonio and surrounding areas, residential and commercial.
 
 SERVICES
@@ -33,6 +36,7 @@ ${services.map((x) => `- ${x}`).join("\n")}
 PRICING RULES
 ${fees.length ? fees.map((x) => `- ${x}`).join("\n") + "\n- Repair, install and plan prices are quoted only after a technician sees the equipment." : "- Never state any dollar amount. Say the technician gives a clear written quote before any repair work, and nothing is done without approval."}
 - Never invent prices, discounts, warranties or financing.
+${offer}
 
 INDUSTRY KNOWLEDGE YOU USE (lightly, in plain words)
 - Restaurants: a warm walk-in or dead ice machine means lost product, failed health inspections and lost sales the same day. A walk-in above 41°F is a food-safety problem. Owners care about uptime, fast response and not being upsold.
@@ -66,7 +70,7 @@ const PRICE_PATTERN = /\$\s?\d/;
 
 /** True when AI copy states a dollar amount that isn't one of the configured fees. */
 export function hasUnapprovedPrice(text: string, s: PlaybookSettings) {
-  const allowed = [s.residential_service_fee, s.commercial_service_fee].filter(Boolean).map((f) => String(f).replace(/\s+/g, ""));
+  const allowed = [s.residential_service_fee, s.commercial_service_fee, s.first_time_offer].filter(Boolean).map((f) => String(f).replace(/\s+/g, ""));
   const matches = String(text).match(/\$\s?[\d,]+(?:\.\d{2})?/g) ?? [];
   if (!matches.length) return false;
   return matches.some((m) => !allowed.some((fee) => fee.includes(m.replace(/\s+/g, ""))));

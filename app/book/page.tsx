@@ -76,7 +76,10 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
   }
 
   const fee = settings.residential_service_fee;
-  const feeNote = fee ? `Service call ${fee}. Written quote before any repair.` : "Written quote before any repair. Nothing is done without your OK.";
+  const baseNote = fee ? `Service call ${fee}. Written quote before any repair.` : "Written quote before any repair. Nothing is done without your OK.";
+  // Existing customers (signed in, or reached through their own check-in link) don't see the new-customer offer.
+  const showOffer = Boolean(settings.first_time_offer) && !accountName && ref?.kind !== "c";
+  const feeNote = showOffer ? `New customer? ${settings.first_time_offer}. ${baseNote}` : baseNote;
 
   return (
     <CustomerFrame accountName={accountName}>
