@@ -21,6 +21,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/favicon.ico",
   "/logo",
   "/manifest.webmanifest",
+  // Service worker for owner phone alerts (must load without a session redirect).
+  "/sw.js",
   "/field-notes/manifest.webmanifest",
   "/api/auth",
   "/api/health",

@@ -8,6 +8,7 @@ import { Bell, ChevronLeft, Ellipsis, FilePenLine, LogOut, Plus, RefreshCw, Save
 
 import { signOutAction } from "@/app/sign-in/actions";
 import { titleForPath } from "@/components/page-title";
+import { PhoneAlertsSwitch } from "@/components/phone-alerts-switch";
 import { VarsityTitle } from "@/components/varsity-title";
 import { getHomeHref, getPrimaryTabs, groupNavItems, isNavItemActive, NAV_ICONS, type NavItem } from "@/lib/chillbros/nav";
 import type { StaffRole } from "@/lib/chillbros/types";
@@ -24,6 +25,8 @@ export type StaffShellUser = {
   firstName: string;
   initials: string;
   roleLabel: string;
+  /** Owner account: gets the phone-alerts switch. */
+  isOwner?: boolean;
 };
 
 function useIsHome(role: StaffRole) {
@@ -196,6 +199,8 @@ function MoreSheet({ user, items, onClose }: { user: StaffShellUser; items: NavI
             {refreshing ? "Refreshing" : "Refresh"}
           </button>
         </div>
+
+        {user.isOwner ? <PhoneAlertsSwitch /> : null}
 
         <MoreLinks items={items} onNavigate={onClose} tone="light" />
 
