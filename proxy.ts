@@ -15,6 +15,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/book",
   "/u",
   "/api/leads",
+  // Database webhook for staff texts; checks its own NOTIFY_WEBHOOK_SECRET bearer token.
+  "/api/notify",
   "/_next",
   "/favicon.ico",
   "/logo",
