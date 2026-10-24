@@ -39,7 +39,8 @@ function firstName(name: string | null | undefined) {
 }
 
 function safeSubject(text: string) {
-  return String(text).replace(/[\r\n]+/g, " ").replace(/[^\x20-\x7E]/g, "").trim().slice(0, 90);
+  // Accented letters become plain ones ("Ácenar" -> "Acenar") so subject lines stay ASCII without losing letters.
+  return String(text).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[\u2018\u2019]/g, "'").replace(/[\r\n]+/g, " ").replace(/[^\x20-\x7E]/g, "").trim().slice(0, 90);
 }
 
 let aiPausedUntil = 0;
