@@ -1,6 +1,10 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+
 import { BookingForm, type SlotOption } from "@/components/autopilot/booking-form";
 import { Card, CustomerFrame } from "@/components/customer-account/customer-frame";
 import { getAutopilotSettings, loadOpenSlots } from "@/lib/chillbros/autopilot/store";
+import { getCustomerSession } from "@/lib/chillbros/customer-account";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
@@ -50,12 +54,26 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     ref = { kind: "c", value: query.c };
   }
 
+  // A signed-in customer (from their Chill Pros homepage) books with their details
+  // already filled in, so the booking matches their existing record by email/phone.
+  let accountName: string | null = null;
+  const session = !ref ? await getCustomerSession().catch(() => null) : null;
+  if (session?.customerIds.length) {
+    const { data: rows } = await s.from("chillbros_customers").select("name,email,phone,address").in("id", session.customerIds).order("name").limit(1);
+    const c = rows?.[0];
+    if (c) {
+      accountName = c.name ?? null;
+      prefill = { name: c.name ?? "", email: c.email ?? session.email ?? "", phone: c.phone ?? "", address: c.address ?? "", propertyType: "commercial" };
+    }
+  }
+
   const fee = settings.residential_service_fee;
   const feeNote = fee ? `Service call: ${fee}. You get a written quote before any repair work, and nothing is done without your OK.` : "You get a written quote before any repair work, and nothing is done without your OK.";
 
   return (
-    <CustomerFrame>
+    <CustomerFrame accountName={accountName}>
       <div className="mx-auto max-w-xl">
+        {accountName ? <Link href="/my" className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-[#1F3B63]"><ArrowLeft className="h-4 w-4" aria-hidden="true" />Back</Link> : null}
         <h1 className="text-[26px] font-bold">Book service</h1>
         <p className="mt-1 mb-5 text-[15px] text-[#3D5170]">HVAC, refrigeration, ice machines, kitchen equipment{settings.hood_cleaning_active ? " and vent hood cleaning" : ""} in San Antonio and surrounding areas. Pick an open time below.</p>
         <Card>
