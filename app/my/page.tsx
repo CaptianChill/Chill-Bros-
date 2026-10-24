@@ -65,7 +65,7 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
   return (
     <CustomerFrame accountName={accountName} right={<CustomerSignOutButton />}>
       <section className="cb-frost relative -mx-4 -mt-5 overflow-hidden px-4 pb-5 pt-5 text-white sm:mx-0 sm:mt-0 sm:rounded-3xl sm:px-6 sm:pt-6">
-        <Image src="/brand/chill-pros-ice-logo-240.png" alt="" width={240} height={240} aria-hidden="true" className="pointer-events-none absolute -right-6 -top-4 h-40 w-40 opacity-[0.18] sm:h-48 sm:w-48" />
+        <Image src="/brand/chill-pros-ice-logo-240.png" alt="" width={240} height={240} aria-hidden="true" style={{ opacity: 0.1 }} className="pointer-events-none absolute -right-8 -top-6 h-36 w-36 sm:h-44 sm:w-44" />
         <p className="cb-display text-[13px] tracking-[0.2em] text-[#9CCBFF]">Welcome back</p>
         <h1 className="relative mt-0.5 text-[28px] font-bold leading-tight sm:text-[32px]">{primary?.name ?? "Hi there"}</h1>
         <p className="relative mt-0.5 truncate text-[14px] text-white/70">{multi ? names.join(" · ") : primary?.address ?? session.email}</p>
@@ -114,7 +114,7 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
                   <div key={doc.id} className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${doc.action === "approve" ? "border-[#C7D3E2] bg-[#F4F8FD]" : "border-[#F3D48B] bg-[#FFF8E8]"}`}>
                     <div className="min-w-0">
                       <p className="text-[15px] font-bold">{doc.kind} {doc.number}</p>
-                      <p className="truncate text-sm text-[#3D5170]">{[doc.action === "pay" && doc.dueAt ? `Due ${shortDate(doc.dueAt)}` : null, doc.label, multi ? doc.customerName : null].filter(Boolean).join(" · ")}</p>
+                      <p className="truncate text-sm text-[#3D5170]">{[doc.action === "pay" && doc.dueAt ? `Due ${shortDate(doc.dueAt)}` : null, doc.label ? doc.label.charAt(0).toUpperCase() + doc.label.slice(1) : null, multi ? doc.customerName : null].filter(Boolean).join(" · ")}</p>
                       <p className="text-lg font-extrabold">{money(doc.amount)}</p>
                     </div>
                     <Link href={`/portal/${doc.token}`} className={`inline-flex h-11 shrink-0 items-center rounded-xl px-4 text-[15px] font-bold ${doc.action === "approve" ? "border-[1.5px] border-[#0B1220] bg-white text-[#0B1220]" : "bg-[#05070A] text-white"}`}>
