@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/service-plans",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/lead-autopilot",
+      "schedule": "5 * * * *"
     }
   ]
 }

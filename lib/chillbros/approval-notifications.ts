@@ -40,7 +40,7 @@ async function command(socket: tls.TLSSocket, text: string, expected: string[]) 
   return response;
 }
 
-export async function sendCompanyEmail(to: string, subject: string, text: string, html?: string, cc: string[] = []) {
+export async function sendCompanyEmail(to: string, subject: string, text: string, html?: string, cc: string[] = [], extraHeaders: Record<string, string> = {}) {
   // CC addresses get the same message; the main recipient is never repeated in CC.
   const ccList = [...new Set(cc.map((address) => safeHeader(address).toLowerCase()).filter((address) => address && address !== safeHeader(to).toLowerCase()))];
   const user = String(process.env.GMAIL_SMTP_USER || "").trim();
@@ -67,6 +67,8 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
       ...(ccList.length ? [`Cc: ${ccList.join(", ")}`] : []),
       `Subject: ${safeHeader(subject)}`,
       "MIME-Version: 1.0",
+      // Optional extra headers (e.g. List-Unsubscribe on outreach email); names are restricted to header-safe characters.
+      ...Object.entries(extraHeaders).filter(([name]) => /^[A-Za-z][A-Za-z0-9-]*$/.test(name)).map(([name, value]) => `${name}: ${safeHeader(value)}`),
     ];
     let body: string;
     if (html) {
