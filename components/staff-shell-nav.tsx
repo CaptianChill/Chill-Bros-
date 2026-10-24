@@ -112,7 +112,7 @@ export function StaffHeader({
         )}
       </header>
       {showNewInvoice ? (
-        <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-2 lg:bottom-6">
+        <div data-fab-stack className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-2 lg:bottom-6">
           <Link
             href="/drafts"
             aria-label="Open saved drafts"

@@ -364,3 +364,7 @@
 /* The closed launcher button gives a little wave now and then. */
 @keyframes chill-launcher-peek { 0%, 86%, 100% { rotate: 0deg; } 89% { rotate: -12deg; } 92% { rotate: 10deg; } 95% { rotate: -6deg; } }
 .chill-launcher-peek { animation: chill-bob 2.8s ease-in-out infinite, chill-launcher-peek 7s ease-in-out infinite; }
+
+/* Keep the Chilly Bro launcher stacked above the Drafts / New invoice buttons instead of on top of them. */
+body:has([data-fab-stack]) .chill-launcher { bottom: calc(206px + env(safe-area-inset-bottom)); right: 1rem; width: 52px; height: 52px; }
+@media (min-width: 1024px) { body:has([data-fab-stack]) .chill-launcher { bottom: 136px; right: 1rem; width: 56px; height: 56px; } }
