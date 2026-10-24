@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Archive, BarChart3, Clock3, CreditCard, FileText, GraduationCap, Package, Radar, ScanLine, ShieldCheck, SlidersHorizontal, Wallet, type LucideIcon } from "lucide-react";
+import { Archive, BarChart3, Rocket, Clock3, CreditCard, FileText, GraduationCap, Package, Radar, ScanLine, ShieldCheck, SlidersHorizontal, Wallet, type LucideIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -23,6 +23,7 @@ const ownerToolGroups: { title: string; description: string; tools: OwnerTool[] 
     title: "Run the business",
     description: "Money, pricing, staff, and reports.",
     tools: [
+      { href: "/owner/autopilot", title: "Lead Autopilot", description: "What the lead machine found, sent and booked, the money it brought in, and its on/off switches.", icon: Rocket },
       { href: "/owner/invoices", title: "Sent invoices", description: "A copy of every quote and invoice sent to customers, including paid and voided ones.", icon: Archive },
       { href: "/reports", title: "Reports", description: "Revenue, outstanding balances, jobs, technician time, and inventory value.", icon: BarChart3 },
       { href: "/manager", title: "Manager controls", description: "Estimates, approvals, collections, and staff status.", icon: SlidersHorizontal },
