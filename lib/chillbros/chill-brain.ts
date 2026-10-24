@@ -7,14 +7,15 @@ import { getInvoiceCenterData } from "@/lib/chillbros/billing-queries";
 import { getActiveTechnicians, getDispatchJobs } from "@/lib/chillbros/operations-queries";
 import { getServiceAgreements } from "@/lib/chillbros/service-agreement-queries";
 import { getAssignedFieldJobsForTechnician } from "@/lib/chillbros/technician-assignment";
-import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS } from "@/lib/chillbros/types";
+import { getRevenueRadarPulse, getTopRevenueRadarProspects } from "@/lib/chillbros/queries";
+import { JOB_ACTIVE_STATUSES, JOB_STATUS_LABELS, type StaffRole } from "@/lib/chillbros/types";
 
 // Chilly Bro's brain: the Chill Pros talking assistant. Answers questions about the
 // business (from a live snapshot sized to the asker's role) and about the HVAC/R trade.
 // Read-only: he explains and points to the right screen; people take the actions.
 // Shared by the typed-question server action and the one-trip voice route.
 
-export type ChillProfile = { id: string; email: string; fullName: string; role: "manager" | "office" | "technician" };
+export type ChillProfile = { id: string; email: string; fullName: string; role: StaffRole };
 
 export type ChillResult = { ok: true; answer: string; links?: ChillLink[] } | { ok: false; error: string };
 
@@ -59,13 +60,24 @@ export function snapshotFor(profile: ChillProfile): Promise<string> {
 
 async function buildSnapshot(profile: ChillProfile) {
   const today = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(new Date());
-  const lines: string[] = [`Today is ${today}. You are talking with ${profile.fullName} (${profile.role === "manager" ? "owner/manager" : profile.role === "office" ? "office/dispatch" : "technician"}).`];
+  const lines: string[] = [`Today is ${today}. You are talking with ${profile.fullName} (${profile.role === "manager" ? "owner/manager" : profile.role === "office" ? "office/dispatch" : profile.role === "salesperson" ? "salesperson" : "technician"}).`];
 
   if (profile.role === "technician") {
     const jobs = (await getAssignedFieldJobsForTechnician({ id: profile.id, email: profile.email, fullName: profile.fullName }, 50)).filter((j) => JOB_ACTIVE_STATUSES.includes(j.status));
     lines.push(`Their assigned open jobs: ${jobs.length}.`);
     for (const j of jobs.slice(0, 12)) lines.push(`- ${j.customerName} · ${JOB_STATUS_LABELS[j.status]} · ${j.scheduledWindow ?? "no time set"} · ${j.location ?? "no location"} · ${clip(j.scope)}`);
     lines.push("This person is a technician: only discuss their own jobs, not company finances or other techs' work.");
+    return lines.join("\n");
+  }
+
+  if (profile.role === "salesperson") {
+    // Salesperson works every Revenue Radar lead, not just one assigned to
+    // them, so the pulse/top-prospects queries are left unscoped - unlike
+    // office, which only ever sees leads assigned to it.
+    const [pulse, topProspects] = await Promise.all([getRevenueRadarPulse(), getTopRevenueRadarProspects(5)]);
+    lines.push(`Revenue Radar: ${pulse.newLeads} new lead(s), ${pulse.highPriorityLeads} scored 65+.`);
+    for (const lead of topProspects) lines.push(`- ${lead.businessName}${lead.city ? ` (${lead.city})` : ""} · ${lead.score}/100 · ${lead.category.replaceAll("_", " ")}`);
+    lines.push("This person is a salesperson: only discuss Revenue Radar leads and sales activity, not dispatch, other techs' jobs, or company-wide financials.");
     return lines.join("\n");
   }
 

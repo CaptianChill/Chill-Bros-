@@ -48,7 +48,7 @@ export function ManagerUserPanel({ accounts, canManageCredentials }: { accounts:
       <div className="grid gap-3 sm:grid-cols-2">
         <label>Name<input required name="name" maxLength={200} className={field} /></label>
         <label>Email<input required name="email" type="email" autoComplete="off" className={field} /></label>
-        <label>Role<select name="role" defaultValue="technician" className={field}><option value="technician">Technician</option><option value="office">Office / Dispatch</option><option value="manager">Manager</option></select></label>
+        <label>Role<select name="role" defaultValue="technician" className={field}><option value="technician">Technician</option><option value="office">Office / Dispatch</option><option value="salesperson">Salesperson (commission)</option><option value="manager">Manager</option></select></label>
       </div>
       <p className="text-sm text-zinc-400">No password needed. After adding, tap &quot;New PIN&quot; — employees sign in with their first and last name and that 4-digit PIN.</p>
       <button disabled={pending} className={button}>Add employee</button>

@@ -10,7 +10,7 @@ const VERIFICATION = ["unverified", "customer_reported", "source_verified", "ver
 
 async function salesUser() {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) throw new Error("Sales contact access required.");
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) throw new Error("Sales contact access required.");
   return profile;
 }
 

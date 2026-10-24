@@ -9,7 +9,7 @@ import { runLeadScan } from "@/lib/chillbros/revenue-discovery";
 
 async function office() {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) throw new Error("Office access required.");
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) throw new Error("Office access required.");
   return profile;
 }
 
@@ -20,7 +20,7 @@ async function manager() {
 }
 
 async function assertProspectAccess(profile: { id: string; role: string }, id: string) {
-  if (profile.role === "manager") return;
+  if (profile.role === "manager" || profile.role === "salesperson") return;
   const { data: lead, error } = await createServiceRoleClient()
     .from("chillbros_revenue_prospects")
     .select("id,assigned_salesperson")

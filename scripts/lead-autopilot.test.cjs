@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Node CommonJS test harness. */
 // Lead Autopilot pure logic: open-slot math, send windows and throttle,
 // sequence timing, playbook guardrails, and website email extraction.
 const assert = require('node:assert/strict');

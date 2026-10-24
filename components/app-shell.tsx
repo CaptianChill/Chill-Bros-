@@ -52,7 +52,7 @@ export async function AppShell({ children, title, description, highlight, lead, 
         fullName: profile.fullName,
         firstName: profile.fullName.trim().split(/\s+/)[0] || profile.fullName,
         initials: initialsFor(profile.fullName),
-        roleLabel: profile.role === "manager" ? "Manager" : profile.role === "office" ? "Office / Dispatch" : "Technician",
+        roleLabel: profile.role === "manager" ? "Manager" : profile.role === "office" ? "Office / Dispatch" : profile.role === "salesperson" ? "Salesperson" : "Technician",
       }
     : null;
 
@@ -76,7 +76,7 @@ export async function AppShell({ children, title, description, highlight, lead, 
               title={title}
               subtitle={description}
               notificationCount={notificationCount}
-              notificationHref={profile?.role === "office" ? "/office" : "/#needs-attention"}
+              notificationHref={profile?.role === "office" ? "/office" : profile?.role === "salesperson" ? "/revenue-radar" : "/#needs-attention"}
             />
           ) : null}
 

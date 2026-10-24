@@ -10,7 +10,7 @@ import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import type { StaffRole } from "./types";
 
 type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
-const STAFF_ROLES = new Set<StaffRole>(["manager", "technician", "office"]);
+const STAFF_ROLES = new Set<StaffRole>(["manager", "technician", "office", "salesperson"]);
 const IMAGE_TYPES = new Map([["image/jpeg", "jpg"], ["image/png", "png"], ["image/webp", "webp"]]);
 
 async function requireManager() {

@@ -15,7 +15,7 @@ function filename(value: string) {
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) return new Response("Sales access required.", { status: 403 });
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) return new Response("Sales access required.", { status: 403 });
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return new Response("Invalid lead.", { status: 400 });
 

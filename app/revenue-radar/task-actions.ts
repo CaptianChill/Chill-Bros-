@@ -9,7 +9,7 @@ const uuid = (raw: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][
 
 async function taskUser() {
   const profile = await getCurrentStaffProfile();
-  if (!profile || !["manager", "office"].includes(profile.role)) throw new Error("Sales task access required.");
+  if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) throw new Error("Sales task access required.");
   return profile;
 }
 
