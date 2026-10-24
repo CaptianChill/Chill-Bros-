@@ -13,7 +13,7 @@ import { inboundNudgeDue } from "./timing";
 type Client = ReturnType<typeof createServiceRoleClient>;
 
 export type InboundLeadInput = {
-  source?: string;
+  source?: string | null;
   name?: string | null;
   email?: string | null;
   phone?: string | null;

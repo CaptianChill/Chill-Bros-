@@ -110,7 +110,7 @@ export async function bookServiceAction(input: BookingInput): Promise<Result<{ j
     assigned_tech_id: null,
   }).select("id,job_number").single();
   if (jobError || !job) {
-    if (createdCustomer) await s.from("chillbros_customers").delete().eq("id", customerId);
+    if (createdCustomer) await s.from("chillbros_customers").delete().eq("id", customerId!);
     return { ok: false, error: "We couldn't save your booking. Please call us." };
   }
 
@@ -124,7 +124,7 @@ export async function bookServiceAction(input: BookingInput): Promise<Result<{ j
   const overlapping = (sameDay ?? []).filter((j) => { const o = parseCanonicalWindow(j.scheduled_window); return o && o.start < w.end && o.end > w.start; });
   if (overlapping.length > capacity && overlapping.findIndex((j) => j.id === job.id) >= capacity) {
     await s.from("chillbros_jobs").delete().eq("id", job.id);
-    if (createdCustomer) await s.from("chillbros_customers").delete().eq("id", customerId);
+    if (createdCustomer) await s.from("chillbros_customers").delete().eq("id", customerId!);
     return { ok: false, error: "That time was just taken. Please pick another." };
   }
 
