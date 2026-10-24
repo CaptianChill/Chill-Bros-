@@ -138,8 +138,8 @@ export default async function DispatchPage({ searchParams }: Props) {
         </section>
 
         <section aria-labelledby="technicians-title" className="cb-card overflow-hidden">
-          <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
-            <h2 id="technicians-title" className="text-[28px] leading-none">Technicians</h2>
+          <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-2.5">
+            <h2 id="technicians-title" className="text-[22px] leading-none">Technicians</h2>
             <span className="text-sm font-medium text-[#2B3F5C]">{dayParts(selectedDay).weekday} {dayParts(selectedDay).day}</span>
           </div>
           {techRows.length === 0 ? (
@@ -147,29 +147,30 @@ export default async function DispatchPage({ searchParams }: Props) {
           ) : (
             <ul className="divide-y divide-[#0A1A33]/10">
               {techRows.map(({ tech, count, status, busy, location }) => (
-                <li key={tech.id} className="flex items-center gap-3 px-3.5 py-3">
-                  <span aria-hidden="true" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#9FD3FF] text-sm font-bold text-[#0A1A33]">
+                <li key={tech.id} className="flex items-center gap-2.5 px-3.5 py-2">
+                  <span aria-hidden="true" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#9FD3FF] text-[11px] font-bold text-[#0A1A33]">
                     {initialsFor(tech.fullName)}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate font-semibold text-[#0A1A33]">{tech.fullName}</span>
-                      <span className="shrink-0 text-[13px] font-semibold text-[#0A1A33]">
-                        {count} job{count === 1 ? "" : "s"}
-                      </span>
-                    </div>
-                    <div
-                      className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#0A1A33]/10"
-                      role="meter"
-                      aria-label={`${tech.fullName} workload`}
-                      aria-valuemin={0}
-                      aria-valuemax={barMax}
-                      aria-valuenow={count}
-                    >
-                      <div className="h-full rounded-full bg-[#1B3FD0]" style={{ width: `${Math.round((count / barMax) * 100)}%` }} />
-                    </div>
-                    <p className={`mt-1 truncate text-[13px] ${busy ? "font-semibold text-[#1530A8]" : "text-[#2B3F5C]"}`}>{status}</p>{location ? <a href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lon}`} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-[#1557B0]">Last work location · {new Date(location.at).toLocaleTimeString("en-US",{timeZone:"America/Chicago",hour:"numeric",minute:"2-digit"})} CT</a> : <p className="mt-1 text-xs text-[#5B6B82]">No work location shared</p>}
+                    <p className="truncate text-[15px] font-semibold leading-tight text-[#0A1A33]">{tech.fullName}</p>
+                    <p className="truncate text-xs leading-tight">
+                      <span className={busy ? "font-semibold text-[#1530A8]" : "text-[#2B3F5C]"}>{status}</span>
+                      {location ? (
+                        <>
+                          <span className="text-[#5B6B82]"> · </span>
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lon}`} target="_blank" rel="noreferrer" className="font-semibold text-[#1557B0]">
+                            Map {new Date(location.at).toLocaleTimeString("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit" })}
+                          </a>
+                        </>
+                      ) : null}
+                    </p>
                   </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${count > 0 ? "bg-[#1B3FD0] text-white" : "bg-[#0A1A33]/8 text-[#2B3F5C]"}`}
+                    aria-label={`${count} job${count === 1 ? "" : "s"} of ${barMax}`}
+                  >
+                    {count} job{count === 1 ? "" : "s"}
+                  </span>
                 </li>
               ))}
             </ul>
