@@ -52,7 +52,7 @@ export function CustomerFrame({ children, accountName, right }: { children: Reac
 
 export function Card({ children, className = "", title }: { children: ReactNode; className?: string; title?: string }) {
   return (
-    <section className={`rounded-2xl border border-[#D3E1F2] bg-white p-4 shadow-[0_1px_3px_rgba(5,7,10,0.08)] sm:p-5 ${className}`}>
+    <section className={`min-w-0 overflow-hidden rounded-2xl border border-[#D3E1F2] bg-white p-4 shadow-[0_1px_3px_rgba(5,7,10,0.08)] sm:p-5 ${className}`}>
       {title ? <h2 className="mb-3 text-[13px] font-bold uppercase tracking-[0.14em] text-[#3D5170]">{title}</h2> : null}
       {children}
     </section>

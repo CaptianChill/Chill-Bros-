@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Check, ChevronRight, Plus } from "lucide-react";
+import { CalendarClock, Check, ChevronRight, Plus } from "lucide-react";
 
 import { Card, CustomerFrame, money, shortDate } from "@/components/customer-account/customer-frame";
 import { CustomerSignOutButton } from "@/components/customer-account/sign-out-button";
 import { getCustomerSession } from "@/lib/chillbros/customer-account";
-import { getCustomerHome, type HomeDocument } from "@/lib/chillbros/customer-home-queries";
+import { getCustomerHome, type HomeDocument, type HomeHistory } from "@/lib/chillbros/customer-home-queries";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +21,22 @@ const TONE = {
   amber: "bg-[#FFF4DC] text-[#7A4A00]",
   green: "bg-[#E6F6EC] text-[#11663A]",
 };
+
+// "walk in freezer" / "rang/oven" -> "Walk In Freezer" / "Rang/Oven" so typed CRM names read cleanly.
+function titleCase(value: string) {
+  return value.trim().replace(/\s+/g, " ").replace(/(^|[\s/-])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
+}
+
+// Brand + model only, minus placeholder text like "n/a".
+function brandModel(detail: string) {
+  return detail.replace(/\b(n\/?a|none|unknown|tbd)\b/gi, "").replace(/\s+/g, " ").trim().replace(/^(\w)/, (c) => c.toUpperCase());
+}
+
+function compactDate(value: string | null | undefined) {
+  return value ? new Date(value).toLocaleDateString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric" }) : "";
+}
+
+const HISTORY_PREVIEW = 4;
 
 function monthDay(dateKey: string | null) {
   if (!dateKey) return null;
@@ -67,12 +83,17 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
         </div>
       ) : null}
 
-      <Link href="/my/request" className="mt-4 mb-5 flex h-[58px] w-full items-center justify-center gap-2 rounded-2xl bg-[#1F6FEB] text-lg font-bold text-white shadow-[0_4px_14px_rgba(31,111,235,0.35)] transition hover:bg-[#1a5fd0]">
-        <Plus className="h-5 w-5" aria-hidden="true" />Request service
-      </Link>
+      <div className="mt-4 mb-5 grid grid-cols-2 gap-3">
+        <Link href="/my/request" className="flex h-[54px] min-w-0 items-center justify-center gap-2 rounded-2xl bg-[#1F6FEB] text-[15px] font-bold text-white shadow-[0_4px_14px_rgba(31,111,235,0.35)] transition hover:bg-[#1a5fd0]">
+          <Plus className="h-5 w-5 shrink-0" aria-hidden="true" />Request service
+        </Link>
+        <Link href="/book" className="flex h-[54px] min-w-0 items-center justify-center gap-2 rounded-2xl border-[1.5px] border-[#1F6FEB] bg-white text-[15px] font-bold text-[#1452C2] transition hover:bg-[#F4F8FD]">
+          <CalendarClock className="h-5 w-5 shrink-0" aria-hidden="true" />Pick a time
+        </Link>
+      </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
-        <div className="grid content-start gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        <div className="grid min-w-0 content-start gap-4">
           {home.due.length ? (
             <Card title="Needs your attention">
               <div className="space-y-2.5">
@@ -129,39 +150,50 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
 
           <Card title="Service history">
             {home.history.length ? (
-              <ul>
-                {home.history.map((h) => (
-                  <li key={h.id} className="flex gap-3 border-t border-[#E6EEF8] py-3 first:border-t-0 first:pt-0">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EAF3FF] text-[#1F6FEB]"><Check className="h-5 w-5" aria-hidden="true" /></div>
-                    <div className="min-w-0">
-                      <p className="text-[15px] font-bold">{h.title}</p>
-                      <p className="text-sm text-[#3D5170]">{[shortDate(h.date), h.unit, h.jobNumber].filter(Boolean).join(" · ")}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul>
+                  {home.history.slice(0, HISTORY_PREVIEW).map((h) => <HistoryRow key={h.id} h={h} />)}
+                </ul>
+                {home.history.length > HISTORY_PREVIEW ? (
+                  <details className="group">
+                    <summary className="mt-1 cursor-pointer list-none py-2 text-center text-sm font-bold text-[#1452C2] [&::-webkit-details-marker]:hidden">
+                      <span className="group-open:hidden">Show all {home.history.length} visits</span>
+                      <span className="hidden group-open:inline">Show less</span>
+                    </summary>
+                    <ul>
+                      {home.history.slice(HISTORY_PREVIEW).map((h) => <HistoryRow key={h.id} h={h} />)}
+                    </ul>
+                  </details>
+                ) : null}
+              </>
             ) : (
               <p className="text-[15px] text-[#3D5170]">Your completed visits will show here.</p>
             )}
           </Card>
         </div>
 
-        <div className="grid content-start gap-4">
+        <div className="grid min-w-0 content-start gap-4">
           <Card title="Your equipment">
             {home.units.length ? (
-              <ul>
-                {home.units.map((u) => (
-                  <li key={u.id} className="border-t border-[#E6EEF8] first:border-t-0">
-                    <Link href={`/my/equipment/${u.id}`} className="flex items-center justify-between gap-3 py-3">
-                      <div className="min-w-0">
-                        <p className="text-[15px] font-bold">{u.name}</p>
-                        <p className="truncate text-sm text-[#3D5170]">{[u.detail, u.tag ? `Tag ${u.tag}` : null, multi ? u.customerName : null].filter(Boolean).join(" · ")}</p>
-                        <p className="text-sm text-[#3D5170]">{u.lastService ? `Last service ${shortDate(u.lastService)}` : "No service on record yet"}</p>
-                      </div>
-                      <ChevronRight className="h-5 w-5 shrink-0 text-[#1F6FEB]" aria-hidden="true" />
-                    </Link>
-                  </li>
-                ))}
+              <ul className="-mx-1">
+                {home.units.map((u) => {
+                  const brand = brandModel(u.detail);
+                  return (
+                    <li key={u.id} className="border-t border-[#E6EEF8] first:border-t-0">
+                      <Link href={`/my/equipment/${u.id}`} className="flex min-w-0 items-center gap-3 rounded-lg px-1 py-2.5 active:bg-[#F4F8FD]">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-bold leading-snug">{titleCase(u.name)}</p>
+                          <p className="truncate text-[13px] leading-snug text-[#3D5170]">{[brand || null, multi ? u.customerName : null].filter(Boolean).join(" · ") || "Brand not on file"}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#6B7C96]">{u.lastService ? "Serviced" : "No visits"}</p>
+                          <p className="text-[13px] font-semibold text-[#0B1220]">{u.lastService ? compactDate(u.lastService) : "—"}</p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-[#1F6FEB]" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="text-[15px] text-[#3D5170]">We&apos;ll add your units here after our first visit.</p>
@@ -169,16 +201,17 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
           </Card>
 
           {home.paid.length ? (
-            <Card title="Paid">
-              <ul>
+            <Card title="Invoices">
+              <ul className="-mx-1">
                 {home.paid.map((doc) => (
                   <li key={doc.id} className="border-t border-[#E6EEF8] first:border-t-0">
-                    <Link href={`/portal/${doc.token}`} className="flex items-center justify-between gap-3 py-3">
-                      <div className="min-w-0">
-                        <p className="text-[15px] font-bold">Invoice {doc.number} · {money(doc.amount)}</p>
-                        <p className="text-sm text-[#3D5170]">{[doc.paidAt ? `Paid ${shortDate(doc.paidAt)}` : "Paid", multi ? doc.customerName : null].filter(Boolean).join(" · ")}</p>
+                    <Link href={`/portal/${doc.token}`} className="flex min-w-0 items-center gap-3 rounded-lg px-1 py-2.5 active:bg-[#F4F8FD]">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[17px] font-extrabold leading-snug tabular-nums">{money(doc.amount)}</p>
+                        <p className="truncate text-[13px] leading-snug text-[#3D5170]">{[`#${doc.number}`, doc.paidAt ? shortDate(doc.paidAt) : null, multi ? doc.customerName : null].filter(Boolean).join(" · ")}</p>
                       </div>
-                      <ChevronRight className="h-5 w-5 shrink-0 text-[#1F6FEB]" aria-hidden="true" />
+                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${TONE.green}`}>Paid</span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-[#1F6FEB]" aria-hidden="true" />
                     </Link>
                   </li>
                 ))}
@@ -188,5 +221,17 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
         </div>
       </div>
     </CustomerFrame>
+  );
+}
+
+function HistoryRow({ h }: { h: HomeHistory }) {
+  return (
+    <li className="flex min-w-0 gap-3 border-t border-[#E6EEF8] py-2.5 first:border-t-0 first:pt-0">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EAF3FF] text-[#1F6FEB]"><Check className="h-4 w-4" aria-hidden="true" /></div>
+      <div className="min-w-0 flex-1">
+        <p className="line-clamp-2 text-[14px] font-semibold leading-snug [overflow-wrap:anywhere]">{h.title}</p>
+        <p className="truncate text-[13px] text-[#3D5170]">{[compactDate(h.date), h.unit ? titleCase(h.unit.split(" · ")[0]) : null].filter(Boolean).join(" · ")}</p>
+      </div>
+    </li>
   );
 }
