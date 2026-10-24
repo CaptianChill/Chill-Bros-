@@ -53,6 +53,7 @@ export async function AppShell({ children, title, description, highlight, lead, 
         firstName: profile.fullName.trim().split(/\s+/)[0] || profile.fullName,
         initials: initialsFor(profile.fullName),
         roleLabel: profile.role === "manager" ? "Manager" : profile.role === "office" ? "Office / Dispatch" : profile.role === "salesperson" ? "Salesperson" : "Technician",
+        isOwner,
       }
     : null;
 
