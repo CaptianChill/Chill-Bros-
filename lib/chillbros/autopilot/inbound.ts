@@ -63,8 +63,12 @@ export async function handleInboundLead(input: InboundLeadInput, client: Client 
   const urgency = classifyUrgency(message);
 
   // The same person submitting twice within an hour is one lead, not two replies.
+  const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
   if (email) {
-    const { data: dup } = await client.from("chillbros_inbound_leads").select("id").ilike("email", email).gte("created_at", new Date(Date.now() - 3_600_000).toISOString()).limit(1);
+    const { data: dup } = await client.from("chillbros_inbound_leads").select("id").ilike("email", email).gte("created_at", hourAgo).limit(1);
+    if (dup?.length) return { id: dup[0].id as string, duplicate: true, replied: false };
+  } else if (phone) {
+    const { data: dup } = await client.from("chillbros_inbound_leads").select("id").eq("phone", phone).gte("created_at", hourAgo).limit(1);
     if (dup?.length) return { id: dup[0].id as string, duplicate: true, replied: false };
   }
 
