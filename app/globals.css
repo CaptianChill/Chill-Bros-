@@ -172,3 +172,16 @@ a {
   font-family: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0;
 }
+/* Chill Pros brand display type for customer-facing headings and eyebrows. */
+.cb-portal .cb-display {
+  font-family: var(--font-barlow-condensed), var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+/* Icy frost backdrop behind the customer hero. */
+.cb-frost {
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(31, 111, 235, 0.55) 0%, rgba(31, 111, 235, 0) 55%),
+    radial-gradient(80% 70% at 0% 100%, rgba(156, 203, 255, 0.28) 0%, rgba(156, 203, 255, 0) 60%),
+    linear-gradient(160deg, #0B1626 0%, #05070A 70%);
+}

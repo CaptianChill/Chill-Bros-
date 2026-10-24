@@ -5,7 +5,7 @@ import { ArrowLeft, Check, Wrench } from "lucide-react";
 import { Card, CustomerFrame, shortDate } from "@/components/customer-account/customer-frame";
 import { CustomerSignOutButton } from "@/components/customer-account/sign-out-button";
 import { getCustomerSession } from "@/lib/chillbros/customer-account";
-import { getCustomerUnit } from "@/lib/chillbros/customer-home-queries";
+import { getCustomerUnit, makeModel, niceModel, niceName } from "@/lib/chillbros/customer-home-queries";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Chill Pros · Equipment" };
@@ -19,10 +19,10 @@ export default async function CustomerEquipmentPage({ params }: { params: Promis
   if (!data) notFound();
   const { unit, visits } = data;
   const facts = [
-    ["Make", unit.manufacturer],
-    ["Model", unit.model],
-    ["Serial", unit.serial_number],
-    ["Refrigerant", unit.refrigerant],
+    ["Make", niceName(unit.manufacturer)],
+    ["Model", niceModel(unit.model)],
+    ["Serial", niceModel(unit.serial_number)],
+    ["Refrigerant", niceModel(unit.refrigerant)],
     ["Asset tag", unit.asset_tag],
   ].filter(([, v]) => v) as [string, string][];
 
@@ -30,8 +30,8 @@ export default async function CustomerEquipmentPage({ params }: { params: Promis
     <CustomerFrame right={<CustomerSignOutButton />}>
       <div className="mx-auto max-w-2xl">
         <Link href="/my" className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-[#1F3B63]"><ArrowLeft className="h-4 w-4" aria-hidden="true" />Back</Link>
-        <h1 className="text-[26px] font-bold">{unit.equipment_type || "Equipment"}</h1>
-        <p className="mt-1 text-[15px] text-[#3D5170]">{[unit.manufacturer, unit.model].filter(Boolean).join(" ")}</p>
+        <h1 className="text-[26px] font-bold">{niceName(unit.equipment_type) || "Equipment"}</h1>
+        <p className="mt-1 text-[15px] text-[#3D5170]">{makeModel(unit) || "Make and model not on file"}</p>
 
         <Link href={`/my/request?unit=${unit.id}`} className="mt-4 mb-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#1F6FEB] text-lg font-bold text-white shadow-[0_4px_14px_rgba(31,111,235,0.35)] hover:bg-[#1a5fd0]">
           <Wrench className="h-5 w-5" aria-hidden="true" />Report a problem with this unit
