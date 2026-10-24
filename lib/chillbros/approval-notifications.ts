@@ -113,11 +113,15 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
   }
 }
 
-async function sendOwnerAlertEmail(subject: string, lines: (string | null)[], relatedInvoiceId?: string | null, push: { priority?: 1 | 2 | 3 | 4 | 5; tags?: string[] } = {}) {
+const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+type OwnerPush = { title: string; message: string; level: "urgent" | "important" | "good" | "info" | "low" };
+
+async function sendOwnerAlertEmail(subject: string, lines: (string | null)[], relatedInvoiceId?: string | null, push?: OwnerPush) {
   const to = companyEmail();
   const text = lines.filter(Boolean).join("\n");
   // Every owner alert also lands on the owner's phone (ntfy); skip the email's first headline line.
-  await notifyOwner({ title: subject, message: lines.filter(Boolean).slice(1).join("\n").trim() || subject, priority: push.priority ?? 4, tags: push.tags ?? ["snowflake"], path: relatedInvoiceId ? `/owner/invoices/${relatedInvoiceId}` : null });
+  if (push) await notifyOwner({ title: push.title, message: push.message, level: push.level, path: relatedInvoiceId ? `/owner/invoices/${relatedInvoiceId}` : null });
 
   let status = "failed";
   try {
@@ -145,7 +149,7 @@ export async function sendApprovalNotification(input: ApprovalNotification) {
     `Approved: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
     "",
     "The manager and dispatch views have already been updated in the Operations Center.",
-  ], input.relatedInvoiceId, { priority: 4, tags: ["white_check_mark"] });
+  ], input.relatedInvoiceId, { title: `Approved · ${input.documentNumber}`, message: `${input.customerName ?? "Customer"} · signed by ${input.signedBy}`, level: "good" });
 }
 
 export async function sendInvoiceViewedNotification(input: { invoiceNumber: string; customerName?: string | null; invoiceId: string }) {
@@ -155,7 +159,7 @@ export async function sendInvoiceViewedNotification(input: { invoiceNumber: stri
     `Invoice: ${input.invoiceNumber}`,
     input.customerName ? `Customer: ${input.customerName}` : null,
     `Opened: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
-  ], input.invoiceId, { priority: 2, tags: ["eyes"] });
+  ], input.invoiceId, { title: `Invoice opened · ${input.invoiceNumber}`, message: input.customerName ?? "Customer", level: "low" });
 }
 
 export async function sendInvoicePaidNotification(input: { invoiceNumber: string; customerName?: string | null; amount: number; method: string; invoiceId: string }) {
@@ -167,7 +171,7 @@ export async function sendInvoicePaidNotification(input: { invoiceNumber: string
     `Amount: ${input.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}`,
     `Method: ${input.method.replace(/_/g, " ")}`,
     `Paid: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
-  ], input.invoiceId, { priority: 4, tags: ["moneybag"] });
+  ], input.invoiceId, { title: `Paid ${usd(input.amount)} · ${input.invoiceNumber}`, message: input.customerName ?? "Customer", level: "good" });
 }
 
 export async function sendOwnerPaymentReviewAlert(input: { invoiceNumber: string; customerName?: string | null; message: string; invoiceId: string }) {
@@ -177,7 +181,7 @@ export async function sendOwnerPaymentReviewAlert(input: { invoiceNumber: string
     `Document: ${input.invoiceNumber}`,
     input.customerName ? `Customer: ${input.customerName}` : null,
     input.message,
-  ], input.invoiceId, { priority: 5, tags: ["warning"] });
+  ], input.invoiceId, { title: `Check payment · ${input.invoiceNumber}`, message: `${input.customerName ?? "Customer"} · amount didn't match, not marked paid`, level: "urgent" });
 }
 
 export async function sendDownPaymentReceivedNotification(input: { invoiceNumber: string; customerName?: string | null; amount: number; method: string; invoiceId: string }) {
@@ -189,5 +193,5 @@ export async function sendDownPaymentReceivedNotification(input: { invoiceNumber
     `Amount: ${input.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}`,
     `Method: ${input.method.replace(/_/g, " ")}`,
     `Received: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
-  ], input.invoiceId, { priority: 4, tags: ["moneybag"] });
+  ], input.invoiceId, { title: `Down payment ${usd(input.amount)} · ${input.invoiceNumber}`, message: input.customerName ?? "Customer", level: "good" });
 }

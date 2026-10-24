@@ -248,13 +248,10 @@ export async function runAutopilot(now = new Date()): Promise<AutopilotRun> {
   }
 
   if (run.cold + run.reactivation > 0) {
-    const { data: sentNow } = await client.from("chillbros_outreach_log").select("recipient,lane").in("lane", ["cold", "reactivation"]).eq("status", "sent").gte("created_at", run.ranAt).limit(50);
-    const names = (sentNow ?? []).map((r) => String(r.recipient ?? "").split("@")[1] ?? "").filter(Boolean).slice(0, 8).join(", ");
     await notifyOwner({
       title: `Autopilot sent ${run.cold + run.reactivation} email${run.cold + run.reactivation === 1 ? "" : "s"}`,
-      message: [run.cold ? `${run.cold} to new businesses` : null, run.reactivation ? `${run.reactivation} customer check-ins` : null].filter(Boolean).join(" · ") + (names ? `\n${names}` : "") + `\n${run.openSlots5Days} open slots in the next 5 days.`,
-      priority: 2,
-      tags: ["outbox_tray"],
+      message: [run.cold ? `${run.cold} new businesses` : null, run.reactivation ? `${run.reactivation} check-ins` : null].filter(Boolean).join(" · "),
+      level: "low",
       path: "/owner/autopilot",
     });
   }
