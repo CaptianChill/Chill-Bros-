@@ -25,6 +25,11 @@ export function safeInternalPath(value: string | null | undefined, fallback = "/
   }
 }
 
+/** The identity hash checkLoginThrottle uses for a given login identity. */
+export function loginIdentityHash(identity: string) {
+  return digest(identity.trim().toLowerCase());
+}
+
 async function loginFingerprints(email: string) {
   const requestHeaders = await headers();
   const forwarded = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();

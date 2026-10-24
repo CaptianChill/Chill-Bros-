@@ -32,6 +32,7 @@ function harness({ role = 'manager', email = owner.email, rows = [owner, member]
   }};
   const mocks = {
     'next/cache': { revalidatePath() {} },
+    '@/lib/auth/staff-login-key': { hasStaffLoginKeySecret: () => true, staffLoginKey: (e) => `derived-key-for-${e}` },
     '@/lib/supabase/service-client': { createServiceRoleClient: () => db },
     '@/lib/supabase/auth-server': { getCurrentStaffProfile: async () => ({...owner,role,email}) },
     '@/lib/auth/server': { auth: {
@@ -82,4 +83,17 @@ test('password reset shows actual read error and protects owner credentials', as
 
 test('existing employee password uses owner input and rejects short passwords', async()=>{
   const h=harness();const actions=h.load('lib/chillbros/mutations.ts');assert.equal((await actions.resetStaffPasswordAction('employee','Chosen password 123')).ok,true);assert.deepEqual(h.passwords,['Chosen password 123']);assert.equal((await actions.resetStaffPasswordAction('employee','short')).ok,false);assert.equal(h.passwords.length,1);
+});
+
+test('blank password gives the employee a server-held email sign-in key', async()=>{
+  const h=harness();const r=await h.load('lib/chillbros/mutations.ts').resetStaffPasswordAction('employee');assert.equal(r.ok,true);assert.deepEqual(h.passwords,['derived-key-for-eric@example.com']);
+});
+test('stale link to an old login is replaced by the login that owns the email', async()=>{
+  const h=harness({rows:[owner,{...member,auth_user_id:'old-supabase-id'}]});const r=await h.load('lib/chillbros/mutations.ts').resetStaffPasswordAction('employee');assert.equal(r.ok,true);assert.equal(h.rows[1].auth_user_id,'login');assert.deepEqual(h.passwords,['derived-key-for-eric@example.com']);
+});
+test('stale link with no login at all creates a fresh login', async()=>{
+  const h=harness({rows:[owner,{...member,auth_user_id:'old-supabase-id'}],loginExists:false});const r=await h.load('lib/chillbros/mutations.ts').resetStaffPasswordAction('employee');assert.equal(r.ok,true);assert.equal(h.rows[1].auth_user_id,'new-login');
+});
+test('turn on email sign-in for everyone skips the owner', async()=>{
+  const h=harness();const r=await h.load('lib/chillbros/mutations.ts').enableEmailSignInForAllAction();assert.equal(r.ok,true);assert.equal(r.data.enabled,1);assert.deepEqual(r.data.failed,[]);assert.deepEqual(h.passwords,['derived-key-for-eric@example.com']);
 });

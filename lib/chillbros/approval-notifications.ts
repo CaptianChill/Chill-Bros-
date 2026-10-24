@@ -1,6 +1,7 @@
 import "server-only";
 import * as tls from "node:tls";
 
+import { notifyOwner } from "@/lib/chillbros/notify";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 type ApprovalNotification = {
@@ -40,7 +41,7 @@ async function command(socket: tls.TLSSocket, text: string, expected: string[]) 
   return response;
 }
 
-export async function sendCompanyEmail(to: string, subject: string, text: string, html?: string, cc: string[] = []) {
+export async function sendCompanyEmail(to: string, subject: string, text: string, html?: string, cc: string[] = [], extraHeaders: Record<string, string> = {}) {
   // CC addresses get the same message; the main recipient is never repeated in CC.
   const ccList = [...new Set(cc.map((address) => safeHeader(address).toLowerCase()).filter((address) => address && address !== safeHeader(to).toLowerCase()))];
   const user = String(process.env.GMAIL_SMTP_USER || "").trim();
@@ -67,6 +68,8 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
       ...(ccList.length ? [`Cc: ${ccList.join(", ")}`] : []),
       `Subject: ${safeHeader(subject)}`,
       "MIME-Version: 1.0",
+      // Optional extra headers (e.g. List-Unsubscribe on outreach email); names are restricted to header-safe characters.
+      ...Object.entries(extraHeaders).filter(([name]) => /^[A-Za-z][A-Za-z0-9-]*$/.test(name)).map(([name, value]) => `${name}: ${safeHeader(value)}`),
     ];
     let body: string;
     if (html) {
@@ -110,9 +113,11 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
   }
 }
 
-async function sendOwnerAlertEmail(subject: string, lines: (string | null)[], relatedInvoiceId?: string | null) {
+async function sendOwnerAlertEmail(subject: string, lines: (string | null)[], relatedInvoiceId?: string | null, push: { priority?: 1 | 2 | 3 | 4 | 5; tags?: string[] } = {}) {
   const to = companyEmail();
   const text = lines.filter(Boolean).join("\n");
+  // Every owner alert also lands on the owner's phone (ntfy); skip the email's first headline line.
+  await notifyOwner({ title: subject, message: lines.filter(Boolean).slice(1).join("\n").trim() || subject, priority: push.priority ?? 4, tags: push.tags ?? ["snowflake"], path: relatedInvoiceId ? `/owner/invoices/${relatedInvoiceId}` : null });
 
   let status = "failed";
   try {
@@ -140,7 +145,7 @@ export async function sendApprovalNotification(input: ApprovalNotification) {
     `Approved: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
     "",
     "The manager and dispatch views have already been updated in the Operations Center.",
-  ], input.relatedInvoiceId);
+  ], input.relatedInvoiceId, { priority: 4, tags: ["white_check_mark"] });
 }
 
 export async function sendInvoiceViewedNotification(input: { invoiceNumber: string; customerName?: string | null; invoiceId: string }) {
@@ -150,7 +155,7 @@ export async function sendInvoiceViewedNotification(input: { invoiceNumber: stri
     `Invoice: ${input.invoiceNumber}`,
     input.customerName ? `Customer: ${input.customerName}` : null,
     `Opened: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
-  ], input.invoiceId);
+  ], input.invoiceId, { priority: 2, tags: ["eyes"] });
 }
 
 export async function sendInvoicePaidNotification(input: { invoiceNumber: string; customerName?: string | null; amount: number; method: string; invoiceId: string }) {
@@ -162,7 +167,7 @@ export async function sendInvoicePaidNotification(input: { invoiceNumber: string
     `Amount: ${input.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}`,
     `Method: ${input.method.replace(/_/g, " ")}`,
     `Paid: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
-  ], input.invoiceId);
+  ], input.invoiceId, { priority: 4, tags: ["moneybag"] });
 }
 
 export async function sendOwnerPaymentReviewAlert(input: { invoiceNumber: string; customerName?: string | null; message: string; invoiceId: string }) {
@@ -172,7 +177,7 @@ export async function sendOwnerPaymentReviewAlert(input: { invoiceNumber: string
     `Document: ${input.invoiceNumber}`,
     input.customerName ? `Customer: ${input.customerName}` : null,
     input.message,
-  ], input.invoiceId);
+  ], input.invoiceId, { priority: 5, tags: ["warning"] });
 }
 
 export async function sendDownPaymentReceivedNotification(input: { invoiceNumber: string; customerName?: string | null; amount: number; method: string; invoiceId: string }) {
@@ -184,5 +189,5 @@ export async function sendDownPaymentReceivedNotification(input: { invoiceNumber
     `Amount: ${input.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}`,
     `Method: ${input.method.replace(/_/g, " ")}`,
     `Received: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} CT`,
-  ], input.invoiceId);
+  ], input.invoiceId, { priority: 4, tags: ["moneybag"] });
 }

@@ -31,6 +31,7 @@ test('Chill answers from a role-scoped live snapshot and never takes actions', (
   assert.match(src, /Never invent customers, amounts/);
   assert.match(src, /You cannot change anything in the app/);
   assert.match(src, /await askAI\(/);
+  assert.match(src, /streamAI\(/);
 });
 
 test('poses follow real state: listening while recording, talking only during voice playback', () => {
@@ -41,9 +42,9 @@ test('poses follow real state: listening while recording, talking only during vo
   assert.match(read('components/app-shell.tsx'), /<ChillAssistant firstName=\{user\.firstName\} \/>/);
 });
 
-test('custom ElevenLabs voice (v3 by default) with OpenAI cedar as backup', () => {
+test('custom ElevenLabs voice (Flash by default for speed) with OpenAI cedar as backup', () => {
   const voice = read('lib/chillbros/voice.ts');
-  assert.match(voice, /CHILL_ELEVEN_MODEL \|\| "eleven_v3"/);
+  assert.match(voice, /CHILL_ELEVEN_MODEL \|\| "eleven_flash_v2_5"/);
   assert.match(voice, /BOODA_ELEVEN_VOICE_ID/);
   assert.match(voice, /text-to-dialogue\/stream/);
   const route = read('app/api/voice/speak/route.ts');
@@ -51,7 +52,7 @@ test('custom ElevenLabs voice (v3 by default) with OpenAI cedar as backup', () =
 });
 
 test('answers are short and start speaking after the first sentence', () => {
-  assert.match(read('lib/chillbros/chill-brain.ts'), /under 60 words/);
+  assert.match(read('lib/chillbros/chill-brain.ts'), /Under 40 words total/);
   const ts = require('typescript');
   const out = ts.transpileModule(read('components/chill-assistant.tsx'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const m = out.match(/function splitForSpeech[\s\S]*?\n}/);
@@ -74,7 +75,7 @@ test('voice falls back from v3 to the same voice on Turbo, and explains failures
   try {
     delete process.env.ELEVEN_API_KEY; delete process.env.BOODA_ELEVEN_VOICE_ID;
     assert.match((await loadVoice().elevenSpeech('Hi')).reason, /settings not found/);
-    process.env.ELEVEN_API_KEY = 'k'; process.env.BOODA_ELEVEN_VOICE_ID = 'v';
+    process.env.ELEVEN_API_KEY = 'k'; process.env.BOODA_ELEVEN_VOICE_ID = 'v'; process.env.CHILL_ELEVEN_MODEL = 'eleven_v3';
     const calls = [];
     global.fetch = async (url, init) => { calls.push({ url, body: JSON.parse(init.body) }); return url.includes('dialogue') ? { ok: false, status: 400, body: null, text: async () => '{"detail":{"message":"voice not supported by v3"}}' } : { ok: true, status: 200, body: 'audio' }; };
     const r = await loadVoice().elevenSpeech('Hi');
@@ -89,7 +90,8 @@ test('voice falls back from v3 to the same voice on Turbo, and explains failures
 test('spoken questions take one trip: snapshot starts before transcription finishes', () => {
   const route = read('app/api/voice/ask/route.ts');
   assert.ok(route.indexOf('snapshotFor(profile)') < route.indexOf('await transcribeAudio('), 'snapshot is started first');
-  assert.match(route, /answerChill\(profile, heard\.text, history, snapshot\)/);
+  assert.match(route, /streamChill\(profile, question, history, snapshot\)/);
+  assert.match(route, /application\/x-ndjson/);
   assert.match(read('components/chill-assistant.tsx'), /fetch\("\/api\/voice\/ask"/);
 });
 
@@ -141,4 +143,14 @@ test('Chilly Bro looks up OEM parts only for real parts requests, with sourced l
   assert.match(failed.context, /Do not guess part numbers/); assert.equal(failed.links.length, 0);
   assert.match(read('lib/chillbros/parts-research.ts'), /max_tool_calls: quick \? 5 : 10/);
   assert.match(read('app/api/voice/ask/route.ts'), /maxDuration = 120/);
+});
+
+test('fast path: snapshot is cached briefly, answers stream, voice starts on the first sentence', () => {
+  const brain = read('lib/chillbros/chill-brain.ts');
+  assert.match(brain, /SNAPSHOT_TTL_MS = 45_000/);
+  assert.match(brain, /export async function\* streamChill/);
+  const ui = read('components/chill-assistant.tsx');
+  assert.match(ui, /getReader\(\)/);
+  assert.match(ui, /parts\.length > 1\) \{ spokenUpTo = parts\[0\]\.length; enqueueSpeech\(parts\[0\]\)/);
+  assert.match(read('lib/chillbros/ai.ts'), /console\.error\(`\[chill-ai\]/);
 });
