@@ -13,11 +13,12 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------------- Settings ---------------- */
-  const settings = Object.assign({ fx: reduced ? 'low' : 'heavy', ntfy: '', look: 'default', appUrls: {} }, store.get('settings', {}));
+  const settings = Object.assign({ fx: reduced ? 'low' : 'heavy', ntfy: '', look: 'default', appUrls: {}, fit: 'full' }, store.get('settings', {}));
   APPS.forEach(a => { if (!a.url && settings.appUrls && settings.appUrls[a.id]) a.url = settings.appUrls[a.id]; });
   const BIG = window.BB_BIG || [];
   document.body.dataset.fx = settings.fx;
-  const saveSettings = () => { store.set('settings', settings); document.body.dataset.fx = settings.fx; };
+  document.body.dataset.fit = settings.fit;
+  const saveSettings = () => { store.set('settings', settings); document.body.dataset.fx = settings.fx; document.body.dataset.fit = settings.fit; };
 
   /* ---------------- Avatar look (art variants) ---------------- */
   const LOOKS = window.BB_LOOKS || { default: { desktop: 'cc/desktop.webp', mobile: 'cc/mobile.webp', label: 'Original' } };
@@ -67,15 +68,26 @@
     spark: '<path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="#fff"/>'
   };
   const health = {};
+  const iconOf = a => a.img ? `<img src="${esc(a.img)}" alt="" loading="lazy" decoding="async">` : `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[a.glyph] || GLYPH.spark}</svg>`;
   function tileHTML(a, withLabel) {
     const st = !a.url ? 'setup' : health[a.id] || (a.local ? 'local' : '');
     return `<button type="button" class="app-tile${withLabel ? ' has-lbl' : ''}" style="--c:${a.color}" data-go="app:${a.id}" title="${esc(a.name)}" aria-label="Open ${esc(a.name)}">
-      <svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[a.glyph] || GLYPH.spark}</svg>
+      ${iconOf(a)}
       ${withLabel ? `<span class="lbl">${esc(a.short)}</span>` : ''}<span class="dot ${st}"></span></button>`;
   }
   const stateOf = a => !a.url ? 'setup' : health[a.id] || (a.local ? 'local' : '');
-  const projHTML = a => `<button type="button" class="proj" style="--c:${a.color}" data-go="app:${a.id}" title="${esc(a.name)}"><span class="pi"><svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[a.glyph] || GLYPH.spark}</svg></span><span class="pn">${esc(a.name)}</span><span class="dot ${stateOf(a)}"></span></button>`;
-  const bigHTML = (a, sub) => `<button type="button" class="big-tile" style="--c:${a.color}" data-go="app:${a.id}" aria-label="Open ${esc(a.name)}"><span class="bi"><svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[a.glyph] || GLYPH.spark}</svg></span><span><b>${esc(a.short)}</b><small>${a.url ? esc(sub || a.name) : 'Tap to add its link'}</small></span><span class="dot ${stateOf(a)}"></span></button>`;
+  const projHTML = a => `<button type="button" class="proj" style="--c:${a.color}" data-go="app:${a.id}" title="${esc(a.name)}"><span class="pi${a.img ? ' has-img' : ''}">${iconOf(a)}</span><span class="pn">${esc(a.name)}</span><span class="dot ${stateOf(a)}"></span></button>`;
+  const moneyFmt = v => `${v < 0 ? '-' : ''}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: v >= 1000 || v <= -1000 ? 0 : 2 })}`;
+  function bigHTML(a, sub) {
+    const m = money.apps[a.id];
+    const max = Math.max(1, ...Object.values(money.apps).map(x => Math.abs(x.value || 0)));
+    let figure;
+    if (m && m.value != null) figure = `<span class="bm ${m.value < 0 ? 'neg' : ''}">${moneyFmt(m.value)}<em>${esc(m.label)}</em></span><span class="bsub">${esc(m.sub)}</span><span class="bar"><i style="width:${Math.max(3, Math.abs(m.value) / max * 100).toFixed(1)}%"></i></span>`;
+    else if (m) figure = `<span class="bm muted">—</span><span class="bsub">${esc(m.sub)}</span><span class="bar"></span>`;
+    else if (money.state === 'signin' && (a.id === 'crm' || a.id === 'bbb')) figure = `<span class="bm muted">$ —</span><span class="bsub">Sign in to Chill Pros to see money</span><span class="bar"></span>`;
+    else figure = `<span class="bm muted">—</span><span class="bsub">${a.url ? 'No money feed yet' : 'Tap to add its link'}</span><span class="bar"></span>`;
+    return `<button type="button" class="big-tile" style="--c:${a.color}" data-go="app:${a.id}" aria-label="Open ${esc(a.name)}"><span class="bt"><span class="bi${a.img ? ' has-img' : ''}">${iconOf(a)}</span><span class="bn"><b>${esc(a.short === 'CRM' ? 'Chill Pros' : a.short)}</b><small>${esc(sub || a.name)}</small></span><span class="dot ${stateOf(a)}"></span></span>${figure}</button>`;
+  }
   function renderApps() {
     $$('[data-apps="list"]').forEach(el => el.innerHTML = APPS.map(projHTML).join(''));
     $$('[data-apps="big"]').forEach(el => el.innerHTML = BIG.map(b => { const a = appById(b.id); return a ? bigHTML(a, b.sub) : ''; }).join(''));
@@ -83,7 +95,18 @@
     $$('[data-apps="dock"]').forEach(el => el.innerHTML = APPS.map(a => tileHTML(a, true)).join(''));
     $$('[data-stat="apps"]').forEach(e => e.textContent = APPS.length);
   }
+  /* ---------------- Money per app (owner-only API on this same site; real figures only) ---------------- */
+  const money = { state: 'loading', apps: {} };
+  async function loadMoney() {
+    try {
+      const r = await fetch('/api/command-center/profits', { credentials: 'same-origin', cache: 'no-store', redirect: 'manual' });
+      if (r.type === 'opaqueredirect' || r.status === 401 || r.status === 307 || r.status === 302) { money.state = 'signin'; money.apps = {}; }
+      else { const j = await r.json(); if (!j.ok) throw new Error(j.error); money.state = 'live'; money.apps = Object.fromEntries(j.apps.map(x => [x.id, x])); }
+    } catch { money.state = 'error'; }
+    renderApps();
+  }
   renderApps();
+  loadMoney(); setInterval(loadMoney, 5 * 60 * 1000);
 
   /* ---------------- Health checks (real reachability pings) ---------------- */
   async function ping(a) {
@@ -237,6 +260,8 @@
     settings: () => ['Settings', `
       <div class="card"><h2>Diamond shine</h2><p>How hard the ice hits.</p>
         <div class="seg" role="group" aria-label="Effect intensity">${['low', 'heavy', 'max'].map(v => `<button type="button" data-fx="${v}" aria-pressed="${settings.fx === v}">${v === 'low' ? 'Low' : v === 'heavy' ? 'Heavy' : 'Max Ice'}</button>`).join('')}</div></div>
+      <div class="card"><h2>Screen fit</h2><p>Full screen stretches the Command Center edge to edge on your laptop.</p>
+        <div class="seg" role="group" aria-label="Screen fit">${[['full', 'Full screen'], ['original', 'Original shape']].map(([v, l]) => `<button type="button" data-fit="${v}" aria-pressed="${settings.fit === v}">${l}</button>`).join('')}</div></div>
       ${Object.keys(LOOKS).length > 1 ? `<div class="card"><h2>Avatar look</h2><div class="seg" role="group" aria-label="Avatar look">${Object.entries(LOOKS).map(([k, v]) => `<button type="button" data-look="${k}" aria-pressed="${settings.look === k}">${esc(v.label)}</button>`).join('')}</div></div>` : ''}
       <div class="card"><h2>Live alerts (ntfy)</h2><p>Your Chill Pros ntfy topic name (or full server URL). Notifications stream into the Command Center in real time.</p>
         <label class="fld" for="ntfyIn">Topic</label><input id="ntfyIn" class="txt" value="${esc(settings.ntfy)}" placeholder="e.g. chillpros-alerts" autocomplete="off">
@@ -274,6 +299,7 @@
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-go]'); if (b) { e.preventDefault(); go(b.dataset.go, b, e); return; }
     const fx = e.target.closest('[data-fx]'); if (fx && fx.tagName === 'BUTTON') { settings.fx = fx.dataset.fx; saveSettings(); $$('[data-fx]', body).forEach(x => x.setAttribute('aria-pressed', x === fx)); burstAt(e, 40); return; }
+    const ft = e.target.closest('button[data-fit]'); if (ft) { settings.fit = ft.dataset.fit; saveSettings(); $$('button[data-fit]', body).forEach(x => x.setAttribute('aria-pressed', x === ft)); return; }
     const lk = e.target.closest('[data-look]'); if (lk) { settings.look = lk.dataset.look; saveSettings(); applyLook(); $$('[data-look]', body).forEach(x => x.setAttribute('aria-pressed', x === lk)); return; }
     if (e.target.closest('[data-save-ntfy]')) { settings.ntfy = $('#ntfyIn').value.trim(); saveSettings(); connectNtfy(); toast(settings.ntfy ? 'Alerts connected' : 'Alerts disconnected'); return; }
     if (e.target.closest('[data-recheck]')) { checkAll().then(() => { const [t, h] = VIEWS.status(); openPanel(t, h); }); }
