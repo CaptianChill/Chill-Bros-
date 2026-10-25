@@ -20,7 +20,7 @@
   <link rel="preload" as="image" href="cc/mobile.webp" media="(max-width: 767px)">
   <link rel="stylesheet" href="cc/cc.css">
 </head>
-<body data-fx="heavy">
+<body data-fx="heavy" data-fit="full">
   <!-- Neon light background + Chill Pros dice sign -->
   <div class="neon" aria-hidden="true">
     <div class="neon-blob b1"></div><div class="neon-blob b2"></div><div class="neon-blob b3"></div>
@@ -38,16 +38,10 @@
       <div class="flare" aria-hidden="true"></div>
       <canvas class="fx" aria-hidden="true"></canvas>
 
-      <!-- live clock -->
-      <svg class="ov analog" viewBox="-30 -30 60 60" style="--x:262;--y:629;--w:60;--h:60" aria-hidden="true">
-        <g class="ticks"></g>
-        <line class="h-hour" x1="0" y1="2" x2="0" y2="-14"/>
-        <line class="h-min" x1="0" y1="3" x2="0" y2="-21"/>
-        <line class="h-sec" x1="0" y1="5" x2="0" y2="-23"/>
-        <circle r="1.8" class="hub"/>
-      </svg>
-      <div class="ov time-big" style="--x:362;--y:633;--w:240;--h:46;--fs:42"><span data-clock="time">--:--:--</span></div>
-      <div class="ov date-cyan" style="--x:364;--y:685;--w:240;--h:24;--fs:16.5"><span data-clock="date"></span></div>
+      <!-- live watch (original diamond-bezel face) + digital time -->
+      <div class="ov watch-wrap" style="--x:236;--y:602;--w:136;--h:136"><svg class="watch" viewBox="-100 -100 200 200" aria-label="Live watch" role="img"></svg></div>
+      <div class="ov time-big" style="--x:386;--y:628;--w:222;--h:46;--fs:38"><span data-clock="time">--:--:--</span></div>
+      <div class="ov date-cyan" style="--x:388;--y:680;--w:222;--h:24;--fs:15.5"><span data-clock="date"></span></div>
 
       <!-- stat numbers -->
       <div class="ov stat-num green" style="--x:714;--y:619;--w:60;--h:28;--fs:22"><span data-stat="apps">9</span></div>
@@ -154,5 +148,6 @@
 
   <script src="cc/apps.js"></script>
   <script src="cc/cc.js"></script>
+  <script src="cc/watch.js"></script>
 </body>
 </html>
