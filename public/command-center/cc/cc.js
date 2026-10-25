@@ -13,7 +13,9 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------------- Settings ---------------- */
-  const settings = Object.assign({ fx: reduced ? 'low' : 'heavy', ntfy: '', look: 'default' }, store.get('settings', {}));
+  const settings = Object.assign({ fx: reduced ? 'low' : 'heavy', ntfy: '', look: 'default', appUrls: {} }, store.get('settings', {}));
+  APPS.forEach(a => { if (!a.url && settings.appUrls && settings.appUrls[a.id]) a.url = settings.appUrls[a.id]; });
+  const BIG = window.BB_BIG || [];
   document.body.dataset.fx = settings.fx;
   const saveSettings = () => { store.set('settings', settings); document.body.dataset.fx = settings.fx; };
 
@@ -60,16 +62,23 @@
     doc: '<path d="M6 2h9l4 4v16H6z" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M9 10h7M9 14h7M9 18h4" stroke="#fff" stroke-width="1.6"/>',
     dollar: '<path d="M12 2v20M17 6.5C16 5 14.3 4.5 12 4.5c-3 0-4.6 1.5-4.6 3.4 0 4.6 9.6 2.4 9.6 7.6 0 2-1.8 3.6-5 3.6-2.6 0-4.3-.8-5.3-2.4" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>',
     smile: '<circle cx="12" cy="12" r="9" fill="#ffe14d"/><circle cx="9" cy="10" r="1.3" fill="#3a2a00"/><circle cx="15" cy="10" r="1.3" fill="#3a2a00"/><path d="M7.5 13.5h9c-.8 2.6-2.5 4-4.5 4s-3.7-1.4-4.5-4z" fill="#fff" stroke="#3a2a00" stroke-width=".8"/>',
+    coin: '<circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.8" fill="none"/><path d="M10 7.5h3.2a2.3 2.3 0 0 1 0 4.5H10m0 0h3.6a2.3 2.3 0 0 1 0 4.5H10m0-9v9M11 6v1.5M11 16.5V18" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>',
+    card: '<rect x="2.5" y="5" width="19" height="14" rx="2.5" stroke="#fff" stroke-width="1.8" fill="none"/><path d="M2.5 9.5h19" stroke="#fff" stroke-width="2.4"/><path d="M6 15h4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>',
     spark: '<path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="#fff"/>'
   };
   const health = {};
   function tileHTML(a, withLabel) {
-    const st = health[a.id] || (a.local ? 'local' : '');
+    const st = !a.url ? 'setup' : health[a.id] || (a.local ? 'local' : '');
     return `<button type="button" class="app-tile${withLabel ? ' has-lbl' : ''}" style="--c:${a.color}" data-go="app:${a.id}" title="${esc(a.name)}" aria-label="Open ${esc(a.name)}">
       <svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[a.glyph] || GLYPH.spark}</svg>
       ${withLabel ? `<span class="lbl">${esc(a.short)}</span>` : ''}<span class="dot ${st}"></span></button>`;
   }
+  const stateOf = a => !a.url ? 'setup' : health[a.id] || (a.local ? 'local' : '');
+  const projHTML = a => `<button type="button" class="proj" style="--c:${a.color}" data-go="app:${a.id}" title="${esc(a.name)}"><span class="pi"><svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[a.glyph] || GLYPH.spark}</svg></span><span class="pn">${esc(a.name)}</span><span class="dot ${stateOf(a)}"></span></button>`;
+  const bigHTML = (a, sub) => `<button type="button" class="big-tile" style="--c:${a.color}" data-go="app:${a.id}" aria-label="Open ${esc(a.name)}"><span class="bi"><svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[a.glyph] || GLYPH.spark}</svg></span><span><b>${esc(a.short)}</b><small>${a.url ? esc(sub || a.name) : 'Tap to add its link'}</small></span><span class="dot ${stateOf(a)}"></span></button>`;
   function renderApps() {
+    $$('[data-apps="list"]').forEach(el => el.innerHTML = APPS.map(projHTML).join(''));
+    $$('[data-apps="big"]').forEach(el => el.innerHTML = BIG.map(b => { const a = appById(b.id); return a ? bigHTML(a, b.sub) : ''; }).join(''));
     $$('[data-apps="mini"]').forEach(el => el.innerHTML = APPS.slice(0, 9).map(a => tileHTML(a, false)).join(''));
     $$('[data-apps="dock"]').forEach(el => el.innerHTML = APPS.map(a => tileHTML(a, true)).join(''));
     $$('[data-stat="apps"]').forEach(e => e.textContent = APPS.length);
@@ -78,6 +87,7 @@
 
   /* ---------------- Health checks (real reachability pings) ---------------- */
   async function ping(a) {
+    if (!a.url) return 'setup';
     const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 7000);
     try { await fetch(a.url + (a.url.includes('?') ? '&' : '?') + '_bbcc=' + Date.now(), { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal }); return 'on'; }
     catch { return a.local ? 'local' : 'off'; }
@@ -95,7 +105,8 @@
       if (prev[a.id] && prev[a.id] !== health[a.id] && (health[a.id] === 'off' || prev[a.id] === 'off'))
         pushNotif({ title: health[a.id] === 'off' ? `${a.name} down` : `${a.name} back online`, body: 'App health check', kind: health[a.id] === 'off' ? 'alert' : 'ok', time: Date.now() });
     });
-    systemNotif = { title: down.length ? `${down.length} app${down.length > 1 ? 's' : ''} unreachable` : 'All systems online', body: `${up.length}/${APPS.length - APPS.filter(a => a.local && health[a.id] !== 'on').length} cloud apps responding`, kind: down.length ? 'alert' : 'system', time: Date.now() };
+    const cloud = APPS.filter(a => a.url && !(a.local && health[a.id] !== 'on'));
+    systemNotif = { title: down.length ? `${down.length} app${down.length > 1 ? 's' : ''} unreachable` : 'All systems online', body: `${up.length}/${cloud.length} cloud apps responding`, kind: down.length ? 'alert' : 'system', time: Date.now() };
     renderNotifs();
   }
 
@@ -108,7 +119,7 @@
   let systemNotif = null;
   function kindFor(m) {
     const t = ((m.title || '') + ' ' + (m.body || '') + ' ' + (m.tags || []).join(' ')).toLowerCase();
-    if (/invoice|paid|payment|\$/.test(t)) return 'invoice';
+    if (/invoice|paid|payment|deposit|payout|cashed|\$/.test(t)) return 'invoice';
     if (/dispatch|route|assign/.test(t)) return 'dispatch';
     if (/tech|clock|reading/.test(t)) return 'tech';
     if (/approv|quote/.test(t)) return 'project';
@@ -127,6 +138,19 @@
     if (!quiet) { renderNotifs(); celebrate(); }
   }
   function allNotifs() { return (systemNotif ? [systemNotif] : []).concat(notifs).sort((a, b) => b.time - a.time); }
+  const MONEY_RE = /paid|payment|deposit|received|cashed|won|payout|\$/i;
+  const amountOf = n => { const m = ((n.title || '') + ' ' + (n.body || '')).match(/\$\s?(\d[\d,]*(?:\.\d{1,2})?)/); return m ? Number(m[1].replace(/,/g, '')) : 0; };
+  function renderOps() {
+    const top = allNotifs().slice(0, 4);
+    $$('[data-feed="notifs"]').forEach(ul => {
+      ul.innerHTML = top.length ? top.map(n => { const k = KIND[n.kind] || KIND.system; return `<li><span>${k.i}</span><b>${esc(n.title)}</b><i>${ago(n.time)}</i></li>`; }).join('') : '<li><span>⚙️</span><b>Checking systems</b></li>';
+    });
+    const today = new Date().toDateString();
+    const money = notifs.filter(n => new Date(n.time).toDateString() === today && (n.kind === 'invoice' || n.kind === 'money') && MONEY_RE.test((n.title || '') + ' ' + (n.body || '')));
+    const total = money.reduce((sum, n) => sum + amountOf(n), 0);
+    $$('[data-money="total"]').forEach(e => e.textContent = '$' + total.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+    $$('[data-money="line"]').forEach(e => e.textContent = money.length ? `${money.length} update${money.length > 1 ? 's' : ''} · last: ${money[0].title}` : (settings.ntfy ? 'No payments yet today' : 'Connect alerts in Settings'));
+  }
   function renderNotifs() {
     const list = allNotifs().slice(0, 5);
     $$('[data-notifs]').forEach(ul => {
@@ -136,6 +160,7 @@
     const today = new Date().toDateString();
     const approvals = notifs.filter(n => new Date(n.time).toDateString() === today && /approv/i.test((n.title || '') + (n.body || ''))).length;
     $$('[data-stat="approvals"]').forEach(e => e.textContent = approvals);
+    renderOps();
   }
   renderNotifs();
   setInterval(renderNotifs, 30000);
@@ -191,6 +216,13 @@
 
   function openApp(a) {
     if (!a) return;
+    if (!a.url) {
+      const link = (prompt(`Paste the link for your ${a.name} app (it's saved on this device):`, 'https://') || '').trim();
+      if (!/^https?:\/\/[^\s]+\.[^\s]+/.test(link)) { if (link && link !== 'https://') toast('That doesn\'t look like a web link'); return; }
+      a.url = link; settings.appUrls = Object.assign({}, settings.appUrls, { [a.id]: link }); saveSettings();
+      renderApps(); ping(a).then(st => { health[a.id] = st; renderApps(); });
+      toast(`${a.name} linked`); return;
+    }
     const w = window.open(a.url, a.local ? '_blank' : 'bb_' + a.id);
     if (!w) location.href = a.url;
   }
@@ -216,6 +248,13 @@
       return ['San Antonio Weather', `<div class="card"><h2>${Math.round(c.temperature_2m)}°F · ${(WX[c.weather_code] || ['', ''])[1]}</h2><p>Feels like ${Math.round(c.apparent_temperature)}° · Humidity ${c.relative_humidity_2m}% · Wind ${Math.round(c.wind_speed_10m)} mph</p></div>
         <div class="card"><ul class="list">${d.time.map((t, i) => `<li><span class="ic" style="--c:#0b2a3d">${(WX[d.weather_code[i]] || ['🌡️'])[0]}</span><div style="flex:1"><b>${new Date(t + 'T12:00').toLocaleDateString(undefined, { weekday: 'long' })}</b><span>Rain chance ${d.precipitation_probability_max[i] ?? 0}%</span></div><b>${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°</b></li>`).join('')}</ul>
         <p style="color:var(--muted)">Heads-up for the crew: AC calls spike on hot days.</p></div>`];
+    },
+    money: () => {
+      const today = new Date().toDateString();
+      const list = notifs.filter(n => (n.kind === 'invoice' || n.kind === 'money') && MONEY_RE.test((n.title || '') + ' ' + (n.body || ''))).slice(0, 40);
+      const sum = list.filter(n => new Date(n.time).toDateString() === today).reduce((t, n) => t + amountOf(n), 0);
+      return ['Money', `<div class="card"><h2>Today: $${sum.toLocaleString(undefined, { maximumFractionDigits: 2 })}</h2><p>Added up from dollar amounts in today's payment alerts.</p></div>
+        <div class="card"><ul class="list">${list.map(n => `<li><span class="ic" style="--c:#15803d">💵</span><div><b>${esc(n.title)}</b><span>${esc(n.body || '')}</span><i>${ago(n.time)}</i></div></li>`).join('') || '<li>No money updates yet. Payments, deposits and paid invoices from your alerts show up here.</li>'}</ul></div>`];
     },
     status: () => ['System Status', `<div class="card"><ul class="list">${APPS.map(a => `<li><div style="flex:1"><b>${esc(a.name)}</b><span>${esc(a.url.replace(/^https?:\/\//, ''))}</span></div>${pill(a.id)}</li>`).join('')}</ul><button class="btn" type="button" data-recheck>Re-check now</button></div>`]
   };
