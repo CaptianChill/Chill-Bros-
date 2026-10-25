@@ -16,8 +16,8 @@ export type StaffProfile = {
   status: "active" | "inactive";
 };
 
-const OWNER_EMAIL = "chillprostx@gmail.com";
-const OWNER_PROFILE_ID = "8c81f12a-ad86-4ceb-bca1-3924be1cbfec";
+export const OWNER_EMAIL = "chillprostx@gmail.com";
+export const OWNER_PROFILE_ID = "8c81f12a-ad86-4ceb-bca1-3924be1cbfec";
 
 /**
  * Legacy Supabase auth client retained only for remaining migration-era

@@ -31,6 +31,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/cron",
   // Brae.I. read-only API: no Neon session; each route checks its own BRAE_API_KEY bearer token.
   "/api/brae",
+  // Owner command center (Chill Pros HQ) bridge: no Neon session; checks its own HQ_BRIDGE_SECRET header.
+  "/api/hq",
 ];
 
 function isPublicPath(pathname: string): boolean {
