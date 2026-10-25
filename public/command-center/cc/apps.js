@@ -7,7 +7,7 @@ window.BB_APPS = [
   { id: 'trading', name: 'Trading',        short: 'Trade',  url: '',                                         color: '#00e0a4', glyph: 'chart' },
   { id: 'alpha',   name: 'Alpha Hunter',   short: 'Crypto', url: 'https://alpha-hunter-ex8w.vercel.app',     color: '#ffb000', glyph: 'coin' },
   { id: 'credit',  name: 'Credit',         short: 'Credit', url: '',                                         color: '#4d8dff', glyph: 'card' },
-  { id: 'forge',   name: 'BoodaForge',     short: 'Forge',  url: 'https://ui-forge-black.vercel.app',        color: '#ff3d7f', glyph: 'anvil' },
+  { id: 'forge',   name: 'BoodaForge',     short: 'Forge',  url: 'https://ui-forge-black.vercel.app',        color: '#1fa8ff', glyph: 'anvil', img: 'cc/icons/forge.webp' },
   { id: 'bidlume', name: 'Bidlume',        short: 'Bids',   url: 'https://bidlume.app',                      color: '#3dfcff', glyph: 'doc' },
   { id: 'invoice', name: 'Invoicing',      short: 'Pay',    url: 'https://chill-pros-invoicing.vercel.app',  color: '#2bd66b', glyph: 'dollar', img: 'cc/icons/invoice.webp' },
   { id: 'braei',   name: 'Brae.I.',        short: 'Brae.I', url: 'http://127.0.0.1:3000',                    color: '#ffe14d', glyph: 'smile', local: true },
