@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">BB Command Center</title>
+  <desc id="desc">Diamond bordered BB monogram with diamond-filled lettering and emerald accents.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#020406"/><stop offset="1" stop-color="#0a1116"/></linearGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff"/><stop offset=".24" stop-color="#92a4af"/><stop offset=".5" stop-color="#ffffff"/><stop offset=".72" stop-color="#52616b"/><stop offset="1" stop-color="#ffffff"/></linearGradient>
+    <linearGradient id="emerald" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b8ffe9"/><stop offset=".28" stop-color="#10d99a"/><stop offset=".7" stop-color="#00573d"/><stop offset="1" stop-color="#89ffda"/></linearGradient>
+    <pattern id="diamonds" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="22" height="22" fill="#dfe7eb"/><path d="M0 11 11 0 22 11 11 22Z" fill="#fff" stroke="#798891" stroke-width="1.5"/><circle cx="11" cy="11" r="2.5" fill="#fff"/></pattern>
+    <filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)" stroke="#05080a" stroke-width="18"/>
+  <rect x="30" y="30" width="452" height="452" rx="98" fill="none" stroke="url(#silver)" stroke-width="18"/>
+  <rect x="48" y="48" width="416" height="416" rx="82" fill="none" stroke="url(#diamonds)" stroke-width="12"/>
+  <path d="M256 30 288 66 256 101 224 66Z" fill="url(#emerald)" stroke="#eaffff" stroke-width="5" filter="url(#glow)"/>
+  <g font-family="Georgia, Times New Roman, serif" font-size="230" font-weight="900" text-anchor="middle" fill="url(#diamonds)" stroke="#eefaff" stroke-width="7" paint-order="stroke" filter="url(#glow)">
+    <text x="256" y="326" letter-spacing="-38">BB</text>
+  </g>
+  <path d="M112 385h288" stroke="url(#silver)" stroke-width="6"/>
+  <text x="256" y="430" text-anchor="middle" fill="#10d99a" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="8">COMMAND CENTER</text>
+</svg>

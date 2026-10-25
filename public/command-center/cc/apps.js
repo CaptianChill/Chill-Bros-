@@ -1,0 +1,22 @@
+/* Big Booda's app roster — edit here to add/remove tiles. `local:true` = only reachable on the laptop. */
+window.BB_APPS = [
+  { id: 'crm',     name: 'Chill Pros CRM', short: 'CRM',    url: 'https://chill-bros.vercel.app',            color: '#1fb6ff', glyph: 'snow' },
+  { id: 'hq',      name: 'Chill Pros HQ',  short: 'HQ',     url: 'https://chill-pros-hq.vercel.app',         color: '#19ff9c', glyph: 'crown' },
+  { id: 'bbb',     name: 'BBB PrizePicks', short: 'BBB',    url: 'https://bb-owner-command-center.vercel.app', color: '#a64dff', glyph: 'ball' },
+  { id: 'alpha',   name: 'Alpha Hunter',   short: 'Alpha',  url: 'https://alpha-hunter-ex8w.vercel.app',     color: '#ffb000', glyph: 'chart' },
+  { id: 'forge',   name: 'BoodaForge',     short: 'Forge',  url: 'https://ui-forge-black.vercel.app',        color: '#ff3d7f', glyph: 'anvil' },
+  { id: 'bidlume', name: 'Bidlume',        short: 'Bids',   url: 'https://bidlume.app',                      color: '#3dfcff', glyph: 'doc' },
+  { id: 'invoice', name: 'Invoicing',      short: 'Pay',    url: 'https://chill-pros-invoicing.vercel.app',  color: '#2bd66b', glyph: 'dollar' },
+  { id: 'braei',   name: 'Brae.I.',        short: 'Brae.I', url: 'http://127.0.0.1:3000',                    color: '#ffe14d', glyph: 'smile', local: true },
+  { id: 'studio',  name: 'AI Image Studio',short: 'Studio', url: 'http://127.0.0.1:8188',                    color: '#ff2bd6', glyph: 'spark', local: true }
+];
+
+/* Where the operations buttons go (inside the Chill Pros CRM). */
+window.BB_ROUTES = {
+  dispatch:    { app: 'crm', label: 'Dispatch',    blurb: 'Route calls, assign techs and watch the board.' },
+  jobs:        { app: 'crm', label: 'Jobs',        blurb: 'Open work orders, quotes and job history.' },
+  technicians: { app: 'crm', label: 'Technicians', blurb: 'Crew roster, clock-ins and readings.' },
+  customers:   { app: 'crm', label: 'Customers',   blurb: 'Customer records, equipment and invoices.' },
+  finances:    { app: 'hq',  label: 'Finances',    blurb: 'Dollar goals, invoices awaiting payment and money owed.' },
+  analytics:   { app: 'hq',  label: 'Analytics',   blurb: 'Track record, profit dashboard and goals.' }
+};
