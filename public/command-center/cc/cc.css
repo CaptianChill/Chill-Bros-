@@ -298,3 +298,26 @@ body[data-fx="max"] .w-star{animation-duration:1.6s}
   .art-d .shine{-webkit-mask-size:calc(100%*1536/1300) 100%;mask-size:calc(100%*1536/1300) 100%;-webkit-mask-position:left top;mask-position:left top}
 }
 .side .side-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+
+/* ---------- Clean seams between the art and the right column ---------- */
+html,body{overflow-x:hidden}
+.side-gem{display:none}
+.seam-gem{display:none}
+@media (min-width:768px) and (orientation:landscape) and (min-aspect-ratio:8/5){
+  .desk{overflow:hidden}
+  .side{--k:calc(100dvh/1024);overflow:visible;z-index:2;
+    background-size:auto calc(24*var(--k)),auto calc(24*var(--k)),calc(34*var(--k)) auto;
+    background-position:left top calc(15*var(--k)),left bottom calc(24*var(--k)),right calc(10*var(--k)) top}
+  /* whole diamonds cover the top and bottom joins (cut from the art, so they match exactly) */
+  .seam-gem{display:block;position:absolute;z-index:5;pointer-events:none}
+  .seam-gem.top{top:0;left:calc(-54*var(--k));width:calc(110*var(--k))}
+  .seam-gem.bot{bottom:0;left:calc(-46*var(--k));width:calc(96*var(--k))}
+  /* separators run chain-to-chain with an emerald at each joint, like the art's own frame */
+  .side-sep{position:relative;z-index:4;height:calc(24*var(--k));background-size:auto 100%;
+    margin:calc(8*var(--k)) calc(-16.5*var(--k)) calc(8*var(--k)) calc(-26*var(--k))}
+  .side-sep::before,.side-sep::after{content:"";position:absolute;top:50%;width:calc(40*var(--k));height:calc(56*var(--k));transform:translate(-50%,-50%);background:url(side/gem.webp) center/contain no-repeat}
+  .side-sep::before{left:0}
+  .side-sep::after{left:100%}
+}
+/* left project list sits fully inside its frame */
+.proj-list{font-size:calc(11*var(--u))}
