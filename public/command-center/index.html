@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#020406">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BB Command">
+  <meta name="description" content="Big Booda's private Command Center: every app, live status, alerts and operations in one place.">
+  <title>BB Command Center</title>
+  <link rel="manifest" href="bb-command-center.webmanifest">
+  <link rel="icon" href="assets/bb-command-center-logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="cc/icon-512.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" as="image" href="cc/desktop.webp" media="(min-width: 768px)">
+  <link rel="preload" as="image" href="cc/mobile.webp" media="(max-width: 767px)">
+  <link rel="stylesheet" href="cc/cc.css">
+</head>
+<body data-fx="heavy">
+  <!-- Neon light background + Chill Pros dice sign -->
+  <div class="neon" aria-hidden="true">
+    <div class="neon-blob b1"></div><div class="neon-blob b2"></div><div class="neon-blob b3"></div>
+    <div class="neon-tube t1"></div><div class="neon-tube t2"></div><div class="neon-tube t3"></div><div class="neon-tube t4"></div>
+    <img class="dice-sign ds-left" src="cc/dice.webp" alt="">
+    <img class="dice-sign ds-right" src="cc/dice.webp" alt="">
+    <div class="neon-floor"></div>
+  </div>
+
+  <main class="stage">
+    <!-- ================= DESKTOP ================= -->
+    <section class="art art-d" aria-label="BB Command Center desktop">
+      <img class="art-img" data-art="desktop" src="cc/desktop.webp" alt="Big BB Booda Command Center" width="1536" height="1024" decoding="async">
+      <div class="shine" aria-hidden="true"></div>
+      <div class="flare" aria-hidden="true"></div>
+      <canvas class="fx" aria-hidden="true"></canvas>
+
+      <!-- live clock -->
+      <svg class="ov analog" viewBox="-30 -30 60 60" style="--x:262;--y:629;--w:60;--h:60" aria-hidden="true">
+        <g class="ticks"></g>
+        <line class="h-hour" x1="0" y1="2" x2="0" y2="-14"/>
+        <line class="h-min" x1="0" y1="3" x2="0" y2="-21"/>
+        <line class="h-sec" x1="0" y1="5" x2="0" y2="-23"/>
+        <circle r="1.8" class="hub"/>
+      </svg>
+      <div class="ov time-big" style="--x:362;--y:633;--w:240;--h:46;--fs:42"><span data-clock="time">--:--:--</span></div>
+      <div class="ov date-cyan" style="--x:364;--y:685;--w:240;--h:24;--fs:16.5"><span data-clock="date"></span></div>
+
+      <!-- stat numbers -->
+      <div class="ov stat-num green" style="--x:714;--y:619;--w:60;--h:28;--fs:22"><span data-stat="apps">9</span></div>
+      <div class="ov stat-num orange" style="--x:1034;--y:619;--w:60;--h:28;--fs:22"><span data-stat="approvals">0</span></div>
+
+      <!-- notifications -->
+      <ul class="ov notif-list" style="--x:1310;--y:100;--w:176;--h:420" data-notifs aria-live="polite"></ul>
+
+      <!-- weather -->
+      <div class="ov wx-icon" style="--x:1322;--y:670;--w:60;--h:60;--fs:44" data-wx="icon">☀️</div>
+      <div class="ov wx-temp" style="--x:1396;--y:664;--w:92;--h:34;--fs:27"><span data-wx="temp">--°F</span></div>
+      <div class="ov wx-cond" style="--x:1397;--y:702;--w:92;--h:20;--fs:13.5"><span data-wx="cond">Loading</span></div>
+      <div class="ov wx-hl" style="--x:1397;--y:727;--w:92;--h:20;--fs:12.5"><span data-wx="hl"></span></div>
+
+      <!-- server time -->
+      <div class="ov srv-time" style="--x:52;--y:903;--w:124;--h:26;--fs:17"><span data-clock="short">--:--</span></div>
+      <div class="ov srv-date" style="--x:52;--y:930;--w:124;--h:20;--fs:12.5"><span data-clock="upper"></span></div>
+
+      <!-- app tiles in the open jewel panel -->
+      <div class="ov app-grid" style="--x:1310;--y:800;--w:176;--h:146" data-apps="mini"></div>
+
+      <!-- hotspots -->
+      <nav class="hotspots" aria-label="Command Center navigation">
+        <button class="hot" data-go="home" style="--x:45;--y:244;--w:142;--h:42">Dashboard</button>
+        <button class="hot" data-go="apps" style="--x:45;--y:295;--w:142;--h:42">Projects &amp; apps</button>
+        <button class="hot" data-go="dispatch" style="--x:45;--y:343;--w:142;--h:42">Dispatch</button>
+        <button class="hot" data-go="jobs" style="--x:45;--y:390;--w:142;--h:42">Jobs</button>
+        <button class="hot" data-go="technicians" style="--x:45;--y:437;--w:142;--h:42">Technicians</button>
+        <button class="hot" data-go="customers" style="--x:45;--y:485;--w:142;--h:42">Customers</button>
+        <button class="hot" data-go="finances" style="--x:45;--y:532;--w:142;--h:42">Finances</button>
+        <button class="hot" data-go="analytics" style="--x:45;--y:580;--w:142;--h:42">Analytics</button>
+        <button class="hot" data-go="settings" style="--x:45;--y:629;--w:142;--h:42">Settings</button>
+        <button class="hot" data-go="apps" style="--x:634;--y:604;--w:156;--h:134">Projects monitored</button>
+        <button class="hot" data-go="settings" style="--x:806;--y:604;--w:144;--h:134">Owner access</button>
+        <button class="hot" data-go="alerts" style="--x:966;--y:604;--w:140;--h:134">Approvals</button>
+        <button class="hot" data-go="app:alpha" style="--x:1122;--y:604;--w:140;--h:134">Alpha Hunter crypto</button>
+        <button class="hot" data-go="alerts" style="--x:1306;--y:526;--w:180;--h:36">View all notifications</button>
+        <button class="hot" data-go="weather" style="--x:1306;--y:622;--w:180;--h:150">Weather</button>
+        <button class="hot" data-go="dispatch" style="--x:248;--y:882;--w:236;--h:58">Dispatch</button>
+        <button class="hot" data-go="jobs" style="--x:499;--y:882;--w:231;--h:58">Jobs</button>
+        <button class="hot" data-go="technicians" style="--x:747;--y:882;--w:234;--h:58">Technicians</button>
+        <button class="hot" data-go="customers" style="--x:999;--y:882;--w:233;--h:58">Customers</button>
+        <button class="hot round" data-go="apps" style="--x:712;--y:935;--w:96;--h:86">All apps</button>
+        <button class="hot" data-go="status" style="--x:52;--y:810;--w:122;--h:66">System status</button>
+      </nav>
+    </section>
+
+    <!-- ================= MOBILE ================= -->
+    <section class="art art-m" aria-label="BB Command Center mobile">
+      <img class="art-img" data-art="mobile" src="cc/mobile.webp" alt="Big BB Booda Command Center" width="853" height="1844" decoding="async">
+      <div class="shine" aria-hidden="true"></div>
+      <div class="flare" aria-hidden="true"></div>
+      <canvas class="fx" aria-hidden="true"></canvas>
+
+      <svg class="ov analog" viewBox="-30 -30 60 60" style="--x:110;--y:985;--w:116;--h:116" aria-hidden="true">
+        <g class="ticks"></g>
+        <line class="h-hour" x1="0" y1="2" x2="0" y2="-14"/>
+        <line class="h-min" x1="0" y1="3" x2="0" y2="-21"/>
+        <line class="h-sec" x1="0" y1="5" x2="0" y2="-23"/>
+        <circle r="1.8" class="hub"/>
+      </svg>
+      <div class="ov time-big" style="--x:288;--y:994;--w:470;--h:76;--fs:70"><span data-clock="time">--:--:--</span></div>
+      <div class="ov date-cyan" style="--x:296;--y:1074;--w:400;--h:38;--fs:27"><span data-clock="date"></span></div>
+      <div class="ov stat-num green" style="--x:204;--y:1163;--w:120;--h:44;--fs:37"><span data-stat="apps">9</span></div>
+      <div class="ov stat-num orange" style="--x:204;--y:1312;--w:120;--h:46;--fs:37"><span data-stat="approvals">0</span></div>
+
+      <nav class="hotspots" aria-label="Command Center mobile navigation">
+        <button class="hot" data-go="apps" style="--x:70;--y:1155;--w:346;--h:134">Projects monitored</button>
+        <button class="hot" data-go="settings" style="--x:432;--y:1155;--w:348;--h:134">Owner access</button>
+        <button class="hot" data-go="alerts" style="--x:70;--y:1302;--w:346;--h:134">Approvals</button>
+        <button class="hot" data-go="app:alpha" style="--x:432;--y:1302;--w:348;--h:134">Alpha Hunter crypto</button>
+        <button class="hot" data-go="dispatch" style="--x:92;--y:1655;--w:164;--h:60">Dispatch</button>
+        <button class="hot" data-go="jobs" style="--x:262;--y:1655;--w:142;--h:60">Jobs</button>
+        <button class="hot" data-go="technicians" style="--x:410;--y:1655;--w:182;--h:60">Technicians</button>
+        <button class="hot" data-go="customers" style="--x:600;--y:1655;--w:162;--h:60">Customers</button>
+        <button class="hot" data-go="home" style="--x:4;--y:1712;--w:176;--h:92">Dashboard</button>
+        <button class="hot" data-go="apps" style="--x:184;--y:1712;--w:166;--h:92">Projects &amp; apps</button>
+        <button class="hot round" data-go="apps" style="--x:356;--y:1696;--w:140;--h:128">All apps</button>
+        <button class="hot" data-go="alerts" style="--x:500;--y:1712;--w:164;--h:92">Alerts</button>
+        <button class="hot" data-go="settings" style="--x:668;--y:1712;--w:182;--h:92">Settings</button>
+      </nav>
+    </section>
+
+    <!-- mobile app dock (clickable app images) -->
+    <section class="dock-m" aria-label="Apps">
+      <div class="dock-title"><img src="cc/dice.webp" alt=""><span>MY APPS</span></div>
+      <div class="dock-row" data-apps="dock"></div>
+    </section>
+  </main>
+
+  <!-- Drawer -->
+  <div id="backdrop" class="panel-bg" hidden></div>
+  <aside id="panel" class="panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle" hidden>
+    <header>
+      <button id="panelClose" type="button" aria-label="Close">×</button>
+      <h1 id="panelTitle">Command Center</h1>
+    </header>
+    <div id="panelBody" class="panel-body"></div>
+  </aside>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="cc/apps.js"></script>
+  <script src="cc/cc.js"></script>
+</body>
+</html>

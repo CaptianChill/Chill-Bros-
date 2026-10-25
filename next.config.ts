@@ -31,6 +31,22 @@ const securityHeaders = [
   { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
 ];
 
+// BB Command Center (public/command-center): owner-only static dashboard that needs live weather,
+// ntfy alerts and app health pings, so it gets its own CSP (applied after the default, which it overrides).
+const commandCenterCsp = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https: http://127.0.0.1:* http://localhost:*",
+  "manifest-src 'self'",
+].join("; ");
+
 const privateNoStoreHeaders = [
   { key: "Cache-Control", value: "private, no-store, no-cache, max-age=0, must-revalidate" },
 ];
@@ -52,6 +68,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [{ source: "/command-center", destination: "/command-center/index.html", permanent: false }];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
@@ -60,6 +79,7 @@ const nextConfig: NextConfig = {
       { source: "/security/:path*", headers: privateNoStoreHeaders },
       { source: "/portal/:path*", headers: privateNoStoreHeaders },
       { source: "/agreement/:path*", headers: privateNoStoreHeaders },
+      { source: "/command-center/:path*", headers: [{ key: "Content-Security-Policy", value: commandCenterCsp }] },
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, { key: "Content-Type", value: "application/javascript; charset=utf-8" }] },
     ];
   },

@@ -1,0 +1,324 @@
+(() => {
+  'use strict';
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const APPS = window.BB_APPS || [];
+  const ROUTES = window.BB_ROUTES || {};
+  const appById = id => APPS.find(a => a.id === id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('bbcc.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('bbcc.' + k, JSON.stringify(v)); } catch {} }
+  };
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------------- Settings ---------------- */
+  const settings = Object.assign({ fx: reduced ? 'low' : 'heavy', ntfy: '', look: 'default' }, store.get('settings', {}));
+  document.body.dataset.fx = settings.fx;
+  const saveSettings = () => { store.set('settings', settings); document.body.dataset.fx = settings.fx; };
+
+  /* ---------------- Avatar look (art variants) ---------------- */
+  const LOOKS = window.BB_LOOKS || { default: { desktop: 'cc/desktop.webp', mobile: 'cc/mobile.webp', label: 'Original' } };
+  function applyLook() {
+    const look = LOOKS[settings.look] || LOOKS.default;
+    $$('img[data-art]').forEach(img => { const src = look[img.dataset.art]; if (src && img.getAttribute('src') !== src) img.src = src; });
+  }
+  applyLook();
+
+  /* ---------------- Clock ---------------- */
+  const fTime = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  const fShort = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  const fDate = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  const fUpper = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  $$('svg.analog .ticks').forEach(g => {
+    let h = '';
+    for (let i = 0; i < 12; i++) { const a = i * 30 * Math.PI / 180, r1 = i % 3 ? 24 : 21.5, r2 = 27; h += `<line x1="${(Math.sin(a) * r1).toFixed(2)}" y1="${(-Math.cos(a) * r1).toFixed(2)}" x2="${(Math.sin(a) * r2).toFixed(2)}" y2="${(-Math.cos(a) * r2).toFixed(2)}"/>`; }
+    g.innerHTML = h;
+  });
+  function tick() {
+    const now = new Date();
+    $$('[data-clock="time"]').forEach(e => e.textContent = fTime.format(now));
+    $$('[data-clock="short"]').forEach(e => e.textContent = fShort.format(now));
+    $$('[data-clock="date"]').forEach(e => e.textContent = fDate.format(now));
+    $$('[data-clock="upper"]').forEach(e => e.textContent = fUpper.format(now).toUpperCase());
+    const s = now.getSeconds(), m = now.getMinutes() + s / 60, h = (now.getHours() % 12) + m / 60;
+    $$('svg.analog').forEach(svg => {
+      svg.querySelector('.h-hour').setAttribute('transform', `rotate(${h * 30})`);
+      svg.querySelector('.h-min').setAttribute('transform', `rotate(${m * 6})`);
+      svg.querySelector('.h-sec').setAttribute('transform', `rotate(${s * 6})`);
+    });
+  }
+  tick(); setInterval(tick, 1000);
+
+  /* ---------------- App icons ---------------- */
+  const GLYPH = {
+    snow: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
+    crown: '<path d="M3 18h18l-1.5-10-4.5 4-3-6-3 6L4.5 8z" fill="#fff"/><rect x="3" y="19" width="18" height="2" rx="1" fill="#fff"/>',
+    ball: '<circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.8" fill="none"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" stroke="#fff" stroke-width="1.5" fill="none"/>',
+    chart: '<path d="M3 20h18M5 16l4-5 4 3 6-8" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="6" r="2" fill="#fff"/>',
+    anvil: '<path d="M3 7h14c0 3-2 4-5 4v3h3v3H7v-3h3v-3C6 11 4 9 3 7z" fill="#fff"/><path d="M17 7h4" stroke="#fff" stroke-width="2"/>',
+    doc: '<path d="M6 2h9l4 4v16H6z" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M9 10h7M9 14h7M9 18h4" stroke="#fff" stroke-width="1.6"/>',
+    dollar: '<path d="M12 2v20M17 6.5C16 5 14.3 4.5 12 4.5c-3 0-4.6 1.5-4.6 3.4 0 4.6 9.6 2.4 9.6 7.6 0 2-1.8 3.6-5 3.6-2.6 0-4.3-.8-5.3-2.4" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>',
+    smile: '<circle cx="12" cy="12" r="9" fill="#ffe14d"/><circle cx="9" cy="10" r="1.3" fill="#3a2a00"/><circle cx="15" cy="10" r="1.3" fill="#3a2a00"/><path d="M7.5 13.5h9c-.8 2.6-2.5 4-4.5 4s-3.7-1.4-4.5-4z" fill="#fff" stroke="#3a2a00" stroke-width=".8"/>',
+    spark: '<path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="#fff"/>'
+  };
+  const health = {};
+  function tileHTML(a, withLabel) {
+    const st = health[a.id] || (a.local ? 'local' : '');
+    return `<button type="button" class="app-tile${withLabel ? ' has-lbl' : ''}" style="--c:${a.color}" data-go="app:${a.id}" title="${esc(a.name)}" aria-label="Open ${esc(a.name)}">
+      <svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[a.glyph] || GLYPH.spark}</svg>
+      ${withLabel ? `<span class="lbl">${esc(a.short)}</span>` : ''}<span class="dot ${st}"></span></button>`;
+  }
+  function renderApps() {
+    $$('[data-apps="mini"]').forEach(el => el.innerHTML = APPS.slice(0, 9).map(a => tileHTML(a, false)).join(''));
+    $$('[data-apps="dock"]').forEach(el => el.innerHTML = APPS.map(a => tileHTML(a, true)).join(''));
+    $$('[data-stat="apps"]').forEach(e => e.textContent = APPS.length);
+  }
+  renderApps();
+
+  /* ---------------- Health checks (real reachability pings) ---------------- */
+  async function ping(a) {
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 7000);
+    try { await fetch(a.url + (a.url.includes('?') ? '&' : '?') + '_bbcc=' + Date.now(), { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal }); return 'on'; }
+    catch { return a.local ? 'local' : 'off'; }
+    finally { clearTimeout(t); }
+  }
+  let lastHealth = null;
+  async function checkAll() {
+    const prev = { ...health };
+    await Promise.all(APPS.map(async a => { health[a.id] = await ping(a); }));
+    lastHealth = new Date();
+    renderApps();
+    const down = APPS.filter(a => health[a.id] === 'off');
+    const up = APPS.filter(a => health[a.id] === 'on');
+    APPS.forEach(a => {
+      if (prev[a.id] && prev[a.id] !== health[a.id] && (health[a.id] === 'off' || prev[a.id] === 'off'))
+        pushNotif({ title: health[a.id] === 'off' ? `${a.name} down` : `${a.name} back online`, body: 'App health check', kind: health[a.id] === 'off' ? 'alert' : 'ok', time: Date.now() });
+    });
+    systemNotif = { title: down.length ? `${down.length} app${down.length > 1 ? 's' : ''} unreachable` : 'All systems online', body: `${up.length}/${APPS.length - APPS.filter(a => a.local && health[a.id] !== 'on').length} cloud apps responding`, kind: down.length ? 'alert' : 'system', time: Date.now() };
+    renderNotifs();
+  }
+
+  /* ---------------- Notifications (ntfy live feed + system) ---------------- */
+  const KIND = {
+    project: { c: '#c81e2b', i: '🏠' }, dispatch: { c: '#1d4fd8', i: '🚚' }, tech: { c: '#16a34a', i: '👤' },
+    invoice: { c: '#15a34a', i: '🧾' }, system: { c: '#7c3aed', i: '⚙️' }, alert: { c: '#dc2626', i: '⚠️' }, ok: { c: '#16a34a', i: '✅' }, money: { c: '#15803d', i: '💵' }
+  };
+  let notifs = store.get('notifs', []);
+  let systemNotif = null;
+  function kindFor(m) {
+    const t = ((m.title || '') + ' ' + (m.body || '') + ' ' + (m.tags || []).join(' ')).toLowerCase();
+    if (/invoice|paid|payment|\$/.test(t)) return 'invoice';
+    if (/dispatch|route|assign/.test(t)) return 'dispatch';
+    if (/tech|clock|reading/.test(t)) return 'tech';
+    if (/approv|quote/.test(t)) return 'project';
+    if (/call|lead|new/.test(t)) return 'project';
+    if (/fail|down|error|urgent/.test(t)) return 'alert';
+    return 'system';
+  }
+  function ago(ts) {
+    const s = Math.max(0, (Date.now() - ts) / 1000);
+    if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago';
+    if (s < 86400) return Math.floor(s / 3600) + ' hr ago'; return Math.floor(s / 86400) + ' d ago';
+  }
+  function pushNotif(n, quiet) {
+    if (n.id && notifs.some(x => x.id === n.id)) return;
+    notifs.unshift(n); notifs = notifs.slice(0, 60); store.set('notifs', notifs);
+    if (!quiet) { renderNotifs(); celebrate(); }
+  }
+  function allNotifs() { return (systemNotif ? [systemNotif] : []).concat(notifs).sort((a, b) => b.time - a.time); }
+  function renderNotifs() {
+    const list = allNotifs().slice(0, 5);
+    $$('[data-notifs]').forEach(ul => {
+      ul.innerHTML = list.length ? list.map(n => { const k = KIND[n.kind] || KIND.system; return `<li><span class="ic" style="--c:${k.c}">${k.i}</span><div><b>${esc(n.title)}</b><span>${esc(n.body || '')}</span><i>${ago(n.time)}</i></div></li>`; }).join('')
+        : `<li><span class="ic" style="--c:#7c3aed">⚙️</span><div><b>Checking systems</b><span>Pinging your apps…</span><i>now</i></div></li>`;
+    });
+    const today = new Date().toDateString();
+    const approvals = notifs.filter(n => new Date(n.time).toDateString() === today && /approv/i.test((n.title || '') + (n.body || ''))).length;
+    $$('[data-stat="approvals"]').forEach(e => e.textContent = approvals);
+  }
+  renderNotifs();
+  setInterval(renderNotifs, 30000);
+
+  let es = null;
+  function connectNtfy() {
+    if (es) { es.close(); es = null; }
+    const topic = (settings.ntfy || '').trim();
+    if (!topic) return;
+    const base = topic.startsWith('http') ? topic.replace(/\/$/, '') : 'https://ntfy.sh/' + encodeURIComponent(topic);
+    fetch(base + '/json?poll=1&since=24h').then(r => r.text()).then(txt => {
+      txt.split('\n').filter(Boolean).forEach(line => { try { const m = JSON.parse(line); if (m.event === 'message') pushNotif({ id: m.id, title: m.title || 'Chill Pros', body: m.message, tags: m.tags, kind: kindFor({ title: m.title, body: m.message, tags: m.tags }), time: m.time * 1000 }, true); } catch {} });
+      renderNotifs();
+    }).catch(() => {});
+    try {
+      es = new EventSource(base + '/sse');
+      es.onmessage = ev => { try { const m = JSON.parse(ev.data); if (m.event === 'message') { pushNotif({ id: m.id, title: m.title || 'Chill Pros', body: m.message, tags: m.tags, kind: kindFor({ title: m.title, body: m.message, tags: m.tags }), time: m.time * 1000 }); toast((m.title ? m.title + ': ' : '') + m.message); } } catch {} };
+    } catch {}
+  }
+  connectNtfy();
+  checkAll(); setInterval(checkAll, 5 * 60 * 1000);
+
+  /* ---------------- Weather (Open-Meteo, San Antonio) ---------------- */
+  const WX = { 0: ['☀️', 'Sunny'], 1: ['🌤️', 'Mostly sunny'], 2: ['⛅', 'Partly cloudy'], 3: ['☁️', 'Cloudy'], 45: ['🌫️', 'Fog'], 48: ['🌫️', 'Fog'], 51: ['🌦️', 'Drizzle'], 53: ['🌦️', 'Drizzle'], 55: ['🌧️', 'Drizzle'], 61: ['🌧️', 'Rain'], 63: ['🌧️', 'Rain'], 65: ['🌧️', 'Heavy rain'], 71: ['🌨️', 'Snow'], 80: ['🌦️', 'Showers'], 81: ['🌧️', 'Showers'], 82: ['⛈️', 'Storms'], 95: ['⛈️', 'Thunderstorm'], 96: ['⛈️', 'Thunderstorm'], 99: ['⛈️', 'Thunderstorm'] };
+  let wxData = null;
+  async function weather() {
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=29.4241&longitude=-98.4936&current=temperature_2m,weather_code,is_day,apparent_temperature,relative_humidity_2m,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FChicago&forecast_days=4');
+      wxData = await r.json();
+      const c = wxData.current, d = wxData.daily;
+      const [ic, cond] = WX[c.weather_code] || ['🌡️', 'Weather'];
+      $$('[data-wx="icon"]').forEach(e => e.textContent = (!c.is_day && ic === '☀️') ? '🌙' : ic);
+      $$('[data-wx="temp"]').forEach(e => e.textContent = Math.round(c.temperature_2m) + '°F');
+      $$('[data-wx="cond"]').forEach(e => e.textContent = (!c.is_day && cond === 'Sunny') ? 'Clear' : cond);
+      $$('[data-wx="hl"]').forEach(e => e.textContent = `H:${Math.round(d.temperature_2m_max[0])}° L:${Math.round(d.temperature_2m_min[0])}°`);
+    } catch { $$('[data-wx="cond"]').forEach(e => e.textContent = 'Offline'); }
+  }
+  weather(); setInterval(weather, 15 * 60 * 1000);
+
+  /* ---------------- Drawer ---------------- */
+  const panel = $('#panel'), backdrop = $('#backdrop'), body = $('#panelBody'), title = $('#panelTitle');
+  let returnFocus = null;
+  function openPanel(t, html, trigger) {
+    returnFocus = trigger || document.activeElement;
+    title.textContent = t; body.innerHTML = html;
+    panel.hidden = false; backdrop.hidden = false;
+    $('#panelClose').focus();
+  }
+  function closePanel() { panel.hidden = true; backdrop.hidden = true; if (returnFocus && returnFocus.focus) returnFocus.focus(); }
+  $('#panelClose').addEventListener('click', closePanel);
+  backdrop.addEventListener('click', closePanel);
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.hidden) closePanel(); });
+
+  function openApp(a) {
+    if (!a) return;
+    const w = window.open(a.url, a.local ? '_blank' : 'bb_' + a.id);
+    if (!w) location.href = a.url;
+  }
+  const pill = id => { const s = health[id]; return `<span class="status-pill ${s || ''}">${s === 'on' ? 'Online' : s === 'off' ? 'Unreachable' : s === 'local' ? 'Laptop only' : 'Checking'}</span>`; };
+
+  const VIEWS = {
+    apps: () => ['All Apps', `<div class="big-apps">${APPS.map(a => tileHTML(a, true)).join('')}</div>
+      <div class="card" style="margin-top:16px"><ul class="list">${APPS.map(a => `<li><span class="ic" style="--c:${a.color}"></span><div style="flex:1"><b>${esc(a.name)}</b><span>${esc(a.url.replace(/^https?:\/\//, ''))}</span></div>${pill(a.id)}</li>`).join('')}</ul>
+      <p style="margin-top:10px">Last checked ${lastHealth ? ago(lastHealth.getTime()) : '—'}. Edit the roster in <code>cc/apps.js</code>.</p></div>`],
+    alerts: () => ['Alerts', `<div class="card"><ul class="list">${allNotifs().slice(0, 40).map(n => { const k = KIND[n.kind] || KIND.system; return `<li><span class="ic" style="--c:${k.c}">${k.i}</span><div><b>${esc(n.title)}</b><span>${esc(n.body || '')}</span><i>${ago(n.time)}</i></div></li>`; }).join('') || '<li>No alerts yet.</li>'}</ul></div>
+      ${settings.ntfy ? `<p class="muted" style="color:var(--muted)">Live feed: ntfy topic <b>${esc(settings.ntfy)}</b></p>` : `<div class="card"><h2>Connect your Chill Pros alerts</h2><p>Add your ntfy topic in Settings and new calls, approvals, tech readings and Autopilot activity land here live.</p><button class="btn" data-go="settings">Open Settings</button></div>`}`],
+    settings: () => ['Settings', `
+      <div class="card"><h2>Diamond shine</h2><p>How hard the ice hits.</p>
+        <div class="seg" role="group" aria-label="Effect intensity">${['low', 'heavy', 'max'].map(v => `<button type="button" data-fx="${v}" aria-pressed="${settings.fx === v}">${v === 'low' ? 'Low' : v === 'heavy' ? 'Heavy' : 'Max Ice'}</button>`).join('')}</div></div>
+      ${Object.keys(LOOKS).length > 1 ? `<div class="card"><h2>Avatar look</h2><div class="seg" role="group" aria-label="Avatar look">${Object.entries(LOOKS).map(([k, v]) => `<button type="button" data-look="${k}" aria-pressed="${settings.look === k}">${esc(v.label)}</button>`).join('')}</div></div>` : ''}
+      <div class="card"><h2>Live alerts (ntfy)</h2><p>Your Chill Pros ntfy topic name (or full server URL). Notifications stream into the Command Center in real time.</p>
+        <label class="fld" for="ntfyIn">Topic</label><input id="ntfyIn" class="txt" value="${esc(settings.ntfy)}" placeholder="e.g. chillpros-alerts" autocomplete="off">
+        <button class="btn" type="button" data-save-ntfy>Save &amp; connect</button></div>
+      <div class="card"><h2>Desktop mode</h2><p>Install this page as an app (browser menu → Install / “Add to Home Screen”), then set it to open at startup for an always-on desktop Command Center.</p></div>`],
+    weather: () => {
+      if (!wxData) return ['Weather', '<p>Loading…</p>'];
+      const d = wxData.daily, c = wxData.current;
+      return ['San Antonio Weather', `<div class="card"><h2>${Math.round(c.temperature_2m)}°F · ${(WX[c.weather_code] || ['', ''])[1]}</h2><p>Feels like ${Math.round(c.apparent_temperature)}° · Humidity ${c.relative_humidity_2m}% · Wind ${Math.round(c.wind_speed_10m)} mph</p></div>
+        <div class="card"><ul class="list">${d.time.map((t, i) => `<li><span class="ic" style="--c:#0b2a3d">${(WX[d.weather_code[i]] || ['🌡️'])[0]}</span><div style="flex:1"><b>${new Date(t + 'T12:00').toLocaleDateString(undefined, { weekday: 'long' })}</b><span>Rain chance ${d.precipitation_probability_max[i] ?? 0}%</span></div><b>${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°</b></li>`).join('')}</ul>
+        <p style="color:var(--muted)">Heads-up for the crew: AC calls spike on hot days.</p></div>`];
+    },
+    status: () => ['System Status', `<div class="card"><ul class="list">${APPS.map(a => `<li><div style="flex:1"><b>${esc(a.name)}</b><span>${esc(a.url.replace(/^https?:\/\//, ''))}</span></div>${pill(a.id)}</li>`).join('')}</ul><button class="btn" type="button" data-recheck>Re-check now</button></div>`]
+  };
+  function routeView(key) {
+    const r = ROUTES[key]; const a = appById(r.app);
+    return [r.label, `<div class="card"><h2>${esc(r.label)}</h2><p>${esc(r.blurb)}</p><p style="margin-top:8px">Runs in <b>${esc(a.name)}</b> ${pill(a.id)}</p>
+      <button class="btn" type="button" data-go="app:${a.id}">Open ${esc(r.label)} →</button></div>`];
+  }
+
+  function go(target, trigger, ev) {
+    if (ev) burstAt(ev);
+    if (target === 'home') { if (!panel.hidden) closePanel(); window.scrollTo({ top: 0, behavior: 'smooth' }); celebrate(); return; }
+    if (target.startsWith('app:')) { openApp(appById(target.slice(4))); return; }
+    if (ROUTES[target]) { const [t, h] = routeView(target); openPanel(t, h, trigger); return; }
+    if (VIEWS[target]) { const [t, h] = VIEWS[target](); openPanel(t, h, trigger); }
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-go]'); if (b) { e.preventDefault(); go(b.dataset.go, b, e); return; }
+    const fx = e.target.closest('[data-fx]'); if (fx && fx.tagName === 'BUTTON') { settings.fx = fx.dataset.fx; saveSettings(); $$('[data-fx]', body).forEach(x => x.setAttribute('aria-pressed', x === fx)); burstAt(e, 40); return; }
+    const lk = e.target.closest('[data-look]'); if (lk) { settings.look = lk.dataset.look; saveSettings(); applyLook(); $$('[data-look]', body).forEach(x => x.setAttribute('aria-pressed', x === lk)); return; }
+    if (e.target.closest('[data-save-ntfy]')) { settings.ntfy = $('#ntfyIn').value.trim(); saveSettings(); connectNtfy(); toast(settings.ntfy ? 'Alerts connected' : 'Alerts disconnected'); return; }
+    if (e.target.closest('[data-recheck]')) { checkAll().then(() => { const [t, h] = VIEWS.status(); openPanel(t, h); }); }
+  });
+
+  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 3200); }
+
+  /* ---------------- Diamond FX engine ---------------- */
+  const FX = { low: { rate: 5, size: 1 }, heavy: { rate: 16, size: 1.25 }, max: { rate: 34, size: 1.55 } };
+  const HOT = { // grill + glasses + crown get extra love (normalized coords)
+    desktop: [[0.474, 0.37, 0.505, 0.385], [0.481, 0.36, 0.512, 0.39], [0.49, 0.03, 0.52, 0.06]],
+    mobile: [[0.46, 0.27, 0.553, 0.29], [0.47, 0.275, 0.55, 0.292]]
+  };
+  let SP = { desktop: [], mobile: [] };
+  fetch('cc/sparkles.json').then(r => r.json()).then(j => { SP = j; }).catch(() => {});
+
+  const layers = $$('.art').map(art => ({ art, kind: art.classList.contains('art-d') ? 'desktop' : 'mobile', cv: $('canvas.fx', art), parts: [] }));
+  function visibleLayer() { return layers.find(l => l.art.offsetParent !== null); }
+  function sizeCanvas(l) {
+    const r = l.art.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
+    l.w = r.width; l.h = r.height; l.cv.width = Math.round(r.width * dpr); l.cv.height = Math.round(r.height * dpr);
+    l.ctx = l.cv.getContext('2d'); l.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  const ro = new ResizeObserver(() => layers.forEach(sizeCanvas)); layers.forEach(l => ro.observe(l.art));
+
+  function spawn(l, x, y, big) {
+    const s = FX[settings.fx] || FX.heavy;
+    l.parts.push({ x, y, t: 0, life: 500 + Math.random() * 800, r: (big ? 9 : 4 + Math.random() * 6) * s.size * (l.w / 1100), rot: Math.random() * Math.PI, hue: Math.random() < .2 ? 200 : 0 });
+  }
+  function star(ctx, p, k) {
+    const a = Math.sin(Math.PI * k), r = p.r * (0.4 + a);
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot + k * 0.6); ctx.globalAlpha = a;
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.6);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.25, p.hue ? 'rgba(160,225,255,.75)' : 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath();
+    for (let i = 0; i < 4; i++) { const ang = i * Math.PI / 2; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(ang - .09) * r * 0.25, Math.sin(ang - .09) * r * 0.25); ctx.lineTo(Math.cos(ang) * r * 2.6, Math.sin(ang) * r * 2.6); ctx.lineTo(Math.cos(ang + .09) * r * 0.25, Math.sin(ang + .09) * r * 0.25); }
+    ctx.fill();
+    ctx.globalAlpha = a * .6; ctx.rotate(Math.PI / 4); ctx.beginPath();
+    for (let i = 0; i < 4; i++) { const ang = i * Math.PI / 2; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(ang - .1) * r * .2, Math.sin(ang - .1) * r * .2); ctx.lineTo(Math.cos(ang) * r * 1.3, Math.sin(ang) * r * 1.3); ctx.lineTo(Math.cos(ang + .1) * r * .2, Math.sin(ang + .1) * r * .2); }
+    ctx.fill(); ctx.restore();
+  }
+  let last = performance.now(), acc = 0;
+  function frame(now) {
+    const dt = Math.min(64, now - last); last = now;
+    const l = visibleLayer();
+    if (l && l.ctx && !document.hidden) {
+      const s = FX[settings.fx] || FX.heavy;
+      acc += dt * s.rate / 1000;
+      const pts = SP[l.kind] || [];
+      while (acc >= 1) {
+        acc -= 1;
+        if (Math.random() < .22) { const b = HOT[l.kind][Math.floor(Math.random() * HOT[l.kind].length)]; spawn(l, (b[0] + Math.random() * (b[2] - b[0])) * l.w, (b[1] + Math.random() * (b[3] - b[1])) * l.h); }
+        else if (pts.length) { const p = pts[Math.floor(Math.random() * pts.length)]; spawn(l, p[0] * l.w, p[1] * l.h); }
+      }
+      if (cursor.in && Math.random() < s.rate / 60 && pts.length) { // flare near cursor
+        let best = null, bd = 1e9; for (let i = 0; i < 18; i++) { const p = pts[Math.floor(Math.random() * pts.length)]; const dx = p[0] * l.w - cursor.x, dy = p[1] * l.h - cursor.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = p; } }
+        if (best && bd < (l.w * .09) ** 2) spawn(l, best[0] * l.w, best[1] * l.h, true);
+      }
+      const ctx = l.ctx; ctx.clearRect(0, 0, l.w, l.h); ctx.globalCompositeOperation = 'lighter';
+      l.parts = l.parts.filter(p => (p.t += dt) < p.life);
+      for (const p of l.parts) star(ctx, p, p.t / p.life);
+    }
+    requestAnimationFrame(frame);
+  }
+  if (!reduced || settings.fx !== 'low') requestAnimationFrame(frame);
+
+  const cursor = { x: 0, y: 0, in: false };
+  layers.forEach(l => {
+    const move = (cx, cy) => { const r = l.art.getBoundingClientRect(); cursor.x = cx - r.left; cursor.y = cy - r.top; cursor.in = true; l.art.style.setProperty('--mx', (cursor.x / r.width * 100) + '%'); l.art.style.setProperty('--my', (cursor.y / r.height * 100) + '%'); };
+    l.art.addEventListener('pointermove', e => move(e.clientX, e.clientY));
+    l.art.addEventListener('pointerleave', () => { cursor.in = false; l.art.classList.remove('touching'); });
+    l.art.addEventListener('pointerdown', e => { move(e.clientX, e.clientY); l.art.classList.add('touching'); });
+    l.art.addEventListener('pointerup', () => setTimeout(() => l.art.classList.remove('touching'), 400));
+  });
+  function burstAt(ev, n) {
+    const l = visibleLayer(); if (!l || !ev || ev.clientX == null) return;
+    const r = l.art.getBoundingClientRect(); const x = ev.clientX - r.left, y = ev.clientY - r.top;
+    const count = n || ({ low: 8, heavy: 16, max: 28 }[settings.fx] || 16);
+    for (let i = 0; i < count; i++) { const a = Math.random() * Math.PI * 2, d = Math.random() * r.width * .05; spawn(l, x + Math.cos(a) * d, y + Math.sin(a) * d, i < 3); }
+  }
+  function celebrate() { document.body.classList.remove('pulse'); void document.body.offsetWidth; document.body.classList.add('pulse'); setTimeout(() => document.body.classList.remove('pulse'), 2800); }
+
+  // phone tilt moves the shine like real jewelry
+  addEventListener('deviceorientation', e => { if (e.gamma == null) return; document.documentElement.style.setProperty('--tilt', (e.gamma * 1.5).toFixed(1) + '%'); });
+
+})();
