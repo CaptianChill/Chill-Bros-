@@ -33,6 +33,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/brae",
   // Owner command center (Chill Pros HQ) bridge: no Neon session; checks its own HQ_BRIDGE_SECRET header.
   "/api/hq",
+  // BB Command Center: static owner home screen (no customer data; links + public weather only).
+  "/command-center",
 ];
 
 function isPublicPath(pathname: string): boolean {
