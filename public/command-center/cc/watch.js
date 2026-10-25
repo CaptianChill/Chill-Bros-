@@ -19,7 +19,7 @@
 
   // Twinkle stars that sit on bezel stones (re-positioned at random as they fade).
   let stars = '';
-  for (let i = 0; i < 9; i++) stars += `<g class="w-star" style="--d:${(i * 0.37).toFixed(2)}s"><path d="M0 -9L1.4 -1.4L9 0L1.4 1.4L0 9L-1.4 1.4L-9 0L-1.4 -1.4Z" fill="#fff"/><circle r="2.4" fill="#fff"/></g>`;
+  for (let i = 0; i < 12; i++) stars += `<g class="w-star" style="--d:${(i * 0.29).toFixed(2)}s"><path d="M0 -7L.5 -.5L7 0L.5 .5L0 7L-.5 .5L-7 0L-.5 -.5Z" fill="#fff"/><path d="M-2.6 -2.6L0 -.3L2.6 -2.6L.3 0L2.6 2.6L0 .3L-2.6 2.6L-.3 0Z" fill="#fff" opacity=".7"/><circle r="1.1" fill="#fff"/></g>`;
 
   // Hour markers: diamonds in round gold settings (none at 3, where the date sits).
   let marks = '';
