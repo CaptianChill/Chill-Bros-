@@ -13,12 +13,11 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------------- Settings ---------------- */
-  const settings = Object.assign({ fx: reduced ? 'low' : 'heavy', ntfy: '', look: 'default', appUrls: {}, fit: 'full' }, store.get('settings', {}));
+  const settings = Object.assign({ fx: reduced ? 'low' : 'heavy', ntfy: '', look: 'default', appUrls: {} }, store.get('settings', {}));
   APPS.forEach(a => { if (!a.url && settings.appUrls && settings.appUrls[a.id]) a.url = settings.appUrls[a.id]; });
   const BIG = window.BB_BIG || [];
   document.body.dataset.fx = settings.fx;
-  document.body.dataset.fit = settings.fit;
-  const saveSettings = () => { store.set('settings', settings); document.body.dataset.fx = settings.fx; document.body.dataset.fit = settings.fit; };
+  const saveSettings = () => { store.set('settings', settings); document.body.dataset.fx = settings.fx; };
 
   /* ---------------- Avatar look (art variants) ---------------- */
   const LOOKS = window.BB_LOOKS || { default: { desktop: 'cc/desktop.webp', mobile: 'cc/mobile.webp', label: 'Original' } };
@@ -175,8 +174,8 @@
     $$('[data-money="line"]').forEach(e => e.textContent = money.length ? `${money.length} update${money.length > 1 ? 's' : ''} · last: ${money[0].title}` : (settings.ntfy ? 'No payments yet today' : 'Connect alerts in Settings'));
   }
   function renderNotifs() {
-    const list = allNotifs().slice(0, 5);
     $$('[data-notifs]').forEach(ul => {
+      const list = allNotifs().slice(0, ul.dataset.notifs === 'side' ? 12 : 5);
       ul.innerHTML = list.length ? list.map(n => { const k = KIND[n.kind] || KIND.system; return `<li><span class="ic" style="--c:${k.c}">${k.i}</span><div><b>${esc(n.title)}</b><span>${esc(n.body || '')}</span><i>${ago(n.time)}</i></div></li>`; }).join('')
         : `<li><span class="ic" style="--c:#7c3aed">⚙️</span><div><b>Checking systems</b><span>Pinging your apps…</span><i>now</i></div></li>`;
     });
@@ -219,6 +218,7 @@
       $$('[data-wx="temp"]').forEach(e => e.textContent = Math.round(c.temperature_2m) + '°F');
       $$('[data-wx="cond"]').forEach(e => e.textContent = (!c.is_day && cond === 'Sunny') ? 'Clear' : cond);
       $$('[data-wx="hl"]').forEach(e => e.textContent = `H:${Math.round(d.temperature_2m_max[0])}° L:${Math.round(d.temperature_2m_min[0])}°`);
+      $$('[data-wx="forecast"]').forEach(e => e.innerHTML = d.time.map((t, i) => `<div><b>${i ? new Date(t + 'T12:00').toLocaleDateString(undefined, { weekday: 'short' }) : 'Today'}</b><span>${(WX[d.weather_code[i]] || ['🌡️'])[0]}</span><i>${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°</i></div>`).join(''));
     } catch { $$('[data-wx="cond"]').forEach(e => e.textContent = 'Offline'); }
   }
   weather(); setInterval(weather, 15 * 60 * 1000);
@@ -235,7 +235,7 @@
   function closePanel() { panel.hidden = true; backdrop.hidden = true; if (returnFocus && returnFocus.focus) returnFocus.focus(); }
   $('#panelClose').addEventListener('click', closePanel);
   backdrop.addEventListener('click', closePanel);
-  addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.hidden) closePanel(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.hidden) closePanel(); if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"][data-go]')) { e.preventDefault(); go(e.target.dataset.go, e.target); } });
 
   function openApp(a) {
     if (!a) return;
@@ -260,8 +260,6 @@
     settings: () => ['Settings', `
       <div class="card"><h2>Diamond shine</h2><p>How hard the ice hits.</p>
         <div class="seg" role="group" aria-label="Effect intensity">${['low', 'heavy', 'max'].map(v => `<button type="button" data-fx="${v}" aria-pressed="${settings.fx === v}">${v === 'low' ? 'Low' : v === 'heavy' ? 'Heavy' : 'Max Ice'}</button>`).join('')}</div></div>
-      <div class="card"><h2>Screen fit</h2><p>Full screen stretches the Command Center edge to edge on your laptop.</p>
-        <div class="seg" role="group" aria-label="Screen fit">${[['full', 'Full screen'], ['original', 'Original shape']].map(([v, l]) => `<button type="button" data-fit="${v}" aria-pressed="${settings.fit === v}">${l}</button>`).join('')}</div></div>
       ${Object.keys(LOOKS).length > 1 ? `<div class="card"><h2>Avatar look</h2><div class="seg" role="group" aria-label="Avatar look">${Object.entries(LOOKS).map(([k, v]) => `<button type="button" data-look="${k}" aria-pressed="${settings.look === k}">${esc(v.label)}</button>`).join('')}</div></div>` : ''}
       <div class="card"><h2>Live alerts (ntfy)</h2><p>Your Chill Pros ntfy topic name (or full server URL). Notifications stream into the Command Center in real time.</p>
         <label class="fld" for="ntfyIn">Topic</label><input id="ntfyIn" class="txt" value="${esc(settings.ntfy)}" placeholder="e.g. chillpros-alerts" autocomplete="off">
@@ -299,7 +297,6 @@
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-go]'); if (b) { e.preventDefault(); go(b.dataset.go, b, e); return; }
     const fx = e.target.closest('[data-fx]'); if (fx && fx.tagName === 'BUTTON') { settings.fx = fx.dataset.fx; saveSettings(); $$('[data-fx]', body).forEach(x => x.setAttribute('aria-pressed', x === fx)); burstAt(e, 40); return; }
-    const ft = e.target.closest('button[data-fit]'); if (ft) { settings.fit = ft.dataset.fit; saveSettings(); $$('button[data-fit]', body).forEach(x => x.setAttribute('aria-pressed', x === ft)); return; }
     const lk = e.target.closest('[data-look]'); if (lk) { settings.look = lk.dataset.look; saveSettings(); applyLook(); $$('[data-look]', body).forEach(x => x.setAttribute('aria-pressed', x === lk)); return; }
     if (e.target.closest('[data-save-ntfy]')) { settings.ntfy = $('#ntfyIn').value.trim(); saveSettings(); connectNtfy(); toast(settings.ntfy ? 'Alerts connected' : 'Alerts disconnected'); return; }
     if (e.target.closest('[data-recheck]')) { checkAll().then(() => { const [t, h] = VIEWS.status(); openPanel(t, h); }); }
@@ -307,61 +304,92 @@
 
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 3200); }
 
-  /* ---------------- Diamond FX engine ---------------- */
-  const FX = { low: { rate: 5, size: 1 }, heavy: { rate: 16, size: 1.25 }, max: { rate: 34, size: 1.55 } };
-  const HOT = { // grill + glasses + crown get extra love (normalized coords)
-    desktop: [[0.474, 0.37, 0.505, 0.385], [0.481, 0.36, 0.512, 0.39], [0.49, 0.03, 0.52, 0.06]],
-    mobile: [[0.46, 0.27, 0.553, 0.29], [0.47, 0.275, 0.55, 0.292]]
-  };
-  let SP = { desktop: [], mobile: [] };
+  /* ---------------- Diamond FX engine ----------------
+     Small, crisp sparkle pops placed only on diamond jewelry and the diamond chain borders
+     (sparkles.json is a masked map of real diamond highlights in the art; text areas are excluded). */
+  const FX = { low: { rate: 9, size: .85 }, heavy: { rate: 24, size: 1 }, max: { rate: 44, size: 1.2 } };
+  let SP = { desktop: [], mobile: [], desktopJewel: 0 };
   fetch('cc/sparkles.json').then(r => r.json()).then(j => { SP = j; }).catch(() => {});
 
+  const artSpan = l => l.kind === 'desktop' ? (parseFloat(getComputedStyle(l.art).getPropertyValue('--W')) || 1536) / 1536 : 1;
   const layers = $$('.art').map(art => ({ art, kind: art.classList.contains('art-d') ? 'desktop' : 'mobile', cv: $('canvas.fx', art), parts: [] }));
+  // The wide-screen right column gets its own canvas so its diamond chains sparkle too.
+  const side = $('.side');
+  let sideLayer = null;
+  if (side) { const cv = document.createElement('canvas'); cv.className = 'fx side-fx'; cv.setAttribute('aria-hidden', 'true'); side.appendChild(cv); sideLayer = { art: side, kind: 'side', cv, parts: [] }; }
+  const allLayers = () => sideLayer ? layers.concat(sideLayer) : layers;
   function visibleLayer() { return layers.find(l => l.art.offsetParent !== null); }
   function sizeCanvas(l) {
     const r = l.art.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
     l.w = r.width; l.h = r.height; l.cv.width = Math.round(r.width * dpr); l.cv.height = Math.round(r.height * dpr);
     l.ctx = l.cv.getContext('2d'); l.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  const ro = new ResizeObserver(() => layers.forEach(sizeCanvas)); layers.forEach(l => ro.observe(l.art));
+  const ro = new ResizeObserver(() => allLayers().forEach(sizeCanvas)); allLayers().forEach(l => ro.observe(l.art));
 
   function spawn(l, x, y, big) {
     const s = FX[settings.fx] || FX.heavy;
-    l.parts.push({ x, y, t: 0, life: 500 + Math.random() * 800, r: (big ? 9 : 4 + Math.random() * 6) * s.size * (l.w / 1100), rot: Math.random() * Math.PI, hue: Math.random() < .2 ? 200 : 0 });
+    const unit = Math.min(l.w || 1000, (l.h || 700) * 1.5) / 1100;          // scale with the art, not the window
+    l.parts.push({ x, y, t: 0, life: 260 + Math.random() * 380, r: (big ? 3 : 1.5 + Math.random() * 1.6) * s.size * Math.max(.75, unit), rot: Math.random() * .5 - .25, ice: Math.random() < .3 });
   }
+  // Intricate four-point star: hairline rays, a smaller diagonal set and a pinpoint core.
   function star(ctx, p, k) {
-    const a = Math.sin(Math.PI * k), r = p.r * (0.4 + a);
-    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot + k * 0.6); ctx.globalAlpha = a;
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.6);
-    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.25, p.hue ? 'rgba(160,225,255,.75)' : 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 1.6, 0, Math.PI * 2); ctx.fill();
+    const a = Math.sin(Math.PI * Math.min(1, k * 1.15)), r = p.r * (.35 + .75 * a);
+    if (a <= .01) return;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.globalAlpha = a;
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.5);
+    g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.4, p.ice ? 'rgba(185,232,255,.35)' : 'rgba(255,255,255,.25)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 1.5, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.beginPath();
-    for (let i = 0; i < 4; i++) { const ang = i * Math.PI / 2; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(ang - .09) * r * 0.25, Math.sin(ang - .09) * r * 0.25); ctx.lineTo(Math.cos(ang) * r * 2.6, Math.sin(ang) * r * 2.6); ctx.lineTo(Math.cos(ang + .09) * r * 0.25, Math.sin(ang + .09) * r * 0.25); }
+    for (let i = 0; i < 4; i++) { const ang = i * Math.PI / 2; ctx.moveTo(Math.cos(ang - .5) * r * .18, Math.sin(ang - .5) * r * .18); ctx.lineTo(Math.cos(ang) * r * 4.6, Math.sin(ang) * r * 4.6); ctx.lineTo(Math.cos(ang + .5) * r * .18, Math.sin(ang + .5) * r * .18); }
     ctx.fill();
-    ctx.globalAlpha = a * .6; ctx.rotate(Math.PI / 4); ctx.beginPath();
-    for (let i = 0; i < 4; i++) { const ang = i * Math.PI / 2; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(ang - .1) * r * .2, Math.sin(ang - .1) * r * .2); ctx.lineTo(Math.cos(ang) * r * 1.3, Math.sin(ang) * r * 1.3); ctx.lineTo(Math.cos(ang + .1) * r * .2, Math.sin(ang + .1) * r * .2); }
-    ctx.fill(); ctx.restore();
+    ctx.globalAlpha = a * .7; ctx.beginPath();
+    for (let i = 0; i < 4; i++) { const ang = Math.PI / 4 + i * Math.PI / 2; ctx.moveTo(Math.cos(ang - .6) * r * .14, Math.sin(ang - .6) * r * .14); ctx.lineTo(Math.cos(ang) * r * 2.1, Math.sin(ang) * r * 2.1); ctx.lineTo(Math.cos(ang + .6) * r * .14, Math.sin(ang + .6) * r * .14); }
+    ctx.fill();
+    ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(0, 0, Math.max(.6, r * .32), 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
-  let last = performance.now(), acc = 0;
+  // Random point on the side column's diamond chains (top, bottom, right edge, separators).
+  function sidePoint(l) {
+    const r = l.art.getBoundingClientRect(), u = innerHeight / 1024;
+    const bands = [['h', 18 * u], ['h', r.height - 18 * u], ['v', r.width - 21 * u]];
+    $$('.side-sep', l.art).forEach(sep => { const b = sep.getBoundingClientRect(); bands.push(['h', b.top - r.top + b.height / 2]); });
+    const [kind, at] = bands[Math.floor(Math.random() * bands.length)];
+    return kind === 'h' ? [16 * u + Math.random() * (r.width - 60 * u), at + (Math.random() - .5) * 8 * u] : [at + (Math.random() - .5) * 8 * u, 30 * u + Math.random() * (r.height - 60 * u)];
+  }
+  let last = performance.now(), acc = 0, accSide = 0;
   function frame(now) {
     const dt = Math.min(64, now - last); last = now;
     const l = visibleLayer();
+    const s = FX[settings.fx] || FX.heavy;
     if (l && l.ctx && !document.hidden) {
-      const s = FX[settings.fx] || FX.heavy;
       acc += dt * s.rate / 1000;
       const pts = SP[l.kind] || [];
-      while (acc >= 1) {
+      const span = artSpan(l), mapX = nx => nx / span;
+      const jewel = l.kind === 'desktop' ? (SP.desktopJewel || 0) : 0;
+      while (acc >= 1 && pts.length) {
         acc -= 1;
-        if (Math.random() < .22) { const b = HOT[l.kind][Math.floor(Math.random() * HOT[l.kind].length)]; spawn(l, (b[0] + Math.random() * (b[2] - b[0])) * l.w, (b[1] + Math.random() * (b[3] - b[1])) * l.h); }
-        else if (pts.length) { const p = pts[Math.floor(Math.random() * pts.length)]; spawn(l, p[0] * l.w, p[1] * l.h); }
+        // ~45% of pops land on the jewelry, the rest run along the diamond borders
+        const fromJewel = jewel && jewel < pts.length && Math.random() < .45;
+        const i = fromJewel ? jewel + Math.floor(Math.random() * (pts.length - jewel)) : Math.floor(Math.random() * (jewel || pts.length));
+        const p = pts[i];
+        if (p && p[0] <= span) spawn(l, mapX(p[0]) * l.w, p[1] * l.h);
       }
-      if (cursor.in && Math.random() < s.rate / 60 && pts.length) { // flare near cursor
-        let best = null, bd = 1e9; for (let i = 0; i < 18; i++) { const p = pts[Math.floor(Math.random() * pts.length)]; const dx = p[0] * l.w - cursor.x, dy = p[1] * l.h - cursor.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = p; } }
-        if (best && bd < (l.w * .09) ** 2) spawn(l, best[0] * l.w, best[1] * l.h, true);
+      acc = Math.min(acc, 3);
+      if (cursor.in && Math.random() < s.rate / 90 && pts.length) { // a pop near the cursor, on a real diamond
+        let best = null, bd = 1e9; for (let k = 0; k < 18; k++) { const p = pts[Math.floor(Math.random() * pts.length)]; if (p[0] > span) continue; const dx = mapX(p[0]) * l.w - cursor.x, dy = p[1] * l.h - cursor.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = p; } }
+        if (best && bd < (l.w * .07) ** 2) spawn(l, mapX(best[0]) * l.w, best[1] * l.h, true);
       }
       const ctx = l.ctx; ctx.clearRect(0, 0, l.w, l.h); ctx.globalCompositeOperation = 'lighter';
       l.parts = l.parts.filter(p => (p.t += dt) < p.life);
       for (const p of l.parts) star(ctx, p, p.t / p.life);
+    }
+    if (sideLayer && sideLayer.ctx && sideLayer.art.offsetParent !== null && !document.hidden) {
+      const sl = sideLayer;
+      accSide += dt * s.rate * .45 / 1000;
+      while (accSide >= 1) { accSide -= 1; const [x, y] = sidePoint(sl); spawn(sl, x, y); }
+      const ctx = sl.ctx; ctx.clearRect(0, 0, sl.w, sl.h); ctx.globalCompositeOperation = 'lighter';
+      sl.parts = sl.parts.filter(p => (p.t += dt) < p.life);
+      for (const p of sl.parts) star(ctx, p, p.t / p.life);
     }
     requestAnimationFrame(frame);
   }
@@ -375,11 +403,14 @@
     l.art.addEventListener('pointerdown', e => { move(e.clientX, e.clientY); l.art.classList.add('touching'); });
     l.art.addEventListener('pointerup', () => setTimeout(() => l.art.classList.remove('touching'), 400));
   });
+  // A tap gives a tiny burst on the nearest real diamonds, never a cloud over the words.
   function burstAt(ev, n) {
     const l = visibleLayer(); if (!l || !ev || ev.clientX == null) return;
     const r = l.art.getBoundingClientRect(); const x = ev.clientX - r.left, y = ev.clientY - r.top;
-    const count = n || ({ low: 8, heavy: 16, max: 28 }[settings.fx] || 16);
-    for (let i = 0; i < count; i++) { const a = Math.random() * Math.PI * 2, d = Math.random() * r.width * .05; spawn(l, x + Math.cos(a) * d, y + Math.sin(a) * d, i < 3); }
+    const pts = SP[l.kind] || []; const span = artSpan(l);
+    const near = pts.filter(p => p[0] <= span && Math.hypot(p[0] / span * r.width - x, p[1] * r.height - y) < r.width * .05);
+    const count = Math.min(near.length, n || ({ low: 3, heavy: 6, max: 10 }[settings.fx] || 6));
+    for (let i = 0; i < count; i++) { const p = near[Math.floor(Math.random() * near.length)]; spawn(l, p[0] / span * r.width, p[1] * r.height, i === 0); }
   }
   function celebrate() { document.body.classList.remove('pulse'); void document.body.offsetWidth; document.body.classList.add('pulse'); setTimeout(() => document.body.classList.remove('pulse'), 2800); }
 
