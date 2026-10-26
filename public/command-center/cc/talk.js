@@ -16,6 +16,7 @@
   const dock = document.createElement('div');
   dock.className = 'talk-dock';
   dock.innerHTML = `<button type="button" class="talk-btn talk-mic" aria-label="Talk to Chilly Bro"><span class="talk-ico" aria-hidden="true">🎤</span><span class="talk-lbl">Talk</span></button>
+    ${window.BB_HQVIEW ? '<button type="button" class="talk-btn talk-hq" aria-label="Open Chill Pros HQ"><span class="talk-ico" aria-hidden="true">👑</span><span class="talk-lbl">HQ</span></button>' : ''}
     <a class="talk-btn talk-claude" href="${CLAUDE_URL}" target="_blank" rel="noopener" aria-label="Open a live Claude session"><span class="talk-ico" aria-hidden="true">✦</span><span class="talk-lbl">Claude</span></a>`;
   document.body.appendChild(dock);
 
@@ -34,6 +35,7 @@
   const close = () => { sheet.hidden = true; dock.classList.remove('on'); stopListening(); try { speechSynthesis.cancel(); } catch {} };
   dock.querySelector('.talk-mic').addEventListener('click', () => { if (sheet.hidden) { open(); startListening(); } else startListening(); });
   sheet.querySelector('.talk-x').addEventListener('click', close);
+  const hqBtn = dock.querySelector('.talk-hq'); if (hqBtn) hqBtn.addEventListener('click', () => { close(); window.BB_HQVIEW.open('today'); });
   sheet.querySelector('.talk-rec').addEventListener('click', () => (listening ? stopListening() : startListening()));
   sheet.querySelector('.talk-form').addEventListener('submit', e => { e.preventDefault(); const m = input.value.trim(); if (m) { input.value = ''; send(m); } });
   addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) close(); });
