@@ -115,7 +115,9 @@ type GooglePlace = {
   businessStatus?: string;
 };
 
-export const GOOGLE_QUERIES = ["restaurants", "grocery stores and meat markets", "hotels and motels", "bars and cafes", "bakeries and donut shops", "convenience stores and liquor stores", "nursing homes and assisted living", "ice cream and snow cone shops"];
+// Kitchens alternate with professional/commercial HVAC buyers (offices, property
+// managers, medical, schools, churches, gyms), which feed the office outreach lane.
+export const GOOGLE_QUERIES = ["restaurants", "property management companies", "grocery stores and meat markets", "medical and dental offices", "hotels and motels", "office buildings and business parks", "bars and cafes", "churches", "nursing homes and assisted living", "private schools and daycares", "bakeries and donut shops", "gyms and fitness centers", "convenience stores and liquor stores", "auto dealerships", "ice cream and snow cone shops", "veterinary clinics"];
 
 const GOOGLE_TYPE_TAGS: Record<string, Record<string, string>> = {
   restaurant: { amenity: "restaurant" },
