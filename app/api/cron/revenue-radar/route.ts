@@ -2,8 +2,8 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { runLeadScan } from "@/lib/chillbros/revenue-discovery";
 
 export const dynamic = "force-dynamic";
-// Up to 4 map searches of ~25s each.
-export const maxDuration = 120;
+// The scan stops starting new searches after ~4 minutes so it always saves and reports.
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const secret = String(process.env.CRON_SECRET || "");
@@ -30,8 +30,9 @@ export async function GET(request: Request) {
 
   // Rotates through greater San Antonio, one area forward each day, until ~25 new leads are added.
   try {
-    const scan = await runLeadScan(client, { mode: "daily", actorId: null, target: 25, maxAreas: 4 });
-    return Response.json({ ok: true, added: scan.added, areas: scan.scanned, skippedCustomers: scan.skippedCustomers, tasksMarkedOverdue: overdueRows?.length ?? 0, ranAt: now });
+    const scan = await runLeadScan(client, { mode: "daily", actorId: null, target: 25, maxAreas: 4, budgetMs: 240000 });
+    console.log("[revenue-radar-cron]", JSON.stringify(scan));
+    return Response.json({ ok: true, added: scan.added, source: scan.source, areas: scan.scanned, skippedCustomers: scan.skippedCustomers, tasksMarkedOverdue: overdueRows?.length ?? 0, ranAt: now });
   } catch (error) {
     console.error("[revenue-radar-cron] lead scan failed", error);
     return Response.json({ ok: false, error: error instanceof Error ? error.message : "Lead scan failed.", tasksMarkedOverdue: overdueRows?.length ?? 0 }, { status: 500 });

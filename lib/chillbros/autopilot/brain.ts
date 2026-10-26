@@ -3,6 +3,7 @@ import "server-only";
 import { askAI } from "@/lib/chillbros/ai";
 
 import { buildPlaybook, classifyUrgency, containsUrl, hasUnapprovedPrice, type PlaybookSettings } from "./playbook";
+import { intentGetsReply, parseReplyVerdict, REPLY_INTENTS, type ReplyVerdict } from "./replies-logic";
 
 // The autopilot's writer. The AI drafts the message body from the Chill Pros playbook;
 // code adds the booking link, unsubscribe link and postal address, and falls back to a
@@ -165,6 +166,43 @@ Tie it to the season in San Antonio (today is ${new Date().toLocaleDateString("e
 }
 
 export { classifyUrgency };
+
+/**
+ * Reads a reply to one of our emails and writes the answer. Null when the AI is
+ * unavailable or its answer breaks a guardrail: the owner handles that one by hand.
+ */
+export async function draftConversationReply(settings: PlaybookSettings, ctx: { who: string; existingCustomer: boolean; history: { at: string; subject: string | null; body: string | null }[]; theirMessage: string }): Promise<ReplyVerdict | null> {
+  const system = `${buildPlaybook(settings)}
+
+YOUR JOB NOW
+You are answering an email reply from ${ctx.existingCustomer ? "an existing Chill Pros customer" : "a business we emailed first (cold outreach)"}. Read what they wrote, then:
+- Answer their actual question in plain words using only the playbook facts. If you don't know something (exact availability, a specific repair price, warranty terms), say a technician or the office will confirm, and do not guess.
+- Move them one step toward booking: pick a time on the booking link (added automatically), or say what we need from them (address, equipment type, what it's doing).
+- If they ask for a quote, a site visit, a callback, have equipment down, or want maintenance pricing, that is a hot lead.
+- If they say they're not interested, or ask to stop or unsubscribe, do not argue or write a reply.
+- If they say you have the wrong person, thank them and ask who handles equipment maintenance there.
+- Never claim to be a person; never promise times; never invent prices, discounts or customers.
+
+OUTPUT
+Reply with only a JSON object:
+{"intent": one of ${REPLY_INTENTS.map((i) => `"${i}"`).join(", ")},
+ "hot": true or false,
+ "summary": "one line for the owner: who, what they want, anything they gave us (phone, address, equipment)",
+ "reply": "the email body, under 140 words, short paragraphs, starting with their name or a short greeting, no signature, no URLs; empty string for not_interested, unsubscribe and out_of_office"}`;
+  const history = ctx.history.map((m) => `--- We sent (${m.at}) ---\nSubject: ${m.subject ?? ""}\n${String(m.body ?? "").slice(0, 1200)}`).join("\n\n");
+  const task = `Conversation with ${ctx.who}.\n\n${history || "(no earlier messages on file)"}\n\n--- They replied ---\n"""${ctx.theirMessage.slice(0, 3000)}"""`;
+  const result = await askAI({ system, messages: [{ role: "user", content: task }], maxTokens: 900, timeoutMs: 40000, reasoningEffort: "low" });
+  if (!result.ok) {
+    console.error(`[reply-desk] AI unavailable: ${result.error}`);
+    return null;
+  }
+  const verdict = parseReplyVerdict(result.text);
+  if (!verdict) return null;
+  if (intentGetsReply(verdict.intent)) {
+    if (verdict.reply.length < 20 || hasUnapprovedPrice(verdict.reply, settings) || containsUrl(verdict.reply)) return null;
+  }
+  return verdict;
+}
 
 /** Plain-text email with the fixed footer every autopilot message carries. */
 export function composeEmail(draft: Draft, opts: { bookingUrl: string; unsubscribeUrl?: string | null; postalAddress: string }) {

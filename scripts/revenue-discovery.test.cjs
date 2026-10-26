@@ -79,3 +79,63 @@ test('runLeadScan keeps searching areas until it adds enough new leads', async (
     assert.equal(result.skippedCustomers, 2, 'existing customer skipped in each area');
   } finally { global.fetch = realFetch; }
 });
+
+test('a hung map server cannot run the scan past its time budget', async () => {
+  const client = {
+    from(table) {
+      if (table === 'chillbros_customers') return { select: () => ({ limit: async () => ({ data: [] }) }) };
+      throw new Error('nothing should be saved');
+    },
+  };
+  const realFetch = global.fetch;
+  global.fetch = (_url, init) => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'TimeoutError' }))));
+  const startedAt = Date.now();
+  const keepAlive = setInterval(() => {}, 1000); // abort timers don't hold the process open
+  try {
+    await assert.rejects(d.runLeadScan(client, { mode: 'daily', actorId: null, target: 25, maxAreas: 4, budgetMs: 12000 }), /temporarily unavailable/);
+    assert.ok(Date.now() - startedAt < 13000, 'stops at the budget instead of waiting on every server');
+  } finally { global.fetch = realFetch; clearInterval(keepAlive); }
+});
+
+test('with a Google Places key, Google is the source and known businesses are not re-added', async () => {
+  const saved = [];
+  const client = {
+    from(table) {
+      if (table === 'chillbros_customers') return { select: () => ({ limit: async () => ({ data: [{ name: 'Bird Bakery' }] }) }) };
+      return {
+        select: () => ({ range: async () => ({ data: [{ business_name: "Rosario's" }] }) }),
+        upsert: (rows) => { saved.push(...rows); return { select: async () => ({ data: rows.map((_, i) => ({ id: i })), error: null }) }; },
+      };
+    },
+  };
+  const realFetch = global.fetch;
+  const urls = [];
+  global.fetch = async (url) => {
+    urls.push(String(url));
+    return { ok: true, json: async () => ({ places: [
+      { id: 'a', displayName: { text: "Rosario's" }, primaryType: 'mexican_restaurant' },
+      { id: 'b', displayName: { text: 'Bird Bakery' }, primaryType: 'bakery' },
+      { id: 'c', displayName: { text: 'Pearl Ice House' }, primaryType: 'bar', nationalPhoneNumber: '(210) 555-0101', websiteUri: 'https://pearl.example', formattedAddress: '1 Pearl Pkwy, San Antonio, TX' },
+      { id: 'd', displayName: { text: 'Closed Cafe' }, primaryType: 'cafe', businessStatus: 'CLOSED_PERMANENTLY' },
+    ] }) };
+  };
+  process.env.GOOGLE_PLACES_API_KEY = 'test-key';
+  try {
+    const result = await d.runLeadScan(client, { mode: 'daily', actorId: null, target: 1, maxAreas: 4 });
+    assert.equal(result.source, 'google');
+    assert.ok(urls.every((u) => u.startsWith('https://places.googleapis.com/')));
+    assert.deepEqual(saved.map((r) => r.business_name), ['Pearl Ice House']);
+    assert.equal(saved[0].contact_phone, '(210) 555-0101');
+    assert.match(saved[0].signal_summary, /Website: https:\/\/pearl\.example/);
+    assert.equal(saved[0].service_line, 'kitchen_equipment');
+  } finally { global.fetch = realFetch; delete process.env.GOOGLE_PLACES_API_KEY; }
+});
+
+test('independent professional buyers with a phone and website clear the cold-email bar (70)', () => {
+  const area = d.SCAN_AREAS[0];
+  for (const type of ['real_estate_agency', 'dental_clinic', 'church', 'gym']) {
+    const [lead] = d.leadsFromGooglePlaces([{ id: type, displayName: { text: `Test ${type}` }, primaryType: type, nationalPhoneNumber: '(210) 555-0100', websiteUri: 'https://x.example', formattedAddress: '1 Main St' }], area, 'now');
+    assert.equal(lead.service_line, 'hvac_r');
+    assert.ok(lead.score >= 70, `${type} scored ${lead.score}`);
+  }
+});

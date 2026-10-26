@@ -10,7 +10,7 @@ import { getOwnerProfile } from "@/lib/chillbros/sent-invoice-history";
 export const dynamic = "force-dynamic";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-const LANE: Record<string, string> = { cold: "Cold email", reactivation: "Check-in", inbound: "Inbound reply", enrichment: "Lead finder" };
+const LANE: Record<string, string> = { cold: "Cold email", reactivation: "Check-in", inbound: "Inbound reply", enrichment: "Lead finder", reply: "Answered a reply" };
 
 function when(value: string) {
   return new Date(value).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -63,6 +63,7 @@ export default async function AutopilotDashboardPage({ searchParams }: { searchP
             <Stat label="Cold emails sent" value={d.sent.cold} />
             <Stat label="Check-ins sent" value={d.sent.reactivation} />
             <Stat label="Inbound replies sent" value={d.sent.inbound} />
+            <Stat label="Email replies answered" value={d.sent.reply} />
             <Stat label="Open slots (5 days)" value={d.openSlots5Days} tone={d.openSlots5Days === 0 ? "warn" : "default"} />
           </div>
           <p className="mt-2 text-xs text-zinc-500">{d.leads.unsubscribed} contacts have unsubscribed and are never emailed again. When open slots hit zero, outreach pauses on its own.</p>
@@ -88,7 +89,7 @@ export default async function AutopilotDashboardPage({ searchParams }: { searchP
             <summary className="cursor-pointer text-sm font-semibold text-[#8ffafa]">Autopilot is {s.enabled ? "ON" : "OFF"} · cold email {s.cold_email_enabled ? "on" : "off"} · {s.cold_daily_cap}/day · tap to change</summary>
             <div className="mt-3">
           <AutopilotControls
-            initial={{ enabled: s.enabled, inbound_enabled: s.inbound_enabled, reactivation_enabled: s.reactivation_enabled, cold_email_enabled: s.cold_email_enabled, hood_cleaning_active: s.hood_cleaning_active }}
+            initial={{ enabled: s.enabled, inbound_enabled: s.inbound_enabled, reactivation_enabled: s.reactivation_enabled, cold_email_enabled: s.cold_email_enabled, reply_enabled: s.reply_enabled, hood_cleaning_active: s.hood_cleaning_active }}
             caps={{ cold: s.cold_daily_cap, reactivation: s.reactivation_daily_cap }}
           />
             </div>

@@ -18,7 +18,7 @@ export type AutopilotDashboard = {
   days: number;
   settings: AutopilotSettings;
   openSlots5Days: number;
-  sent: { cold: number; reactivation: number; inbound: number; total: number };
+  sent: { cold: number; reactivation: number; inbound: number; reply: number; total: number };
   leads: { prospectsWithEmail: number; foundThisPeriod: number; inSequence: number; unsubscribed: number; inboundLeads: number };
   bookings: AutopilotBooking[];
   money: { bookedJobs: number; invoiced: number; paid: number; estCost: number; profitPaid: number };
@@ -32,7 +32,7 @@ export async function getAutopilotDashboard(days = 30): Promise<AutopilotDashboa
 
   const [slots, { data: logs }, { data: events }, prospectsWithEmail, foundThisPeriod, inSequence, unsubscribed, inboundLeads, { data: recent }] = await Promise.all([
     loadOpenSlots(s, settings),
-    s.from("chillbros_outreach_log").select("lane,channel,status").gte("created_at", since).eq("status", "sent").in("lane", ["cold", "reactivation", "inbound"]),
+    s.from("chillbros_outreach_log").select("lane,channel,status").gte("created_at", since).eq("status", "sent").in("lane", ["cold", "reactivation", "inbound", "reply"]),
     s.from("chillbros_workflow_events").select("job_id,created_at").eq("stage", "online_booking").gte("created_at", since).order("created_at", { ascending: false }),
     s.from("chillbros_revenue_prospects").select("id", { count: "exact", head: true }).not("contact_email", "is", null).neq("contact_email", "").eq("do_not_contact", false),
     s.from("chillbros_revenue_prospects").select("id", { count: "exact", head: true }).gte("email_enriched_at", since).not("contact_email", "is", null).neq("contact_email", ""),
@@ -42,10 +42,10 @@ export async function getAutopilotDashboard(days = 30): Promise<AutopilotDashboa
     s.from("chillbros_outreach_log").select("created_at,lane,channel,recipient,subject,status").neq("lane", "booking").order("created_at", { ascending: false }).limit(25),
   ]);
 
-  const sent = { cold: 0, reactivation: 0, inbound: 0, total: 0 };
+  const sent = { cold: 0, reactivation: 0, inbound: 0, reply: 0, total: 0 };
   let sms = 0;
   for (const row of logs ?? []) {
-    if (row.lane === "cold" || row.lane === "reactivation" || row.lane === "inbound") sent[row.lane as "cold" | "reactivation" | "inbound"]++;
+    if (row.lane === "cold" || row.lane === "reactivation" || row.lane === "inbound" || row.lane === "reply") sent[row.lane as "cold" | "reactivation" | "inbound" | "reply"]++;
     sent.total++;
     if (row.channel === "sms") sms++;
   }

@@ -9,6 +9,7 @@ const LABELS: { key: AutopilotSwitch; title: string; sub: string }[] = [
   { key: "inbound_enabled", title: "Instant replies", sub: "Answer new leads within seconds, plus follow-ups" },
   { key: "reactivation_enabled", title: "Customer check-ins", sub: "Past customers, Tue–Thu mornings" },
   { key: "cold_email_enabled", title: "Cold email", sub: "New businesses, best-time windows" },
+  { key: "reply_enabled", title: "Answer replies", sub: "Claude answers replies to our emails, 7am–9pm; hot leads ping your phone" },
   { key: "hood_cleaning_active", title: "Sell hood cleaning", sub: "Offer vent hood cleaning in messages and booking" },
 ];
 
