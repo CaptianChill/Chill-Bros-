@@ -102,7 +102,8 @@
   const money = { state: 'loading', apps: {} };
   async function loadMoney() {
     try {
-      const r = await fetch('/api/command-center/profits', { credentials: 'same-origin', cache: 'no-store', redirect: 'manual', headers: HQ ? { 'x-hq-token': HQ.token } : {} });
+      // Inside HQ, HQ's /cc-money route forwards to this CRM API (HQ's own /api is its own functions).
+      const r = await fetch(HQ ? '/cc-money' : '/api/command-center/profits', { credentials: 'same-origin', cache: 'no-store', redirect: 'manual', headers: HQ ? { 'x-hq-token': HQ.token } : {} });
       if (r.type === 'opaqueredirect' || r.status === 401 || r.status === 307 || r.status === 302) { money.state = 'signin'; money.apps = {}; }
       else { const j = await r.json(); if (!j.ok) throw new Error(j.error); money.state = 'live'; money.apps = Object.fromEntries(j.apps.map(x => [x.id, x])); }
     } catch { money.state = 'error'; }
