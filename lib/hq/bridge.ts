@@ -128,7 +128,7 @@ Decide what he wants and return ONLY one JSON object:
 {"kind":"answer"|"document"|"reminder"|"app_change","reply":"","documentType":"quote"|"invoice"|"","invoiceNumber":"","request":""}
 - "document": he wants to create, change, or finish a quote/invoice/estimate/bill ("invoice Shiro 580 for the cooler", "add another hour", "email it"). If a DRAFT IS OPEN and he is talking about it (changing lines, prices, customer, "send it", "text it"), it's "document". documentType: what he asked for, or the open draft's type.
 - "reminder": he wants to nudge a customer to pay an existing unpaid invoice. invoiceNumber: the matching number from UNPAID (match by number or customer name).
-- "app_change": he wants the Chill Pros SOFTWARE itself changed (a screen, button, layout, feature, wording, color, a new tool). request: his request rewritten as one clear, complete instruction a developer can act on.
+- "app_change": he wants one of his apps (the SOFTWARE itself) changed: a screen, button, layout, feature, wording, color, a new tool. His apps: Chill Pros CRM, Chill Pros HQ, BB Command Center (his home screen), BBB (sports betting app), Alpha Hunter (crypto), BoodaForge, Bidlume. request: start with the app in brackets, e.g. "[BBB] ..." ("[Chill Pros CRM]" if unclear), then his request rewritten as one clear, complete instruction a developer can act on.
 - "answer": anything else — questions about money, unpaid invoices, quotes, schedule, customers, how the business is doing. reply: the answer, using ONLY the DATA below. Short, plain, numbers first. If the data doesn't have it, say so.
 For document/reminder/app_change, reply is one short sentence saying what you're about to do.
 Never invent numbers. Professional tone, no slang.`;
