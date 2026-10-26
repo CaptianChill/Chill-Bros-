@@ -62,8 +62,18 @@ const OVERPASS_ENDPOINTS = [
   "https://overpass.kumi.systems/api/interpreter",
 ] as const;
 
-async function fetchOverpass(query: string): Promise<OverpassPayload> {
+// Every outside call gets at most this long, and never past the run's deadline.
+const REQUEST_TIMEOUT_MS = 20000;
+
+function timeLeft(deadline: number) {
+  return deadline - Date.now();
+}
+
+async function fetchOverpass(query: string, deadline: number): Promise<OverpassPayload> {
+  const failures: string[] = [];
   for (const endpoint of OVERPASS_ENDPOINTS) {
+    const budget = Math.min(REQUEST_TIMEOUT_MS, timeLeft(deadline) - 2000);
+    if (budget < 3000) { failures.push("out of time"); break; }
     try {
       const response = await fetch(endpoint, {
         method: "POST",
@@ -73,17 +83,126 @@ async function fetchOverpass(query: string): Promise<OverpassPayload> {
         },
         body: new URLSearchParams({ data: query }),
         cache: "no-store",
-        signal: AbortSignal.timeout(25000),
+        signal: AbortSignal.timeout(budget),
       });
-      if (!response.ok) continue;
+      if (!response.ok) { failures.push(`${new URL(endpoint).hostname} ${response.status}`); continue; }
       const payload = (await response.json()) as OverpassPayload;
       if (Array.isArray(payload.elements)) return payload;
-    } catch {
+      failures.push(`${new URL(endpoint).hostname} bad payload`);
+    } catch (error) {
       // Public Overpass instances can be overloaded or temporarily unreachable.
       // Try the next global instance before surfacing a failure to the user.
+      failures.push(`${new URL(endpoint).hostname} ${error instanceof Error ? error.name : "error"}`);
     }
   }
+  console.warn("[revenue-discovery] map search failed", failures.join("; "));
   throw new Error("Lead discovery sources are temporarily unavailable. Revenue Radar tried all configured discovery sources; try the scan again shortly.");
+}
+
+// ---------- Google Places (used when GOOGLE_PLACES_API_KEY is set) ----------
+// The free OpenStreetMap servers are often at capacity and San Antonio's OSM
+// listings are mostly already in Revenue Radar, so Google is the main source when
+// a key is configured. One request returns up to 20 businesses.
+
+type GooglePlace = {
+  id: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  nationalPhoneNumber?: string;
+  websiteUri?: string;
+  primaryType?: string;
+  types?: string[];
+  businessStatus?: string;
+};
+
+export const GOOGLE_QUERIES = ["restaurants", "grocery stores and meat markets", "hotels and motels", "bars and cafes", "bakeries and donut shops", "convenience stores and liquor stores", "nursing homes and assisted living", "ice cream and snow cone shops"];
+
+const GOOGLE_TYPE_TAGS: Record<string, Record<string, string>> = {
+  restaurant: { amenity: "restaurant" },
+  fast_food_restaurant: { amenity: "fast_food" },
+  meal_takeaway: { amenity: "fast_food" },
+  cafe: { amenity: "cafe" },
+  coffee_shop: { amenity: "cafe" },
+  bar: { amenity: "bar" },
+  pub: { amenity: "pub" },
+  ice_cream_shop: { amenity: "ice_cream" },
+  bakery: { shop: "bakery" },
+  donut_shop: { shop: "bakery" },
+  supermarket: { shop: "supermarket" },
+  grocery_store: { shop: "supermarket" },
+  butcher_shop: { shop: "butcher" },
+  convenience_store: { shop: "convenience" },
+  liquor_store: { shop: "alcohol" },
+  florist: { shop: "florist" },
+  hotel: { tourism: "hotel" },
+  lodging: { tourism: "hotel" },
+  motel: { tourism: "motel" },
+  nursing_home: { amenity: "nursing_home" },
+  assisted_living_facility: { amenity: "nursing_home" },
+};
+
+// Turns a Google place into the same tag shape the OSM path scores, so both rank alike.
+export function tagsFromGooglePlace(place: GooglePlace): Record<string, string> {
+  const types = [place.primaryType, ...(place.types ?? [])].filter(Boolean) as string[];
+  const typeTags = types.map((t) => GOOGLE_TYPE_TAGS[t] ?? (t.endsWith("_restaurant") ? { amenity: "restaurant" } : null)).find(Boolean) ?? {};
+  const tags: Record<string, string> = { ...typeTags, name: place.displayName?.text ?? "" };
+  if (place.nationalPhoneNumber) tags.phone = place.nationalPhoneNumber;
+  if (place.websiteUri) tags.website = place.websiteUri;
+  if (place.formattedAddress) tags["addr:street"] = place.formattedAddress;
+  return tags;
+}
+
+async function searchGooglePlaces(apiKey: string, textQuery: string, area: ScanArea, deadline: number): Promise<GooglePlace[]> {
+  const budget = Math.min(REQUEST_TIMEOUT_MS, timeLeft(deadline) - 2000);
+  if (budget < 3000) throw new Error("out of time");
+  const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-goog-api-key": apiKey,
+      "x-goog-fieldmask": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.primaryType,places.types,places.businessStatus",
+    },
+    body: JSON.stringify({ textQuery: `${textQuery} in ${area.name}, San Antonio TX`, pageSize: 20, locationBias: { circle: { center: { latitude: area.lat, longitude: area.lon }, radius: Math.min(50000, area.radiusM) } } }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(budget),
+  });
+  if (!response.ok) {
+    console.warn("[revenue-discovery] google places failed", response.status, (await response.text().catch(() => "")).slice(0, 300));
+    throw new Error(`Google Places returned ${response.status}.`);
+  }
+  const payload = (await response.json()) as { places?: GooglePlace[] };
+  return (payload.places ?? []).filter((p) => p.id && p.displayName?.text && (!p.businessStatus || p.businessStatus === "OPERATIONAL"));
+}
+
+export function leadsFromGooglePlaces(places: GooglePlace[], area: ScanArea, now: string): DiscoveredRevenueLead[] {
+  const seen = new Set<string>();
+  const leads: DiscoveredRevenueLead[] = [];
+  for (const place of places) {
+    if (seen.has(place.id)) continue;
+    seen.add(place.id);
+    const tags = tagsFromGooglePlace(place);
+    const name = tags.name.trim();
+    if (name.length < 2) continue;
+    const fit = scoreLead(tags);
+    const sourceUrl = `https://www.google.com/maps/place/?q=place_id:${place.id}`;
+    const website = tags.website || null;
+    leads.push({
+      business_name: name.slice(0, 200),
+      city: "San Antonio",
+      category: "other",
+      service_line: fit.service_line,
+      signal_summary: `Automatically discovered in ${area.name} (Google Maps). Business type indicates ${fit.reason}; ${fit.notes.join(", ")}.${website ? ` Website: ${website.slice(0, 200)}.` : ""} Office review is still required before outreach.`.slice(0, 1000),
+      source_url: sourceUrl,
+      signal_observed_at: now,
+      signal_verified: false,
+      normalized_key: normalizedKey(name, "San Antonio", "auto_discovery", sourceUrl),
+      score: fit.score,
+      business_address: place.formattedAddress ?? null,
+      contact_email: null,
+      contact_phone: place.nationalPhoneNumber ?? null,
+    });
+  }
+  return leads.sort((a, b) => b.score - a.score);
 }
 
 export function serviceFit(tags: Record<string, string>) {
@@ -175,7 +294,7 @@ export function leadsFromElements(elements: OsmElement[], area: ScanArea, now: s
   return leads.sort((a, b) => b.score - a.score);
 }
 
-export async function discoverAreaLeads(area: ScanArea, skipNames: Set<string> = new Set()): Promise<DiscoveredRevenueLead[]> {
+export async function discoverAreaLeads(area: ScanArea, skipNames: Set<string> = new Set(), deadline = Date.now() + 60000): Promise<DiscoveredRevenueLead[]> {
   const around = `(around:${area.radiusM},${area.lat},${area.lon})`;
   const query = `
 [out:json][timeout:25];
@@ -186,7 +305,7 @@ export async function discoverAreaLeads(area: ScanArea, skipNames: Set<string> =
 );
 out tags center 600;
 `;
-  const payload = await fetchOverpass(query);
+  const payload = await fetchOverpass(query, deadline);
   return leadsFromElements(payload.elements ?? [], area, new Date().toISOString(), skipNames);
 }
 
@@ -198,35 +317,68 @@ export function startAreaIndex(mode: "daily" | "manual", now = new Date()) {
 }
 
 type Client = ReturnType<typeof createServiceRoleClient>;
-export type LeadScanResult = { added: number; scanned: string[]; skippedCustomers: number };
+export type LeadScanResult = { added: number; scanned: string[]; skippedCustomers: number; source: "google" | "openstreetmap" };
+
+// Business names already in Revenue Radar, so a business found again through a
+// different source (Google vs OpenStreetMap) isn't added twice.
+async function existingProspectNames(client: Client) {
+  const names = new Set<string>();
+  for (let from = 0; from < 20000; from += 1000) {
+    const { data } = await client.from("chillbros_revenue_prospects").select("business_name").range(from, from + 999);
+    for (const row of (data ?? []) as { business_name: string | null }[]) names.add(nameKey(row.business_name ?? ""));
+    if (!data || data.length < 1000) break;
+  }
+  return names;
+}
 
 // Scans areas in rotation until about `target` new leads are added (max `maxAreas`
-// searches, to stay polite to the free map service). Duplicates are ignored by the
-// database's normalized_key, so only genuinely new businesses count.
-export async function runLeadScan(client: Client, options: { mode: "daily" | "manual"; actorId: string | null; target?: number; maxAreas?: number }): Promise<LeadScanResult> {
+// areas, to stay polite to the free map service). Duplicates are ignored by the
+// database's normalized_key and by business name, so only genuinely new businesses
+// count. Stops starting new searches once `budgetMs` is used, so the run always
+// finishes and saves what it found instead of being killed by the platform timeout.
+export async function runLeadScan(client: Client, options: { mode: "daily" | "manual"; actorId: string | null; target?: number; maxAreas?: number; budgetMs?: number }): Promise<LeadScanResult> {
   const target = options.target ?? 25;
   const maxAreas = Math.min(options.maxAreas ?? 3, SCAN_AREAS.length);
+  const deadline = Date.now() + (options.budgetMs ?? 50000);
+  const googleKey = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
   const { data: customers } = await client.from("chillbros_customers").select("name").limit(5000);
   const customerNames = new Set((customers ?? []).map((c: { name: string | null }) => nameKey(c.name ?? "")).filter((n) => n.length > 2));
+  const knownNames = googleKey ? await existingProspectNames(client) : new Set<string>();
 
   const start = startAreaIndex(options.mode);
-  const result: LeadScanResult = { added: 0, scanned: [], skippedCustomers: 0 };
+  const result: LeadScanResult = { added: 0, scanned: [], skippedCustomers: 0, source: googleKey ? "google" : "openstreetmap" };
   let lastError: Error | null = null;
-  for (let i = 0; i < maxAreas && result.added < target; i++) {
+  // Google: rotate the business-type searches too, so each day asks something new.
+  let queryIndex = start;
+  for (let i = 0; i < maxAreas && result.added < target && timeLeft(deadline) > 8000; i++) {
     const area = SCAN_AREAS[(start + i) % SCAN_AREAS.length];
-    let leads: DiscoveredRevenueLead[];
+    let all: DiscoveredRevenueLead[] = [];
     try {
-      const all = await discoverAreaLeads(area);
-      leads = all.filter((lead) => !customerNames.has(nameKey(lead.business_name)));
-      result.skippedCustomers += all.length - leads.length;
+      if (googleKey) {
+        const now = new Date().toISOString();
+        for (let q = 0; q < 3 && timeLeft(deadline) > 8000; q++) {
+          const places = await searchGooglePlaces(googleKey, GOOGLE_QUERIES[queryIndex++ % GOOGLE_QUERIES.length], area, deadline);
+          all.push(...leadsFromGooglePlaces(places, area, now));
+        }
+      } else {
+        all = await discoverAreaLeads(area, new Set(), deadline);
+      }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Lead discovery failed.");
-      continue;
+      if (!all.length) continue;
     }
+    const leads = all.filter((lead) => !customerNames.has(nameKey(lead.business_name)));
+    result.skippedCustomers += all.length - leads.length;
     result.scanned.push(area.name);
-    if (!leads.length) continue;
+    const fresh = leads.filter((lead) => {
+      const key = nameKey(lead.business_name);
+      if (knownNames.has(key)) return false;
+      if (googleKey) knownNames.add(key);
+      return true;
+    });
+    if (!fresh.length) continue;
     const now = new Date().toISOString();
-    const rows = leads.map((lead) => ({ ...lead, status: "new", created_by: options.actorId, updated_by: options.actorId, updated_at: now }));
+    const rows = fresh.map((lead) => ({ ...lead, status: "new", created_by: options.actorId, updated_by: options.actorId, updated_at: now }));
     const { data, error } = await client.from("chillbros_revenue_prospects").upsert(rows, { onConflict: "normalized_key", ignoreDuplicates: true }).select("id");
     if (error) throw new Error(error.message);
     result.added += data?.length ?? 0;
