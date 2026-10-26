@@ -5,6 +5,10 @@
   const APPS = window.BB_APPS || [];
   const ROUTES = window.BB_ROUTES || {};
   const appById = id => APPS.find(a => a.id === id);
+  /* Inside Chill Pros HQ: the HQ tile opens HQ's own boards in this same window. */
+  const HQ = window.BB_HQ || null;
+  if (HQ) { const hq = appById('hq'); if (hq) { hq.url = '/brae'; hq.sameTab = true; hq.name = 'HQ boards'; } }
+  let hqData = null;
   const store = {
     get(k, d) { try { const v = localStorage.getItem('bbcc.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
     set(k, v) { try { localStorage.setItem('bbcc.' + k, JSON.stringify(v)); } catch {} }
@@ -98,7 +102,7 @@
   const money = { state: 'loading', apps: {} };
   async function loadMoney() {
     try {
-      const r = await fetch('/api/command-center/profits', { credentials: 'same-origin', cache: 'no-store', redirect: 'manual' });
+      const r = await fetch('/api/command-center/profits', { credentials: 'same-origin', cache: 'no-store', redirect: 'manual', headers: HQ ? { 'x-hq-token': HQ.token } : {} });
       if (r.type === 'opaqueredirect' || r.status === 401 || r.status === 307 || r.status === 302) { money.state = 'signin'; money.apps = {}; }
       else { const j = await r.json(); if (!j.ok) throw new Error(j.error); money.state = 'live'; money.apps = Object.fromEntries(j.apps.map(x => [x.id, x])); }
     } catch { money.state = 'error'; }
@@ -159,7 +163,14 @@
     notifs.unshift(n); notifs = notifs.slice(0, 60); store.set('notifs', notifs);
     if (!quiet) { renderNotifs(); celebrate(); }
   }
-  function allNotifs() { return (systemNotif ? [systemNotif] : []).concat(notifs).sort((a, b) => b.time - a.time); }
+  function hqNotifs() {
+    if (!hqData) return [];
+    const out = [];
+    if (hqData.late.length) out.push({ title: `${hqData.late.length} overdue in HQ`, body: hqData.late.slice(0, 2).map(x => x.title).join(' · '), kind: 'alert', time: hqData.at, go: 'decisions' });
+    hqData.soon.slice(0, 3).forEach(p => out.push({ title: `Due ${p.due.slice(5).replace('-', '/')}: ${p.title}`, body: 'HQ plan', kind: 'project', time: hqData.at - 1, go: 'decisions' }));
+    return out;
+  }
+  function allNotifs() { return (systemNotif ? [systemNotif] : []).concat(hqNotifs(), notifs).sort((a, b) => b.time - a.time); }
   const MONEY_RE = /paid|payment|deposit|received|cashed|won|payout|\$/i;
   const amountOf = n => { const m = ((n.title || '') + ' ' + (n.body || '')).match(/\$\s?(\d[\d,]*(?:\.\d{1,2})?)/); return m ? Number(m[1].replace(/,/g, '')) : 0; };
   function renderOps() {
@@ -170,6 +181,12 @@
     const today = new Date().toDateString();
     const money = notifs.filter(n => new Date(n.time).toDateString() === today && (n.kind === 'invoice' || n.kind === 'money') && MONEY_RE.test((n.title || '') + ' ' + (n.body || '')));
     const total = money.reduce((sum, n) => sum + amountOf(n), 0);
+    if (hqData) {
+      $$('[data-money="tag"]').forEach(e => e.textContent = 'TOTAL EARNED');
+      $$('[data-money="total"]').forEach(e => e.textContent = moneyFmt(hqData.earned));
+      $$('[data-money="line"]').forEach(e => e.textContent = `${moneyFmt(hqData.wait)} waiting · GIBAM ${hqData.gibamPct}% · goals ${hqData.hit}/${hqData.goals}`);
+      return;
+    }
     $$('[data-money="total"]').forEach(e => e.textContent = '$' + total.toLocaleString(undefined, { maximumFractionDigits: 2 }));
     $$('[data-money="line"]').forEach(e => e.textContent = money.length ? `${money.length} update${money.length > 1 ? 's' : ''} · last: ${money[0].title}` : (settings.ntfy ? 'No payments yet today' : 'Connect alerts in Settings'));
   }
@@ -181,11 +198,19 @@
     });
     const today = new Date().toDateString();
     const approvals = notifs.filter(n => new Date(n.time).toDateString() === today && /approv/i.test((n.title || '') + (n.body || ''))).length;
-    $$('[data-stat="approvals"]').forEach(e => e.textContent = approvals);
+    $$('[data-stat="approvals"]').forEach(e => e.textContent = hqData ? hqData.late.length : approvals);
     renderOps();
   }
   renderNotifs();
   setInterval(renderNotifs, 30000);
+
+  /* ---------------- Chill Pros HQ boards (only inside HQ) ---------------- */
+  async function loadHQ() {
+    if (!HQ) return;
+    try { hqData = await HQ.pull(); } catch { return; }
+    renderNotifs();
+  }
+  loadHQ(); if (HQ) setInterval(loadHQ, 2 * 60 * 1000);
 
   let es = null;
   function connectNtfy() {
@@ -246,6 +271,7 @@
       renderApps(); ping(a).then(st => { health[a.id] = st; renderApps(); });
       toast(`${a.name} linked`); return;
     }
+    if (a.sameTab) { location.href = a.url; return; }
     const w = window.open(a.url, a.local ? '_blank' : 'bb_' + a.id);
     if (!w) location.href = a.url;
   }
@@ -272,7 +298,24 @@
         <div class="card"><ul class="list">${d.time.map((t, i) => `<li><span class="ic" style="--c:#0b2a3d">${(WX[d.weather_code[i]] || ['🌡️'])[0]}</span><div style="flex:1"><b>${new Date(t + 'T12:00').toLocaleDateString(undefined, { weekday: 'long' })}</b><span>Rain chance ${d.precipitation_probability_max[i] ?? 0}%</span></div><b>${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°</b></li>`).join('')}</ul>
         <p style="color:var(--muted)">Heads-up for the crew: AC calls spike on hot days.</p></div>`];
     },
+    decisions: () => {
+      if (!hqData) return VIEWS.alerts();
+      const row = x => `<li><span class="ic" style="--c:#dc2626">⏰</span><div style="flex:1"><b>${esc(x.title)}</b><span>${esc(x.who || '')} · due ${esc(x.due)}</span></div></li>`;
+      return ['Needs a decision', `<div class="card"><h2>${hqData.late.length} overdue</h2><ul class="list">${hqData.late.slice(0, 40).map(row).join('') || '<li>Nothing overdue.</li>'}</ul></div>
+        ${hqData.soon.length ? `<div class="card"><h2>Due in the next 3 days</h2><ul class="list">${hqData.soon.map(p => `<li><span class="ic" style="--c:#1d4fd8">📅</span><div><b>${esc(p.title)}</b><span>due ${esc(p.due)}</span></div></li>`).join('')}</ul></div>` : ''}
+        <button class="btn" type="button" data-go="app:hq">Open HQ boards →</button>`];
+    },
     money: () => {
+      if (hqData) {
+        const crm = money.apps.crm, bbb = money.apps.bbb;
+        return ['Money', `<div class="card"><h2>Total earned: ${moneyFmt(hqData.earned)}</h2><p>All HQ boards combined${hqData.earnedToday ? ` · ${moneyFmt(hqData.earnedToday)} today` : ''}.</p>
+          <ul class="list">${hqData.income.slice(0, 12).map(i => `<li><span class="ic" style="--c:#15803d">💵</span><div style="flex:1"><b>${esc(i.label || 'Income')}</b><span>${esc(i.date || '')}</span></div><b>${moneyFmt(+i.amount || 0)}</b></li>`).join('')}</ul></div>
+          <div class="card"><h2>Waiting to be paid: ${moneyFmt(hqData.wait)}</h2><p>${hqData.invoices.length} open invoice${hqData.invoices.length === 1 ? '' : 's'} in HQ.</p></div>
+          <div class="card"><h2>Goals hit: ${hqData.hit} / ${hqData.goals}</h2><p>GIBAM progress ${hqData.gibamPct}% (${hqData.doneT} of ${hqData.tasks} tasks) · ${hqData.open} open steps and tasks.</p></div>
+          ${crm && crm.value != null ? `<div class="card"><h2>Chill Pros collected: ${moneyFmt(crm.value)}</h2><p>${esc(crm.sub)} (from the CRM)</p></div>` : ''}
+          ${bbb && bbb.value != null ? `<div class="card"><h2>BBB profit: ${moneyFmt(bbb.value)}</h2><p>${esc(bbb.sub)}</p></div>` : ''}
+          <button class="btn" type="button" data-go="app:hq">Open HQ money →</button>`];
+      }
       const today = new Date().toDateString();
       const list = notifs.filter(n => (n.kind === 'invoice' || n.kind === 'money') && MONEY_RE.test((n.title || '') + ' ' + (n.body || ''))).slice(0, 40);
       const sum = list.filter(n => new Date(n.time).toDateString() === today).reduce((t, n) => t + amountOf(n), 0);

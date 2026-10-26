@@ -43,13 +43,34 @@ async function bbb(): Promise<AppMoney> {
   }
 }
 
+/** Chill Pros HQ (where the Command Center now lives): its PIN sign-in token, checked against HQ's own database. */
+const HQ_SUPABASE_URL = "https://rbhtdgqpktocavxbiafw.supabase.co";
+const HQ_PUBLISHABLE_KEY = "sb_publishable_QmdOKzwUgIFM8MfZWdpeBw_8CefyFOz";
+async function hqOwner(token: string | null): Promise<boolean> {
+  if (!token || token.length > 200) return false;
+  try {
+    const r = await fetch(`${HQ_SUPABASE_URL}/rest/v1/rpc/hq_whoami`, {
+      method: "POST",
+      headers: { apikey: HQ_PUBLISHABLE_KEY, Authorization: `Bearer ${HQ_PUBLISHABLE_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_token: token }),
+      cache: "no-store",
+    });
+    return r.ok && (await r.json()) === "brae";
+  } catch (error) {
+    console.error("[command-center] hq sign-in check failed", error);
+    return false;
+  }
+}
+
 /**
  * GET /api/command-center/profits — owner-only money totals for the BB Command Center tiles.
- * Real figures only; apps with no money feed are simply not listed.
+ * Real figures only; apps with no money feed are simply not listed. Owner = the CRM owner sign-in, or Brae's
+ * HQ sign-in token (x-hq-token) when the Command Center is opened inside Chill Pros HQ.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const profile = await getCurrentStaffProfile();
-  if (!profile || profile.email.toLowerCase() !== OWNER_EMAIL) {
+  const crmOwner = Boolean(profile && profile.email.toLowerCase() === OWNER_EMAIL);
+  if (!crmOwner && !(await hqOwner(request.headers.get("x-hq-token")))) {
     return Response.json({ ok: false, error: "Owner sign-in required" }, { status: 401, headers: noStore });
   }
   const apps = await Promise.all([chillPros(), bbb()]);

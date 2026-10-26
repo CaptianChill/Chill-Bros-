@@ -11,6 +11,20 @@
   <meta name="description" content="Big Booda's private Command Center: every app, live status, alerts and operations in one place.">
   <title>BB Command Center</title>
   <link rel="manifest" href="bb-command-center.webmanifest">
+  <script>
+    /* The official Command Center lives inside Chill Pros HQ. The old address forwards there;
+       inside HQ it uses Brae's HQ sign-in (no sign-in yet: go sign in, then come straight back). */
+    (function () {
+      var h = location.hostname;
+      if (h === 'chill-bros.vercel.app' || h === 'www.chill-bros.vercel.app') { location.replace('https://chill-pros-hq.vercel.app/command-center/' + location.hash); return; }
+      var hq = h === 'chill-pros-hq.vercel.app' || /[?&]hq=1(&|$)/.test(location.search);
+      document.documentElement.dataset.hq = hq ? '1' : '';
+      if (!hq) return;
+      var l = document.querySelector('link[rel="manifest"]'); if (l) l.setAttribute('href', '/manifest-brae.json');
+      var s = null; try { s = JSON.parse(localStorage.getItem('cphq') || 'null'); } catch (e) {}
+      if (!s || s.name !== 'brae' || !s.token) { try { sessionStorage.setItem('cphq-next', 'cc'); } catch (e) {} location.replace('/brae'); }
+    })();
+  </script>
   <link rel="icon" href="cc/favicon-48.png" type="image/png" sizes="48x48">
   <link rel="apple-touch-icon" href="cc/icon-180.png" sizes="180x180">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -72,7 +86,7 @@
       <section class="ov ops" style="--x:232;--y:766;--w:1026;--h:176" aria-label="Notifications, money and apps">
         <div class="ops-feed">
           <button type="button" class="ops-card" data-go="alerts"><span class="ops-tag">NOTIFICATIONS</span><ul data-feed="notifs"></ul></button>
-          <button type="button" class="ops-card money" data-go="money"><span class="ops-tag">MONEY TODAY</span><b data-money="total">$0</b><span data-money="line">Waiting on payments</span></button>
+          <button type="button" class="ops-card money" data-go="money"><span class="ops-tag" data-money="tag">MONEY TODAY</span><b data-money="total">$0</b><span data-money="line">Waiting on payments</span></button>
         </div>
         <div class="ops-big" data-apps="big"></div>
       </section>
@@ -84,7 +98,7 @@
       <nav class="hotspots" aria-label="Command Center navigation">
         <button class="hot" data-go="apps" style="--x:634;--y:604;--w:156;--h:134">Projects monitored</button>
         <button class="hot" data-go="settings" style="--x:806;--y:604;--w:144;--h:134">Owner access</button>
-        <button class="hot" data-go="alerts" style="--x:966;--y:604;--w:140;--h:134">Approvals</button>
+        <button class="hot" data-go="decisions" style="--x:966;--y:604;--w:140;--h:134">Approvals</button>
         <button class="hot" data-go="app:alpha" style="--x:1122;--y:604;--w:140;--h:134">Alpha Hunter crypto</button>
         <button class="hot rc" data-go="alerts" style="--x:1306;--y:526;--w:180;--h:36">View all notifications</button>
         <button class="hot rc" data-go="weather" style="--x:1306;--y:622;--w:180;--h:150">Weather</button>
@@ -132,7 +146,7 @@
       <nav class="hotspots" aria-label="Command Center mobile navigation">
         <button class="hot" data-go="apps" style="--x:70;--y:1155;--w:346;--h:134">Projects monitored</button>
         <button class="hot" data-go="settings" style="--x:432;--y:1155;--w:348;--h:134">Owner access</button>
-        <button class="hot" data-go="alerts" style="--x:70;--y:1302;--w:346;--h:134">Approvals</button>
+        <button class="hot" data-go="decisions" style="--x:70;--y:1302;--w:346;--h:134">Approvals</button>
         <button class="hot" data-go="app:alpha" style="--x:432;--y:1302;--w:348;--h:134">Alpha Hunter crypto</button>
         <button class="hot" data-go="dispatch" style="--x:92;--y:1655;--w:164;--h:60">Dispatch</button>
         <button class="hot" data-go="jobs" style="--x:262;--y:1655;--w:142;--h:60">Jobs</button>
@@ -166,6 +180,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="cc/apps.js"></script>
+  <script src="cc/hq.js"></script>
   <script src="cc/cc.js"></script>
   <script src="cc/watch.js"></script>
 </body>
