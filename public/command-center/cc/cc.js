@@ -307,7 +307,7 @@
   /* ---------------- Diamond FX engine ----------------
      Small, crisp sparkle pops placed only on diamond jewelry and the diamond chain borders
      (sparkles.json is a masked map of real diamond highlights in the art; text areas are excluded). */
-  const FX = { low: { rate: 9, size: .85 }, heavy: { rate: 24, size: 1 }, max: { rate: 44, size: 1.2 } };
+  const FX = { low: { rate: 16, size: 1 }, heavy: { rate: 48, size: 1.35 }, max: { rate: 85, size: 1.6 } };
   let SP = { desktop: [], mobile: [], desktopJewel: 0 };
   fetch('cc/sparkles.json').then(r => r.json()).then(j => { SP = j; }).catch(() => {});
 
@@ -329,16 +329,16 @@
   function spawn(l, x, y, big) {
     const s = FX[settings.fx] || FX.heavy;
     const unit = Math.min(l.w || 1000, (l.h || 700) * 1.5) / 1100;          // scale with the art, not the window
-    l.parts.push({ x, y, t: 0, life: 260 + Math.random() * 380, r: (big ? 3 : 1.5 + Math.random() * 1.6) * s.size * Math.max(.75, unit), rot: Math.random() * .5 - .25, ice: Math.random() < .3 });
+    l.parts.push({ x, y, t: 0, life: 520 + Math.random() * 620, r: (big ? 4.2 : 2.2 + Math.random() * 2.2) * s.size * Math.max(.75, unit), rot: Math.random() * .5 - .25, ice: Math.random() < .3, hue: Math.random() < .35 ? [190, 210, 300, 45][Math.floor(Math.random() * 4)] : 0 });
   }
   // Intricate four-point star: hairline rays, a smaller diagonal set and a pinpoint core.
   function star(ctx, p, k) {
     const a = Math.sin(Math.PI * Math.min(1, k * 1.15)), r = p.r * (.35 + .75 * a);
     if (a <= .01) return;
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.globalAlpha = a;
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.5);
-    g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.4, p.ice ? 'rgba(185,232,255,.35)' : 'rgba(255,255,255,.25)'); g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 1.5, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.2);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.35, p.hue ? `hsla(${p.hue},100%,85%,.55)` : p.ice ? 'rgba(185,232,255,.5)' : 'rgba(255,255,255,.4)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.beginPath();
     for (let i = 0; i < 4; i++) { const ang = i * Math.PI / 2; ctx.moveTo(Math.cos(ang - .5) * r * .18, Math.sin(ang - .5) * r * .18); ctx.lineTo(Math.cos(ang) * r * 4.6, Math.sin(ang) * r * 4.6); ctx.lineTo(Math.cos(ang + .5) * r * .18, Math.sin(ang + .5) * r * .18); }
     ctx.fill();
