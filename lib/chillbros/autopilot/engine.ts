@@ -8,6 +8,8 @@ import { composeEmail, draftColdEmail, draftReactivation, type Draft } from "./b
 import { isInternalOrTestCustomer } from "./audience";
 import { isUsableOutreachEmail, pickBusinessEmail, websiteFromSummary } from "./email-extract";
 import { runInboundFollowups } from "./inbound";
+import { runReplyDesk } from "./replies";
+import { replyHoursOpen } from "./replies-logic";
 import { bookingUrl, unsubscribeUrl } from "./links";
 import { centralNow, openSlotCount } from "./slots";
 import { getAutopilotSettings, isSuppressed, loadOpenSlots, logOutreach, sentTodayCount, type AutopilotSettings } from "./store";
@@ -26,6 +28,7 @@ export type AutopilotRun = {
   inboundFollowups: number;
   reactivation: number;
   cold: number;
+  replies: { read: number; answered: number; hot: number; handedOff: number; stopped: number };
   notes: string[];
 };
 
@@ -249,7 +252,7 @@ export async function runAutopilot(now = new Date()): Promise<AutopilotRun> {
   const client = createServiceRoleClient();
   const settings = await getAutopilotSettings(client);
   const ct = centralNow(now);
-  const run: AutopilotRun = { ranAt: now.toISOString(), centralHour: ct.hour, openSlots5Days: 0, enriched: 0, inboundFollowups: 0, reactivation: 0, cold: 0, notes: [] };
+  const run: AutopilotRun = { ranAt: now.toISOString(), centralHour: ct.hour, openSlots5Days: 0, enriched: 0, inboundFollowups: 0, reactivation: 0, cold: 0, replies: { read: 0, answered: 0, hot: 0, handedOff: 0, stopped: 0 }, notes: [] };
   if (!settings.enabled) {
     run.notes.push("Autopilot is switched off.");
     return run;
@@ -257,6 +260,11 @@ export async function runAutopilot(now = new Date()): Promise<AutopilotRun> {
 
   // Lead finding never sleeps: keep turning websites into reachable contacts.
   run.enriched = await enrichProspectEmails(client, 30).catch((e) => { console.error("[autopilot] enrichment failed", e); return 0; });
+
+  // Replies to our emails get answered first, every daytime hour, even when the schedule is full.
+  if (settings.reply_enabled && replyHoursOpen(ct.hour)) {
+    run.replies = await runReplyDesk(client, settings).catch((e) => { console.error("[autopilot] reply desk failed", e); return run.replies; });
+  }
 
   const slots = await loadOpenSlots(client, settings, now);
   run.openSlots5Days = openSlotCount(slots, ct.date, 5);

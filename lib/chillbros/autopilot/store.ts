@@ -11,6 +11,7 @@ export type AutopilotSettings = SlotSettings & PlaybookSettings & {
   inbound_enabled: boolean;
   reactivation_enabled: boolean;
   cold_email_enabled: boolean;
+  reply_enabled: boolean;
   cold_daily_cap: number;
   reactivation_daily_cap: number;
   sends_per_open_slot: number;
@@ -22,6 +23,7 @@ const DEFAULTS: AutopilotSettings = {
   inbound_enabled: true,
   reactivation_enabled: true,
   cold_email_enabled: false,
+  reply_enabled: true,
   workday_start: "08:00",
   workday_end: "17:00",
   saturday_start: null,
@@ -77,7 +79,7 @@ export async function suppress(client: Client, contact: string, reason = "unsubs
 }
 
 export type OutreachLogRow = {
-  lane: "inbound" | "reactivation" | "cold" | "booking" | "enrichment";
+  lane: "inbound" | "reactivation" | "cold" | "booking" | "enrichment" | "reply";
   step?: number;
   channel: "email" | "sms" | "none";
   recipient?: string | null;

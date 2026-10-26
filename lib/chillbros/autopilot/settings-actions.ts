@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getOwnerProfile } from "@/lib/chillbros/sent-invoice-history";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
-const SWITCHES = ["enabled", "inbound_enabled", "reactivation_enabled", "cold_email_enabled", "hood_cleaning_active"] as const;
+const SWITCHES = ["enabled", "inbound_enabled", "reactivation_enabled", "cold_email_enabled", "reply_enabled", "hood_cleaning_active"] as const;
 export type AutopilotSwitch = (typeof SWITCHES)[number];
 
 /** Owner-only on/off switches for the autopilot lanes. */
