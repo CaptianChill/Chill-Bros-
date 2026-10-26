@@ -130,3 +130,12 @@ test('with a Google Places key, Google is the source and known businesses are no
     assert.equal(saved[0].service_line, 'kitchen_equipment');
   } finally { global.fetch = realFetch; delete process.env.GOOGLE_PLACES_API_KEY; }
 });
+
+test('independent professional buyers with a phone and website clear the cold-email bar (70)', () => {
+  const area = d.SCAN_AREAS[0];
+  for (const type of ['real_estate_agency', 'dental_clinic', 'church', 'gym']) {
+    const [lead] = d.leadsFromGooglePlaces([{ id: type, displayName: { text: `Test ${type}` }, primaryType: type, nationalPhoneNumber: '(210) 555-0100', websiteUri: 'https://x.example', formattedAddress: '1 Main St' }], area, 'now');
+    assert.equal(lead.service_line, 'hvac_r');
+    assert.ok(lead.score >= 70, `${type} scored ${lead.score}`);
+  }
+});

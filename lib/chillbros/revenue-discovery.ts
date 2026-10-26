@@ -140,6 +140,22 @@ const GOOGLE_TYPE_TAGS: Record<string, Record<string, string>> = {
   lodging: { tourism: "hotel" },
   motel: { tourism: "motel" },
   nursing_home: { amenity: "nursing_home" },
+  real_estate_agency: { office: "property_management" },
+  doctor: { amenity: "doctors" },
+  medical_clinic: { amenity: "clinic" },
+  dentist: { amenity: "dentist" },
+  dental_clinic: { amenity: "dentist" },
+  veterinary_care: { amenity: "veterinary" },
+  school: { amenity: "school" },
+  primary_school: { amenity: "school" },
+  secondary_school: { amenity: "school" },
+  preschool: { amenity: "kindergarten" },
+  child_care_agency: { amenity: "kindergarten" },
+  church: { amenity: "place_of_worship" },
+  place_of_worship: { amenity: "place_of_worship" },
+  gym: { leisure: "fitness_centre" },
+  fitness_center: { leisure: "fitness_centre" },
+  car_dealer: { shop: "car" },
   assisted_living_facility: { amenity: "nursing_home" },
 };
 
@@ -235,6 +251,16 @@ export function serviceFit(tags: Record<string, string>) {
   }
   if (tourism === "motel") {
     return { service_line: "hvac_r" as const, score: 58, reason: "many room HVAC units" };
+  }
+  // Professional/commercial HVAC buyers (from the Google searches).
+  if (tags.office === "property_management") {
+    return { service_line: "hvac_r" as const, score: 66, reason: "manages many buildings and tenant comfort calls" };
+  }
+  if (["clinic", "dentist", "doctors", "veterinary"].includes(amenity)) {
+    return { service_line: "hvac_r" as const, score: 62, reason: "patient comfort and temperature-sensitive supplies" };
+  }
+  if (["school", "kindergarten", "place_of_worship"].includes(amenity) || tags.leisure === "fitness_centre" || shop === "car") {
+    return { service_line: "hvac_r" as const, score: 58, reason: "large spaces with heavy HVAC load" };
   }
   return { service_line: "hvac_r" as const, score: 48, reason: "commercial HVAC demand" };
 }
