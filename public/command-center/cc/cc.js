@@ -288,9 +288,13 @@
     gibam: () => {
       if (!hqData || !hqData.gibam || !hqData.gibam.length) return VIEWS.apps();
       const g = hqData;
-      const proj = p => `<div class="card"><h2>${esc(p.title)} · ${p.pct}%</h2><div class="gbar" role="progressbar" aria-valuenow="${p.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${p.pct}%"></i></div>
-        <p>${p.done} of ${p.total} tasks done${p.overdue ? ` · <b style="color:var(--orange)">${p.overdue} overdue</b>` : ''}${p.target ? ` · target ${esc(p.target)}` : ''}</p>
-        ${p.next.length ? `<ul class="list">${p.next.map(x => `<li><span class="ic" style="--c:${x.due && x.due < todayISO() ? '#dc2626' : '#1d4fd8'}">${x.due && x.due < todayISO() ? '⏰' : '➡️'}</span><div><b>${esc(x.title)}</b><span>${[x.who, x.phase, x.due ? 'due ' + x.due : ''].filter(Boolean).map(esc).join(' · ')}</span></div></li>`).join('')}</ul>` : '<p>All tasks done.</p>'}</div>`;
+      const task = x => `<li class="gtask${x.done ? ' done' : ''}${x.late ? ' late' : ''}"><label><input type="checkbox" data-gtask="${esc(x.id)}"${x.done ? ' checked' : ''}><span class="gt-t">${esc(x.title)}</span></label><span class="gt-m">${[x.who && '👤 ' + x.who, x.role, x.due && (x.late ? '⏰ ' : '📅 ') + x.due].filter(Boolean).map(esc).join(' · ')}</span></li>`;
+      const phase = (ph, i) => { const open = ph.tasks.filter(x => !x.done).length; return `<details class="gph"${open && i < 2 ? ' open' : ''}><summary><b>${esc(ph.name)}</b><span>${ph.tasks.length - open}/${ph.tasks.length} done</span></summary><ul class="gtasks">${ph.tasks.map(task).join('')}</ul></details>`; };
+      const proj = p => `<div class="card gproj"><h2>${esc(p.title)} · ${p.pct}%</h2><div class="gbar" role="progressbar" aria-valuenow="${p.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${p.pct}%"></i></div>
+        <p>${p.done} of ${p.total} tasks done${p.overdue ? ` · <b style="color:var(--orange)">${p.overdue} overdue</b>` : ''}${p.target ? ` · target ${esc(p.target)}` : ''}${p.files ? ` · ${p.files} file${p.files === 1 ? '' : 's'}` : ''}</p>
+        ${p.summary ? `<details class="gsum"><summary>About this project</summary><p>${esc(p.summary)}</p></details>` : ''}
+        ${p.roles.length ? `<div class="groles">${p.roles.map(r => `<span class="grole" title="${esc(r.mission)}"><b>${esc(r.title)}</b>${r.who ? ' · ' + esc(r.who) : ''}</span>`).join('')}</div>` : ''}
+        ${p.phases.length ? p.phases.map(phase).join('') : '<p>No tasks yet.</p>'}</div>`;
       const people = g.owners.length ? `<div class="card"><h2>Who's carrying what</h2><ul class="list">${g.owners.slice(0, 12).map(o => `<li><span class="ic" style="--c:${o.late ? '#dc2626' : '#15803d'}">👤</span><div style="flex:1"><b>${esc(o.who)}</b><span>${o.open} open${o.late ? ` · ${o.late} overdue` : ''}</span></div></li>`).join('')}</ul></div>` : '';
       const meets = g.meetings.length ? `<div class="card"><h2>Next meetings</h2><ul class="list">${g.meetings.map(m => `<li><span class="ic" style="--c:#7c3aed">📅</span><div><b>${esc(m.title)}</b><span>${esc(m.date)}${m.time ? ' · ' + esc(m.time) : ''}${m.project ? ' · ' + esc(m.project) : ''}</span></div></li>`).join('')}</ul></div>` : '';
       return ['GIBAM projects', `<div class="card"><h2>GIBAM ${g.gibamPct}% done</h2><div class="gbar"><i style="width:${g.gibamPct}%"></i></div><p>${g.doneT} of ${g.tasks} tasks · ${g.late.length} overdue · goals ${g.hit}/${g.goals}</p></div>
@@ -346,6 +350,19 @@
       <button class="btn" type="button" data-go="app:${a.id}">Open ${esc(r.label)} →</button></div>`];
   }
 
+  /* GIBAM: check tasks off right here; saved straight to HQ (the team sees it on their next refresh) */
+  document.addEventListener('change', async e => {
+    const cb = e.target.closest && e.target.closest('input[data-gtask]'); if (!cb || !HQ || !HQ.setTaskDone) return;
+    const li = cb.closest('.gtask'); const done = cb.checked; cb.disabled = true; li && li.classList.toggle('done', done);
+    try {
+      await HQ.setTaskDone(cb.dataset.gtask, done);
+      toast(done ? 'Done ✓ (saved to HQ)' : 'Reopened (saved to HQ)');
+      hqData = await HQ.pull(); renderNotifs();
+      if (!panel.hidden && title.textContent === 'GIBAM projects') { const y = body.scrollTop; const [, h] = VIEWS.gibam(); const openSet = [...body.querySelectorAll('details[open] > summary b')].map(b => b.textContent); body.innerHTML = h; body.querySelectorAll('details').forEach(d => { const k = d.querySelector('summary b'); if (k) d.open = openSet.includes(k.textContent); }); body.scrollTop = y; }
+    } catch (err) {
+      cb.checked = !done; li && li.classList.toggle('done', !done); toast(err.message === 'auth' ? 'Sign in again' : err.message || 'Couldn\u2019t save');
+    } finally { cb.disabled = false; }
+  });
   function go(target, trigger, ev) {
     if (ev) burstAt(ev);
     if (target === 'home') { if (!panel.hidden) closePanel(); window.scrollTo({ top: 0, behavior: 'smooth' }); celebrate(); return; }

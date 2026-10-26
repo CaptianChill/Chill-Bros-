@@ -385,3 +385,22 @@ body.hqv-on .talk-dock{bottom:max(76px,calc(env(safe-area-inset-bottom) + 64px))
 .hqv-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#020406}
 .hqv-load{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:15px}
 @media (max-width:767px){.hqv-back span{display:none}}
+/* GIBAM board */
+.gproj h2{margin-bottom:2px}
+.gsum{margin:6px 0}.gsum summary{cursor:pointer;color:var(--cyan);font-size:13px}.gsum p{margin-top:6px}
+.groles{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
+.grole{font-size:12px;color:#dbe7ee;background:#0b2233;border:1px solid #1c4560;border-radius:999px;padding:5px 10px}
+.grole b{color:var(--neon-g);font-weight:700}
+.gph{margin-top:10px;border:1px solid #16364a;border-radius:12px;background:#04101a}
+.gph>summary{display:flex;justify-content:space-between;gap:10px;align-items:center;cursor:pointer;padding:10px 12px;list-style:none;font-size:14px}
+.gph>summary::-webkit-details-marker{display:none}
+.gph>summary::before{content:'▸';color:var(--cyan);margin-right:2px}.gph[open]>summary::before{content:'▾'}
+.gph>summary b{flex:1;min-width:0}.gph>summary span{flex:none;color:var(--muted);font-size:12px}
+.gtasks{list-style:none;margin:0;padding:0 8px 8px}
+.gtask{padding:8px 4px;border-top:1px solid #0f2a3b}
+.gtask label{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.gtask input{flex:none;width:20px;height:20px;margin:1px 0 0;accent-color:var(--neon-g)}
+.gt-t{font-size:14px;line-height:1.35;color:#fff}
+.gtask.done .gt-t{color:var(--muted);text-decoration:line-through}
+.gtask.late .gt-t{color:#ffd2b3}
+.gt-m{display:block;margin:3px 0 0 30px;font-size:12px;color:var(--muted)}

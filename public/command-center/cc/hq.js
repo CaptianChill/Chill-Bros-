@@ -40,11 +40,17 @@ window.BB_HQ = (() => {
     const byOrder = (a, b) => (a.order || 0) - (b.order || 0);
     const dueSort = (a, b) => (a.due || '9999').localeCompare(b.due || '9999') || byOrder(a, b);
     const projects = items.filter(i => i.kind === 'project').sort(byOrder);
+    const roles = items.filter(i => i.kind === 'role');
+    const files = items.filter(i => i.kind === 'file');
     const gibam = projects.map(p => {
       const ts = allT.filter(x => x.projectId === p.id), open = ts.filter(x => !x.done);
+      const phases = [];
+      ts.slice().sort((a, b) => byOrder(a, b)).forEach(x => { const k = x.phase || 'Tasks'; let ph = phases.find(f => f.name === k); if (!ph) phases.push(ph = { name: k, tasks: [] }); ph.tasks.push({ id: x.id, title: x.title, who: x.owner || '', role: x.role || '', due: x.due || '', done: !!x.done, late: !x.done && !!x.due && x.due < t }); });
       return { id: p.id, title: p.title || 'Project', summary: p.summary || '', target: p.target || '', total: ts.length, done: ts.length - open.length,
         pct: ts.length ? Math.round(100 * (ts.length - open.length) / ts.length) : 0,
-        overdue: open.filter(x => x.due && x.due < t).length, next: open.sort(dueSort).slice(0, 3).map(x => ({ title: x.title, who: x.owner || '', due: x.due || '', phase: x.phase || '' })) };
+        overdue: open.filter(x => x.due && x.due < t).length, next: open.sort(dueSort).slice(0, 3).map(x => ({ title: x.title, who: x.owner || '', due: x.due || '', phase: x.phase || '' })),
+        phases, roles: roles.filter(r => r.projectId === p.id).sort(byOrder).map(r => ({ title: r.title || 'Role', who: r.owner || '', mission: r.mission || '' })),
+        files: files.filter(f => f.projectId === p.id).length };
     });
     const owners = {};
     openT.forEach(x => { const o = x.owner || 'Unassigned'; owners[o] = owners[o] || { who: o, open: 0, late: 0 }; owners[o].open++; if (x.due && x.due < t) owners[o].late++; });
@@ -60,10 +66,22 @@ window.BB_HQ = (() => {
       gibam, owners: Object.values(owners).sort((a, b) => b.late - a.late || b.open - a.open), meetings
     };
   }
+  let RAW = {};
   async function pull() {
     const d = await rpc('hq_pull', { p_token: S.token });
     if (d && d.error === 'auth') { try { localStorage.removeItem('cphq'); } catch {} signIn(); throw new Error('auth'); }
+    RAW = {}; (d.items || []).forEach(r => { RAW[r.id] = { board: r.board, kind: r.kind, data: r.data || {} }; });
     return stats(d);
   }
-  return { token: S.token, pull, signIn };
+  /** Check a GIBAM task off (or back on) in HQ itself: same hq_put HQ uses, so the team sees it at once. */
+  async function setTaskDone(id, done) {
+    const r = RAW[id]; if (!r || r.kind !== 'task') throw new Error('Task not found. Refresh and try again.');
+    const data = Object.assign({}, r.data, { done: !!done, doneAt: done ? todayStr() : null });
+    const res = await rpc('hq_put', { p_token: S.token, p_id: id, p_board: r.board, p_kind: r.kind, p_data: data });
+    if (res && res.error === 'auth') { signIn(); throw new Error('auth'); }
+    if (!res || !res.ok) throw new Error(res && res.error === 'forbidden' ? 'HQ says you can\u2019t change that one.' : 'Couldn\u2019t save. Try again.');
+    r.data = data;
+    return true;
+  }
+  return { token: S.token, pull, signIn, setTaskDone };
 })();
