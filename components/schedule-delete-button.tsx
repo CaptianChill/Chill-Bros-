@@ -10,7 +10,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="danger-box relative z-20 inline-flex min-h-7 min-w-0 touch-manipulation items-center justify-center px-2 py-1 text-center text-[9px] font-semibold leading-none text-white transition active:scale-[.98] disabled:cursor-wait disabled:opacity-50"
+      className="inline-flex min-h-10 w-full touch-manipulation items-center justify-center rounded-xl border border-[#E3261C]/40 bg-white px-3 text-sm font-semibold text-[#B91C12] transition active:scale-[.98] disabled:cursor-wait disabled:opacity-50"
     >
       {pending ? "Deleting…" : "Delete"}
     </button>
@@ -21,7 +21,7 @@ export function ScheduleDeleteButton({ jobId, week }: { jobId: string; week: str
   return (
     <form
       action={deleteCalendarItemAction}
-      className="relative z-20 flex w-full items-center justify-center"
+      className="flex w-full"
       onSubmit={(event) => {
         if (!window.confirm("Delete this scheduled item?")) event.preventDefault();
       }}
