@@ -214,6 +214,15 @@
     btn.innerHTML = '<span class="talk-ico" aria-hidden="true">💎</span><span class="talk-lbl">Brae.I.</span>';
     btn.addEventListener('click', () => open(btn));
     (dock || document.body).appendChild(btn);
+    // On phones the buttons join the page (top of My Apps) instead of floating over the cards.
+    const place = () => {
+      const d = document.querySelector('.talk-dock'), apps = document.querySelector('.dock-m'), title = apps && apps.querySelector('.dock-title');
+      if (!d || !apps) return;
+      const phone = getComputedStyle(apps).display !== 'none';
+      if (phone && !d.classList.contains('in-flow')) { d.classList.add('in-flow'); (title || apps.firstChild).after(d); }
+      else if (!phone && d.classList.contains('in-flow')) { d.classList.remove('in-flow'); document.body.appendChild(d); }
+    };
+    place(); addEventListener('resize', place);
   }
   mountButton();
   loadProfile();
