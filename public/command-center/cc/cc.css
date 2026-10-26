@@ -332,3 +332,36 @@ html,body{overflow-x:hidden}
 }
 /* left project list sits fully inside its frame */
 .proj-list{font-size:calc(11*var(--u))}
+
+/* ---------- Talk (Chilly Bro) + live Claude ---------- */
+.talk-dock{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:40;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.talk-btn{display:flex;align-items:center;gap:8px;border:1px solid #2c5c75;background:linear-gradient(180deg,#0b1d2a,#061018);color:#fff;font:700 15px/1 Inter,sans-serif;padding:12px 16px;border-radius:999px;cursor:pointer;text-decoration:none;box-shadow:0 0 18px rgba(0,183,255,.35),inset 0 0 0 1px rgba(255,255,255,.06)}
+.talk-btn .talk-ico{font-size:20px;line-height:1}
+.talk-mic{border-color:var(--neon-g);box-shadow:0 0 22px rgba(25,255,156,.45)}
+.talk-claude{padding:9px 14px;font-size:13px;border-color:#d97757;box-shadow:0 0 16px rgba(217,119,87,.35)}
+.talk-dock.on .talk-mic{opacity:0;pointer-events:none}
+.talk-sheet{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:41;width:min(420px,calc(100vw - 32px));max-height:min(620px,calc(100dvh - 32px));display:flex;flex-direction:column;background:#061018f2;border:1px solid #2c5c75;border-radius:18px;box-shadow:0 0 32px rgba(0,183,255,.35);backdrop-filter:blur(8px)}
+.talk-sheet[hidden]{display:none}
+.talk-sheet header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #16364a}
+.talk-sheet header b{font-size:16px;color:var(--neon-g)}
+.talk-state{flex:1;color:var(--muted);font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.talk-x{background:none;border:0;color:#fff;font-size:26px;line-height:1;cursor:pointer;padding:0 4px}
+.talk-log{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-height:120px}
+.talk-msg p{margin:0;padding:10px 12px;border-radius:14px;font-size:15px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.talk-msg.bot p{background:#0b2233;border:1px solid #1c4560;align-self:flex-start}
+.talk-msg.me{align-self:flex-end;max-width:85%}
+.talk-msg.me p{background:#123d22;border:1px solid #1f6b3a}
+.talk-msg.bot{max-width:92%}
+.talk-msg.wait p{color:var(--muted)}
+.talk-card{margin-top:8px;padding:10px 12px;border:1px dashed #2c5c75;border-radius:12px}
+.talk-card span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);margin-bottom:4px}
+.talk-card p{padding:0;border:0;background:none;font-size:14px;color:#dbe7ee}
+.talk-go{display:inline-block;margin-top:8px;padding:9px 14px;border-radius:10px;border:0;background:var(--neon-g);color:#02140b;font:800 14px Inter,sans-serif;cursor:pointer;text-decoration:none}
+.talk-go:disabled{opacity:.7;cursor:default}
+.talk-form{display:flex;gap:8px;padding:10px;border-top:1px solid #16364a}
+.talk-form input{flex:1;min-width:0;background:#020a10;border:1px solid #29556d;border-radius:12px;color:#fff;font:16px Inter,sans-serif;padding:10px 12px}
+.talk-rec,.talk-send{flex:none;width:44px;height:44px;border-radius:12px;border:1px solid #29556d;background:#0b1d2a;color:#fff;font-size:18px;cursor:pointer}
+.talk-sheet.rec .talk-rec{background:#ff2bd6;border-color:#ff2bd6;animation:talkpulse 1s ease-in-out infinite}
+@keyframes talkpulse{50%{box-shadow:0 0 0 8px rgba(255,43,214,.25)}}
+@media (prefers-reduced-motion:reduce){.talk-sheet.rec .talk-rec{animation:none}}
+@media (min-width:768px){.talk-dock{flex-direction:row;align-items:center;left:max(250px,17vw);right:auto;bottom:10px}.talk-sheet{right:auto;left:max(250px,17vw);bottom:70px}}

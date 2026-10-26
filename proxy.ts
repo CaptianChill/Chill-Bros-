@@ -55,8 +55,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Command Center inside Chill Pros HQ: the money API checks Brae's HQ sign-in token itself (hq_whoami).
-  if (pathname === "/api/command-center/profits" && request.headers.has("x-hq-token")) {
+  // Command Center inside Chill Pros HQ: the money and talk APIs check Brae's HQ sign-in token themselves (hq_whoami).
+  if ((pathname === "/api/command-center/profits" || pathname === "/api/command-center/talk") && request.headers.has("x-hq-token")) {
     return NextResponse.next();
   }
 
