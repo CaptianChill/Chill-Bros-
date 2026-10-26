@@ -36,13 +36,28 @@ window.BB_HQ = (() => {
     ].sort((a, b) => a.due.localeCompare(b.due));
     const soon = items.filter(i => i.kind === 'plan' && !i.done && i.due && i.due >= t && daysUntil(i.due) <= 3).sort((a, b) => a.due.localeCompare(b.due));
     const ventures = items.filter(i => i.kind === 'venture').sort((a, b) => (a.order || 0) - (b.order || 0));
+    /* GIBAM: projects with their tasks (owner, phase, due), owners' load and upcoming meetings. */
+    const byOrder = (a, b) => (a.order || 0) - (b.order || 0);
+    const dueSort = (a, b) => (a.due || '9999').localeCompare(b.due || '9999') || byOrder(a, b);
+    const projects = items.filter(i => i.kind === 'project').sort(byOrder);
+    const gibam = projects.map(p => {
+      const ts = allT.filter(x => x.projectId === p.id), open = ts.filter(x => !x.done);
+      return { id: p.id, title: p.title || 'Project', summary: p.summary || '', target: p.target || '', total: ts.length, done: ts.length - open.length,
+        pct: ts.length ? Math.round(100 * (ts.length - open.length) / ts.length) : 0,
+        overdue: open.filter(x => x.due && x.due < t).length, next: open.sort(dueSort).slice(0, 3).map(x => ({ title: x.title, who: x.owner || '', due: x.due || '', phase: x.phase || '' })) };
+    });
+    const owners = {};
+    openT.forEach(x => { const o = x.owner || 'Unassigned'; owners[o] = owners[o] || { who: o, open: 0, late: 0 }; owners[o].open++; if (x.due && x.due < t) owners[o].late++; });
+    const meetings = items.filter(i => i.kind === 'event' && i.date && i.date >= t).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))).slice(0, 6)
+      .map(e => ({ title: e.title || 'Meeting', date: e.date, time: e.time || '', project: (projects.find(p => p.id === e.projectId) || {}).title || '' }));
     return {
       at: Date.now(), display: d.display || 'Brae',
       earned: sum(inc, i => i.amount), earnedToday: sum(inc.filter(i => i.date === t), i => i.amount), income: inc,
       wait: sum(inv, i => i.amount), invoices: inv,
       goals: goals.length, hit: goals.filter(g => g.done).length,
       tasks: allT.length, doneT: allT.length - openT.length, gibamPct: allT.length ? Math.round(100 * (allT.length - openT.length) / allT.length) : 0,
-      open: steps.length + openT.length, late, soon, ventures
+      open: steps.length + openT.length, late, soon, ventures,
+      gibam, owners: Object.values(owners).sort((a, b) => b.late - a.late || b.open - a.open), meetings
     };
   }
   async function pull() {

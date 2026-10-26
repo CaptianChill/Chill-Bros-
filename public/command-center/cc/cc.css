@@ -365,3 +365,7 @@ html,body{overflow-x:hidden}
 @keyframes talkpulse{50%{box-shadow:0 0 0 8px rgba(255,43,214,.25)}}
 @media (prefers-reduced-motion:reduce){.talk-sheet.rec .talk-rec{animation:none}}
 @media (min-width:768px){.talk-dock{flex-direction:row;align-items:center;left:max(250px,17vw);right:auto;bottom:10px}.talk-sheet{right:auto;left:max(250px,17vw);bottom:70px}}
+/* GIBAM progress bars (same card look) */
+.gbar{height:8px;border-radius:99px;background:#0b2233;border:1px solid #1c4560;overflow:hidden;margin:8px 0 6px}
+.gbar i{display:block;height:100%;background:linear-gradient(90deg,var(--neon-g),var(--neon-b));border-radius:99px}
+@media (max-width:767px){body:has(#panel:not([hidden])) .talk-dock{display:none}}

@@ -7,6 +7,7 @@
   const appById = id => APPS.find(a => a.id === id);
   /* Inside Chill Pros HQ: the HQ tile opens HQ's own boards in this same window. */
   const HQ = window.BB_HQ || null;
+  const todayISO = () => { const d = new Date(), z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };
   if (HQ) { const hq = appById('hq'); if (hq) { hq.url = '/brae'; hq.sameTab = true; hq.name = 'HQ boards'; } }
   let hqData = null;
   const store = {
@@ -169,6 +170,7 @@
     const out = [];
     if (hqData.late.length) out.push({ title: `${hqData.late.length} overdue in HQ`, body: hqData.late.slice(0, 2).map(x => x.title).join(' · '), kind: 'alert', time: hqData.at, go: 'decisions' });
     hqData.soon.slice(0, 3).forEach(p => out.push({ title: `Due ${p.due.slice(5).replace('-', '/')}: ${p.title}`, body: 'HQ plan', kind: 'project', time: hqData.at - 1, go: 'decisions' }));
+    (hqData.meetings || []).slice(0, 2).forEach((m, i) => out.push({ title: `Meeting ${m.date.slice(5).replace('-', '/')}${m.time ? ' ' + m.time : ''}: ${m.title}`, body: m.project ? `GIBAM · ${m.project}` : 'GIBAM', kind: 'project', time: hqData.at - 2 - i, go: 'gibam' }));
     return out;
   }
   function allNotifs() { return (systemNotif ? [systemNotif] : []).concat(hqNotifs(), notifs).sort((a, b) => b.time - a.time); }
@@ -282,6 +284,18 @@
     apps: () => ['All Apps', `<div class="big-apps">${APPS.map(a => tileHTML(a, true)).join('')}</div>
       <div class="card" style="margin-top:16px"><ul class="list">${APPS.map(a => `<li><span class="ic" style="--c:${a.color}"></span><div style="flex:1"><b>${esc(a.name)}</b><span>${esc(a.url.replace(/^https?:\/\//, ''))}</span></div>${pill(a.id)}</li>`).join('')}</ul>
       <p style="margin-top:10px">Last checked ${lastHealth ? ago(lastHealth.getTime()) : '—'}. Edit the roster in <code>cc/apps.js</code>.</p></div>`],
+    gibam: () => {
+      if (!hqData || !hqData.gibam || !hqData.gibam.length) return VIEWS.apps();
+      const g = hqData;
+      const proj = p => `<div class="card"><h2>${esc(p.title)} · ${p.pct}%</h2><div class="gbar" role="progressbar" aria-valuenow="${p.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${p.pct}%"></i></div>
+        <p>${p.done} of ${p.total} tasks done${p.overdue ? ` · <b style="color:var(--orange)">${p.overdue} overdue</b>` : ''}${p.target ? ` · target ${esc(p.target)}` : ''}</p>
+        ${p.next.length ? `<ul class="list">${p.next.map(x => `<li><span class="ic" style="--c:${x.due && x.due < todayISO() ? '#dc2626' : '#1d4fd8'}">${x.due && x.due < todayISO() ? '⏰' : '➡️'}</span><div><b>${esc(x.title)}</b><span>${[x.who, x.phase, x.due ? 'due ' + x.due : ''].filter(Boolean).map(esc).join(' · ')}</span></div></li>`).join('')}</ul>` : '<p>All tasks done.</p>'}</div>`;
+      const people = g.owners.length ? `<div class="card"><h2>Who's carrying what</h2><ul class="list">${g.owners.slice(0, 12).map(o => `<li><span class="ic" style="--c:${o.late ? '#dc2626' : '#15803d'}">👤</span><div style="flex:1"><b>${esc(o.who)}</b><span>${o.open} open${o.late ? ` · ${o.late} overdue` : ''}</span></div></li>`).join('')}</ul></div>` : '';
+      const meets = g.meetings.length ? `<div class="card"><h2>Next meetings</h2><ul class="list">${g.meetings.map(m => `<li><span class="ic" style="--c:#7c3aed">📅</span><div><b>${esc(m.title)}</b><span>${esc(m.date)}${m.time ? ' · ' + esc(m.time) : ''}${m.project ? ' · ' + esc(m.project) : ''}</span></div></li>`).join('')}</ul></div>` : '';
+      return ['GIBAM projects', `<div class="card"><h2>GIBAM ${g.gibamPct}% done</h2><div class="gbar"><i style="width:${g.gibamPct}%"></i></div><p>${g.doneT} of ${g.tasks} tasks · ${g.late.length} overdue · goals ${g.hit}/${g.goals}</p></div>
+        ${g.gibam.map(proj).join('')}${meets}${people}
+        <button class="btn" type="button" data-go="app:hq">Open GIBAM in HQ →</button>`];
+    },
     alerts: () => ['Alerts', `<div class="card"><ul class="list">${allNotifs().slice(0, 40).map(n => { const k = KIND[n.kind] || KIND.system; return `<li><span class="ic" style="--c:${k.c}">${k.i}</span><div><b>${esc(n.title)}</b><span>${esc(n.body || '')}</span><i>${ago(n.time)}</i></div></li>`; }).join('') || '<li>No alerts yet.</li>'}</ul></div>
       ${settings.ntfy ? `<p class="muted" style="color:var(--muted)">Live feed: ntfy topic <b>${esc(settings.ntfy)}</b></p>` : `<div class="card"><h2>Connect your Chill Pros alerts</h2><p>Add your ntfy topic in Settings and new calls, approvals, tech readings and Autopilot activity land here live.</p><button class="btn" data-go="settings">Open Settings</button></div>`}`],
     settings: () => ['Settings', `
