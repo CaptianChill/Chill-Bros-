@@ -1,0 +1,71 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/brae",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/eric",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/mack",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/henry",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/nick",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/mob",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/:n(Brae|BRAE|Eric|ERIC|Mack|MACK|Henry|HENRY|Nick|NICK|Mob|MOB)",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/:n(brae|eric|mack|henry|nick|mob|Brae|BRAE|Eric|ERIC|Mack|MACK|Henry|HENRY|Nick|NICK|Mob|MOB)/",
+      "destination": "/api/page"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://rbhtdgqpktocavxbiafw.supabase.co; frame-src 'self' blob: data:; object-src 'self' blob: data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        }
+      ]
+    }
+  ]
+}
