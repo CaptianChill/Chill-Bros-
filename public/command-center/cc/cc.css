@@ -406,7 +406,7 @@ body.hqv-on .talk-dock{bottom:max(76px,calc(env(safe-area-inset-bottom) + 64px))
 /* ---- My Apps flows straight on from the art: same black glass, diamond chain sides, diamond-framed tiles ---- */
 @media (max-width:767px),(orientation:portrait) and (max-width:1100px){
   .dock-m{position:relative;box-sizing:border-box;margin:0 auto;background:linear-gradient(180deg,#020406,#05080c 40%,#020406);
-    border:0 solid transparent;border-width:0 12px 12px;border-image:url(frame-card.webp) 30 round;border-image-width:0 12px 12px;padding:16px 12px calc(22px + env(safe-area-inset-bottom))}
+    --fw:calc(min(100vw,620px)*52/853);border:0 solid transparent;border-width:0 var(--fw) var(--fw);border-image:url(frame-page.webp) 0 52 52 52 round;border-image-width:0 var(--fw) var(--fw);padding:16px 12px calc(22px + env(safe-area-inset-bottom))}
   .dock-title{color:#fff;text-shadow:0 0 10px rgba(31,182,255,.6);letter-spacing:.16em}
   .dock-title img{width:40px;filter:drop-shadow(0 0 6px rgba(255,255,255,.35))}
   .dock-row{gap:10px}
