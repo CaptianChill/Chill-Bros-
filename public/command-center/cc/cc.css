@@ -385,3 +385,20 @@ body.hqv-on .talk-dock{bottom:max(76px,calc(env(safe-area-inset-bottom) + 64px))
 .hqv-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#020406}
 .hqv-load{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:15px}
 @media (max-width:767px){.hqv-back span{display:none}}
+
+/* ---- Diamond look for every drawer page (alerts, money, apps, HQ, Talk and new tabs) ----
+   Same rhinestone chain, black glass and white/cyan type as the home art, cut straight from it. */
+.panel{background:radial-gradient(120% 60% at 100% 0,rgba(255,43,214,.10),transparent 60%),radial-gradient(120% 60% at 0 100%,rgba(25,255,156,.08),transparent 60%),linear-gradient(180deg,#05080c,#020406);
+  border-left:14px solid transparent;border-image:url(frame-card.webp) 30 round;border-image-width:0 0 0 14px;border-image-outset:0;box-shadow:-24px 0 70px rgba(0,183,255,.18)}
+.panel header{background:linear-gradient(180deg,#030507f2,#030507d9);border-bottom:10px solid transparent;border-image:url(frame-card.webp) 30 round;border-image-width:0 0 10px 0;padding-bottom:12px}
+.panel h1{font-weight:800;text-transform:uppercase;letter-spacing:.12em;font-size:19px;text-shadow:0 0 12px rgba(31,182,255,.55)}
+.panel header button{border:2px solid #dfe9f2;background:radial-gradient(circle at 35% 30%,#1a2733,#05090d);box-shadow:0 0 10px rgba(255,255,255,.35),inset 0 0 6px rgba(255,255,255,.2)}
+.panel .card,.panel-body .card{position:relative;border:16px solid transparent;border-image:url(frame-card.webp) 30 round;border-image-width:16px;border-radius:0;
+  background:linear-gradient(180deg,rgba(8,12,18,.96),rgba(3,6,10,.96)) padding-box;padding:12px 14px;margin-bottom:14px;box-shadow:0 0 22px rgba(255,255,255,.06)}
+.panel .card h2{font-weight:800;letter-spacing:.04em}
+.panel .card h2::before{content:"";display:inline-block;width:.55em;height:.55em;margin-right:.45em;transform:rotate(45deg) translateY(-.08em);background:linear-gradient(135deg,#fff,#9fe3ff 45%,#1fb6ff);box-shadow:0 0 8px #9fe3ff}
+.panel .btn{border:2px solid #e6eef5;border-radius:999px;background:linear-gradient(180deg,#0e2232,#050b11);box-shadow:0 0 12px rgba(255,255,255,.18),inset 0 0 0 1px rgba(31,182,255,.35);text-transform:uppercase;letter-spacing:.06em;font-size:13px}
+.panel .btn:hover{box-shadow:0 0 18px rgba(255,255,255,.4),0 0 26px rgba(31,182,255,.45)}
+.panel input,.panel textarea,.panel select{border:2px solid rgba(223,233,242,.55)!important;border-radius:12px;background:#03070b!important;color:#fff}
+.panel input:focus,.panel textarea:focus,.panel select:focus{outline:none;border-color:#fff!important;box-shadow:0 0 12px rgba(31,182,255,.5)}
+@media (max-width:640px){.panel{border-left-width:0;border-image-width:0}.panel .card,.panel-body .card{border-width:12px;border-image-width:12px}}
