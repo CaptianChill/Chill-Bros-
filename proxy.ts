@@ -55,6 +55,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Command Center inside Chill Pros HQ: the money API checks Brae's HQ sign-in token itself (hq_whoami).
+  if (pathname === "/api/command-center/profits" && request.headers.has("x-hq-token")) {
+    return NextResponse.next();
+  }
+
   // Neon Auth is the single source of truth for interactive sessions.
   // This validates/refreshes Neon session cookies and redirects only when
   // the Neon session is missing or invalid.
