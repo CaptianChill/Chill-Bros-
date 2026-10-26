@@ -20,8 +20,8 @@ window.BB_ROUTES = {
   jobs:        { app: 'crm', label: 'Jobs',        blurb: 'Open work orders, quotes and job history.' },
   technicians: { app: 'crm', label: 'Technicians', blurb: 'Crew roster, clock-ins and readings.' },
   customers:   { app: 'crm', label: 'Customers',   blurb: 'Customer records, equipment and invoices.' },
-  finances:    { app: 'hq',  label: 'Finances',    blurb: 'Dollar goals, invoices awaiting payment and money owed.' },
-  analytics:   { app: 'hq',  label: 'Analytics',   blurb: 'Track record, profit dashboard and goals.' }
+  finances:    { app: 'hq',  hq: 'money', label: 'Finances',    blurb: 'Dollar goals, invoices awaiting payment and money owed.' },
+  analytics:   { app: 'hq',  hq: 'goals', label: 'Analytics',   blurb: 'Track record, profit dashboard and goals.' }
 };
 
 /* The big money tiles in the middle panel, in order, with the line under each name. */

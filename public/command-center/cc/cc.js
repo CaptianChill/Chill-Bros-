@@ -267,6 +267,7 @@
 
   function openApp(a) {
     if (!a) return;
+    if (a.id === 'hq' && window.BB_HQVIEW) { if (!panel.hidden) closePanel(); window.BB_HQVIEW.open('today'); return; }
     if (!a.url) {
       const link = (prompt(`Paste the link for your ${a.name} app (it's saved on this device):`, 'https://') || '').trim();
       if (!/^https?:\/\/[^\s]+\.[^\s]+/.test(link)) { if (link && link !== 'https://') toast('That doesn\'t look like a web link'); return; }
@@ -294,7 +295,7 @@
       const meets = g.meetings.length ? `<div class="card"><h2>Next meetings</h2><ul class="list">${g.meetings.map(m => `<li><span class="ic" style="--c:#7c3aed">📅</span><div><b>${esc(m.title)}</b><span>${esc(m.date)}${m.time ? ' · ' + esc(m.time) : ''}${m.project ? ' · ' + esc(m.project) : ''}</span></div></li>`).join('')}</ul></div>` : '';
       return ['GIBAM projects', `<div class="card"><h2>GIBAM ${g.gibamPct}% done</h2><div class="gbar"><i style="width:${g.gibamPct}%"></i></div><p>${g.doneT} of ${g.tasks} tasks · ${g.late.length} overdue · goals ${g.hit}/${g.goals}</p></div>
         ${g.gibam.map(proj).join('')}${meets}${people}
-        <button class="btn" type="button" data-go="app:hq">Open GIBAM in HQ →</button>`];
+        <button class="btn" type="button" data-go="hq:projects">Open GIBAM projects →</button>`];
     },
     alerts: () => ['Alerts', `<div class="card"><ul class="list">${allNotifs().slice(0, 40).map(n => { const k = KIND[n.kind] || KIND.system; return `<li><span class="ic" style="--c:${k.c}">${k.i}</span><div><b>${esc(n.title)}</b><span>${esc(n.body || '')}</span><i>${ago(n.time)}</i></div></li>`; }).join('') || '<li>No alerts yet.</li>'}</ul></div>
       ${settings.ntfy ? `<p class="muted" style="color:var(--muted)">Live feed: ntfy topic <b>${esc(settings.ntfy)}</b></p>` : `<div class="card"><h2>Connect your Chill Pros alerts</h2><p>Add your ntfy topic in Settings and new calls, approvals, tech readings and Autopilot activity land here live.</p><button class="btn" data-go="settings">Open Settings</button></div>`}`],
@@ -318,7 +319,7 @@
       const row = x => `<li><span class="ic" style="--c:#dc2626">⏰</span><div style="flex:1"><b>${esc(x.title)}</b><span>${esc(x.who || '')} · due ${esc(x.due)}</span></div></li>`;
       return ['Needs a decision', `<div class="card"><h2>${hqData.late.length} overdue</h2><ul class="list">${hqData.late.slice(0, 40).map(row).join('') || '<li>Nothing overdue.</li>'}</ul></div>
         ${hqData.soon.length ? `<div class="card"><h2>Due in the next 3 days</h2><ul class="list">${hqData.soon.map(p => `<li><span class="ic" style="--c:#1d4fd8">📅</span><div><b>${esc(p.title)}</b><span>due ${esc(p.due)}</span></div></li>`).join('')}</ul></div>` : ''}
-        <button class="btn" type="button" data-go="app:hq">Open HQ boards →</button>`];
+        <button class="btn" type="button" data-go="hq:plan">Open HQ plans →</button>`];
     },
     money: () => {
       if (hqData) {
@@ -329,7 +330,7 @@
           <div class="card"><h2>Goals hit: ${hqData.hit} / ${hqData.goals}</h2><p>GIBAM progress ${hqData.gibamPct}% (${hqData.doneT} of ${hqData.tasks} tasks) · ${hqData.open} open steps and tasks.</p></div>
           ${crm && crm.value != null ? `<div class="card"><h2>Chill Pros collected: ${moneyFmt(crm.value)}</h2><p>${esc(crm.sub)} (from the CRM)</p></div>` : ''}
           ${bbb && bbb.value != null ? `<div class="card"><h2>BBB profit: ${moneyFmt(bbb.value)}</h2><p>${esc(bbb.sub)}</p></div>` : ''}
-          <button class="btn" type="button" data-go="app:hq">Open HQ money →</button>`];
+          <button class="btn" type="button" data-go="hq:money">Open HQ money →</button>`];
       }
       const today = new Date().toDateString();
       const list = notifs.filter(n => (n.kind === 'invoice' || n.kind === 'money') && MONEY_RE.test((n.title || '') + ' ' + (n.body || ''))).slice(0, 40);
@@ -348,7 +349,9 @@
   function go(target, trigger, ev) {
     if (ev) burstAt(ev);
     if (target === 'home') { if (!panel.hidden) closePanel(); window.scrollTo({ top: 0, behavior: 'smooth' }); celebrate(); return; }
+    if (target.startsWith('hq:') && window.BB_HQVIEW) { if (!panel.hidden) closePanel(); window.BB_HQVIEW.open(target.slice(3)); return; }
     if (target.startsWith('app:')) { openApp(appById(target.slice(4))); return; }
+    if (ROUTES[target] && ROUTES[target].hq && window.BB_HQVIEW) { window.BB_HQVIEW.open(ROUTES[target].hq); return; }
     if (ROUTES[target]) { const [t, h] = routeView(target); openPanel(t, h, trigger); return; }
     if (VIEWS[target]) { const [t, h] = VIEWS[target](); openPanel(t, h, trigger); }
   }
