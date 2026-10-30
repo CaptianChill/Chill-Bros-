@@ -8,6 +8,7 @@ import { notifyOwner } from "@/lib/chillbros/notify";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 import { composeEmail, draftConversationReply } from "./brain";
+import { permanentBounceRecipients } from "./bounce-logic";
 import { bookingUrl, unsubscribeUrl } from "./links";
 import { intentGetsReply, isAutomatedMessage, REPLY_LIMIT_PER_CONTACT, REPLY_WINDOW_DAYS, replySubject, stripQuoted } from "./replies-logic";
 import { finishOutreach, reserveOutreach, suppress, type AutopilotSettings } from "./store";
@@ -90,6 +91,40 @@ async function readInbox(user: string, password: string, wanted: Set<string>, ha
     await imap.logout().catch(() => undefined);
   }
   return found.filter((m) => m.messageId && m.from);
+}
+
+/** Read-only mailbox check and local suppression; never sends an email or marks mail read. */
+export async function runBounceDesk(client: Client) {
+  const user = String(process.env.GMAIL_SMTP_USER || "").trim();
+  const password = String(process.env.GMAIL_SMTP_APP_PASSWORD || "").replace(/\s+/g, "");
+  if (!user || !password) return 0;
+  const handled = async (messageId: string) => {
+    const { data, error } = await client.from("chillbros_email_replies").select("id").eq("message_id", messageId).maybeSingle();
+    if (error) throw new Error("Bounce history unavailable.");
+    return Boolean(data);
+  };
+  const messages = await readInbox(user, password, new Set(["mailer-daemon@googlemail.com"]), handled);
+  let stopped = 0;
+  for (const message of messages) {
+    const recipients = permanentBounceRecipients(message);
+    for (const email of recipients) {
+      const { data: prior, error } = await client.from("chillbros_outreach_log").select("id").eq("channel", "email").eq("recipient", email).limit(1);
+      if (error) throw new Error("Bounce recipient history unavailable.");
+      if (!prior?.length) continue;
+      await suppress(client, email, "Permanent delivery failure reported by Gmail");
+      const results = await Promise.all([
+        client.from("chillbros_revenue_prospects").update({ outreach_done: true, do_not_contact: true, do_not_contact_reason: "Permanent email delivery failure" }).eq("contact_email", email),
+        client.from("chillbros_outreach_log").update({ status: "failed", error: "Permanent delivery failure reported by Gmail" }).eq("channel", "email").eq("recipient", email).eq("status", "sent").lte("created_at", (message.date ?? new Date()).toISOString()),
+      ]);
+      if (results.some((r) => r.error)) throw new Error("Could not save bounce outcome.");
+      stopped++;
+    }
+    if (recipients.length) {
+      const { error } = await client.from("chillbros_email_replies").insert({ message_id: message.messageId, from_email: message.from, subject: message.subject, received_at: message.date?.toISOString() ?? null, their_text: message.text.slice(0,4000), action: "stopped", summary: "Permanent delivery failure processed; recipient suppressed." });
+      if (error && error.code !== "23505") throw new Error("Could not save bounce history.");
+    }
+  }
+  return stopped;
 }
 
 export async function runReplyDesk(client: Client, settings: AutopilotSettings): Promise<ReplyDeskRun> {

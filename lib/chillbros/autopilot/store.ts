@@ -78,7 +78,8 @@ export async function isSuppressed(client: Client, contact: string | null | unde
 }
 
 export async function suppress(client: Client, contact: string, reason = "unsubscribed") {
-  await client.from("chillbros_outreach_suppressions").upsert({ contact: normalizeContact(contact), reason }, { onConflict: "contact" });
+  const { error } = await client.from("chillbros_outreach_suppressions").upsert({ contact: normalizeContact(contact), reason }, { onConflict: "contact" });
+  if (error) throw new Error("Suppression could not be saved.");
 }
 
 export type OutreachLogRow = {

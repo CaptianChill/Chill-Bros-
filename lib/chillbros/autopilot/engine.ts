@@ -9,7 +9,7 @@ import { isInternalOrTestCustomer } from "./audience";
 import { osmIdentity, phoneFromHtml } from "./contact-source";
 import { isUsableOutreachEmail, pickBusinessEmail, websiteFromSummary } from "./email-extract";
 import { runInboundFollowups } from "./inbound";
-import { runReplyDesk } from "./replies";
+import { runBounceDesk, runReplyDesk } from "./replies";
 import { replyHoursOpen } from "./replies-logic";
 import { bookingUrl, unsubscribeUrl } from "./links";
 import { centralNow, openSlotCount } from "./slots";
@@ -26,6 +26,7 @@ export type AutopilotRun = {
   centralHour: number;
   openSlots5Days: number;
   enriched: number;
+  bounces: number;
   inboundFollowups: number;
   reactivation: number;
   cold: number;
@@ -285,11 +286,12 @@ export async function runAutopilot(now = new Date()): Promise<AutopilotRun> {
   const client = createServiceRoleClient();
   const settings = await getAutopilotSettings(client);
   const ct = centralNow(now);
-  const run: AutopilotRun = { ranAt: now.toISOString(), centralHour: ct.hour, openSlots5Days: 0, enriched: 0, inboundFollowups: 0, reactivation: 0, cold: 0, replies: { read: 0, answered: 0, hot: 0, handedOff: 0, stopped: 0 }, notes: [] };
+  const run: AutopilotRun = { ranAt: now.toISOString(), centralHour: ct.hour, openSlots5Days: 0, enriched: 0, bounces: 0, inboundFollowups: 0, reactivation: 0, cold: 0, replies: { read: 0, answered: 0, hot: 0, handedOff: 0, stopped: 0 }, notes: [] };
   // Lead finding never sleeps: keep turning websites into reachable contacts.
   run.enriched = await enrichProspectEmails(client, 30).catch((e) => { console.error("[autopilot] enrichment failed", e); run.notes.push("Contact enrichment failed; queue retained for retry."); return 0; });
+  run.bounces = await runBounceDesk(client).catch((e) => { console.error("[autopilot] bounce check failed", e); run.notes.push("Delivery failure check needs attention; sending blocked for this run."); return -1; });
 
-  if (!settings.enabled || settings.outreach_approval_hold) {
+  if (!settings.enabled || settings.outreach_approval_hold || run.bounces < 0) {
     run.notes.push("Customer outreach is on hold; contact enrichment remains active.");
     return run;
   }
