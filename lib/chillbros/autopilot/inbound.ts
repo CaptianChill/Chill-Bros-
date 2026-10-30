@@ -5,7 +5,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 import { classifyUrgency, composeEmail, draftInboundNudge, draftInboundReply, type Draft } from "./brain";
 import { bookingUrl, normalizeContact, unsubscribeUrl } from "./links";
-import { getAutopilotSettings, isSuppressed, logOutreach, type AutopilotSettings } from "./store";
+import { finishOutreach, getAutopilotSettings, isSuppressed, reserveOutreach, type AutopilotSettings } from "./store";
 import { centralNow } from "./slots";
 import { sendAutopilotSms } from "./sms";
 import { inboundNudgeDue } from "./timing";
@@ -36,18 +36,23 @@ export function smsHoursOpen(now = new Date()) {
 
 async function deliver(client: Client, settings: AutopilotSettings, lead: { id: string; token: string; email: string | null; phone: string | null }, draft: Draft, step: number) {
   const link = bookingUrl({ kind: "l", value: lead.token });
+  if (settings.outreach_approval_hold || !settings.enabled) return false;
   const results: string[] = [];
   if (lead.email && !(await isSuppressed(client, lead.email))) {
     const body = composeEmail(draft, { bookingUrl: link, unsubscribeUrl: unsubscribeUrl(lead.email), postalAddress: settings.sender_postal_address });
+    const reservation = await reserveOutreach(client, `inbound:${lead.id}:${step}:email`, { lane: "inbound", step, channel: "email", recipient: lead.email, inbound_lead_id: lead.id, subject: draft.subject, body });
+    if (!reservation) return false;
     const sent = await sendCompanyEmail(lead.email, draft.subject, body, undefined, [], { "List-Unsubscribe": `<${unsubscribeUrl(lead.email)}>` })
       .catch((e: unknown) => ({ sent: false as const, status: "failed" as const, error: e instanceof Error ? e.message : String(e) }));
-    await logOutreach(client, { lane: "inbound", step, channel: "email", recipient: lead.email, inbound_lead_id: lead.id, subject: draft.subject, body, status: sent.status, error: "error" in sent ? sent.error : null });
+    await finishOutreach(client, reservation, sent.status, "error" in sent ? sent.error : null);
     results.push(sent.status);
   }
   if (lead.phone && draft.sms && smsHoursOpen() && !(await isSuppressed(client, lead.phone))) {
     const text = `${draft.sms} ${link} Reply STOP to opt out.`;
+    const reservation = await reserveOutreach(client, `inbound:${lead.id}:${step}:sms`, { lane: "inbound", step, channel: "sms", recipient: normalizeContact(lead.phone), inbound_lead_id: lead.id, body: text });
+    if (!reservation) return results.includes("sent");
     const sent = await sendAutopilotSms(lead.phone, text);
-    await logOutreach(client, { lane: "inbound", step, channel: "sms", recipient: normalizeContact(lead.phone), inbound_lead_id: lead.id, body: text, status: sent.status, error: sent.error ?? null });
+    await finishOutreach(client, reservation, sent.status, sent.error);
     results.push(sent.status);
   }
   return results.includes("sent");
@@ -85,7 +90,7 @@ export async function handleInboundLead(input: InboundLeadInput, client: Client 
   }).select("id,token").single();
   if (error || !lead) throw new Error(error?.message ?? "Could not save the lead.");
 
-  if (!settings.enabled || !settings.inbound_enabled) return { id: lead.id as string, duplicate: false, replied: false };
+  if (!settings.enabled || settings.outreach_approval_hold || !settings.inbound_enabled) return { id: lead.id as string, duplicate: false, replied: false };
 
   const draft = await draftInboundReply(settings, { name: clean(input.name, 200), message, property_type: propertyType, service_line: clean(input.serviceLine, 60), urgency });
   const replied = await deliver(client, settings, { id: lead.id, token: lead.token, email, phone }, draft, 0);

@@ -106,7 +106,8 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
     socket.write(body);
     const accepted = await readResponse(socket);
     if (!accepted.startsWith("250")) throw new Error("SMTP message was not accepted.");
-    await command(socket, "QUIT", ["221"]);
+    // DATA was accepted. A lost QUIT acknowledgement must not cause a resend.
+    await command(socket, "QUIT", ["221"]).catch(() => undefined);
     return { sent: true as const, status: "sent" as const };
   } finally {
     socket.destroy();

@@ -1,10 +1,10 @@
 import { runAutopilot } from "@/lib/chillbros/autopilot/engine";
 
 export const dynamic = "force-dynamic";
-// Website checks + AI-written emails for one hourly batch.
+// Website checks + AI-written emails for one 15-minute batch.
 export const maxDuration = 300;
 
-// Hourly, around the clock (vercel.json). Each lane decides for itself whether
+// Every 15 minutes, around the clock (vercel.json). Each lane decides whether
 // this hour is its best window; see lib/chillbros/autopilot/timing.ts.
 export async function GET(request: Request) {
   const secret = String(process.env.CRON_SECRET || "");
