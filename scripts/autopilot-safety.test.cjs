@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const ts = require('typescript');
+const { EventEmitter } = require('node:events');
 function load(file, deps = {}) {
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const mod = { exports: {} };
@@ -47,7 +48,7 @@ test('cron workflow enriches a listing and saves contact while held, without sen
     '@/lib/chillbros/approval-notifications': { sendCompanyEmail: () => transportCalls++ },
     '@/lib/chillbros/notify': {}, '@/lib/supabase/service-client': { createServiceRoleClient: () => client },
     './brain': {}, './audience': {}, './contact-source': contact, './email-extract': extract,
-    './inbound': {}, './replies': {}, './replies-logic': {}, './links': {},
+    './inbound': {}, './replies': { runBounceDesk: async () => 0 }, './replies-logic': {}, './links': {},
     './slots': { centralNow: () => ({ hour: 11 }) },
     './store': { getAutopilotSettings: async () => ({ enabled: false, outreach_approval_hold: true }), logOutreach: async (_, row) => logs.push(row) }, './timing': {},
   });
@@ -62,4 +63,37 @@ test('cron workflow enriches a listing and saves contact while held, without sen
     assert.equal(logs[0].status, 'checked');
     assert.equal(transportCalls, 0);
   } finally { global.fetch = originalFetch; }
+});
+
+test('permanent bounces require authenticated sender, failed recipient, and failure status', () => {
+  const { permanentBounceRecipients } = load('lib/chillbros/autopilot/bounce-logic.ts');
+  const message = { from: 'mailer-daemon@googlemail.com', subject: 'Delivery Status Notification (Failure)', text: '550 5.1.1 mailbox does not exist', headers: { 'authentication-results': 'mx.google.com; dkim=pass header.i=@googlemail.com; dmarc=pass', 'x-failed-recipients': 'office@fixture-business.com' } };
+  assert.deepEqual(permanentBounceRecipients(message), ['office@fixture-business.com']);
+  assert.deepEqual(permanentBounceRecipients({ ...message, subject: 'Delivery Status Notification (Delay)' }), []);
+  assert.deepEqual(permanentBounceRecipients({ ...message, from: 'someone@fixture-business.com' }), []);
+  assert.deepEqual(permanentBounceRecipients({ ...message, headers: { ...message.headers, 'authentication-results': 'dkim=fail' } }), []);
+});
+
+test('accepted SMTP DATA stays sent when QUIT disconnects; rejected DATA is a failure', async () => {
+  const originalUser = process.env.GMAIL_SMTP_USER;
+  const originalPassword = process.env.GMAIL_SMTP_APP_PASSWORD;
+  process.env.GMAIL_SMTP_USER = 'fixture@example.invalid';
+  process.env.GMAIL_SMTP_APP_PASSWORD = 'fixture-password';
+  try {
+    for (const acceptData of [true, false]) {
+      const socket = new EventEmitter(); let write = 0;
+      socket.destroy = () => {};
+      const responses = ['250 OK','334 user','334 password','235 OK','250 OK','250 OK','354 DATA',acceptData ? '250 accepted' : '550 rejected'];
+      socket.write = () => { const response = responses[write++]; queueMicrotask(() => response ? socket.emit('data',Buffer.from(response + '\r\n')) : socket.emit('error',new Error('QUIT disconnected'))); };
+      const mail = load('lib/chillbros/approval-notifications.ts', {
+        'node:tls': { connect: () => { queueMicrotask(() => { socket.emit('secureConnect'); setImmediate(() => socket.emit('data',Buffer.from('220 ready\r\n'))); }); return socket; } },
+        '@/lib/chillbros/notify': {}, '@/lib/supabase/service-client': {},
+      });
+      if (acceptData) assert.equal((await mail.sendCompanyEmail('recipient@example.invalid','Fixture','Fixture')).status,'sent');
+      else await assert.rejects(mail.sendCompanyEmail('recipient@example.invalid','Fixture','Fixture'),/not accepted/);
+    }
+  } finally {
+    if (originalUser === undefined) delete process.env.GMAIL_SMTP_USER; else process.env.GMAIL_SMTP_USER = originalUser;
+    if (originalPassword === undefined) delete process.env.GMAIL_SMTP_APP_PASSWORD; else process.env.GMAIL_SMTP_APP_PASSWORD = originalPassword;
+  }
 });
