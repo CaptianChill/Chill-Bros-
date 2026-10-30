@@ -371,7 +371,7 @@ export async function runLeadScan(client: Client, options: { mode: "daily" | "ma
   const googleKey = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
   const { data: customers } = await client.from("chillbros_customers").select("name").limit(5000);
   const customerNames = new Set((customers ?? []).map((c: { name: string | null }) => nameKey(c.name ?? "")).filter((n) => n.length > 2));
-  const knownNames = googleKey ? await existingProspectNames(client) : new Set<string>();
+  const knownNames = await existingProspectNames(client);
 
   const start = startAreaIndex(options.mode);
   const result: LeadScanResult = { added: 0, scanned: [], skippedCustomers: 0, source: googleKey ? "google" : "openstreetmap" };
@@ -401,7 +401,7 @@ export async function runLeadScan(client: Client, options: { mode: "daily" | "ma
     const fresh = leads.filter((lead) => {
       const key = nameKey(lead.business_name);
       if (knownNames.has(key)) return false;
-      if (googleKey) knownNames.add(key);
+      knownNames.add(key);
       return true;
     });
     if (!fresh.length) continue;

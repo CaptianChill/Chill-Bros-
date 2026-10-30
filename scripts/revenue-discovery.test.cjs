@@ -64,13 +64,13 @@ test('runLeadScan keeps searching areas until it adds enough new leads', async (
   const client = {
     from(table) {
       if (table === 'chillbros_customers') return { select: () => ({ limit: async () => ({ data: [{ name: 'Bird Bakery' }] }) }) };
-      return { upsert: (rows) => ({ select: async () => ({ data: Array.from({ length: Math.min(rows.length, upserts.shift() ?? 0) }, (_, i) => ({ id: i })), error: null }) }) };
+      return { select: () => ({ range: async () => ({ data: [] }) }), upsert: (rows) => ({ select: async () => ({ data: Array.from({ length: Math.min(rows.length, upserts.shift() ?? 0) }, (_, i) => ({ id: i })), error: null }) }) };
     },
   };
   const realFetch = global.fetch;
   global.fetch = async (_url, init) => {
     calls.areas.push(String(init.body));
-    return { ok: true, json: async () => ({ elements: Array.from({ length: 40 }, (_, i) => el(i + 1, { amenity: 'restaurant', name: i === 0 ? 'Bird Bakery' : `Spot ${i}` })) }) };
+    return { ok: true, json: async () => ({ elements: Array.from({ length: 40 }, (_, i) => el(i + 1, { amenity: 'restaurant', name: i === 0 ? 'Bird Bakery' : `Area ${calls.areas.length} Spot ${i}` })) }) };
   };
   try {
     const result = await d.runLeadScan(client, { mode: 'daily', actorId: null, target: 25, maxAreas: 4 });
@@ -84,6 +84,7 @@ test('a hung map server cannot run the scan past its time budget', async () => {
   const client = {
     from(table) {
       if (table === 'chillbros_customers') return { select: () => ({ limit: async () => ({ data: [] }) }) };
+      if (table === 'chillbros_revenue_prospects') return { select: () => ({ range: async () => ({ data: [] }) }) };
       throw new Error('nothing should be saved');
     },
   };

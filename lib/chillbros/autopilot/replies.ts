@@ -10,7 +10,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { composeEmail, draftConversationReply } from "./brain";
 import { bookingUrl, unsubscribeUrl } from "./links";
 import { intentGetsReply, isAutomatedMessage, REPLY_LIMIT_PER_CONTACT, REPLY_WINDOW_DAYS, replySubject, stripQuoted } from "./replies-logic";
-import { logOutreach, suppress, type AutopilotSettings } from "./store";
+import { finishOutreach, reserveOutreach, suppress, type AutopilotSettings } from "./store";
 
 // The reply desk. Each hourly run reads the company inbox for replies from people the
 // autopilot emailed (cold outreach and customer check-ins), and Claude answers them:
@@ -170,9 +170,11 @@ export async function runReplyDesk(client: Client, settings: AutopilotSettings):
     });
     const subject = replySubject(m.subject);
     const threadHeaders = { "In-Reply-To": m.messageId, References: [...m.references, m.messageId].slice(-10).join(" "), "List-Unsubscribe": `<${unsubscribeUrl(m.from)}>` };
+    const reservation = await reserveOutreach(client, `reply:${m.messageId}`, { lane: "reply", channel: "email", recipient: m.from, prospect_id: contact.prospectId, customer_id: contact.customerId, subject, body });
+    if (!reservation) continue;
     const result = await sendCompanyEmail(m.from, subject, body, undefined, [], threadHeaders)
       .catch((e: unknown) => ({ sent: false as const, status: "failed" as const, error: e instanceof Error ? e.message : String(e) }));
-    await logOutreach(client, { lane: "reply", channel: "email", recipient: m.from, prospect_id: contact.prospectId, customer_id: contact.customerId, subject, body, status: result.status, error: "error" in result ? result.error : null });
+    await finishOutreach(client, reservation, result.status, "error" in result ? result.error : null);
     if (result.status !== "sent") {
       // Not recorded, so the next run tries this reply again.
       console.error(`[reply-desk] send failed: ${"error" in result ? result.error : "unknown"}`);

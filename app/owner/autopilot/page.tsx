@@ -36,6 +36,7 @@ export default async function AutopilotDashboardPage({ searchParams }: { searchP
   return (
     <AppShell title="Lead Autopilot">
       <div className="space-y-4">
+        {s.outreach_approval_hold && <p role="status" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-4 text-amber-100">Customer outreach is awaiting owner approval. Contact enrichment continues every 15 minutes. Turning Autopilot on does not release this hold.</p>}
         <div className="flex justify-center gap-2">
           {[7, 30, 90].map((n) => (
             <Link key={n} href={`/owner/autopilot?days=${n}`} className={`rounded-full border px-4 py-1.5 text-sm font-semibold ${n === days ? "border-[#8ffafa] bg-[#2d7dff]/20 text-white" : "border-zinc-600 text-zinc-300"}`}>{n} days</Link>

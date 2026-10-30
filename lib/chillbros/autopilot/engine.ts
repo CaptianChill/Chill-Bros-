@@ -6,13 +6,14 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 import { composeEmail, draftColdEmail, draftReactivation, type Draft } from "./brain";
 import { isInternalOrTestCustomer } from "./audience";
+import { osmIdentity, phoneFromHtml } from "./contact-source";
 import { isUsableOutreachEmail, pickBusinessEmail, websiteFromSummary } from "./email-extract";
 import { runInboundFollowups } from "./inbound";
 import { runReplyDesk } from "./replies";
 import { replyHoursOpen } from "./replies-logic";
 import { bookingUrl, unsubscribeUrl } from "./links";
 import { centralNow, openSlotCount } from "./slots";
-import { getAutopilotSettings, isSuppressed, loadOpenSlots, logOutreach, sentTodayCount, type AutopilotSettings } from "./store";
+import { finishOutreach, getAutopilotSettings, isSuppressed, loadOpenSlots, logOutreach, reserveOutreach, sentTodayCount, type AutopilotSettings } from "./store";
 import { batchSize, coldStepDue, COLD_MAX_STEPS, laneForServiceLine, laneIsOpen, REACTIVATION_GAP_DAYS } from "./timing";
 
 // The hourly engine. Every run: find more contact emails, nudge inbound leads, and
@@ -65,40 +66,68 @@ async function fetchPage(url: string) {
 }
 
 export async function enrichProspectEmails(client: Client, limit = 30) {
-  const { data: rows } = await client
+  const retryBefore = new Date(Date.now() - 30 * 86400000).toISOString();
+  const { data: rows, error: queueError } = await client
     .from("chillbros_revenue_prospects")
-    .select("id,signal_summary")
-    .is("email_enriched_at", null)
-    .or("contact_email.is.null,contact_email.eq.")
+    .select("id,signal_summary,source_url,contact_email,contact_phone")
+    .or(`contact_enriched_at.is.null,contact_enriched_at.lt.${retryBefore}`)
     .eq("do_not_contact", false)
-    .like("signal_summary", "%Website: %")
+    .order("contact_enriched_at", { ascending: true, nullsFirst: true })
+    .order("contact_phone", { ascending: true, nullsFirst: true })
     .order("score", { ascending: false })
     .limit(limit);
+  if (queueError || rows === null) throw new Error("Enrichment queue could not be read.");
+  const identities = rows.map((r) => osmIdentity(r.source_url)).filter((r) => r !== null);
+  const tagsBySource = new Map<string, Record<string, string>>();
+  if (identities.length) {
+    // Exact identifiers can use OSM's primary API instead of running an Overpass search.
+    for (const type of ["node", "way", "relation"]) {
+      const ids = identities.filter((r) => r.type === type).map((r) => r.id);
+      if (!ids.length) continue;
+      const plural = `${type}s`;
+      const response = await fetch(`https://api.openstreetmap.org/api/0.6/${plural}.json?${plural}=${ids.join(",")}`, {
+        headers: { "user-agent": "ChillBros-RevenueRadar/1.2" }, signal: AbortSignal.timeout(15000), cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`Contact source returned ${response.status}; queue retained for retry.`);
+      const payload = await response.json() as { elements?: { type: string; id: number; tags?: Record<string, string> }[] };
+      if (!Array.isArray(payload.elements)) throw new Error("Invalid contact source; queue retained for retry.");
+      for (const e of payload.elements) tagsBySource.set(`${e.type}/${e.id}`, e.tags ?? {});
+    }
+  }
   let found = 0;
   const queue = [...(rows ?? [])];
   const worker = async () => {
     while (queue.length) {
       const row = queue.shift()!;
-      const site = websiteFromSummary(row.signal_summary);
+      const identity = osmIdentity(row.source_url);
+      const tags = identity ? tagsBySource.get(`${identity.type}/${identity.id}`) ?? {} : {};
+      const sourceSite = tags.website || tags["contact:website"];
+      const site = websiteFromSummary(row.signal_summary) || (sourceSite ? (/^https?:\/\//.test(sourceSite) ? sourceSite : `https://${sourceSite}`) : null);
+      let phone: string | null = row.contact_phone || tags.phone || tags["contact:phone"] || null;
       let email: string | null = null;
+      const sourceEmail = tags.email || tags["contact:email"];
+      if (isUsableOutreachEmail(sourceEmail)) email = sourceEmail.toLowerCase();
       if (site) {
         const home = await fetchPage(site);
-        email = pickBusinessEmail(home, site);
+        email ||= pickBusinessEmail(home, site);
+        phone ||= phoneFromHtml(home);
         if (!email) {
           for (const path of ["/contact", "/contact-us"]) {
             const page = await fetchPage(new URL(path, site).toString());
+            phone ||= phoneFromHtml(page);
             email = pickBusinessEmail(page, site);
             if (email) break;
           }
         }
       }
       const now = new Date().toISOString();
-      await client.from("chillbros_revenue_prospects").update({ email_enriched_at: now, ...(email ? { contact_email: email } : {}) }).eq("id", row.id);
-      if (email) found++;
+      const { error } = await client.from("chillbros_revenue_prospects").update({ contact_enriched_at: now, ...(site ? { email_enriched_at: now } : {}), ...(!row.contact_email && email ? { contact_email: email } : {}), ...(!row.contact_phone && phone ? { contact_phone: phone } : {}) }).eq("id", row.id);
+      if (error) throw new Error("Enrichment result could not be saved.");
+      if ((!row.contact_email && email) || (!row.contact_phone && phone)) found++;
     }
   };
   await Promise.all(Array.from({ length: 5 }, worker));
-  if (rows?.length) await logOutreach(client, { lane: "enrichment", channel: "none", status: "sent", subject: `Checked ${rows.length} websites, found ${found} emails` });
+  if (rows?.length) await logOutreach(client, { lane: "enrichment", channel: "none", status: "checked", subject: `Checked ${rows.length} lead sources, enriched ${found} contacts` });
   return found;
 }
 
@@ -158,8 +187,10 @@ async function runReactivation(client: Client, settings: AutopilotSettings, coun
     const months = last ? Math.round((Date.now() - new Date(last.created_at).getTime()) / (30 * 86_400_000)) : null;
     const draft = await draftReactivation(settings, { name: c.name, lastWork: last?.scope ?? null, monthsSince: months });
     const body = composeEmail(draft, { bookingUrl: bookingUrl({ kind: "c", value: c.id }), unsubscribeUrl: unsubscribeUrl(email), postalAddress: settings.sender_postal_address });
+    const reservation = await reserveOutreach(client, `reactivation:${email}:${new Date().toISOString().slice(0, 10)}`, { lane: "reactivation", channel: "email", recipient: email, customer_id: c.id, subject: draft.subject, body });
+    if (!reservation) continue;
     const result = await sendEmail(email, draft, body);
-    await logOutreach(client, { lane: "reactivation", channel: "email", recipient: email, customer_id: c.id, subject: draft.subject, body, status: result.status, error: "error" in result ? result.error : null });
+    await finishOutreach(client, reservation, result.status, "error" in result ? result.error : null);
     if (result.status === "sent") sent++;
     else if (result.status === "configuration_required") break;
   }
@@ -220,8 +251,10 @@ async function runCold(client: Client, settings: AutopilotSettings, allowance: {
     const step = p.outreach_step;
     const draft = await draftColdEmail(settings, p, step);
     const body = composeEmail(draft, { bookingUrl: bookingUrl({ kind: "p", value: p.id }), unsubscribeUrl: unsubscribeUrl(email), postalAddress: settings.sender_postal_address });
+    const reservation = await reserveOutreach(client, `cold:${email}:${step}`, { lane: "cold", step, channel: "email", recipient: email, prospect_id: p.id, subject: draft.subject, body });
+    if (!reservation) continue;
     const result = await sendEmail(email, draft, body);
-    await logOutreach(client, { lane: "cold", step, channel: "email", recipient: email, prospect_id: p.id, subject: draft.subject, body, status: result.status, error: "error" in result ? result.error : null });
+    await finishOutreach(client, reservation, result.status, "error" in result ? result.error : null);
     if (result.status === "configuration_required") break;
     const now = new Date().toISOString();
     if (result.status === "sent") {
@@ -253,13 +286,13 @@ export async function runAutopilot(now = new Date()): Promise<AutopilotRun> {
   const settings = await getAutopilotSettings(client);
   const ct = centralNow(now);
   const run: AutopilotRun = { ranAt: now.toISOString(), centralHour: ct.hour, openSlots5Days: 0, enriched: 0, inboundFollowups: 0, reactivation: 0, cold: 0, replies: { read: 0, answered: 0, hot: 0, handedOff: 0, stopped: 0 }, notes: [] };
-  if (!settings.enabled) {
-    run.notes.push("Autopilot is switched off.");
+  // Lead finding never sleeps: keep turning websites into reachable contacts.
+  run.enriched = await enrichProspectEmails(client, 30).catch((e) => { console.error("[autopilot] enrichment failed", e); run.notes.push("Contact enrichment failed; queue retained for retry."); return 0; });
+
+  if (!settings.enabled || settings.outreach_approval_hold) {
+    run.notes.push("Customer outreach is on hold; contact enrichment remains active.");
     return run;
   }
-
-  // Lead finding never sleeps: keep turning websites into reachable contacts.
-  run.enriched = await enrichProspectEmails(client, 30).catch((e) => { console.error("[autopilot] enrichment failed", e); return 0; });
 
   // Replies to our emails get answered first, every daytime hour, even when the schedule is full.
   if (settings.reply_enabled && replyHoursOpen(ct.hour)) {

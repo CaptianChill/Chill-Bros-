@@ -7,6 +7,7 @@ import { addDaysIso, centralNow, computeOpenSlots, type OpenSlot, type SlotSetti
 import type { PlaybookSettings } from "./playbook";
 
 export type AutopilotSettings = SlotSettings & PlaybookSettings & {
+  outreach_approval_hold: boolean;
   enabled: boolean;
   inbound_enabled: boolean;
   reactivation_enabled: boolean;
@@ -19,7 +20,8 @@ export type AutopilotSettings = SlotSettings & PlaybookSettings & {
 };
 
 const DEFAULTS: AutopilotSettings = {
-  enabled: true,
+  outreach_approval_hold: true,
+  enabled: false,
   inbound_enabled: true,
   reactivation_enabled: true,
   cold_email_enabled: false,
@@ -47,7 +49,7 @@ type Client = ReturnType<typeof createServiceRoleClient>;
 
 export async function getAutopilotSettings(client: Client = createServiceRoleClient()): Promise<AutopilotSettings> {
   const { data, error } = await client.from("chillbros_autopilot_settings").select("*").eq("id", 1).maybeSingle();
-  if (error) console.error("[autopilot] settings read failed", error);
+  if (error) throw new Error("Autopilot settings unavailable; sending is blocked.");
   return { ...DEFAULTS, ...(data ?? {}) } as AutopilotSettings;
 }
 
@@ -70,7 +72,8 @@ export async function loadOpenSlots(client: Client, settings: AutopilotSettings,
 
 export async function isSuppressed(client: Client, contact: string | null | undefined) {
   if (!contact) return false;
-  const { data } = await client.from("chillbros_outreach_suppressions").select("contact").eq("contact", normalizeContact(contact)).maybeSingle();
+  const { data, error } = await client.from("chillbros_outreach_suppressions").select("contact").eq("contact", normalizeContact(contact)).maybeSingle();
+  if (error) throw new Error("Suppression check unavailable; sending is blocked.");
   return Boolean(data);
 }
 
@@ -88,7 +91,7 @@ export type OutreachLogRow = {
   inbound_lead_id?: string | null;
   subject?: string | null;
   body?: string | null;
-  status: "sent" | "failed" | "skipped" | "configuration_required" | "dry_run";
+  status: "sent" | "failed" | "skipped" | "configuration_required" | "dry_run" | "checked" | "reserved";
   error?: string | null;
 };
 
@@ -97,11 +100,28 @@ export async function logOutreach(client: Client, row: OutreachLogRow) {
   if (error) console.error("[autopilot] outreach log insert failed", error);
 }
 
+/** Reserve before transport. A crash or ambiguous SMTP result stays reserved for review. */
+export async function reserveOutreach(client: Client, key: string, row: Omit<OutreachLogRow, "status">) {
+  const settings = await getAutopilotSettings(client);
+  if (!settings.enabled || settings.outreach_approval_hold) return null;
+  if (await isSuppressed(client, row.recipient)) return null;
+  const { data, error } = await client.rpc("chillbros_reserve_outreach", { delivery_key_input: key, payload: row });
+  if (error?.code === "23505") return null;
+  if (error) throw new Error("Cannot reserve outreach; sending is blocked.");
+  return data as string | null;
+}
+
+export async function finishOutreach(client: Client, id: string, status: OutreachLogRow["status"], error?: string | null) {
+  const result = await client.from("chillbros_outreach_log").update({ status, error: error ?? null }).eq("id", id);
+  if (result.error) throw new Error("Delivery result could not be saved; reservation retained for review.");
+}
+
 /** Successful sends today (Central) for a lane, optionally filtered to cold kitchen/office via subject tag. */
 export async function sentTodayCount(client: Client, lane: OutreachLogRow["lane"], now = new Date()) {
   const ct = centralNow(now);
   // Start of the Central day as an instant: now minus minutes elapsed today.
   const startOfDay = new Date(now.getTime() - ct.minutes * 60_000 - now.getUTCSeconds() * 1000).toISOString();
-  const { count } = await client.from("chillbros_outreach_log").select("id", { count: "exact", head: true }).eq("lane", lane).eq("status", "sent").gte("created_at", startOfDay);
+  const { count, error } = await client.from("chillbros_outreach_log").select("id", { count: "exact", head: true }).eq("lane", lane).in("status", ["sent", "reserved"]).gte("created_at", startOfDay);
+  if (error) throw new Error("Daily send count unavailable; sending is blocked.");
   return count ?? 0;
 }
