@@ -80,16 +80,19 @@ export async function enrichProspectEmails(client: Client, limit = 30) {
   const identities = rows.map((r) => osmIdentity(r.source_url)).filter((r) => r !== null);
   const tagsBySource = new Map<string, Record<string, string>>();
   if (identities.length) {
-    const query = `[out:json][timeout:15];(${identities.map((r) => `${r.type}(${r.id});`).join("")});out tags;`;
-    const response = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST", body: new URLSearchParams({ data: query }),
-      headers: { "user-agent": "ChillBros-RevenueRadar/1.2", "content-type": "application/x-www-form-urlencoded;charset=UTF-8" },
-      signal: AbortSignal.timeout(20000), cache: "no-store",
-    });
-    if (!response.ok) throw new Error(`Contact source returned ${response.status}; queue retained for retry.`);
-    const payload = await response.json() as { elements?: { type: string; id: number; tags?: Record<string, string> }[] };
-    if (!Array.isArray(payload.elements)) throw new Error("Invalid contact source; queue retained for retry.");
-    for (const e of payload.elements) tagsBySource.set(`${e.type}/${e.id}`, e.tags ?? {});
+    // Exact identifiers can use OSM's primary API instead of running an Overpass search.
+    for (const type of ["node", "way", "relation"]) {
+      const ids = identities.filter((r) => r.type === type).map((r) => r.id);
+      if (!ids.length) continue;
+      const plural = `${type}s`;
+      const response = await fetch(`https://api.openstreetmap.org/api/0.6/${plural}.json?${plural}=${ids.join(",")}`, {
+        headers: { "user-agent": "ChillBros-RevenueRadar/1.2" }, signal: AbortSignal.timeout(15000), cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`Contact source returned ${response.status}; queue retained for retry.`);
+      const payload = await response.json() as { elements?: { type: string; id: number; tags?: Record<string, string> }[] };
+      if (!Array.isArray(payload.elements)) throw new Error("Invalid contact source; queue retained for retry.");
+      for (const e of payload.elements) tagsBySource.set(`${e.type}/${e.id}`, e.tags ?? {});
+    }
   }
   let found = 0;
   const queue = [...(rows ?? [])];
