@@ -73,6 +73,7 @@ export async function enrichProspectEmails(client: Client, limit = 30) {
     .or(`contact_enriched_at.is.null,contact_enriched_at.lt.${retryBefore}`)
     .eq("do_not_contact", false)
     .order("contact_enriched_at", { ascending: true, nullsFirst: true })
+    .order("contact_phone", { ascending: true, nullsFirst: true })
     .order("score", { ascending: false })
     .limit(limit);
   if (queueError || rows === null) throw new Error("Enrichment queue could not be read.");
@@ -82,6 +83,7 @@ export async function enrichProspectEmails(client: Client, limit = 30) {
     const query = `[out:json][timeout:15];(${identities.map((r) => `${r.type}(${r.id});`).join("")});out tags;`;
     const response = await fetch("https://overpass-api.de/api/interpreter", {
       method: "POST", body: new URLSearchParams({ data: query }),
+      headers: { "user-agent": "ChillBros-RevenueRadar/1.2", "content-type": "application/x-www-form-urlencoded;charset=UTF-8" },
       signal: AbortSignal.timeout(20000), cache: "no-store",
     });
     if (!response.ok) throw new Error(`Contact source returned ${response.status}; queue retained for retry.`);
