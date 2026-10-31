@@ -6,11 +6,11 @@ const PAGE_SIZE = 50;
 // Keep responses small, but continue to the actual end of the queue. Never
 // silently hide leads behind a fixed page count. Preserve office assignment scope.
 export async function fetchAllProspects(client: ReturnType<typeof createServiceRoleClient>, role: string, profileId: string) {
-  const first = client.from("chillbros_revenue_prospects").select(PROSPECT_COLUMNS);
-  type Prospect = NonNullable<Awaited<typeof first>["data"]>[number];
+  const selectProspects = () => client.from("chillbros_revenue_prospects").select(PROSPECT_COLUMNS);
+  type Prospect = NonNullable<Awaited<ReturnType<typeof selectProspects>>["data"]>[number];
   const rows: Prospect[] = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    let query = client.from("chillbros_revenue_prospects").select(PROSPECT_COLUMNS)
+    let query = selectProspects()
       .order("score", { ascending: false }).order("id", { ascending: true });
     if (role === "office") query = query.eq("assigned_salesperson", profileId);
     const { data, error } = await query.range(offset, offset + PAGE_SIZE - 1);
