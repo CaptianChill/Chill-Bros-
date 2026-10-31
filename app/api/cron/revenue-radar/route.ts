@@ -28,9 +28,10 @@ export async function GET(request: Request) {
   const missingSalesSchema = overdueError && ["PGRST205", "42P01"].includes(String(overdueError.code || ""));
   if (overdueError && !missingSalesSchema) console.error("[revenue-radar-cron] overdue task update failed", overdueError);
 
-  // Rotates through greater San Antonio, one area forward each day, until ~25 new leads are added.
+  // One area per quarter hour limits load on public sources while covering the
+  // full region every four hours. Discovery never invokes outreach.
   try {
-    const scan = await runLeadScan(client, { mode: "daily", actorId: null, target: 25, maxAreas: 4, budgetMs: 240000 });
+    const scan = await runLeadScan(client, { mode: "scheduled", actorId: null, target: 25, maxAreas: 1, budgetMs: 90000 });
     console.log("[revenue-radar-cron]", JSON.stringify(scan));
     return Response.json({ ok: true, added: scan.added, source: scan.source, areas: scan.scanned, skippedCustomers: scan.skippedCustomers, tasksMarkedOverdue: overdueRows?.length ?? 0, ranAt: now });
   } catch (error) {
