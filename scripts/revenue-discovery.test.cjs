@@ -70,7 +70,7 @@ test('runLeadScan keeps searching areas until it adds enough new leads', async (
   const realFetch = global.fetch;
   global.fetch = async (_url, init) => {
     calls.areas.push(String(init.body));
-    return { ok: true, json: async () => ({ elements: Array.from({ length: 40 }, (_, i) => el(i + 1, { amenity: 'restaurant', name: i === 0 ? 'Bird Bakery' : `Area ${calls.areas.length} Spot ${i}` })) }) };
+    return { ok: true, json: async () => ({ elements: Array.from({ length: 40 }, (_, i) => el(calls.areas.length * 100 + i + 1, { amenity: 'restaurant', name: i === 0 ? 'Bird Bakery' : `Area ${calls.areas.length} Spot ${i}` })) }) };
   };
   try {
     const result = await d.runLeadScan(client, { mode: 'daily', actorId: null, target: 25, maxAreas: 4 });
@@ -199,5 +199,20 @@ test('OSM discovery skips previously imported businesses as Google does', async 
   try {
     await d.runLeadScan(client, { mode: 'scheduled', actorId: null, maxAreas: 1 });
     assert.deepEqual(saved.map(r => r.business_name), ['Fresh Kitchen']);
+  } finally { global.fetch = realFetch; }
+});
+
+test('renamed map listings are not reimported under a new normalized key', async () => {
+  const saved = [];
+  const client = { from(table) { return {
+    select() { return { order() { return { async range() { return { data: table === 'chillbros_customers' ? [] : [{ business_name: 'Old Name', source_url: 'https://www.openstreetmap.org/node/10' }] }; } }; } }; },
+    upsert(rows) { saved.push(...rows); return { async select() { return { data: rows.map((_, i) => ({ id: i })), error: null }; } }; }
+  }; } };
+  const realFetch = global.fetch;
+  global.fetch = async () => ({ ok: true, json: async () => ({ elements: [el(10, { name: 'Renamed Kitchen', amenity: 'restaurant' })] }) });
+  try {
+    const scan = await d.runLeadScan(client, { mode: 'scheduled', actorId: null, maxAreas: 1 });
+    assert.equal(scan.added, 0);
+    assert.equal(saved.length, 0);
   } finally { global.fetch = realFetch; }
 });

@@ -351,13 +351,17 @@ export type LeadScanResult = { added: number; scanned: string[]; skippedCustomer
 // different source (Google vs OpenStreetMap) isn't added twice.
 async function existingProspectNames(client: Client) {
   const names = new Set<string>();
+  const sources = new Set<string>();
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await client.from("chillbros_revenue_prospects").select("business_name").order("id").range(from, from + 999);
+    const { data, error } = await client.from("chillbros_revenue_prospects").select("business_name,source_url").order("id").range(from, from + 999);
     if (error || data === null) throw new Error("Existing prospects could not be read; discovery stopped to prevent duplicates.");
-    for (const row of (data ?? []) as { business_name: string | null }[]) names.add(nameKey(row.business_name ?? ""));
+    for (const row of data as { business_name: string | null; source_url: string | null }[]) {
+      names.add(nameKey(row.business_name ?? ""));
+      if (row.source_url) sources.add(row.source_url.toLowerCase().replace(/\/$/, ""));
+    }
     if (!data || data.length < 1000) break;
   }
-  return names;
+  return { names, sources };
 }
 
 // Scans areas in rotation until about `target` new leads are added (max `maxAreas`
@@ -380,7 +384,7 @@ export async function runLeadScan(client: Client, options: { mode: "daily" | "ma
     }
     if (data.length < 1000) break;
   }
-  const knownNames = await existingProspectNames(client);
+  const { names: knownNames, sources: knownSources } = await existingProspectNames(client);
 
   const start = startAreaIndex(options.mode);
   const result: LeadScanResult = { added: 0, scanned: [], skippedCustomers: 0, source: googleKey ? "google" : "openstreetmap" };
@@ -409,8 +413,10 @@ export async function runLeadScan(client: Client, options: { mode: "daily" | "ma
     result.scanned.push(area.name);
     const fresh = leads.filter((lead) => {
       const key = nameKey(lead.business_name);
-      if (knownNames.has(key)) return false;
+      const source = lead.source_url.toLowerCase().replace(/\/$/, "");
+      if (knownNames.has(key) || knownSources.has(source)) return false;
       knownNames.add(key);
+      knownSources.add(source);
       return true;
     });
     if (!fresh.length) continue;
