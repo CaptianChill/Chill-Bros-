@@ -232,16 +232,16 @@ export function serviceFit(tags: Record<string, string>) {
     return { service_line: "refrigeration" as const, score: 72, reason: "refrigeration-heavy retail" };
   }
   if (["restaurant", "fast_food", "food_court"].includes(amenity)) {
-    return { service_line: "multiple" as const, score: 70, reason: "commercial cooking, refrigeration, ice, and HVAC demand" };
+    return { service_line: "multiple" as const, score: 70, reason: "potential service fit for fryers, ovens, ranges, griddles, steamers, dishwashers, hoods, exhaust, makeup air, refrigeration, ice, and HVAC (equipment and current need unverified)" };
   }
   if (amenity === "nursing_home") {
-    return { service_line: "multiple" as const, score: 68, reason: "24/7 HVAC plus commercial kitchen and refrigeration" };
+    return { service_line: "multiple" as const, score: 68, reason: "potential 24/7 HVAC, refrigeration, and kitchen service: ovens, ranges, steamers, dishwashers, hoods, exhaust, and makeup air (equipment and current need unverified)" };
   }
   if (amenity === "ice_cream" || ["alcohol", "beverages"].includes(shop)) {
     return { service_line: "refrigeration" as const, score: 66, reason: "walk-in coolers, freezers, and display refrigeration" };
   }
   if (["cafe", "bar", "pub"].includes(amenity) || shop === "bakery") {
-    return { service_line: "kitchen_equipment" as const, score: 64, reason: "commercial kitchen and HVAC demand" };
+    return { service_line: "kitchen_equipment" as const, score: 64, reason: "potential kitchen service: ovens, griddles, warming equipment, dishwashers, ventilation, and HVAC (equipment and current need unverified)" };
   }
   if (tourism === "hotel") {
     return { service_line: "hvac_r" as const, score: 62, reason: "high HVAC runtime and guest-comfort exposure" };
@@ -272,7 +272,7 @@ export function scoreLead(tags: Record<string, string>) {
   let score = fit.score;
   const chain = Boolean(tags.brand || tags["brand:wikidata"]);
   if (chain) { score -= 15; notes.push("national/regional brand (vendor is often chosen by corporate)"); }
-  else { score += 4; notes.push("independent business (local owner decides on vendors)"); }
+  else { score += 4; notes.push("no brand listed (ownership and vendor authority unverified)"); }
   if (tags.phone || tags["contact:phone"]) { score += 6; notes.push("phone listed"); }
   if (tags.website || tags["contact:website"]) { score += 3; notes.push("website listed"); }
   if (tags["addr:street"]) score += 2;
@@ -337,9 +337,9 @@ out tags center 600;
   return leadsFromElements(payload.elements ?? [], area, new Date().toISOString(), skipNames);
 }
 
-// Which area a run starts with: the cron moves one area forward each day; a manual
-// scan starts somewhere different each time so repeated presses keep finding more.
-export function startAreaIndex(mode: "daily" | "manual", now = new Date()) {
+// Scheduled scans advance each quarter hour; retain daily mode for older callers.
+export function startAreaIndex(mode: "daily" | "manual" | "scheduled", now = new Date()) {
+  if (mode === "scheduled") return Math.floor(now.getTime() / 900000) % SCAN_AREAS.length;
   if (mode === "daily") return Math.floor(now.getTime() / 86400000) % SCAN_AREAS.length;
   return Math.floor(Math.random() * SCAN_AREAS.length);
 }
@@ -351,12 +351,17 @@ export type LeadScanResult = { added: number; scanned: string[]; skippedCustomer
 // different source (Google vs OpenStreetMap) isn't added twice.
 async function existingProspectNames(client: Client) {
   const names = new Set<string>();
-  for (let from = 0; from < 20000; from += 1000) {
-    const { data } = await client.from("chillbros_revenue_prospects").select("business_name").range(from, from + 999);
-    for (const row of (data ?? []) as { business_name: string | null }[]) names.add(nameKey(row.business_name ?? ""));
+  const sources = new Set<string>();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await client.from("chillbros_revenue_prospects").select("business_name,source_url").order("id").range(from, from + 999);
+    if (error || data === null) throw new Error("Existing prospects could not be read; discovery stopped to prevent duplicates.");
+    for (const row of data as { business_name: string | null; source_url: string | null }[]) {
+      names.add(nameKey(row.business_name ?? ""));
+      if (row.source_url) sources.add(row.source_url.toLowerCase().replace(/\/$/, ""));
+    }
     if (!data || data.length < 1000) break;
   }
-  return names;
+  return { names, sources };
 }
 
 // Scans areas in rotation until about `target` new leads are added (max `maxAreas`
@@ -364,14 +369,22 @@ async function existingProspectNames(client: Client) {
 // database's normalized_key and by business name, so only genuinely new businesses
 // count. Stops starting new searches once `budgetMs` is used, so the run always
 // finishes and saves what it found instead of being killed by the platform timeout.
-export async function runLeadScan(client: Client, options: { mode: "daily" | "manual"; actorId: string | null; target?: number; maxAreas?: number; budgetMs?: number }): Promise<LeadScanResult> {
+export async function runLeadScan(client: Client, options: { mode: "daily" | "manual" | "scheduled"; actorId: string | null; target?: number; maxAreas?: number; budgetMs?: number }): Promise<LeadScanResult> {
   const target = options.target ?? 25;
   const maxAreas = Math.min(options.maxAreas ?? 3, SCAN_AREAS.length);
   const deadline = Date.now() + (options.budgetMs ?? 50000);
   const googleKey = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
-  const { data: customers } = await client.from("chillbros_customers").select("name").limit(5000);
-  const customerNames = new Set((customers ?? []).map((c: { name: string | null }) => nameKey(c.name ?? "")).filter((n) => n.length > 2));
-  const knownNames = await existingProspectNames(client);
+  const customerNames = new Set<string>();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await client.from("chillbros_customers").select("name").order("id").range(from, from + 999);
+    if (error || data === null) throw new Error("Existing customers could not be read; discovery stopped to prevent customer imports.");
+    for (const row of data as { name: string | null }[]) {
+      const key = nameKey(row.name ?? "");
+      if (key.length > 2) customerNames.add(key);
+    }
+    if (data.length < 1000) break;
+  }
+  const { names: knownNames, sources: knownSources } = await existingProspectNames(client);
 
   const start = startAreaIndex(options.mode);
   const result: LeadScanResult = { added: 0, scanned: [], skippedCustomers: 0, source: googleKey ? "google" : "openstreetmap" };
@@ -400,8 +413,10 @@ export async function runLeadScan(client: Client, options: { mode: "daily" | "ma
     result.scanned.push(area.name);
     const fresh = leads.filter((lead) => {
       const key = nameKey(lead.business_name);
-      if (knownNames.has(key)) return false;
+      const source = lead.source_url.toLowerCase().replace(/\/$/, "");
+      if (knownNames.has(key) || knownSources.has(source)) return false;
       knownNames.add(key);
+      knownSources.add(source);
       return true;
     });
     if (!fresh.length) continue;

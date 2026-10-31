@@ -5,50 +5,13 @@ import { RevenueRadarList } from "@/components/revenue-radar-list";
 import { ScanForLeadsButton } from "@/components/scan-for-leads-button";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { fetchAllProspects } from "@/lib/chillbros/revenue-prospects";
 import { addProspect, scanForLeads } from "./actions";
 
 export const dynamic = "force-dynamic";
 // Scan for leads runs here as a server action: up to 3 map searches.
 export const maxDuration = 90;
 const input = "min-h-11 w-full rounded-xl border border-cyan-400/30 bg-black/50 px-3 py-2 text-white";
-
-const PROSPECT_COLUMNS = "id,business_name,city,category,service_line,signal_summary,signal_verified,signal_observed_at,score,status,follow_up_at,estimated_revenue,actual_revenue,direct_cost,business_address,contact_phone,contact_email,contact_name,contact_role,verification_status,source_url,assigned_salesperson,sales_status";
-const PAGE_SIZE = 50;
-const MAX_PAGES = 40; // safety cap: 40 * 50 = 2,000 leads
-
-// Neon's Data API silently truncates a single large response somewhere
-// ahead of Postgres — raising .limit()/db_max_rows didn't change it, and it
-// isn't RLS (that's all-or-nothing per role, not a partial cut). Fetching in
-// small pages keeps every individual request comfortably under whatever that
-// cap is, so newly-scanned leads can't quietly disappear again regardless of
-// table size. A tiebreaker on id is required: many leads share the same
-// score, and without a deterministic secondary sort, separate paged requests
-// can return ties in different orders and duplicate or skip rows.
-async function fetchAllProspects(
-  client: ReturnType<typeof createServiceRoleClient>,
-  role: string,
-  profileId: string,
-) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows: any[] = [];
-  let offset = 0;
-  let lastError: { message: string } | null = null;
-  for (let page = 0; page < MAX_PAGES; page++) {
-    let query = client
-      .from("chillbros_revenue_prospects")
-      .select(PROSPECT_COLUMNS)
-      .order("score", { ascending: false })
-      .order("id", { ascending: true });
-    if (role === "office") query = query.eq("assigned_salesperson", profileId);
-    const { data, error } = await query.range(offset, offset + PAGE_SIZE - 1);
-    if (error) { lastError = error; break; }
-    if (!data || data.length === 0) break;
-    rows.push(...data);
-    if (data.length < PAGE_SIZE) break;
-    offset += PAGE_SIZE;
-  }
-  return { data: rows, error: lastError };
-}
 
 export default async function RevenueRadarPage() {
   const profile = await getCurrentStaffProfile();
@@ -71,7 +34,7 @@ export default async function RevenueRadarPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200">{profile.role === "office" ? "My assigned sales queue" : profile.role === "salesperson" ? "Your lead queue" : "Automatic lead generation"}</p>
             <h2 className="mt-1 text-2xl font-semibold text-white">{profile.role === "office" ? "Work the leads assigned to you." : profile.role === "salesperson" ? "Work every lead, start to finish." : "Let Revenue Radar hunt for you."}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
-              {profile.role === "office" ? "This view is limited to your assigned Revenue Radar leads. Open a lead for its Battle Card, call logging, follow-up tasks, contacts, and technician handoff." : profile.role === "salesperson" ? "Open a lead for its Battle Card, call logging, follow-up tasks, contacts, technician handoff, and closing the deal out Won or Lost." : "Scan public commercial business data around San Antonio, identify businesses with strong HVAC/R, refrigeration, ice, and kitchen-equipment demand, remove duplicates, and rank the best prospects automatically."}
+              {profile.role === "office" ? "This view is limited to your assigned Revenue Radar leads. Open a lead for its Battle Card, call logging, follow-up tasks, contacts, and technician handoff." : profile.role === "salesperson" ? "Open a lead for its Battle Card, call logging, follow-up tasks, contacts, technician handoff, and closing the deal out Won or Lost." : "Discover commercial prospects around San Antonio every 15 minutes for HVAC/R, refrigeration, ice, fryers, ovens, ranges, griddles, steamers, dishwashers, hoods, exhaust, and makeup air. Scores indicate service fit, not a confirmed equipment problem or probability of winning. Office review is required."}
             </p>
           </div>
           {profile.role === "manager" ? <ScanForLeadsButton action={scanForLeads} /> : null}

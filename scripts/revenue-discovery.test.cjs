@@ -54,7 +54,7 @@ test('the daily scan moves to a new area each day and covers all of them', () =>
   for (let day = 0; day < n; day++) seen.add(d.startAreaIndex('daily', new Date(Date.UTC(2026, 9, 1) + day * 86400000)));
   assert.equal(seen.size, n);
   const cron = read('app/api/cron/revenue-radar/route.ts');
-  assert.match(cron, /runLeadScan\(client, \{ mode: "daily"/);
+  assert.match(cron, /runLeadScan\(client, \{ mode: "scheduled"/);
   assert.match(read('app/revenue-radar/actions.ts'), /runLeadScan\(createServiceRoleClient\(\), \{ mode: "manual"/);
 });
 
@@ -63,14 +63,14 @@ test('runLeadScan keeps searching areas until it adds enough new leads', async (
   const upserts = [3, 30];
   const client = {
     from(table) {
-      if (table === 'chillbros_customers') return { select: () => ({ limit: async () => ({ data: [{ name: 'Bird Bakery' }] }) }) };
-      return { select: () => ({ range: async () => ({ data: [] }) }), upsert: (rows) => ({ select: async () => ({ data: Array.from({ length: Math.min(rows.length, upserts.shift() ?? 0) }, (_, i) => ({ id: i })), error: null }) }) };
+      if (table === 'chillbros_customers') return { select: () => ({ order: () => ({ range: async () => ({ data: [{ name: 'Bird Bakery' }] }) }) }) };
+      return { select: () => ({ order: () => ({ range: async () => ({ data: [] }) }) }), upsert: (rows) => ({ select: async () => ({ data: Array.from({ length: Math.min(rows.length, upserts.shift() ?? 0) }, (_, i) => ({ id: i })), error: null }) }) };
     },
   };
   const realFetch = global.fetch;
   global.fetch = async (_url, init) => {
     calls.areas.push(String(init.body));
-    return { ok: true, json: async () => ({ elements: Array.from({ length: 40 }, (_, i) => el(i + 1, { amenity: 'restaurant', name: i === 0 ? 'Bird Bakery' : `Area ${calls.areas.length} Spot ${i}` })) }) };
+    return { ok: true, json: async () => ({ elements: Array.from({ length: 40 }, (_, i) => el(calls.areas.length * 100 + i + 1, { amenity: 'restaurant', name: i === 0 ? 'Bird Bakery' : `Area ${calls.areas.length} Spot ${i}` })) }) };
   };
   try {
     const result = await d.runLeadScan(client, { mode: 'daily', actorId: null, target: 25, maxAreas: 4 });
@@ -83,8 +83,8 @@ test('runLeadScan keeps searching areas until it adds enough new leads', async (
 test('a hung map server cannot run the scan past its time budget', async () => {
   const client = {
     from(table) {
-      if (table === 'chillbros_customers') return { select: () => ({ limit: async () => ({ data: [] }) }) };
-      if (table === 'chillbros_revenue_prospects') return { select: () => ({ range: async () => ({ data: [] }) }) };
+      if (table === 'chillbros_customers') return { select: () => ({ order: () => ({ range: async () => ({ data: [] }) }) }) };
+      if (table === 'chillbros_revenue_prospects') return { select: () => ({ order: () => ({ range: async () => ({ data: [] }) }) }) };
       throw new Error('nothing should be saved');
     },
   };
@@ -102,9 +102,9 @@ test('with a Google Places key, Google is the source and known businesses are no
   const saved = [];
   const client = {
     from(table) {
-      if (table === 'chillbros_customers') return { select: () => ({ limit: async () => ({ data: [{ name: 'Bird Bakery' }] }) }) };
+      if (table === 'chillbros_customers') return { select: () => ({ order: () => ({ range: async () => ({ data: [{ name: 'Bird Bakery' }] }) }) }) };
       return {
-        select: () => ({ range: async () => ({ data: [{ business_name: "Rosario's" }] }) }),
+        select: () => ({ order: () => ({ range: async () => ({ data: [{ business_name: "Rosario's" }] }) }) }),
         upsert: (rows) => { saved.push(...rows); return { select: async () => ({ data: rows.map((_, i) => ({ id: i })), error: null }) }; },
       };
     },
@@ -139,4 +139,80 @@ test('independent professional buyers with a phone and website clear the cold-em
     assert.equal(lead.service_line, 'hvac_r');
     assert.ok(lead.score >= 70, `${type} scored ${lead.score}`);
   }
+});
+const source = 'lib/chillbros/revenue-prospects.ts';
+function loadProspects() {
+  const out = ts.transpileModule(read(source), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const mod = { exports: {} };
+  new Function('module', 'exports', out)(mod, mod.exports);
+  return mod.exports;
+}
+
+test('dashboard loads all 2087 leads and preserves office assignment scope', async () => {
+  const all = Array.from({ length: 2087 }, (_, i) => ({ id: String(i), assigned_salesperson: i % 2 ? 'office-1' : 'office-2' }));
+  const client = { from() { let assigned; const q = {
+    select() { return q; }, order() { return q; }, eq(_, value) { assigned = value; return q; },
+    async range(from, to) { return { data: (assigned ? all.filter(r => r.assigned_salesperson === assigned) : all).slice(from, to + 1), error: null }; }
+  }; return q; } };
+  const { fetchAllProspects } = loadProspects();
+  assert.equal((await fetchAllProspects(client, 'manager', 'owner')).data.length, 2087);
+  const office = await fetchAllProspects(client, 'office', 'office-1');
+  assert.equal(office.data.length, 1043);
+  assert.ok(office.data.every(r => r.assigned_salesperson === 'office-1'));
+});
+
+test('scheduled discovery rotates across every area in four hours and runs every 15 minutes', () => {
+  const start = Date.UTC(2026, 9, 30);
+  const areas = Array.from({ length: d.SCAN_AREAS.length }, (_, i) => d.startAreaIndex('scheduled', new Date(start + i * 900000)));
+  assert.equal(new Set(areas).size, d.SCAN_AREAS.length);
+  const crons = JSON.parse(read('vercel.json')).crons;
+  assert.equal(crons.find(c => c.path === '/api/cron/revenue-radar').schedule, '*/15 * * * *');
+});
+
+test('both discovery providers include hot-side and ventilation fit without claiming verified equipment', () => {
+  const area = d.SCAN_AREAS[0];
+  const osm = d.leadsFromElements([el(20, { amenity: 'restaurant', name: 'Test Kitchen' })], area, 'now')[0];
+  const google = d.leadsFromGooglePlaces([{ id: '20', displayName: { text: 'Test Kitchen' }, primaryType: 'restaurant' }], area, 'now')[0];
+  for (const lead of [osm, google]) {
+    for (const term of ['fryers', 'ovens', 'ranges', 'griddles', 'steamers', 'dishwashers', 'hoods', 'exhaust', 'makeup air', 'refrigeration', 'ice', 'HVAC']) assert.ok(lead.signal_summary.includes(term), term);
+    assert.equal(lead.signal_verified, false);
+    assert.match(lead.signal_summary, /current need unverified/);
+    assert.doesNotMatch(lead.signal_summary, /local owner decides/);
+  }
+});
+
+test('discovery fails closed before searching or writing if a customer or prospect read fails', async () => {
+  for (const broken of ['chillbros_customers', 'chillbros_revenue_prospects']) {
+    const client = { from(table) { return { select() { return { order() { return { async range() { return table === broken ? { data: null, error: { message: 'unavailable' } } : { data: [], error: null }; } }; } }; } }; } };
+    await assert.rejects(d.runLeadScan(client, { mode: 'scheduled', actorId: null }), /could not be read/);
+  }
+});
+
+test('OSM discovery skips previously imported businesses as Google does', async () => {
+  const saved = [];
+  const client = { from(table) { return {
+    select() { return { order() { return { async range() { return { data: table === 'chillbros_customers' ? [] : [{ business_name: 'Known Cafe' }] }; } }; } }; },
+    upsert(rows) { saved.push(...rows); return { async select() { return { data: rows.map((_, i) => ({ id: i })), error: null }; } }; }
+  }; } };
+  const realFetch = global.fetch;
+  global.fetch = async () => ({ ok: true, json: async () => ({ elements: [el(10, { name: 'Known Cafe', amenity: 'cafe' }), el(11, { name: 'Fresh Kitchen', amenity: 'restaurant' })] }) });
+  try {
+    await d.runLeadScan(client, { mode: 'scheduled', actorId: null, maxAreas: 1 });
+    assert.deepEqual(saved.map(r => r.business_name), ['Fresh Kitchen']);
+  } finally { global.fetch = realFetch; }
+});
+
+test('renamed map listings are not reimported under a new normalized key', async () => {
+  const saved = [];
+  const client = { from(table) { return {
+    select() { return { order() { return { async range() { return { data: table === 'chillbros_customers' ? [] : [{ business_name: 'Old Name', source_url: 'https://www.openstreetmap.org/node/10' }] }; } }; } }; },
+    upsert(rows) { saved.push(...rows); return { async select() { return { data: rows.map((_, i) => ({ id: i })), error: null }; } }; }
+  }; } };
+  const realFetch = global.fetch;
+  global.fetch = async () => ({ ok: true, json: async () => ({ elements: [el(10, { name: 'Renamed Kitchen', amenity: 'restaurant' })] }) });
+  try {
+    const scan = await d.runLeadScan(client, { mode: 'scheduled', actorId: null, maxAreas: 1 });
+    assert.equal(scan.added, 0);
+    assert.equal(saved.length, 0);
+  } finally { global.fetch = realFetch; }
 });
