@@ -216,3 +216,22 @@ test('renamed map listings are not reimported under a new normalized key', async
     assert.equal(saved.length, 0);
   } finally { global.fetch = realFetch; }
 });
+
+
+test('discovery uses indexed named bounds and retries HTTP 200 runtime-error payloads', async () => {
+  const original = global.fetch;
+  let calls = 0;
+  global.fetch = async (_, init) => {
+    const query = init.body.get('data');
+    assert.match(query, /timeout:12/);
+    assert.doesNotMatch(query, /around:/);
+    assert.match(query, /\["name"\]/);
+    calls++;
+    return { ok: true, json: async () => calls === 1 ? { elements: [], remark: 'runtime error: timed out' } : { elements: [el(999, { name: 'Fixture Kitchen', amenity: 'restaurant' })] } };
+  };
+  try {
+    const rows = await d.discoverAreaLeads(d.SCAN_AREAS[0]);
+    assert.equal(calls, 2);
+    assert.equal(rows[0].business_name, 'Fixture Kitchen');
+  } finally { global.fetch = original; }
+});

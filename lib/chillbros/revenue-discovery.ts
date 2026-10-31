@@ -15,7 +15,7 @@ type OsmElement = {
   tags?: Record<string, string>;
 };
 
-type OverpassPayload = { elements?: OsmElement[] };
+type OverpassPayload = { elements?: OsmElement[]; remark?: string };
 
 export type DiscoveredRevenueLead = {
   business_name: string;
@@ -79,7 +79,8 @@ async function fetchOverpass(query: string, deadline: number): Promise<OverpassP
         method: "POST",
         headers: {
           "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
-          "user-agent": "ChillBros-RevenueRadar/1.2",
+          "user-agent": "CommercialListingDiscovery/1.3 (read-only business map search)",
+          accept: "application/json",
         },
         body: new URLSearchParams({ data: query }),
         cache: "no-store",
@@ -87,7 +88,8 @@ async function fetchOverpass(query: string, deadline: number): Promise<OverpassP
       });
       if (!response.ok) { failures.push(`${new URL(endpoint).hostname} ${response.status}`); continue; }
       const payload = (await response.json()) as OverpassPayload;
-      if (Array.isArray(payload.elements)) return payload;
+      // Overpass can return HTTP 200 with partial elements and a runtime error.
+      if (Array.isArray(payload.elements) && !payload.remark) return payload;
       failures.push(`${new URL(endpoint).hostname} bad payload`);
     } catch (error) {
       // Public Overpass instances can be overloaded or temporarily unreachable.
@@ -323,13 +325,17 @@ export function leadsFromElements(elements: OsmElement[], area: ScanArea, now: s
 }
 
 export async function discoverAreaLeads(area: ScanArea, skipNames: Set<string> = new Set(), deadline = Date.now() + 60000): Promise<DiscoveredRevenueLead[]> {
-  const around = `(around:${area.radiusM},${area.lat},${area.lon})`;
+  // Indexed bounding-box searches avoid three expensive radial geometry scans.
+  // Server timeout must expire before the 20-second HTTP request timeout.
+  const latDelta = area.radiusM / 111320;
+  const lonDelta = latDelta / Math.cos(area.lat * Math.PI / 180);
+  const bounds = `(${area.lat - latDelta},${area.lon - lonDelta},${area.lat + latDelta},${area.lon + lonDelta})`;
   const query = `
-[out:json][timeout:25];
+[out:json][timeout:12];
 (
-  nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub|food_court|ice_cream|nursing_home)$"]${around};
-  nwr["shop"~"^(supermarket|convenience|bakery|butcher|seafood|deli|alcohol|beverages|florist)$"]${around};
-  nwr["tourism"~"^(hotel|motel)$"]${around};
+  nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub|food_court|ice_cream|nursing_home)$"]["name"]${bounds};
+  nwr["shop"~"^(supermarket|convenience|bakery|butcher|seafood|deli|alcohol|beverages|florist)$"]["name"]${bounds};
+  nwr["tourism"~"^(hotel|motel)$"]["name"]${bounds};
 );
 out tags center 600;
 `;

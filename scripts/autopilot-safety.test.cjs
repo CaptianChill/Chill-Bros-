@@ -97,3 +97,31 @@ test('accepted SMTP DATA stays sent when QUIT disconnects; rejected DATA is a fa
     if (originalPassword === undefined) delete process.env.GMAIL_SMTP_APP_PASSWORD; else process.env.GMAIL_SMTP_APP_PASSWORD = originalPassword;
   }
 });
+
+
+test('contact enrichment follows custom same-origin contact pages and rejects external links', () => {
+  assert.deepEqual(contact.contactPageUrls('<a href="/company/contact.html#office">Contact</a><a href="https://external.invalid/contact">Other</a><a href="javascript:contact()">Bad</a>', 'https://fixture-business.com/'), [
+    'https://fixture-business.com/company/contact.html', 'https://fixture-business.com/contact', 'https://fixture-business.com/contact-us',
+  ]);
+});
+
+function coldEngine() {
+  return load('lib/chillbros/autopilot/engine.ts', {
+    '@/lib/chillbros/approval-notifications': {}, '@/lib/chillbros/notify': {}, '@/lib/supabase/service-client': {},
+    './brain': {}, './audience': {}, './contact-source': contact, './email-extract': load('lib/chillbros/autopilot/email-extract.ts'),
+    './inbound': {}, './replies': {}, './replies-logic': {}, './links': {}, './slots': {}, './store': {},
+    './timing': { laneForServiceLine: () => 'cold_kitchen' },
+  });
+}
+
+test('cold eligibility query requires 80 and fails closed if customer exclusions cannot be read', async () => {
+  let threshold;
+  const client = { from(table) { const q = {
+    select() { return q; }, eq() { return q; }, not() { return q; }, neq() { return q; }, order() { return q; },
+    gte(column, value) { threshold = [column, value]; return q; },
+    limit: async () => ({ data: [] }),
+    then(resolve) { resolve(table === 'chillbros_customers' ? { data: null, error: { message: 'offline' } } : { data: [] }); },
+  }; return q; } };
+  await assert.rejects(coldEngine().runCold(client, {}, { cold_kitchen: 1, cold_office: 0 }), /sending blocked/);
+  assert.deepEqual(threshold, ['score', 80]);
+});
