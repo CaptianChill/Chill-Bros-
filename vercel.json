@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/revenue-radar",
-      "schedule": "15 13 * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/invoice-reminders",

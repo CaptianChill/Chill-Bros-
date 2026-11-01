@@ -6,7 +6,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 import { composeEmail, draftColdEmail, draftReactivation, type Draft } from "./brain";
 import { isInternalOrTestCustomer } from "./audience";
-import { osmIdentity, phoneFromHtml } from "./contact-source";
+import { contactPageUrls, osmIdentity, phoneFromHtml } from "./contact-source";
 import { isUsableOutreachEmail, pickBusinessEmail, websiteFromSummary } from "./email-extract";
 import { runInboundFollowups } from "./inbound";
 import { runBounceDesk, runReplyDesk } from "./replies";
@@ -71,11 +71,12 @@ export async function enrichProspectEmails(client: Client, limit = 30) {
   const { data: rows, error: queueError } = await client
     .from("chillbros_revenue_prospects")
     .select("id,signal_summary,source_url,contact_email,contact_phone")
+    .or("contact_email.is.null,contact_email.eq.,contact_phone.is.null,contact_phone.eq.")
     .or(`contact_enriched_at.is.null,contact_enriched_at.lt.${retryBefore}`)
     .eq("do_not_contact", false)
-    .order("contact_enriched_at", { ascending: true, nullsFirst: true })
-    .order("contact_phone", { ascending: true, nullsFirst: true })
     .order("score", { ascending: false })
+    .order("contact_enriched_at", { ascending: true, nullsFirst: true })
+    .order("id", { ascending: true })
     .limit(limit);
   if (queueError || rows === null) throw new Error("Enrichment queue could not be read.");
   const identities = rows.map((r) => osmIdentity(r.source_url)).filter((r) => r !== null);
@@ -113,8 +114,8 @@ export async function enrichProspectEmails(client: Client, limit = 30) {
         email ||= pickBusinessEmail(home, site);
         phone ||= phoneFromHtml(home);
         if (!email) {
-          for (const path of ["/contact", "/contact-us"]) {
-            const page = await fetchPage(new URL(path, site).toString());
+          for (const url of contactPageUrls(home, site)) {
+            const page = await fetchPage(url);
             phone ||= phoneFromHtml(page);
             email = pickBusinessEmail(page, site);
             if (email) break;
@@ -201,17 +202,18 @@ async function runReactivation(client: Client, settings: AutopilotSettings, coun
 // ---------- cold commercial email ----------
 
 /** Listings scored below this are usually national chains or hotels with corporate vendors. */
-const COLD_MIN_SCORE = 70;
+const COLD_MIN_SCORE = 80;
 
-async function runCold(client: Client, settings: AutopilotSettings, allowance: { cold_kitchen: number; cold_office: number }) {
+export async function runCold(client: Client, settings: AutopilotSettings, allowance: { cold_kitchen: number; cold_office: number }) {
   const total = allowance.cold_kitchen + allowance.cold_office;
   if (total <= 0) return 0;
-  const [{ data: prospects }, { data: customers }] = await Promise.all([
+  const [{ data: prospects, error: prospectError }, { data: customers, error: customerError }] = await Promise.all([
     client
       .from("chillbros_revenue_prospects")
       .select("id,business_name,city,service_line,signal_summary,contact_name,contact_email,outreach_step,outreach_last_at,score,sales_status")
       .eq("do_not_contact", false)
       .eq("outreach_done", false)
+      .gte("score", COLD_MIN_SCORE)
       .not("contact_email", "is", null)
       .neq("contact_email", "")
       .order("outreach_step", { ascending: false }) // finish sequences already started first
@@ -219,6 +221,7 @@ async function runCold(client: Client, settings: AutopilotSettings, allowance: {
       .limit(500),
     client.from("chillbros_customers").select("email").not("email", "is", null),
   ]);
+  if (prospectError || customerError || prospects === null || customers === null) throw new Error("Cold outreach eligibility could not be verified; sending blocked.");
   const customerEmails = new Set((customers ?? []).flatMap((c) => String(c.email).toLowerCase().split(/[,;\s]+/)));
   const used = { cold_kitchen: 0, cold_office: 0 };
   const seenEmails = new Set<string>();
@@ -239,7 +242,8 @@ async function runCold(client: Client, settings: AutopilotSettings, allowance: {
     if (!coldStepDue(p.outreach_step, p.outreach_last_at)) continue;
     seenEmails.add(email);
     // The same inbox can sit on several listings (locations, duplicates). Only one sequence per inbox.
-    const { data: other } = await client.from("chillbros_outreach_log").select("prospect_id").eq("lane", "cold").eq("recipient", email).neq("prospect_id", p.id).limit(1);
+    const { data: other, error: historyError } = await client.from("chillbros_outreach_log").select("prospect_id").eq("lane", "cold").eq("recipient", email).neq("prospect_id", p.id).limit(1);
+    if (historyError || other === null) throw new Error("Cold outreach history could not be verified; sending blocked.");
     if (other?.length) {
       await client.from("chillbros_revenue_prospects").update({ outreach_done: true, status_reason: "Autopilot skipped: same inbox already in a sequence" }).eq("id", p.id);
       continue;

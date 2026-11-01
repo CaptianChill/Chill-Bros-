@@ -1,5 +1,6 @@
 import "server-only";
 
+import { discoverCityEstablishments } from "./revenue-city-source";
 import { normalizedKey } from "@/lib/chillbros/revenue-radar";
 import type { createServiceRoleClient } from "@/lib/supabase/service-client";
 
@@ -15,7 +16,7 @@ type OsmElement = {
   tags?: Record<string, string>;
 };
 
-type OverpassPayload = { elements?: OsmElement[] };
+type OverpassPayload = { elements?: OsmElement[]; remark?: string };
 
 export type DiscoveredRevenueLead = {
   business_name: string;
@@ -79,7 +80,8 @@ async function fetchOverpass(query: string, deadline: number): Promise<OverpassP
         method: "POST",
         headers: {
           "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
-          "user-agent": "ChillBros-RevenueRadar/1.2",
+          "user-agent": "CommercialListingDiscovery/1.3 (read-only business map search)",
+          accept: "application/json",
         },
         body: new URLSearchParams({ data: query }),
         cache: "no-store",
@@ -87,7 +89,8 @@ async function fetchOverpass(query: string, deadline: number): Promise<OverpassP
       });
       if (!response.ok) { failures.push(`${new URL(endpoint).hostname} ${response.status}`); continue; }
       const payload = (await response.json()) as OverpassPayload;
-      if (Array.isArray(payload.elements)) return payload;
+      // Overpass can return HTTP 200 with partial elements and a runtime error.
+      if (Array.isArray(payload.elements) && !payload.remark) return payload;
       failures.push(`${new URL(endpoint).hostname} bad payload`);
     } catch (error) {
       // Public Overpass instances can be overloaded or temporarily unreachable.
@@ -232,16 +235,16 @@ export function serviceFit(tags: Record<string, string>) {
     return { service_line: "refrigeration" as const, score: 72, reason: "refrigeration-heavy retail" };
   }
   if (["restaurant", "fast_food", "food_court"].includes(amenity)) {
-    return { service_line: "multiple" as const, score: 70, reason: "commercial cooking, refrigeration, ice, and HVAC demand" };
+    return { service_line: "multiple" as const, score: 70, reason: "potential service fit for fryers, ovens, ranges, griddles, steamers, dishwashers, hoods, exhaust, makeup air, refrigeration, ice, and HVAC (equipment and current need unverified)" };
   }
   if (amenity === "nursing_home") {
-    return { service_line: "multiple" as const, score: 68, reason: "24/7 HVAC plus commercial kitchen and refrigeration" };
+    return { service_line: "multiple" as const, score: 68, reason: "potential 24/7 HVAC, refrigeration, and kitchen service: ovens, ranges, steamers, dishwashers, hoods, exhaust, and makeup air (equipment and current need unverified)" };
   }
   if (amenity === "ice_cream" || ["alcohol", "beverages"].includes(shop)) {
     return { service_line: "refrigeration" as const, score: 66, reason: "walk-in coolers, freezers, and display refrigeration" };
   }
   if (["cafe", "bar", "pub"].includes(amenity) || shop === "bakery") {
-    return { service_line: "kitchen_equipment" as const, score: 64, reason: "commercial kitchen and HVAC demand" };
+    return { service_line: "kitchen_equipment" as const, score: 64, reason: "potential kitchen service: ovens, griddles, warming equipment, dishwashers, ventilation, and HVAC (equipment and current need unverified)" };
   }
   if (tourism === "hotel") {
     return { service_line: "hvac_r" as const, score: 62, reason: "high HVAC runtime and guest-comfort exposure" };
@@ -272,7 +275,7 @@ export function scoreLead(tags: Record<string, string>) {
   let score = fit.score;
   const chain = Boolean(tags.brand || tags["brand:wikidata"]);
   if (chain) { score -= 15; notes.push("national/regional brand (vendor is often chosen by corporate)"); }
-  else { score += 4; notes.push("independent business (local owner decides on vendors)"); }
+  else { score += 4; notes.push("no brand listed (ownership and vendor authority unverified)"); }
   if (tags.phone || tags["contact:phone"]) { score += 6; notes.push("phone listed"); }
   if (tags.website || tags["contact:website"]) { score += 3; notes.push("website listed"); }
   if (tags["addr:street"]) score += 2;
@@ -323,13 +326,17 @@ export function leadsFromElements(elements: OsmElement[], area: ScanArea, now: s
 }
 
 export async function discoverAreaLeads(area: ScanArea, skipNames: Set<string> = new Set(), deadline = Date.now() + 60000): Promise<DiscoveredRevenueLead[]> {
-  const around = `(around:${area.radiusM},${area.lat},${area.lon})`;
+  // Indexed bounding-box searches avoid three expensive radial geometry scans.
+  // Server timeout must expire before the 20-second HTTP request timeout.
+  const latDelta = area.radiusM / 111320;
+  const lonDelta = latDelta / Math.cos(area.lat * Math.PI / 180);
+  const bounds = `(${area.lat - latDelta},${area.lon - lonDelta},${area.lat + latDelta},${area.lon + lonDelta})`;
   const query = `
-[out:json][timeout:25];
+[out:json][timeout:12];
 (
-  nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub|food_court|ice_cream|nursing_home)$"]${around};
-  nwr["shop"~"^(supermarket|convenience|bakery|butcher|seafood|deli|alcohol|beverages|florist)$"]${around};
-  nwr["tourism"~"^(hotel|motel)$"]${around};
+  nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub|food_court|ice_cream|nursing_home)$"]["name"]${bounds};
+  nwr["shop"~"^(supermarket|convenience|bakery|butcher|seafood|deli|alcohol|beverages|florist)$"]["name"]${bounds};
+  nwr["tourism"~"^(hotel|motel)$"]["name"]${bounds};
 );
 out tags center 600;
 `;
@@ -337,26 +344,31 @@ out tags center 600;
   return leadsFromElements(payload.elements ?? [], area, new Date().toISOString(), skipNames);
 }
 
-// Which area a run starts with: the cron moves one area forward each day; a manual
-// scan starts somewhere different each time so repeated presses keep finding more.
-export function startAreaIndex(mode: "daily" | "manual", now = new Date()) {
+// Scheduled scans advance each quarter hour; retain daily mode for older callers.
+export function startAreaIndex(mode: "daily" | "manual" | "scheduled", now = new Date()) {
+  if (mode === "scheduled") return Math.floor(now.getTime() / 900000) % SCAN_AREAS.length;
   if (mode === "daily") return Math.floor(now.getTime() / 86400000) % SCAN_AREAS.length;
   return Math.floor(Math.random() * SCAN_AREAS.length);
 }
 
 type Client = ReturnType<typeof createServiceRoleClient>;
-export type LeadScanResult = { added: number; scanned: string[]; skippedCustomers: number; source: "google" | "openstreetmap" };
+export type LeadScanResult = { added: number; scanned: string[]; skippedCustomers: number; source: "google" | "openstreetmap" | "san-antonio-reports" };
 
 // Business names already in Revenue Radar, so a business found again through a
 // different source (Google vs OpenStreetMap) isn't added twice.
 async function existingProspectNames(client: Client) {
   const names = new Set<string>();
-  for (let from = 0; from < 20000; from += 1000) {
-    const { data } = await client.from("chillbros_revenue_prospects").select("business_name").range(from, from + 999);
-    for (const row of (data ?? []) as { business_name: string | null }[]) names.add(nameKey(row.business_name ?? ""));
+  const sources = new Set<string>();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await client.from("chillbros_revenue_prospects").select("business_name,source_url").order("id").range(from, from + 999);
+    if (error || data === null) throw new Error("Existing prospects could not be read; discovery stopped to prevent duplicates.");
+    for (const row of data as { business_name: string | null; source_url: string | null }[]) {
+      names.add(nameKey(row.business_name ?? ""));
+      if (row.source_url) sources.add(row.source_url.toLowerCase().replace(/\/$/, ""));
+    }
     if (!data || data.length < 1000) break;
   }
-  return names;
+  return { names, sources };
 }
 
 // Scans areas in rotation until about `target` new leads are added (max `maxAreas`
@@ -364,14 +376,57 @@ async function existingProspectNames(client: Client) {
 // database's normalized_key and by business name, so only genuinely new businesses
 // count. Stops starting new searches once `budgetMs` is used, so the run always
 // finishes and saves what it found instead of being killed by the platform timeout.
-export async function runLeadScan(client: Client, options: { mode: "daily" | "manual"; actorId: string | null; target?: number; maxAreas?: number; budgetMs?: number }): Promise<LeadScanResult> {
+export async function runLeadScan(client: Client, options: { mode: "daily" | "manual" | "scheduled"; actorId: string | null; target?: number; maxAreas?: number; budgetMs?: number }): Promise<LeadScanResult> {
   const target = options.target ?? 25;
   const maxAreas = Math.min(options.maxAreas ?? 3, SCAN_AREAS.length);
   const deadline = Date.now() + (options.budgetMs ?? 50000);
   const googleKey = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
-  const { data: customers } = await client.from("chillbros_customers").select("name").limit(5000);
-  const customerNames = new Set((customers ?? []).map((c: { name: string | null }) => nameKey(c.name ?? "")).filter((n) => n.length > 2));
-  const knownNames = await existingProspectNames(client);
+  const customerNames = new Set<string>();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await client.from("chillbros_customers").select("name").order("id").range(from, from + 999);
+    if (error || data === null) throw new Error("Existing customers could not be read; discovery stopped to prevent customer imports.");
+    for (const row of data as { name: string | null }[]) {
+      const key = nameKey(row.name ?? "");
+      if (key.length > 2) customerNames.add(key);
+    }
+    if (data.length < 1000) break;
+  }
+  const { names: knownNames, sources: knownSources } = await existingProspectNames(client);
+
+  // Prefer the city's current, published local records to overloaded public map
+  // servers when no paid Places provider is configured. This source has no contacts
+  // and its food-safety score is never used as a sales qualification score.
+  if (!googleKey) {
+    try {
+      const businesses = await discoverCityEstablishments(deadline);
+      const fit = scoreLead({ amenity: "restaurant" });
+      let skippedCustomers = 0;
+      const rows: DiscoveredRevenueLead[] = [];
+      for (const business of businesses) {
+        const key = nameKey(business.name);
+        if (customerNames.has(key)) { skippedCustomers++; continue; }
+        if (knownNames.has(key) || knownSources.has(business.sourceUrl.toLowerCase())) continue;
+        knownNames.add(key);
+        rows.push({
+          business_name: business.name.slice(0, 200), city: "San Antonio", category: "other", service_line: "multiple",
+          signal_summary: `City of San Antonio published food-establishment record, observed ${business.observedAt.slice(0, 10)}. Potential kitchen, refrigeration, ice, HVAC, and ventilation service fit; equipment, ownership, vendor authority, and current need unverified. Food inspection scores are not lead qualification scores. Office review required.`,
+          source_url: business.sourceUrl, signal_observed_at: business.observedAt, signal_verified: false,
+          normalized_key: normalizedKey(business.name, "San Antonio", "auto_discovery", business.sourceUrl),
+          score: fit.score, business_address: business.address, contact_email: null, contact_phone: null,
+        });
+      }
+      const fresh = rows.slice(0, target).map(lead => ({ ...lead, status: "new", created_by: options.actorId, updated_by: options.actorId, updated_at: new Date().toISOString() }));
+      // A valid empty/fully deduplicated report is a successful scan, not an outage.
+      if (!fresh.length) return { added: 0, scanned: ["San Antonio official food-establishment reports"], skippedCustomers, source: "san-antonio-reports" };
+      const { data, error } = await client.from("chillbros_revenue_prospects").upsert(fresh, { onConflict: "normalized_key", ignoreDuplicates: true }).select("id");
+      if (error) throw new Error(`City discovery save failed: ${error.message}`);
+      return { added: data?.length ?? 0, scanned: ["San Antonio official food-establishment reports"], skippedCustomers, source: "san-antonio-reports" };
+    } catch (error) {
+      // A database failure must not fall through and import without its exclusions.
+      if (error instanceof Error && error.message.startsWith("City discovery save failed:")) throw error;
+      console.warn("[revenue-discovery] official city source unavailable", error instanceof Error ? error.message : "error");
+    }
+  }
 
   const start = startAreaIndex(options.mode);
   const result: LeadScanResult = { added: 0, scanned: [], skippedCustomers: 0, source: googleKey ? "google" : "openstreetmap" };
@@ -400,8 +455,10 @@ export async function runLeadScan(client: Client, options: { mode: "daily" | "ma
     result.scanned.push(area.name);
     const fresh = leads.filter((lead) => {
       const key = nameKey(lead.business_name);
-      if (knownNames.has(key)) return false;
+      const source = lead.source_url.toLowerCase().replace(/\/$/, "");
+      if (knownNames.has(key) || knownSources.has(source)) return false;
       knownNames.add(key);
+      knownSources.add(source);
       return true;
     });
     if (!fresh.length) continue;
