@@ -28,7 +28,8 @@ test('city parser fails closed on schema changes and excludes nonlocal or stale 
   assert.equal(records.length, 1);
   assert.equal(records[0].sourceUrl, 'https://www.sa.gov/report.xlsx#row-2');
 });
-test('city discovery parses a real XLSX response using the single-sheet API', async () => {
+test('city discovery parses a real XLSX response using the single-sheet API', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: now.getTime() });
   const original = global.fetch;
   const bytes = fs.readFileSync('scripts/fixtures/city-inspections.xlsx');
   let requests = 0;
