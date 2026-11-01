@@ -5,13 +5,13 @@ const fs = require('node:fs');
 const ts = require('typescript');
 const read = (f) => fs.readFileSync(f, 'utf8');
 
-function load() {
+function load(citySource = async () => { throw new Error('City source unavailable in map fixtures'); }) {
   const out = ts.transpileModule(read('lib/chillbros/revenue-discovery.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const radar = ts.transpileModule(read('lib/chillbros/revenue-radar.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const radarMod = { exports: {} };
   new Function('require', 'module', 'exports', radar)(require, radarMod, radarMod.exports);
   const mod = { exports: {} };
-  new Function('require', 'module', 'exports', out)((id) => (id === 'server-only' ? {} : id === './revenue-city-source' ? { discoverCityEstablishments: async () => { throw new Error('City source unavailable in map fixtures'); } } : id === '@/lib/chillbros/revenue-radar' ? radarMod.exports : require(id)), mod, mod.exports);
+  new Function('require', 'module', 'exports', out)((id) => (id === 'server-only' ? {} : id === './revenue-city-source' ? { discoverCityEstablishments: citySource } : id === '@/lib/chillbros/revenue-radar' ? radarMod.exports : require(id)), mod, mod.exports);
   return mod.exports;
 }
 const d = load();
@@ -234,4 +234,30 @@ test('discovery uses indexed named bounds and retries HTTP 200 runtime-error pay
     assert.equal(calls, 2);
     assert.equal(rows[0].business_name, 'Fixture Kitchen');
   } finally { global.fetch = original; }
+});
+
+
+test('official city discovery saves bounded new records and repeat scans preserve customer/source exclusions', async () => {
+  const source = 'https://www.sa.gov/report.xlsx';
+  const records = ['Existing customer', 'Known kitchen', 'New kitchen', 'Another kitchen'].map((name, i) => ({ name, address: '123 Main St San Antonio, TX 78201', observedAt: '2026-10-20T00:00:00Z', sourceUrl: `${source}#row-${i+2}` }));
+  const stored = [{ business_name: 'Known kitchen', source_url: records[1].sourceUrl }];
+  const saved = [];
+  const client = { from(table) { return {
+    select() { return { order() { return { async range() { return { data: table === 'chillbros_customers' ? [{ name: 'Existing customer' }] : stored }; } }; } }; },
+    upsert(rows) { saved.push(...rows); stored.push(...rows); return { async select() { return { data: rows.map((_, i) => ({ id: i })), error: null }; } }; },
+  }; } };
+  const city = load(async () => records);
+  const first = await city.runLeadScan(client, { mode: 'scheduled', actorId: null, target: 1 });
+  assert.equal(first.source, 'san-antonio-reports');
+  assert.equal(first.added, 1);
+  assert.equal(first.skippedCustomers, 1);
+  assert.equal(saved[0].business_name, 'New kitchen');
+  assert.equal(saved[0].signal_verified, false);
+  assert.ok(saved[0].score < 80, 'published inspection data alone cannot qualify cold outreach');
+  const second = await city.runLeadScan(client, { mode: 'scheduled', actorId: null, target: 1 });
+  assert.equal(second.added, 1);
+  assert.equal(saved[1].business_name, 'Another kitchen');
+  const third = await city.runLeadScan(client, { mode: 'scheduled', actorId: null, target: 1 });
+  assert.equal(third.added, 0);
+  assert.equal(saved.length, 2);
 });
