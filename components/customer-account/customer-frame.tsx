@@ -1,23 +1,18 @@
-import Image from "next/image";
+import { PlatformLogo } from "@/components/platform-logo";
 import Link from "next/link";
 import { Snowflake } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { BUSINESS } from "@/components/customer-portal/portal-frame";
 
-/**
- * Customer homepage frame: black header with the Chill Pros Texas logo (plus
- * the clean wordmark on wider screens), frosted page, black footer.
- * Matches the design the owner approved on 2026-10-07.
- */
+/** Customer account frame using the shared platform brand and surfaces. */
 export function CustomerFrame({ children, accountName, right }: { children: ReactNode; accountName?: string | null; right?: ReactNode }) {
   return (
-    <div className="cb-portal flex min-h-dvh flex-col bg-[#EEF4FB] text-[#0B1220]">
+    <div className="cb-platform cb-portal flex min-h-dvh flex-col">
       <header className="bg-[#05070A] text-white pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
           <Link href="/my" className="flex items-center gap-3" aria-label="Chill Pros home">
-            <Image src="/brand/chill-pros-ice-logo-240.png" alt="Chill Pros" width={240} height={240} priority className="h-[84px] w-[84px] shrink-0 object-contain drop-shadow-[0_0_10px_rgba(31,111,235,0.5)] sm:h-24 sm:w-24" />
-            <Image src="/brand/chill-pros-wordmark-clean.png" alt="" width={1267} height={226} priority className="hidden h-8 w-auto drop-shadow-[0_0_10px_rgba(31,111,235,0.55)] sm:block" />
+            <PlatformLogo priority className="h-[77px] w-[84px] shrink-0 sm:h-[88px] sm:w-24" />
           </Link>
           <div className="min-w-0 text-right">
             {accountName ? (
@@ -39,7 +34,7 @@ export function CustomerFrame({ children, accountName, right }: { children: Reac
       <footer className="bg-[#05070A] text-white pb-[env(safe-area-inset-bottom)]">
         <div className="h-[3px] bg-gradient-to-r from-[#1F6FEB] via-[#9CCBFF] to-[#1F6FEB]" aria-hidden="true" />
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-5 sm:px-6">
-          <Image src="/brand/chill-pros-ice-logo-240.png" alt="" width={240} height={240} className="h-14 w-14 shrink-0 object-contain" />
+          <PlatformLogo decorative className="h-14 w-16 shrink-0" />
           <div className="min-w-0 text-sm">
             <p className="font-bold">{BUSINESS.legalName}</p>
             <p className="text-white/70">HVAC &amp; commercial refrigeration · {BUSINESS.city}</p>
@@ -54,7 +49,7 @@ export function CustomerFrame({ children, accountName, right }: { children: Reac
 
 export function Card({ children, className = "", title, action }: { children: ReactNode; className?: string; title?: string; action?: ReactNode }) {
   return (
-    <section className={`relative min-w-0 overflow-hidden rounded-2xl border border-[#D3E1F2] bg-white p-4 pt-5 shadow-[0_2px_10px_rgba(11,35,70,0.07)] sm:p-5 sm:pt-6 ${className}`}>
+    <section className={`cp-surface relative min-w-0 overflow-hidden rounded-2xl border p-4 pt-5 shadow-[0_2px_10px_rgba(11,35,70,0.07)] sm:p-5 sm:pt-6 ${className}`}>
       <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#1F6FEB] via-[#9CCBFF] to-[#1F6FEB]" aria-hidden="true" />
       {title ? (
         <div className="mb-3 flex items-center justify-between gap-2">

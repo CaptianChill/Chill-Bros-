@@ -13,7 +13,7 @@ export function GET() {
       background_color: "#05070A",
       theme_color: "#05070A",
       prefer_related_applications: false,
-      icons: [192, 512].map((size) => ({ src: `/brand/customer-app-${size}.png`, sizes: `${size}x${size}`, type: "image/png", purpose: "any" })),
+      icons: [192, 512].map((size) => ({ src: `/brand/chill-pros-cp-app-${size}.png`, sizes: `${size}x${size}`, type: "image/png", purpose: "any" })),
     },
     { headers: { "Content-Type": "application/manifest+json", "Cache-Control": "public, max-age=3600" } },
   );

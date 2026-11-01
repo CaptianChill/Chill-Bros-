@@ -1,19 +1,17 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, ChevronLeft, Ellipsis, FilePenLine, LogOut, Plus, RefreshCw, Save, Wrench, X } from "lucide-react";
+import { Bell, ChevronLeft, FilePenLine, LogOut, Plus, RefreshCw, Save, Wrench, X } from "lucide-react";
 
 import { signOutAction } from "@/app/sign-in/actions";
 import { titleForPath } from "@/components/page-title";
 import { PhoneAlertsSwitch } from "@/components/phone-alerts-switch";
-import { VarsityTitle } from "@/components/varsity-title";
+import { PlatformLogo } from "@/components/platform-logo";
 import { getHomeHref, getPrimaryTabs, groupNavItems, isNavItemActive, NAV_ICONS, type NavItem } from "@/lib/chillbros/nav";
 import type { StaffRole } from "@/lib/chillbros/types";
 
-const WORDMARK = { src: "/brand/chill-pros-varsity-900.webp", width: 900, height: 192 };
 const SAVE_ENABLED_PATHS = ["/technician", "/dispatch", "/manager"];
 
 const roundNavButton =
@@ -68,18 +66,11 @@ export function StaffHeader({
 
   return (
     <>
-      <header className="cb-camo-band cb-glass-text px-4 pb-4 pt-3 lg:rounded-xl lg:px-5">
-        {isHome ? (
-          <>
-            <Image src={WORDMARK.src} width={WORDMARK.width} height={WORDMARK.height} alt="Chill Pros" priority className="h-auto w-full lg:hidden" />
-            <div className="mt-3 flex items-center justify-between gap-3 lg:mt-0">
-              <div className="min-w-0">
-                <p className="cb-display truncate text-[26px] leading-tight">
-                  {greeting}, {user.firstName}
-                </p>
-                <p className="mt-0.5 text-sm font-medium">{dateLabel}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
+      <header className="cp-staff-header">
+        <div className="cp-staff-topline">
+          <Link href={getHomeHref(user.role)} aria-label="Chill Pros home" className="lg:hidden"><PlatformLogo priority className="h-[72px] w-[79px]" /></Link>
+          <p className="cp-eyebrow">{user.isOwner ? "Owner workspace" : `${user.roleLabel} workspace`}</p>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
                 <Link href={notificationHref} aria-label={notificationCount > 0 ? `${notificationCount} items need attention` : "Notifications"} className={`${roundNavButton} relative`}>
                   <Bell className="h-5 w-5" aria-hidden="true" />
                   {notificationCount > 0 ? <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-[#38B6FF] ring-2 ring-[#13284A]" aria-hidden="true" /> : null}
@@ -93,26 +84,12 @@ export function StaffHeader({
                 >
                   {user.initials}
                 </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-[44px_1fr_44px] items-center gap-2">
-              <button type="button" onClick={goBack} aria-label="Go back" className={roundNavButton}>
-                <ChevronLeft className="h-6 w-6" aria-hidden="true" />
-              </button>
-              <div className="flex justify-center">
-                <Image src={WORDMARK.src} width={WORDMARK.width} height={WORDMARK.height} alt="Chill Pros" priority className="h-auto max-h-[84px] w-full max-w-[270px] object-contain lg:hidden" />
-              </div>
-              <button type="button" onClick={() => setMenuOpen(true)} aria-label="More pages and account" aria-haspopup="dialog" className={`${roundNavButton} lg:invisible`}>
-                <Ellipsis className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
-            <h1 className="mt-2 text-center text-[34px] leading-tight sm:text-[40px] lg:mt-0">{typeof screenTitle === "string" ? <VarsityTitle text={screenTitle} fuzz /> : screenTitle}</h1>
-            {subtitle ? <p className="mt-0.5 truncate text-center text-sm font-medium text-[#13284A]">{subtitle}</p> : null}
-          </>
-        )}
+          </div>
+        </div>
+        <div className="cp-staff-heading">
+          {!isHome ? <button type="button" onClick={goBack} aria-label="Go back" className={roundNavButton}><ChevronLeft className="h-5 w-5" aria-hidden="true" /></button> : null}
+          <div className="min-w-0"><h1>{isHome ? `${greeting}, ${user.firstName}` : screenTitle}</h1><p>{isHome ? dateLabel : subtitle}</p></div>
+        </div>
       </header>
       {showNewInvoice ? (
         <div data-fab-stack className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-2 lg:bottom-6">
@@ -162,7 +139,7 @@ function MoreSheet({ user, items, onClose }: { user: StaffShellUser; items: NavI
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-[#0A1A33]/60 sm:items-center" role="dialog" aria-modal="true" aria-label="More" onClick={onClose}>
       <div
-        className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 text-[#0A1A33] sm:rounded-2xl"
+        className="cp-account-sheet max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-2xl p-4 sm:rounded-2xl"
         style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -202,7 +179,7 @@ function MoreSheet({ user, items, onClose }: { user: StaffShellUser; items: NavI
 
         {user.isOwner ? <PhoneAlertsSwitch /> : null}
 
-        <MoreLinks items={items} onNavigate={onClose} tone="light" />
+        <MoreLinks items={items} onNavigate={onClose} tone="dark" />
 
         <form action={signOutAction} className="mt-4 border-t border-[#EEF2F7] pt-4">
           <button type="submit" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#C7D3E2] px-3 text-sm font-semibold">
@@ -266,8 +243,8 @@ function PrimaryTabLinks({ role, layout }: { role: StaffRole; layout: "bar" | "s
         ? "min-h-[56px] flex-col justify-center gap-1 px-1 text-xs"
         : "min-h-11 gap-3 px-3 text-sm";
     const tone = active
-      ? "border-[#1B3FD0] bg-[#9FD3FF] text-[#0A1A33] shadow-[0_4px_12px_rgba(10,26,51,0.25)]"
-      : "border-white/80 bg-white/60 text-[#0A1A33] hover:bg-white/85";
+      ? "cp-nav-active"
+      : "cp-nav-idle";
 
     return (
       <Link key={tab.href} href={tab.href} aria-current={active ? "page" : undefined} className={`cb-tab flex items-center rounded-xl border font-semibold ${shape} ${tone}`}>
@@ -283,7 +260,7 @@ export function StaffTabBar({ role }: { role: StaffRole }) {
   return (
     <nav
       aria-label="Primary"
-      className="cb-camo-band fixed inset-x-0 bottom-0 z-50 px-3 pt-2 lg:hidden"
+      className="cp-tabbar fixed inset-x-0 bottom-0 z-50 px-3 pt-2 lg:hidden"
       style={{ paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}
     >
       <div className="mx-auto grid max-w-xl gap-1.5" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>
@@ -295,15 +272,15 @@ export function StaffTabBar({ role }: { role: StaffRole }) {
 
 export function StaffSidebar({ user, moreItems }: { user: StaffShellUser; moreItems: NavItem[] }) {
   return (
-    <aside className="cb-camo-band sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto px-4 py-5 lg:flex">
-      <Link href={getHomeHref(user.role)} aria-label="Chill Pros home" className="block">
-        <Image src={WORDMARK.src} width={WORDMARK.width} height={WORDMARK.height} alt="Chill Pros" className="h-auto w-full" />
+    <aside className="cp-sidebar sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto px-4 py-5 lg:flex">
+      <Link href={getHomeHref(user.role)} aria-label="Chill Pros home" className="mx-auto block">
+        <PlatformLogo priority className="h-[150px] w-[164px]" />
       </Link>
       <nav aria-label="Primary" className="mt-5 grid gap-1.5">
         <PrimaryTabLinks role={user.role} layout="sidebar" />
       </nav>
       <div className="flex-1">
-        <MoreLinks items={moreItems} tone="light" />
+        <MoreLinks items={moreItems} tone="dark" />
       </div>
       <form action={signOutAction} className="mt-4 border-t border-[#0A1A33]/10 pt-4">
         <button

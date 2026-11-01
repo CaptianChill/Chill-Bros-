@@ -9,14 +9,14 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const { next, reset } = await searchParams;
 
   return (
-    <div className="cb-staff cb-camo-page">
+    <div className="cb-platform cb-staff">
       <div className="cb-page flex min-h-screen items-center justify-center px-4">
         <div className="panel w-full max-w-sm space-y-6 neon-frame sign-surface rounded-3xl p-6">
           <div className="flex flex-col items-center gap-3 text-center">
-            <LogoBadge variant="full" className="w-16" />
+            <LogoBadge className="w-36" />
             <div>
               <p className="sub text-sm uppercase tracking-[0.3em]">Staff sign in</p>
-              <h1 className="glo mt-1 text-xl font-semibold">Chill Bros Command Center</h1>
+              <h1 className="glo mt-1 text-2xl font-semibold">Welcome to Chill Pros</h1>
             </div>
           </div>
           {reset === "1" ? (

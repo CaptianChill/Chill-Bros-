@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CalendarClock, Check, ChevronRight, Plus } from "lucide-react";
@@ -65,7 +64,6 @@ export default async function CustomerHomePage({ searchParams }: { searchParams:
   return (
     <CustomerFrame accountName={accountName} right={<CustomerSignOutButton />}>
       <section className="cb-frost relative -mx-4 -mt-5 overflow-hidden px-4 pb-5 pt-5 text-white sm:mx-0 sm:mt-0 sm:rounded-3xl sm:px-6 sm:pt-6">
-        <Image src="/brand/chill-pros-ice-logo-240.png" alt="" width={240} height={240} aria-hidden="true" style={{ opacity: 0.1 }} className="pointer-events-none absolute -right-8 -top-6 h-36 w-36 sm:h-44 sm:w-44" />
         <p className="cb-display text-[13px] tracking-[0.2em] text-[#9CCBFF]">Welcome back</p>
         <h1 className="relative mt-0.5 text-[28px] font-bold leading-tight sm:text-[32px]">{primary?.name ?? "Hi there"}</h1>
         <p className="relative mt-0.5 truncate text-[14px] text-white/70">{multi ? names.join(" · ") : primary?.address ?? session.email}</p>
