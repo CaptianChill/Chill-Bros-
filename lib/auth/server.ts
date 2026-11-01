@@ -2,6 +2,19 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { createNeonAuth } from "@neondatabase/auth/next/server";
+// Neon's 0.5 SDK embeds Better Auth 1.6 plugin declarations. Its admin type
+// becomes unknown with patched 1.7 dependencies. Keep a narrow contract for the
+// four existing server-proxy methods used here; protocol tests exercise the real
+// SDK routing, cookie forwarding, response parsing, and error propagation.
+type AdminUser = { id: string; email?: string | null };
+type AdminResult<T> = Promise<{ data: T | null; error: { message?: string; status?: number } | null }>;
+type PatchedAdmin = {
+  listUsers(input: { query: { filterField: "email" | "id"; filterValue: string; filterOperator: "eq"; limit: number } }): AdminResult<{ users: AdminUser[] }>;
+  createUser(input: { email: string; password: string; name: string; role: "user" }): AdminResult<{ user: AdminUser }>;
+  setUserPassword(input: { userId: string; newPassword: string }): AdminResult<{ success: boolean }>;
+  removeUser(input: { userId: string }): AdminResult<{ success: boolean }>;
+};
+type CompatibleNeonAuth = Omit<ReturnType<typeof createNeonAuth>, "admin"> & { admin: PatchedAdmin };
 
 const NEON_AUTH_BASE_URL =
   process.env.NEON_AUTH_BASE_URL ||
@@ -30,4 +43,4 @@ export const auth = createNeonAuth({
     secret: cookieSecret(),
     sessionDataTtl: 300,
   },
-});
+}) as CompatibleNeonAuth;

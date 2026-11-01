@@ -32,6 +32,7 @@ function harness({ role = 'manager', email = owner.email, rows = [owner, member]
   }};
   const mocks = {
     'next/cache': { revalidatePath() {} },
+    '@/lib/chillbros/security-guards': { loginIdentityHash: () => 'fixture-identity-hash' },
     '@/lib/auth/staff-login-key': { hasStaffLoginKeySecret: () => true, staffLoginKey: (e) => `derived-key-for-${e}` },
     '@/lib/supabase/service-client': { createServiceRoleClient: () => db },
     '@/lib/supabase/auth-server': { getCurrentStaffProfile: async () => ({...owner,role,email}) },
