@@ -8,7 +8,7 @@ const code = ts.transpileModule(fs.readFileSync('lib/chillbros/revenue-city-sour
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 new Function('require', 'module', 'exports', code)(id => id === 'server-only' ? {} : require(id), mod, mod.exports);
-const { latestCityReport, cityEstablishments, discoverCityEstablishments } = mod.exports;
+const { latestCityReport, cityEstablishments, discoverCityEstablishments, isCityReportUrl } = mod.exports;
 const now = new Date('2026-10-31T12:00:00Z');
 const path = '/files/assets/public/v/1/samhd/documents/health-data-statistics/fe/2026/1018-1024.xlsx';
 test('city reports reject off-site, stale and future sources', () => {
@@ -43,3 +43,13 @@ test('city discovery parses a real XLSX response using the single-sheet API', as
   } finally { global.fetch = original; }
 });
 
+
+test('PC uploads only accept current official city report URLs', () => {
+  assert.equal(isCityReportUrl(`https://www.sa.gov${path}`, now), true);
+  assert.equal(isCityReportUrl(`https://www.sa.gov${path.replace('/samhd/', '/SAMHD/')}`, now), true);
+  assert.equal(isCityReportUrl(`https://evil.example${path}`, now), false);
+  assert.equal(isCityReportUrl(`http://www.sa.gov${path}`, now), false);
+  assert.equal(isCityReportUrl(`https://www.sa.gov${path.replace('1018', '0101')}`, now), false);
+  assert.equal(isCityReportUrl(`https://www.sa.gov${path.replace('1018', '1201')}`, now), false);
+  assert.equal(isCityReportUrl('not a url', now), false);
+});
