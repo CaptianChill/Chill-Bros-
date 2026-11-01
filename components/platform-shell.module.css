@@ -65,13 +65,13 @@
 .shell{--cp-navy:#e8f3ff;--cp-blue:#1879f4;--cp-ice:#102b48;--cp-line:#203b57;--cp-muted:#adc0d4;background:#05090f;color:#edf6ff;color-scheme:dark}
 .sidebar{background:linear-gradient(175deg,#091b30,#040910);border-right-color:#18344f}
 .brand{padding-bottom:28px;flex-direction:column;gap:12px}
-.platformLogo{object-fit:contain;background:#fff;border-radius:12px;padding:5px;border:1px solid #8acfff;box-shadow:0 0 18px #1678df1a}
+.platformLogo{object-fit:contain;background:transparent;border-radius:0;padding:0;border:0;box-shadow:none}
 .topbar{background:#08111d;border-color:#173451;border-top-color:#378fff;color:#a6bfd6}
 .account{background:#102740;color:#b5dfff;border:1px solid #214d77}
 .pageHeading{background:radial-gradient(ellipse at 100% 0,#123d69 0,transparent 60%),linear-gradient(115deg,#091526,#0b2038);border-color:#255f94;box-shadow:inset 0 1px #76cfff26,0 10px 30px #0003}
 .pageHeading:before{border-color:#56b6ff40}.pageHeading:after{border-color:#56b6ff20}
 .heroBadge{transform:none}
-.heroBadge img{border-radius:12px;background:#fff;padding:5px;filter:none;box-shadow:0 0 24px #3698ff26}
+.heroBadge img{border-radius:0;background:transparent;padding:0;filter:none;box-shadow:none}
 .toolbar button{background:#0d1b2b;color:#bad0e4;border-color:#254663}
 .toolbar button:hover{background:#142d46;border-color:#509cdb}
 .toolbar button[aria-pressed=true]{background:linear-gradient(120deg,#197bee,#1050b4);border-color:#55b0ff;box-shadow:0 0 13px #197bf426}

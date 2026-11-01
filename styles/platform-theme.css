@@ -38,7 +38,7 @@
 .cb-platform h3 { line-height: 1.4; }
 .cp-muted, .sub { color: var(--cp-muted); opacity: 1; }
 .glo,.txt { color: inherit; }
-.cp-brand-logo { object-fit: contain; background: #fff; padding: 4px; border: 1px solid #81cfff; border-radius: 12px; filter: none; }
+.cp-brand-logo { object-fit: contain; background: transparent; padding: 0; border: 0; border-radius: 0; filter: none; }
 .cp-surface,.cb-card,.panel,.sign-surface { background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 14px; color: var(--cp-text); box-shadow: 0 5px 20px #0002; backdrop-filter: none; }
 .panel { padding: 18px; }
 .box { background: var(--cp-raised); border: 1px solid var(--cp-border); border-radius: 9px; color: var(--cp-text); }
