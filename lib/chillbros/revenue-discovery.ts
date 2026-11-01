@@ -1,6 +1,6 @@
 import "server-only";
 
-import { discoverCityEstablishments } from "./revenue-city-source";
+import { discoverCityEstablishments, type CityEstablishment } from "./revenue-city-source";
 import { normalizedKey } from "@/lib/chillbros/revenue-radar";
 import type { createServiceRoleClient } from "@/lib/supabase/service-client";
 
@@ -371,16 +371,8 @@ async function existingProspectNames(client: Client) {
   return { names, sources };
 }
 
-// Scans areas in rotation until about `target` new leads are added (max `maxAreas`
-// areas, to stay polite to the free map service). Duplicates are ignored by the
-// database's normalized_key and by business name, so only genuinely new businesses
-// count. Stops starting new searches once `budgetMs` is used, so the run always
-// finishes and saves what it found instead of being killed by the platform timeout.
-export async function runLeadScan(client: Client, options: { mode: "daily" | "manual" | "scheduled"; actorId: string | null; target?: number; maxAreas?: number; budgetMs?: number }): Promise<LeadScanResult> {
-  const target = options.target ?? 25;
-  const maxAreas = Math.min(options.maxAreas ?? 3, SCAN_AREAS.length);
-  const deadline = Date.now() + (options.budgetMs ?? 50000);
-  const googleKey = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
+// Customer names, so a business that is already a customer never becomes a prospect.
+async function existingCustomerNames(client: Client) {
   const customerNames = new Set<string>();
   for (let from = 0; ; from += 1000) {
     const { data, error } = await client.from("chillbros_customers").select("name").order("id").range(from, from + 999);
@@ -391,36 +383,66 @@ export async function runLeadScan(client: Client, options: { mode: "daily" | "ma
     }
     if (data.length < 1000) break;
   }
+  return customerNames;
+}
+
+// Saves businesses from the city's published food-establishment report as new prospects, skipping customers,
+// businesses already in Revenue Radar and repeats. This source has no contacts, and its food-safety score is never
+// used as a sales qualification score.
+export async function saveCityEstablishments(
+  client: Client,
+  businesses: CityEstablishment[],
+  options: { actorId: string | null; target: number; customerNames?: Set<string>; knownNames?: Set<string>; knownSources?: Set<string> },
+): Promise<LeadScanResult> {
+  const customerNames = options.customerNames ?? await existingCustomerNames(client);
+  const known = options.knownNames && options.knownSources ? { names: options.knownNames, sources: options.knownSources } : await existingProspectNames(client);
+  const fit = scoreLead({ amenity: "restaurant" });
+  let skippedCustomers = 0;
+  const rows: DiscoveredRevenueLead[] = [];
+  for (const business of businesses) {
+    const key = nameKey(business.name);
+    if (customerNames.has(key)) { skippedCustomers++; continue; }
+    if (known.names.has(key) || known.sources.has(business.sourceUrl.toLowerCase())) continue;
+    known.names.add(key);
+    rows.push({
+      business_name: business.name.slice(0, 200), city: "San Antonio", category: "other", service_line: "multiple",
+      signal_summary: `City of San Antonio published food-establishment record, observed ${business.observedAt.slice(0, 10)}. Potential kitchen, refrigeration, ice, HVAC, and ventilation service fit; equipment, ownership, vendor authority, and current need unverified. Food inspection scores are not lead qualification scores. Office review required.`,
+      source_url: business.sourceUrl, signal_observed_at: business.observedAt, signal_verified: false,
+      normalized_key: normalizedKey(business.name, "San Antonio", "auto_discovery", business.sourceUrl),
+      score: fit.score, business_address: business.address, contact_email: null, contact_phone: null,
+    });
+  }
+  const scanned = ["San Antonio official food-establishment reports"];
+  const fresh = rows.slice(0, options.target).map(lead => ({ ...lead, status: "new", created_by: options.actorId, updated_by: options.actorId, updated_at: new Date().toISOString() }));
+  // A valid empty/fully deduplicated report is a successful scan, not an outage.
+  if (!fresh.length) return { added: 0, scanned, skippedCustomers, source: "san-antonio-reports" };
+  const { data, error } = await client.from("chillbros_revenue_prospects").upsert(fresh, { onConflict: "normalized_key", ignoreDuplicates: true }).select("id");
+  if (error) throw new Error(`City discovery save failed: ${error.message}`);
+  return { added: data?.length ?? 0, scanned, skippedCustomers, source: "san-antonio-reports" };
+}
+
+// Scans areas in rotation until about `target` new leads are added (max `maxAreas`
+// areas, to stay polite to the free map service). Duplicates are ignored by the
+// database's normalized_key and by business name, so only genuinely new businesses
+// count. Stops starting new searches once `budgetMs` is used, so the run always
+// finishes and saves what it found instead of being killed by the platform timeout.
+export async function runLeadScan(client: Client, options: { mode: "daily" | "manual" | "scheduled"; actorId: string | null; target?: number; maxAreas?: number; budgetMs?: number }): Promise<LeadScanResult> {
+  const target = options.target ?? 25;
+  const maxAreas = Math.min(options.maxAreas ?? 3, SCAN_AREAS.length);
+  const deadline = Date.now() + (options.budgetMs ?? 50000);
+  const googleKey = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
+  const customerNames = await existingCustomerNames(client);
   const { names: knownNames, sources: knownSources } = await existingProspectNames(client);
 
   // Prefer the city's current, published local records to overloaded public map
   // servers when no paid Places provider is configured. This source has no contacts
   // and its food-safety score is never used as a sales qualification score.
-  if (!googleKey) {
+  // RADAR_CITY_FROM_PC=1: the city blocks cloud servers, so the owner's PC fetches the report and posts it to
+  // /api/cron/radar-city-import instead; the cloud scan then skips straight to the map search.
+  if (!googleKey && process.env.RADAR_CITY_FROM_PC !== "1") {
     try {
       const businesses = await discoverCityEstablishments(deadline);
-      const fit = scoreLead({ amenity: "restaurant" });
-      let skippedCustomers = 0;
-      const rows: DiscoveredRevenueLead[] = [];
-      for (const business of businesses) {
-        const key = nameKey(business.name);
-        if (customerNames.has(key)) { skippedCustomers++; continue; }
-        if (knownNames.has(key) || knownSources.has(business.sourceUrl.toLowerCase())) continue;
-        knownNames.add(key);
-        rows.push({
-          business_name: business.name.slice(0, 200), city: "San Antonio", category: "other", service_line: "multiple",
-          signal_summary: `City of San Antonio published food-establishment record, observed ${business.observedAt.slice(0, 10)}. Potential kitchen, refrigeration, ice, HVAC, and ventilation service fit; equipment, ownership, vendor authority, and current need unverified. Food inspection scores are not lead qualification scores. Office review required.`,
-          source_url: business.sourceUrl, signal_observed_at: business.observedAt, signal_verified: false,
-          normalized_key: normalizedKey(business.name, "San Antonio", "auto_discovery", business.sourceUrl),
-          score: fit.score, business_address: business.address, contact_email: null, contact_phone: null,
-        });
-      }
-      const fresh = rows.slice(0, target).map(lead => ({ ...lead, status: "new", created_by: options.actorId, updated_by: options.actorId, updated_at: new Date().toISOString() }));
-      // A valid empty/fully deduplicated report is a successful scan, not an outage.
-      if (!fresh.length) return { added: 0, scanned: ["San Antonio official food-establishment reports"], skippedCustomers, source: "san-antonio-reports" };
-      const { data, error } = await client.from("chillbros_revenue_prospects").upsert(fresh, { onConflict: "normalized_key", ignoreDuplicates: true }).select("id");
-      if (error) throw new Error(`City discovery save failed: ${error.message}`);
-      return { added: data?.length ?? 0, scanned: ["San Antonio official food-establishment reports"], skippedCustomers, source: "san-antonio-reports" };
+      return await saveCityEstablishments(client, businesses, { actorId: options.actorId, target, customerNames, knownNames, knownSources });
     } catch (error) {
       // A database failure must not fall through and import without its exclusions.
       if (error instanceof Error && error.message.startsWith("City discovery save failed:")) throw error;

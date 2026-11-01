@@ -2,8 +2,21 @@ import "server-only";
 import { readSheet } from "read-excel-file/node";
 
 export const CITY_REPORT_PAGE = "https://www.sa.gov/Directory/Departments/SAMHD/Reports-Statistics/Food-Establishment-Inspections";
-const MAX_REPORT_BYTES = 2_000_000;
+export const MAX_REPORT_BYTES = 2_000_000;
 export type CityEstablishment = { name: string; address: string; observedAt: string; sourceUrl: string };
+
+const REPORT_PATH = /\/samhd\/documents\/health-data-statistics\/fe\/(\d{4})\/(\d{2})(\d{2})-(\d{2})(\d{2})\.xlsx$/;
+
+/** True for an official, current (last 45 days, not future) City of San Antonio food-inspection report URL. */
+export function isCityReportUrl(value: string, now = new Date()) {
+  let url: URL;
+  try { url = new URL(value); } catch { return false; }
+  if (url.origin !== "https://www.sa.gov") return false;
+  const period = REPORT_PATH.exec(url.pathname.toLowerCase());
+  if (!period) return false;
+  const date = Date.UTC(Number(period[1]), Number(period[2]) - 1, Number(period[3]));
+  return date <= now.getTime() && now.getTime() - date <= 45 * 86400000;
+}
 
 export function latestCityReport(html: string, now = new Date()) {
   const candidates: { url: string; date: number }[] = [];
