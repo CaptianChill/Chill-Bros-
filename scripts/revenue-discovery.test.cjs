@@ -11,7 +11,7 @@ function load() {
   const radarMod = { exports: {} };
   new Function('require', 'module', 'exports', radar)(require, radarMod, radarMod.exports);
   const mod = { exports: {} };
-  new Function('require', 'module', 'exports', out)((id) => (id === 'server-only' ? {} : id === '@/lib/chillbros/revenue-radar' ? radarMod.exports : require(id)), mod, mod.exports);
+  new Function('require', 'module', 'exports', out)((id) => (id === 'server-only' ? {} : id === './revenue-city-source' ? { discoverCityEstablishments: async () => { throw new Error('City source unavailable in map fixtures'); } } : id === '@/lib/chillbros/revenue-radar' ? radarMod.exports : require(id)), mod, mod.exports);
   return mod.exports;
 }
 const d = load();

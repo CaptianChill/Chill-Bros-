@@ -1,5 +1,6 @@
 import "server-only";
 
+import { discoverCityEstablishments } from "./revenue-city-source";
 import { normalizedKey } from "@/lib/chillbros/revenue-radar";
 import type { createServiceRoleClient } from "@/lib/supabase/service-client";
 
@@ -351,7 +352,7 @@ export function startAreaIndex(mode: "daily" | "manual" | "scheduled", now = new
 }
 
 type Client = ReturnType<typeof createServiceRoleClient>;
-export type LeadScanResult = { added: number; scanned: string[]; skippedCustomers: number; source: "google" | "openstreetmap" };
+export type LeadScanResult = { added: number; scanned: string[]; skippedCustomers: number; source: "google" | "openstreetmap" | "san-antonio-reports" };
 
 // Business names already in Revenue Radar, so a business found again through a
 // different source (Google vs OpenStreetMap) isn't added twice.
@@ -391,6 +392,41 @@ export async function runLeadScan(client: Client, options: { mode: "daily" | "ma
     if (data.length < 1000) break;
   }
   const { names: knownNames, sources: knownSources } = await existingProspectNames(client);
+
+  // Prefer the city's current, published local records to overloaded public map
+  // servers when no paid Places provider is configured. This source has no contacts
+  // and its food-safety score is never used as a sales qualification score.
+  if (!googleKey) {
+    try {
+      const businesses = await discoverCityEstablishments(deadline);
+      const fit = scoreLead({ amenity: "restaurant" });
+      let skippedCustomers = 0;
+      const rows: DiscoveredRevenueLead[] = [];
+      for (const business of businesses) {
+        const key = nameKey(business.name);
+        if (customerNames.has(key)) { skippedCustomers++; continue; }
+        if (knownNames.has(key) || knownSources.has(business.sourceUrl.toLowerCase())) continue;
+        knownNames.add(key);
+        rows.push({
+          business_name: business.name.slice(0, 200), city: "San Antonio", category: "other", service_line: "multiple",
+          signal_summary: `City of San Antonio published food-establishment record, observed ${business.observedAt.slice(0, 10)}. Potential kitchen, refrigeration, ice, HVAC, and ventilation service fit; equipment, ownership, vendor authority, and current need unverified. Food inspection scores are not lead qualification scores. Office review required.`,
+          source_url: business.sourceUrl, signal_observed_at: business.observedAt, signal_verified: false,
+          normalized_key: normalizedKey(business.name, "San Antonio", "auto_discovery", business.sourceUrl),
+          score: fit.score, business_address: business.address, contact_email: null, contact_phone: null,
+        });
+      }
+      const fresh = rows.slice(0, target).map(lead => ({ ...lead, status: "new", created_by: options.actorId, updated_by: options.actorId, updated_at: new Date().toISOString() }));
+      // A valid empty/fully deduplicated report is a successful scan, not an outage.
+      if (!fresh.length) return { added: 0, scanned: ["San Antonio official food-establishment reports"], skippedCustomers, source: "san-antonio-reports" };
+      const { data, error } = await client.from("chillbros_revenue_prospects").upsert(fresh, { onConflict: "normalized_key", ignoreDuplicates: true }).select("id");
+      if (error) throw new Error(`City discovery save failed: ${error.message}`);
+      return { added: data?.length ?? 0, scanned: ["San Antonio official food-establishment reports"], skippedCustomers, source: "san-antonio-reports" };
+    } catch (error) {
+      // A database failure must not fall through and import without its exclusions.
+      if (error instanceof Error && error.message.startsWith("City discovery save failed:")) throw error;
+      console.warn("[revenue-discovery] official city source unavailable", error instanceof Error ? error.message : "error");
+    }
+  }
 
   const start = startAreaIndex(options.mode);
   const result: LeadScanResult = { added: 0, scanned: [], skippedCustomers: 0, source: googleKey ? "google" : "openstreetmap" };

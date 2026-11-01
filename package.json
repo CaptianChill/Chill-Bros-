@@ -23,7 +23,8 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "read-excel-file": "9.3.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -37,6 +38,19 @@
     "typescript": "^5"
   },
   "overrides": {
-    "zod": "4.6.7"
+    "zod": "4.6.7",
+    "better-auth": "1.7.7",
+    "@better-auth/core": "1.7.7",
+    "@better-auth/oauth-provider": "1.7.7",
+    "@better-auth/drizzle-adapter": "1.7.7",
+    "@better-auth/kysely-adapter": "1.7.7",
+    "@better-auth/memory-adapter": "1.7.7",
+    "@better-auth/mongo-adapter": "1.7.7",
+    "@better-auth/prisma-adapter": "1.7.7",
+    "@better-auth/passkey": "1.7.7",
+    "@better-auth/api-key": "1.7.7",
+    "@better-auth/telemetry": "1.7.7",
+    "@neondatabase/auth": "$@neondatabase/auth",
+    "@neondatabase/auth-ui": "0.3.0-beta"
   }
 }
