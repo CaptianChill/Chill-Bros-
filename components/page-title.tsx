@@ -45,10 +45,10 @@ export function titleForPath(pathname: string) {
 
 export function PageTitle() {
   const pathname = usePathname();
-  const label = titleForPath(pathname) ?? "Chill Bros";
+  const label = titleForPath(pathname) ?? "Chill Pros";
 
   return (
-    <h1 className="glo w-full text-center font-serif text-[1.35rem] font-black italic uppercase leading-tight tracking-[0.015em] sm:text-[1.8rem]">
+    <h1 className="glo w-full text-xl font-semibold leading-tight sm:text-2xl">
       <VarsityTitle text={label} fuzz />
     </h1>
   );

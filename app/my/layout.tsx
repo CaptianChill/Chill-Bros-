@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   applicationName: "Chill Pros",
   manifest: "/my/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Chill Pros", statusBarStyle: "black" },
-  icons: { icon: "/brand/customer-app-192.png", apple: "/brand/customer-app-180.png" },
+  icons: { icon: "/brand/chill-pros-cp-app-192.png", apple: "/brand/chill-pros-cp-app-180.png" },
   other: { "apple-mobile-web-app-title": "Chill Pros" },
   openGraph: {
     title: "Chill Pros · Your account",
@@ -20,7 +20,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: "#05070A",
-  colorScheme: "light",
+  colorScheme: "dark",
 };
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {

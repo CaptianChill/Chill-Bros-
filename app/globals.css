@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020407;
-  --foreground: #f4fbff;
+  --background: #05090f;
+  --foreground: #edf6ff;
   --neon-blue: #2d7dff;
   --neon-cyan: #2d7dff;
   --sign-black: #020407;
   --sign-muted: #8b9aac;
-  --font-sans-stack: "Trebuchet MS", "Segoe UI", Arial, Helvetica, sans-serif;
-  --font-brand-stack: "Arial Narrow", "Arial Black", Impact, sans-serif;
+  --font-sans-stack: var(--font-barlow), "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-brand-stack: var(--font-barlow), "Segoe UI", Arial, sans-serif;
   --font-mono-stack: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
@@ -44,12 +44,7 @@ body {
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
-  background:
-    linear-gradient(rgba(45, 125, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(45, 125, 255, 0.035) 1px, transparent 1px),
-    radial-gradient(circle at 50% -10%, rgba(45, 125, 255, 0.18), transparent 42%),
-    var(--sign-black);
-  background-size: 44px 44px, 44px 44px, auto, auto;
+  background: var(--background);
   color: var(--foreground);
   overscroll-behavior-y: auto;
   touch-action: manipulation;

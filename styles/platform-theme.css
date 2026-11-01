@@ -1,0 +1,95 @@
+/* Approved Chill Pros interface: a single foundation for every workspace. */
+:root {
+  --cp-page: #05090f;
+  --cp-surface: #0d1b2c;
+  --cp-raised: #13283f;
+  --cp-field: #091523;
+  --cp-border: #25425e;
+  --cp-text: #edf6ff;
+  --cp-muted: #adbed2;
+  --cp-accent: #91d5ff;
+  --cp-action: #1879f4;
+  --cp-action-hover: #1266d2;
+  --cp-success: #9ae6bd;
+  --cp-warning: #ffd28a;
+  --cp-danger: #ffb4b4;
+  --saber: var(--cp-accent);
+  --saber-soft: var(--cp-border);
+  --ink: var(--cp-page);
+  --light-blue: var(--cp-accent);
+  --mid-blue: var(--cp-action);
+  --cb-navy: var(--cp-text);
+  --cb-blue: var(--cp-action);
+  --cb-text: var(--cp-text);
+  --cb-text-2: var(--cp-muted);
+  --cb-card: var(--cp-surface);
+  --cb-card-border: var(--cp-border);
+  --cb-divider: var(--cp-border);
+  --cb-field: var(--cp-field);
+  --cb-input-border: var(--cp-border);
+}
+.cp-root { background: var(--cp-page); color: var(--cp-text); }
+.cb-platform { background: var(--cp-page); color: var(--cp-text); color-scheme: dark; font-family: var(--font-barlow), "Segoe UI", sans-serif; min-height: 100dvh; }
+.cb-platform :is(h1,h2,h3,h4,.cb-display,.font-brand), .cp-root :is(h1,h2,h3) {
+  font-family: var(--font-barlow), "Segoe UI", sans-serif;
+  font-style: normal; font-weight: 600; letter-spacing: -.02em; text-transform: none; text-shadow: none;
+}
+.cb-platform h2 { font-size: 1.2rem; line-height: 1.35; }
+.cb-platform h3 { line-height: 1.4; }
+.cp-muted, .sub { color: var(--cp-muted); opacity: 1; }
+.glo,.txt { color: inherit; }
+.cp-brand-logo { object-fit: contain; background: #fff; padding: 4px; border: 1px solid #81cfff; border-radius: 12px; filter: none; }
+.cp-surface,.cb-card,.panel,.sign-surface { background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 14px; color: var(--cp-text); box-shadow: 0 5px 20px #0002; backdrop-filter: none; }
+.panel { padding: 18px; }
+.box { background: var(--cp-raised); border: 1px solid var(--cp-border); border-radius: 9px; color: var(--cp-text); }
+.box.hot { border-color: #4a9ce0; }
+.danger-box { background: #3b202c; border: 1px solid #915767; color: var(--cp-danger); border-radius: 8px; }
+.neon-frame,.neon-tube { border-color: var(--cp-border); }
+.neon-text { color: var(--cp-text); text-shadow: none; }
+.cb-frost,.cp-staff-header { background: radial-gradient(ellipse at 100% 0,#173d65 0,transparent 60%),linear-gradient(115deg,#091526,#0b2038); border: 1px solid #29577e; border-radius: 16px; box-shadow: inset 0 1px #91d5ff14; }
+.cp-staff-header { padding: 20px 24px 24px; margin: 0; }
+.cp-staff-topline { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+.cp-staff-topline .cp-eyebrow { margin: 0; }
+.cp-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--cp-accent); }
+.cp-staff-heading { display: flex; align-items: center; gap: 14px; }
+.cp-staff-heading h1 { margin: 0; color: #fff; font-size: clamp(26px,3vw,36px); line-height: 1.2; }
+.cp-staff-heading p { margin: 8px 0 0; color: #c4d9ec; font-size: 14px; }
+.cp-sidebar { background: linear-gradient(175deg,#0d233c,#060e19); border-right: 1px solid var(--cp-border); }
+.cp-tabbar { background: #081524; border-top: 1px solid var(--cp-border); }
+.cp-account-sheet { background: var(--cp-surface); border: 1px solid var(--cp-border); color: var(--cp-text); }
+.cp-nav-idle { background: transparent; color: #bfd0e2; border-color: transparent; }
+.cp-nav-idle:hover { background: #17314c; color: #fff; }
+.cp-nav-active { background: linear-gradient(100deg,#215b91,#173e65); border-color: #316895; color: #fff; box-shadow: inset 3px 0 #91d5ff; }
+.cp-sidebar nav a[aria-current], .cp-account-sheet nav a[aria-current] { background: #204d77; color: #fff; }
+.cb-platform nav[aria-label="Section"] { background: var(--cp-surface); border-color: var(--cp-border); backdrop-filter: none; }
+.cb-platform nav[aria-label="Section"] a[aria-current] { background: var(--cp-action); color: #fff; }
+.cb-platform nav[aria-label="Section"] a:not([aria-current]) { color: var(--cp-accent); }
+.cb-platform :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]),select,textarea) {
+  background: var(--cp-field); color: var(--cp-text); border: 1px solid var(--cp-border); border-radius: 9px; box-shadow: none; min-height: 44px; color-scheme: dark;
+}
+.cb-platform :is(input,textarea)::placeholder { color: #90a5be; opacity: 1; }
+.cb-platform :is(input,select,textarea):focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 2px; border-color: #72c7ff; }
+.cb-platform :is(button,a,summary):focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 3px; }
+.cb-platform button:disabled { cursor: not-allowed; opacity: .55; }
+.cb-platform :is([class~="bg-cyan-300"],[class~="bg-cyan-400"],[class~="bg-blue-600"],[class~="bg-blue-700"]) { background-color:var(--cp-action); color:#fff; }
+.cb-platform :is([class~="bg-emerald-300"],[class~="bg-emerald-400"],[class~="bg-emerald-500"]) { background-color:#17674b; color:#fff; }
+.cb-platform :is(button,summary) { font-family: inherit; }
+.cb-platform table { border-collapse: collapse; width: 100%; }
+.cb-platform :is(th,td) { border-color: var(--cp-border); }
+.cb-platform th { color: var(--cp-muted); font-weight: 600; }
+.cb-platform :is([role="alert"],[data-tone="error"]) { color: var(--cp-danger); }
+/* Existing class names remain valid while their visual values share these tokens.
+   Exact class matching preserves hover states, statuses, and transparent overlays. */
+
+@media(max-width:640px) {
+  .cp-staff-header { border-radius: 0 0 16px 16px; padding: 16px; }
+  .cp-staff-topline { gap: 10px; margin-bottom: 18px; }
+  .cp-staff-topline .cp-eyebrow { max-width: 105px; font-size: 10px; }
+  .cb-platform main { min-width: 0; }
+}
+@media print {
+  :root { --cp-page:#fff; --cp-surface:#fff; --cp-raised:#f3f5f7; --cp-field:#fff; --cp-border:#cbd5e1; --cp-text:#10283f; --cp-muted:#42556b; --cp-accent:#15569b; }
+  .cp-sidebar,.cp-tabbar,[data-fab-stack] { display:none!important; }
+  .cb-platform,.cp-root { background:#fff; color:#10283f; }
+  .cp-surface,.cb-card,.panel { box-shadow:none; }
+}
