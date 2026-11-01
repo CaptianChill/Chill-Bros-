@@ -25,7 +25,7 @@
   const saveSettings = () => { store.set('settings', settings); document.body.dataset.fx = settings.fx; };
 
   /* ---------------- Avatar look (art variants) ---------------- */
-  const LOOKS = window.BB_LOOKS || { default: { desktop: 'cc/desktop.webp', mobile: 'cc/mobile.webp', label: 'Original' } };
+  const LOOKS = window.BB_LOOKS || { default: { desktop: 'cc/mascot.jpg', mobile: 'cc/mascot.jpg', label: 'Original' } };
   function applyLook() {
     const look = LOOKS[settings.look] || LOOKS.default;
     $$('img[data-art]').forEach(img => { const src = look[img.dataset.art]; if (src && img.getAttribute('src') !== src) img.src = src; });

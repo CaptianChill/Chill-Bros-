@@ -30,8 +30,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="preload" as="image" href="cc/desktop.webp" media="(min-width: 768px)">
-  <link rel="preload" as="image" href="cc/mobile.webp" media="(max-width: 767px)">
+  <link rel="preload" as="image" href="cc/mascot.jpg">
   <link rel="stylesheet" href="cc/cc.css">
 </head>
 <body data-fx="heavy">
@@ -44,126 +43,109 @@
     <div class="neon-floor"></div>
   </div>
 
-  <main class="stage">
-    <!-- ================= DESKTOP ================= -->
-    <div class="desk">
-    <section class="art art-d" aria-label="BB Command Center desktop">
-      <img class="art-img" data-art="desktop" src="cc/desktop.webp" alt="Big BB Booda Command Center" width="1536" height="1024" decoding="async">
-      <div class="shine" aria-hidden="true"></div>
-      <div class="flare" aria-hidden="true"></div>
-      <canvas class="fx" aria-hidden="true"></canvas>
+  <main class="stage cc-page">
+    <!-- top banner: BB Command Center title, like the reference crown banner -->
+    <header class="cc-top">
+      <img src="assets/bb-command-center-logo.svg" alt="" class="cc-brand-mark">
+      <h1>BB COMMAND CENTER</h1>
+    </header>
 
-      <!-- live watch (original diamond-bezel face) + digital time -->
-      <div class="ov time-plate" style="--x:374;--y:612;--w:234;--h:110" aria-hidden="true"></div>
-      <div class="ov watch-wrap" style="--x:236;--y:602;--w:136;--h:136"><svg class="watch" viewBox="-100 -100 200 200" aria-label="Live watch" role="img"></svg></div>
-      <div class="ov time-big" style="--x:386;--y:628;--w:222;--h:46;--fs:38"><span data-clock="time">--:--:--</span></div>
-      <div class="ov date-cyan" style="--x:388;--y:680;--w:222;--h:24;--fs:15.5"><span data-clock="date"></span></div>
-
-      <!-- stat numbers -->
-      <div class="ov stat-num green" style="--x:714;--y:619;--w:60;--h:28;--fs:22"><span data-stat="apps">9</span></div>
-      <div class="ov stat-num orange" style="--x:1034;--y:619;--w:60;--h:28;--fs:22"><span data-stat="approvals">0</span></div>
-
-      <!-- notifications -->
-      <ul class="ov rc notif-list" style="--x:1310;--y:100;--w:176;--h:420" data-notifs aria-live="polite"></ul>
-
-      <!-- weather -->
-      <div class="ov rc wx-icon" style="--x:1322;--y:670;--w:60;--h:60;--fs:44" data-wx="icon">☀️</div>
-      <div class="ov rc wx-temp" style="--x:1396;--y:664;--w:92;--h:34;--fs:27"><span data-wx="temp">--°F</span></div>
-      <div class="ov rc wx-cond" style="--x:1397;--y:702;--w:92;--h:20;--fs:13.5"><span data-wx="cond">Loading</span></div>
-      <div class="ov rc wx-hl" style="--x:1397;--y:727;--w:92;--h:20;--fs:12.5"><span data-wx="hl"></span></div>
-
-      <!-- server time -->
-      <div class="ov srv-time" style="--x:52;--y:903;--w:124;--h:26;--fs:17"><span data-clock="short">--:--</span></div>
-      <div class="ov srv-date" style="--x:52;--y:930;--w:124;--h:20;--fs:12.5"><span data-clock="upper"></span></div>
-
-      <!-- left: every project, one click each (covers the old baked-in menu) -->
-      <nav class="ov proj-list" style="--x:41;--y:240;--w:152;--h:502" aria-label="Projects">
+    <!-- three-column shell: projects | hero + money | watch + action cards -->
+    <section class="cc-shell">
+      <!-- left: every project, one click each -->
+      <nav class="proj-list cc-side-panel" aria-label="Projects">
         <p class="proj-head">MY PROJECTS</p>
         <div class="proj-items" data-apps="list"></div>
       </nav>
 
-      <!-- middle: live notifications + money, then the big app boxes -->
-      <section class="ov ops" style="--x:232;--y:766;--w:1026;--h:176" aria-label="Notifications, money and apps">
-        <div class="ops-feed">
-          <button type="button" class="ops-card" data-go="alerts"><span class="ops-tag">NOTIFICATIONS</span><ul data-feed="notifs"></ul></button>
-          <button type="button" class="ops-card money" data-go="money"><span class="ops-tag" data-money="tag">MONEY TODAY</span><b data-money="total">$0</b><span data-money="line">Waiting on payments</span></button>
+      <!-- center: hero art + money -->
+      <div class="cc-center">
+        <section class="cc-hero" aria-label="Overview">
+          <div class="cc-jewel" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <div class="cc-hero-art">
+            <img class="cc-mascot" src="cc/mascot.jpg" alt="Chill Pros" width="420" height="560">
+          </div>
+          <p class="cc-kicker"><span data-wx="icon">☀️</span> <span data-wx="temp">--°F</span> · <span data-wx="cond">Loading</span> · San Antonio, TX</p>
+        </section>
+
+        <section class="ops" aria-label="Notifications, money and apps">
+          <div class="ops-feed">
+            <button type="button" class="ops-card" data-go="alerts"><span class="ops-tag">NOTIFICATIONS</span><ul data-feed="notifs"></ul></button>
+            <button type="button" class="ops-card money" data-go="money"><span class="ops-tag" data-money="tag">MONEY TODAY</span><b data-money="total">$0</b><span data-money="line">Waiting on payments</span></button>
+          </div>
+          <div class="ops-big" data-apps="big"></div>
+        </section>
+      </div>
+
+      <!-- right: live watch + quick-glance action cards -->
+      <aside class="cc-side-panel cc-side-right">
+        <div class="cc-watch-wrap">
+          <svg class="watch" viewBox="-100 -100 200 200" aria-label="Live watch" role="img"></svg>
+          <div class="cc-clock-text">
+            <b data-clock="time">--:--:--</b>
+            <span data-clock="date"></span>
+          </div>
         </div>
-        <div class="ops-big" data-apps="big"></div>
-      </section>
-
-      <!-- app tiles in the open jewel panel -->
-      <div class="ov rc app-grid" style="--x:1310;--y:800;--w:176;--h:146" data-apps="mini"></div>
-
-      <!-- hotspots -->
-      <nav class="hotspots" aria-label="Command Center navigation">
-        <button class="hot" data-go="gibam" style="--x:634;--y:604;--w:156;--h:134">Projects monitored</button>
-        <button class="hot" data-go="settings" style="--x:806;--y:604;--w:144;--h:134">Owner access</button>
-        <button class="hot" data-go="decisions" style="--x:966;--y:604;--w:140;--h:134">Approvals</button>
-        <button class="hot" data-go="app:alpha" style="--x:1122;--y:604;--w:140;--h:134">Alpha Hunter crypto</button>
-        <button class="hot rc" data-go="alerts" style="--x:1306;--y:526;--w:180;--h:36">View all notifications</button>
-        <button class="hot rc" data-go="weather" style="--x:1306;--y:622;--w:180;--h:150">Weather</button>
-        <button class="hot round" data-go="apps" style="--x:712;--y:935;--w:96;--h:86">All apps</button>
-        <button class="hot" data-go="status" style="--x:52;--y:810;--w:122;--h:66">System status</button>
-      </nav>
+        <div class="cc-action-grid">
+          <button type="button" class="cc-action-card" style="--c:#19ff9c" data-go="gibam">
+            <span class="cc-ic"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 16l4-5 4 3 6-8" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="6" r="2" fill="#fff"/></svg></span>
+            <b>Projects monitored</b><span class="cc-val" data-stat="apps">9</span>
+          </button>
+          <button type="button" class="cc-action-card" style="--c:#4d8dff" data-go="settings">
+            <span class="cc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#fff" stroke-width="1.8"/></svg></span>
+            <b>Owner access</b>
+          </button>
+          <button type="button" class="cc-action-card" style="--c:#ff7a1a" data-go="decisions">
+            <span class="cc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M9 3h6v3H9z" fill="#fff"/><path d="M8 12h8M8 16h5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <b>Approvals</b><span class="cc-val orange" data-stat="approvals">0</span>
+          </button>
+          <button type="button" class="cc-action-card" style="--c:#ff2bd6" data-go="status">
+            <span class="cc-ic"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3.2 8.3-7 10-3.8-1.7-7-5-7-10V6z" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M9 12.3l2.2 2.2L15.5 10" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <b>System status</b>
+          </button>
+          <button type="button" class="cc-action-card" style="--c:#1fb6ff" data-go="alerts">
+            <span class="cc-ic"><svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-5 5v3.2c0 .8-.3 1.5-.8 2.1L5 15h14l-1.2-1.7c-.5-.6-.8-1.3-.8-2.1V8a5 5 0 0 0-5-5z" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M9.5 18a2.5 2.5 0 0 0 5 0" fill="none" stroke="#fff" stroke-width="1.8"/></svg></span>
+            <b>Notifications</b>
+          </button>
+          <button type="button" class="cc-action-card" style="--c:#ffb000" data-go="weather">
+            <span class="cc-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="10" r="4.2" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M12 3v1.6M12 15.4V17M5 10h1.6M17.4 10H19M6.8 4.8l1.1 1.1M16.1 14.1l1.1 1.1M6.8 15.2l1.1-1.1M16.1 5.9l1.1-1.1" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <b>Weather</b>
+          </button>
+        </div>
+      </aside>
     </section>
 
-    <!-- wide screens: the right column grows into the spare width (art keeps its shape) -->
-    <aside class="side" aria-label="Notifications, weather and apps">
-      <img class="side-corner tr" src="cc/side/corner-tr.webp" alt=""><img class="side-corner br" src="cc/side/corner-br.webp" alt="">
-      <img class="seam-gem top" src="cc/side/seam-top.webp" alt=""><img class="seam-gem bot" src="cc/side/seam-bot.webp" alt="">
-      <section class="side-box side-notifs">
+    <section class="cc-grid">
+      <aside class="side-box" aria-label="Notifications">
         <h2>NOTIFICATIONS</h2>
         <ul class="side-list" data-notifs="side" aria-live="polite"></ul>
         <button type="button" class="side-more" data-go="alerts">VIEW ALL NOTIFICATIONS <span>›</span></button>
-      </section>
-      <div class="side-sep" aria-hidden="true"></div>
-      <section class="side-box side-wx" data-go="weather" role="button" tabindex="0" aria-label="Weather details">
+      </aside>
+
+      <section class="side-box" data-go="weather" role="button" tabindex="0" aria-label="Weather details">
         <h2>SAN ANTONIO, TX</h2>
         <div class="side-wx-now"><span data-wx="icon">☀️</span><div><b data-wx="temp">--°F</b><span data-wx="cond">Loading</span><i data-wx="hl"></i></div></div>
         <div class="side-fc" data-wx="forecast"></div>
       </section>
-      <div class="side-sep" aria-hidden="true"></div>
-      <section class="side-box side-apps">
-        <h2>APPS</h2>
-        <div class="side-grid" data-apps="dock"></div>
-      </section>
-    </aside>
-    </div>
+    </section>
 
-    <!-- ================= MOBILE ================= -->
-    <section class="art art-m" aria-label="BB Command Center mobile">
-      <img class="art-img" data-art="mobile" src="cc/mobile.webp" alt="Big BB Booda Command Center" width="853" height="1844" decoding="async">
-      <div class="shine" aria-hidden="true"></div>
-      <div class="flare" aria-hidden="true"></div>
-      <canvas class="fx" aria-hidden="true"></canvas>
-
-      <div class="ov watch-wrap" style="--x:106;--y:981;--w:124;--h:124"><svg class="watch" viewBox="-100 -100 200 200" aria-label="Live watch" role="img"></svg></div>
-      <div class="ov time-big" style="--x:288;--y:994;--w:470;--h:76;--fs:70"><span data-clock="time">--:--:--</span></div>
-      <div class="ov date-cyan" style="--x:296;--y:1074;--w:400;--h:38;--fs:27"><span data-clock="date"></span></div>
-      <div class="ov stat-num green" style="--x:204;--y:1163;--w:120;--h:44;--fs:37"><span data-stat="apps">9</span></div>
-      <div class="ov stat-num orange" style="--x:204;--y:1312;--w:120;--h:46;--fs:37"><span data-stat="approvals">0</span></div>
-
-      <nav class="hotspots" aria-label="Command Center mobile navigation">
-        <button class="hot" data-go="gibam" style="--x:70;--y:1155;--w:346;--h:134">Projects monitored</button>
-        <button class="hot" data-go="settings" style="--x:432;--y:1155;--w:348;--h:134">Owner access</button>
-        <button class="hot" data-go="decisions" style="--x:70;--y:1302;--w:346;--h:134">Approvals</button>
-        <button class="hot" data-go="app:alpha" style="--x:432;--y:1302;--w:348;--h:134">Alpha Hunter crypto</button>
-        <button class="hot" data-go="dispatch" style="--x:92;--y:1655;--w:164;--h:60">Dispatch</button>
-        <button class="hot" data-go="jobs" style="--x:262;--y:1655;--w:142;--h:60">Jobs</button>
-        <button class="hot" data-go="technicians" style="--x:410;--y:1655;--w:182;--h:60">Technicians</button>
-        <button class="hot" data-go="customers" style="--x:600;--y:1655;--w:162;--h:60">Customers</button>
-        <button class="hot" data-go="home" style="--x:4;--y:1712;--w:176;--h:92">Dashboard</button>
-        <button class="hot" data-go="apps" style="--x:184;--y:1712;--w:166;--h:92">Projects &amp; apps</button>
-        <button class="hot round" data-go="apps" style="--x:356;--y:1696;--w:140;--h:128">All apps</button>
-        <button class="hot" data-go="alerts" style="--x:500;--y:1712;--w:164;--h:92">Alerts</button>
-        <button class="hot" data-go="settings" style="--x:668;--y:1712;--w:182;--h:92">Settings</button>
+    <section class="cc-quick-wrap" aria-label="Quick actions">
+      <p class="proj-head">QUICK ACTIONS</p>
+      <nav class="cc-quick">
+        <button type="button" class="cc-chip" data-go="dispatch">Dispatch</button>
+        <button type="button" class="cc-chip" data-go="jobs">Jobs</button>
+        <button type="button" class="cc-chip" data-go="technicians">Technicians</button>
+        <button type="button" class="cc-chip" data-go="customers">Customers</button>
+        <button type="button" class="cc-chip" data-go="decisions">Approvals</button>
+        <button type="button" class="cc-chip" data-go="gibam">Projects</button>
+        <button type="button" class="cc-chip" data-go="status">System status</button>
+        <button type="button" class="cc-chip" data-go="settings">Settings</button>
       </nav>
     </section>
 
-    <!-- mobile app dock (clickable app images) -->
-    <section class="dock-m" aria-label="Apps">
+    <section class="cc-apps-wrap" aria-label="Apps">
       <div class="dock-title"><img src="cc/dice.webp" alt=""><span>MY APPS</span></div>
-      <div class="dock-row" data-apps="dock"></div>
+      <div class="cc-apps-grid" data-apps="dock"></div>
     </section>
   </main>
 
