@@ -1,22 +1,15 @@
-import Image from "next/image";
+import { PlatformLogo } from "@/components/platform-logo";
 
 export default function Loading() {
   return (
     <main
-      className="fixed inset-0 z-[9999] flex min-h-dvh w-full items-center justify-center overflow-hidden bg-[#0A1A33]"
+      className="fixed inset-0 z-[9999] flex min-h-dvh w-full flex-col items-center justify-center gap-6 bg-[#05090f] px-6 text-center"
       aria-live="polite"
       aria-busy="true"
       aria-label="Chill Pros loading"
     >
-      {/* Shown whole (no crop); navy fills any space on taller screens. */}
-      <Image
-        src="/brand/chill-pros-loading.webp"
-        alt="A Chill Pro"
-        fill
-        priority
-        sizes="100vw"
-        className="object-contain"
-      />
+      <PlatformLogo priority className="h-40 w-44" />
+      <p className="text-sm font-medium text-[#adc0d4]">Getting your workspace ready…</p>
     </main>
   );
 }
