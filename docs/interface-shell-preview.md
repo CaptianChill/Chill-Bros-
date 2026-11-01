@@ -6,26 +6,25 @@ The preview and reusable `PlatformShell` establish one visual language for owner
 
 The owner's mobile uploads were retrieved from the ChatGPT chat `Refresh Chill Pros UI` on November 1, 2026. Original JPEGs are preserved in `public/brand/chill-pros-{wordmark,texas,cp}-mobile.jpeg`. Per the owner's correction, the lettering over Texas is the platform logo, including desktop and mobile shell branding. The standalone lettering and CP artwork are not displayed in the shell. CP is reserved for browser and installed web app icons; centered square display copies at 180, 192, and 512 pixels are referenced by staff and customer metadata and manifests. The inline review uses smaller WebP display copies of the Texas logo. Its supplied white background is preserved on white logo tiles. No replacement artwork was generated.
 
-## Current review findings
+## Applied interface
 
-- `AppShell` and `staff-shell-nav` supply staff navigation, camouflage surfaces, and varsity headings.
-- `CustomerFrame` supplies the signed-in customer account interface.
-- `PortalShell` supplies secure customer document framing with legacy neon and chrome presentation.
-- Root styles load starfield and staff themes, so replacing a single header will not make all pages consistent.
-- Field notes has a separate layout and needs a mobile review during migration.
+- Staff headers, desktop navigation, mobile tabs, and account menus share the navy/ice palette and approved Texas artwork.
+- Customer account and shared portal frames use the same artwork, typography, surfaces, and controls.
+- Sign-in and field notes share the platform foundation. Browser, customer, staff, and field-note app icons use CP.
+- Camouflage, varsity lettering, the old starfield overrides, and the frosted-glass remapping layer are retired from the loaded application styles.
+- Exact legacy color-class mappings bring existing forms, cards, details, and tables onto shared tokens without replacing their data or actions. Semantic warning, error, and success colors remain distinct.
 
 ## Implementation boundary
 
-This change adds the shared component, scoped styles, and a role-switching preview. Existing pages have not been migrated and this has not been deployed. Navigation and page rendering in the preview demonstrate appearance only. Billing and service actions remain in the existing application.
+The shared foundation is connected to existing pages, with the role-switching concept retained at `/interface-preview`. Existing role-filtered navigation, live refresh, notifications, sign-out, drafts, form actions, and customer sign-in logic are retained. Frozen payment files and business-data logic are unchanged. Publication and deployment remain pending explicit approval after the upload was rejected by automatic approval review.
 
-## Rollout after visual review
+## Remaining release checks
 
-1. Use the shell's tokens and components in the staff header/sidebar and customer frame, retaining current role-filtered navigation, sessions, sign-out, notifications, draft protection, and mobile actions.
-2. Migrate page headings, buttons, cards, forms, tables, empty/error/loading states, and detail pages. Audit hard-coded legacy colors before retiring the global theme.
-3. Include sign-in, service requests, quotes/invoices, equipment, service plans, owner tools, employee jobs/time, and field notes in the page inventory.
-4. Secure document and payment routes are covered by the repository's payment freeze. Read and follow `CLAUDE.md` before any migration affecting those routes.
-5. Verify the signed-in owner, office, technician, salesperson, and customer workflows on desktop and mobile before promoting a release. A role preview is not acceptance of those workflows.
+1. Publish the approved commit to `CaptianChill/Chill-Bros-` and require a successful hosted build in the existing `chill-bros-` Vercel project.
+2. Inspect desktop and mobile pages, including navigation, forms, detail tables, warnings, and empty states, in the hosted build.
+3. Verify authenticated owner, office, technician, salesperson, and customer views using their existing sessions; the role preview does not establish role acceptance.
+4. After release to `chill-bros.vercel.app`, repeat authenticated workflow and visual checks and inspect runtime errors.
 
 ## Validation
 
-TypeScript and changed-file ESLint passed. All 19 existing payment tests passed. Automated browser inspection of the standalone preview was blocked by the browser's local-file policy; visual browser and hosted acceptance remain outstanding.
+TypeScript and changed-file ESLint passed. Repository ESLint passed with zero errors and existing warnings. All 19 payment tests passed. Local production compilation and TypeScript passed; page-data collection stopped because this checkout has no `NEON_AUTH_COOKIE_SECRET`. Navigation tests returned seven passes and three failures; the identical failures were independently reproduced against `origin/main`, so they are not introduced by this change. Browser and direct HTTP requests could not reach the local development server; hosted visual and authenticated acceptance remain outstanding.
