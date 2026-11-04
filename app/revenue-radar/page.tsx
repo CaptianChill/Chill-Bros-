@@ -46,6 +46,8 @@ export default async function RevenueRadarPage() {
         </div>
       </section>
 
+      <Link href="/revenue-radar/call-list" className="block rounded-2xl border border-emerald-300/40 bg-emerald-400/10 p-4 text-center font-semibold text-emerald-100">📞 Open the Call List: ready-to-call leads with scripts →</Link>
+
       {profile.role === "manager" ? <div className="flex flex-wrap gap-2 text-xs">
         <Link href="/revenue-radar/opportunities" className="rounded-full border border-cyan-300/30 px-3 py-1.5 text-cyan-100 hover:border-cyan-300/60">Sales pipeline & closeout →</Link>
       </div> : null}
