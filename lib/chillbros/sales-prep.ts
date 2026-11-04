@@ -155,6 +155,8 @@ export async function runSalesPrep(client: Client, opts: { aiLimit?: number; sta
           aiBudget--;
           const { card, aiUsed, error: aiError } = await writeAiBattleCard(cardInput(lead));
           if (!aiUsed) console.warn("[sales-prep] AI card fell back to standard", lead.id, aiError);
+          // Out of AI credits: stop asking for the rest of this run instead of failing every card.
+          if (!aiUsed && /credit|billing|quota|insufficient|rate limit/i.test(String(aiError))) { aiBudget = 0; run.errors++; }
           await saveCard(client, lead, card, aiUsed ? AI_BATTLE_CARD_PROMPT_VERSION : BATTLE_CARD_PROMPT_VERSION);
           if (aiUsed) {
             run.aiCards++;
