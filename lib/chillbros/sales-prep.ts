@@ -87,9 +87,16 @@ async function saveCard(client: Client, lead: Lead, content: unknown, version: s
 
 // Leads still needing prep: open, and either no current card, or only a standard card while now reachable.
 async function prepQueue(client: Client, limits: { ai: number; standard: number }, googleKey: boolean) {
-  const { data: cards, error: cardError } = await client.from("chillbros_revenue_battle_cards").select("lead_id,prompt_version").eq("is_current", true);
-  if (cardError) throw new Error(cardError.message);
-  const cardVersion = new Map((cards ?? []).map((c) => [c.lead_id as string, c.prompt_version as string]));
+  // Read every current card: the API caps a request at 1,000 rows, and a missed card
+  // made the job redo (and overwrite) leads that were already prepped.
+  const cardVersion = new Map<string, string>();
+  for (let from = 0; ; from += 1000) {
+    const { data: cards, error: cardError } = await client.from("chillbros_revenue_battle_cards").select("lead_id,prompt_version")
+      .eq("is_current", true).order("id", { ascending: true }).range(from, from + 999);
+    if (cardError) throw new Error(cardError.message);
+    for (const c of cards ?? []) cardVersion.set(c.lead_id as string, c.prompt_version as string);
+    if (!cards || cards.length < 1000) break;
+  }
   const leads: Lead[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await client.from("chillbros_revenue_prospects").select(LEAD_COLUMNS)
