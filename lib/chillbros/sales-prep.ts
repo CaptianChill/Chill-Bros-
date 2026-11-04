@@ -116,7 +116,7 @@ export async function runSalesPrep(client: Client, opts: { aiLimit?: number; sta
   const deadline = Date.now() + (opts.deadlineMs ?? 240_000);
   const googleKey = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
   const run: SalesPrepRun = { contactsLooked: 0, contactsFound: 0, aiCards: 0, standardCards: 0, readied: 0, remaining: 0, googleKey: Boolean(googleKey), errors: 0 };
-  let aiBudget = opts.aiLimit ?? 24;
+  let aiBudget = opts.aiLimit ?? 60;
   let standardBudget = opts.standardLimit ?? 300;
   // With a Places key, unreachable leads cost a lookup each, so take fewer per run.
   const { batch, remaining } = await prepQueue(client, { ai: aiBudget, standard: googleKey ? 60 : standardBudget }, Boolean(googleKey));
