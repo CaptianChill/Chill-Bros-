@@ -53,7 +53,7 @@ function safePublicUrl(url: string) {
   }
 }
 
-async function fetchPage(url: string) {
+export async function fetchPage(url: string) {
   const u = safePublicUrl(url);
   if (!u) return "";
   try {
