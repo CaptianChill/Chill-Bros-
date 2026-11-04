@@ -43,12 +43,38 @@ Reply with JSON only, exactly this shape:
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+\n/g, "\n").trim().slice(0, max) : "");
 
+// Models sometimes put raw line breaks or tabs inside JSON strings, or leave a trailing
+// comma; JSON.parse rejects both. Escape control characters inside strings and drop
+// trailing commas so an otherwise good card is not thrown away.
+export function repairJson(text: string) {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (const ch of text) {
+    if (inString) {
+      if (escaped) { escaped = false; out += ch; continue; }
+      if (ch === "\\") { escaped = true; out += ch; continue; }
+      if (ch === '"') { inString = false; out += ch; continue; }
+      if (ch === "\n") { out += "\\n"; continue; }
+      if (ch === "\r") { continue; }
+      if (ch === "\t") { out += "\\t"; continue; }
+      out += ch;
+    } else {
+      if (ch === '"') inString = true;
+      out += ch;
+    }
+  }
+  return out.replace(/,\s*([}\]])/g, "$1");
+}
+
 // Turns the model's reply into a safe card, falling back to template text for anything missing or malformed.
 export function mergeAiCard(base: SalesBattleCard, raw: string): AiBattleCard | null {
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) return null;
   let data: Record<string, unknown>;
-  try { data = JSON.parse(match[0]); } catch { return null; }
+  try { data = JSON.parse(match[0]); } catch {
+    try { data = JSON.parse(repairJson(match[0])); } catch { return null; }
+  }
 
   const fit = (data.fit ?? {}) as Record<string, unknown>;
   const plan = (data.suggestedPlan ?? {}) as Record<string, unknown>;
@@ -101,11 +127,13 @@ export async function writeAiBattleCard(input: BattleCardInput & { category?: st
   const result = await askAI({
     system: SYSTEM,
     messages: [{ role: "user", content: `LEAD:\n${JSON.stringify(lead)}` }],
-    maxTokens: 1400,
-    timeoutMs: 45000,
+    // The full card JSON (questions, objections, email) runs past 1,400 tokens and was cut off mid-JSON.
+    maxTokens: 3000,
+    timeoutMs: 60000,
     reasoningEffort: "low",
   });
   if (!result.ok) return { card: base, aiUsed: false, error: result.error };
   const card = mergeAiCard(base, result.text);
+  if (!card) console.warn("[revenue-ai] unusable card reply", result.text.length, JSON.stringify(result.text.slice(0, 160)), "...", JSON.stringify(result.text.slice(-160)));
   return card ? { card, aiUsed: true } : { card: base, aiUsed: false, error: "The AI reply was not usable; the standard battle card was saved instead." };
 }

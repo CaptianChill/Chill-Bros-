@@ -12,6 +12,7 @@ const OPENAI_MODEL = process.env.OPENAI_TEXT_MODEL?.trim() || process.env.OPENAI
 export async function askAI({ system, messages, maxTokens = 1500, timeoutMs = 45000, reasoningEffort = "low" }: { system: string; messages: ClaudeMessage[]; maxTokens?: number; timeoutMs?: number; reasoningEffort?: "none" | "minimal" | "low" | "medium" }): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
   if (claudeConfigured()) {
     const claude = await askClaude({ system, messages, maxTokens, timeoutMs });
+    if (!claude.ok) console.warn("[chill-ai] Claude failed, trying OpenAI:", claude.error);
     if (claude.ok || !process.env.OPENAI_API_KEY?.trim()) return claude;
   }
   const apiKey = process.env.OPENAI_API_KEY?.trim();
