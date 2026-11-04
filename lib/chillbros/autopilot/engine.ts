@@ -297,6 +297,11 @@ export async function runAutopilot(now = new Date()): Promise<AutopilotRun> {
 
   if (!settings.enabled || settings.outreach_approval_hold || run.bounces < 0) {
     run.notes.push("Customer outreach is on hold; contact enrichment remains active.");
+    // Still read replies so leads get updated and unsubscribes are honored; nothing is sent.
+    if (settings.reply_enabled) {
+      run.replies = await runReplyDesk(client, settings, { sendReplies: false }).catch((e) => { console.error("[autopilot] reply log failed", e); return run.replies; });
+      run.notes.push("Replies logged to leads without auto-answers.");
+    }
     return run;
   }
 

@@ -127,7 +127,11 @@ export async function runBounceDesk(client: Client) {
   return stopped;
 }
 
-export async function runReplyDesk(client: Client, settings: AutopilotSettings): Promise<ReplyDeskRun> {
+// opts.sendReplies=false is "log only": every reply is still recorded on the lead, unsubscribes and
+// "not interested" are honored, and hot or answerable replies go to the owner instead of an auto-answer.
+// Used while customer outreach is on hold so replies are never lost.
+export async function runReplyDesk(client: Client, settings: AutopilotSettings, opts: { sendReplies?: boolean } = {}): Promise<ReplyDeskRun> {
+  const sendReplies = opts.sendReplies !== false;
   const run: ReplyDeskRun = { read: 0, answered: 0, hot: 0, handedOff: 0, stopped: 0 };
   const user = String(process.env.GMAIL_SMTP_USER || "").trim();
   const password = String(process.env.GMAIL_SMTP_APP_PASSWORD || "").replace(/\s+/g, "");
@@ -195,6 +199,18 @@ export async function runReplyDesk(client: Client, settings: AutopilotSettings):
 
     if (!intentGetsReply(verdict.intent)) {
       await record({ action: "ignored", intent: verdict.intent, summary: verdict.summary });
+      continue;
+    }
+
+    if (!sendReplies) {
+      // Outreach is on hold: log the lead and hand it to the owner, send nothing.
+      run.handedOff++;
+      if (verdict.hot) {
+        run.hot++;
+        if (contact.prospectId) await client.from("chillbros_revenue_prospects").update({ sales_status: "qualified" }).eq("id", contact.prospectId);
+      }
+      await record({ action: "handed_off", intent: verdict.intent, hot: verdict.hot, summary: `Outreach on hold; owner to answer. ${verdict.summary || ""}`.trim().slice(0, 300) });
+      await notifyOwner({ title: verdict.hot ? "Hot lead replied" : "Lead replied", message: verdict.summary || `${who}: ${m.text.slice(0, 100)}`, level: "important", path: prospectPath });
       continue;
     }
 
