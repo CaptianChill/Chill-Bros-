@@ -101,8 +101,9 @@ export async function writeAiBattleCard(input: BattleCardInput & { category?: st
   const result = await askAI({
     system: SYSTEM,
     messages: [{ role: "user", content: `LEAD:\n${JSON.stringify(lead)}` }],
-    maxTokens: 1400,
-    timeoutMs: 45000,
+    // The full card JSON (questions, objections, email) runs past 1,400 tokens and was cut off mid-JSON.
+    maxTokens: 3000,
+    timeoutMs: 60000,
     reasoningEffort: "low",
   });
   if (!result.ok) return { card: base, aiUsed: false, error: result.error };
