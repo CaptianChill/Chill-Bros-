@@ -48,7 +48,7 @@ test('cron workflow enriches a listing and saves contact while held, without sen
     '@/lib/chillbros/approval-notifications': { sendCompanyEmail: () => transportCalls++ },
     '@/lib/chillbros/notify': {}, '@/lib/supabase/service-client': { createServiceRoleClient: () => client },
     './brain': {}, './audience': {}, './contact-source': contact, './email-extract': extract,
-    './inbound': {}, './replies': { runBounceDesk: async () => 0 }, './replies-logic': {}, './links': {},
+    './inbound': {}, './qualification': {}, './replies': { runBounceDesk: async () => 0 }, './replies-logic': {}, './links': {},
     './slots': { centralNow: () => ({ hour: 11 }) },
     './store': { getAutopilotSettings: async () => ({ enabled: false, outreach_approval_hold: true }), logOutreach: async (_, row) => logs.push(row) }, './timing': {},
   });
@@ -109,7 +109,7 @@ function coldEngine() {
   return load('lib/chillbros/autopilot/engine.ts', {
     '@/lib/chillbros/approval-notifications': {}, '@/lib/chillbros/notify': {}, '@/lib/supabase/service-client': {},
     './brain': {}, './audience': {}, './contact-source': contact, './email-extract': load('lib/chillbros/autopilot/email-extract.ts'),
-    './inbound': {}, './replies': {}, './replies-logic': {}, './links': {}, './slots': {}, './store': {},
+    './inbound': {}, './qualification': {}, './replies': {}, './replies-logic': {}, './links': {}, './slots': {}, './store': {},
     './timing': { laneForServiceLine: () => 'cold_kitchen' },
   });
 }

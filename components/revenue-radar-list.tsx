@@ -14,7 +14,7 @@ type SortMode = "score" | "newest" | "urgent";
 
 const statusFilters: Array<{ value: StatusFilter; label: string }> = [
   { value: "all", label: "All Leads" },
-  { value: "hot", label: "Hot Leads" },
+  { value: "hot", label: "High Service Fit" },
   { value: "new", label: "New" },
   { value: "follow_up", label: "Follow-Up" },
   { value: "quoted", label: "Quoted" },
@@ -177,7 +177,7 @@ export function RevenueRadarList({ prospects }: { prospects: Prospect[] }) {
         </span>
 
         <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/5 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200">Why now — score {p.score}/100</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200">Service fit — score {p.score}/100</p>
           <p className="mt-1 text-sm text-zinc-100">{card.whyNow}</p>
         </div>
 
