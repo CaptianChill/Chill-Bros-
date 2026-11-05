@@ -28,3 +28,16 @@ export type Dashboard = {
   unsubscribed: number;
 };
 export const ownerDashboard = () => rpc<Dashboard>("leadbiz_owner_dashboard", { p_key: process.env.LEADBIZ_DB_KEY ?? "" });
+
+export type CallMark = { status: string; note: string | null; at: string };
+export const ownerCalls = async () => (await rpc<Record<string, CallMark>>("leadbiz_owner_calls", { p_key: process.env.LEADBIZ_DB_KEY ?? "" })) ?? {};
+export async function markCall(license: string, name: string, status: string, note: string) {
+  const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) return false;
+  const res = await fetch(`${url}/rest/v1/rpc/leadbiz_owner_mark_call`, {
+    method: "POST", cache: "no-store",
+    headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({ p_key: process.env.LEADBIZ_DB_KEY ?? "", p_license: license, p_name: name, p_status: status, p_note: note }),
+  }).catch(() => null);
+  return Boolean(res?.ok);
+}

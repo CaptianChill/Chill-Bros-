@@ -41,6 +41,7 @@ export default async function OwnerPage() {
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <a className="rounded-xl border border-[#7FD4FF]/40 px-4 py-2.5 text-[#7FD4FF]" href="/" target="_blank">Public sales page ↗</a>
           {PACKS.map((p) => <a key={p.key} className="rounded-xl border border-white/15 px-4 py-2.5" href={p.href} target="_blank">{p.name.split(" ")[0]} {p.price}</a>)}
+          <a className="rounded-xl border border-[#F5C542]/60 px-4 py-2.5 font-semibold text-[#F5C542]" href="/owner/call-list">Buyer call list</a>
           <a className="rounded-xl border border-white/15 px-4 py-2.5" href="https://app.squareup.com/dashboard/sales/transactions" target="_blank">Sales in Square ↗</a>
         </div>
       </section>
