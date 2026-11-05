@@ -68,7 +68,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
         <span className="rounded-full border border-cyan-300/30 px-3 py-1 text-sm text-cyan-200">{String(salesStatus).replaceAll("_", " ")}</span>
       </div>
       <p className="mt-2">{p.signal_summary}</p>
-      <p className="mt-2 text-sm text-amber-200">{p.signal_verified ? "Verified directly" : "Unverified public signal; research before outreach"}</p>
+      <p className="mt-2 text-sm text-amber-200">{p.signal_verified ? "Signal marked verified; buying intent requires separate evidence" : "Unverified public signal; research before outreach"}</p>
+      {profile.role === "manager" ? <Link href={`/revenue-radar/${id}/qualification`} className="mt-3 inline-block rounded-xl border border-cyan-300/40 px-3 py-2 text-sm text-cyan-100">Review automated outreach eligibility</Link> : null}
       <p className="mt-2 text-sm text-zinc-400">Observed {new Date(p.signal_observed_at).toLocaleString()} · Added {new Date(p.created_at).toLocaleString()}</p>
       <a className="mt-2 block break-all text-cyan-200 underline" href={p.source_url} target="_blank" rel="noreferrer">Open source ↗</a>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">

@@ -122,26 +122,13 @@ export function draftInboundNudge(lead: { name: string | null }, nudgeNumber: nu
 /** Cold commercial outreach, steps 0..2. */
 export async function draftColdEmail(settings: PlaybookSettings, prospect: { business_name: string; city: string | null; service_line: string | null; signal_summary: string | null; contact_name: string | null }, step: number): Promise<Draft> {
   const label = serviceLabel(prospect.service_line, settings);
-  const stepGoal = [
-    "First touch. Introduce Chill Pros in one line, name one specific pain this kind of business has with " + label + ", and offer a simple next step: book a service call or a maintenance visit.",
-    "Second touch, 3 days later, brief. Different angle: preventive maintenance and backup coverage when their current vendor is busy. One or two short paragraphs.",
-    "Final touch, brief and polite. Say this is the last note, leave the booking link for when they need it.",
-  ][Math.min(step, 2)];
-  const task = `Write a cold email from Chill Pros to a local business that has never worked with us.
-Business: ${prospect.business_name}${prospect.city ? ` (${prospect.city})` : ""}
-Contact name: ${prospect.contact_name ?? "unknown (do not invent one; open with the business name)"}
-Relevant services: ${label}
-What we know about them: ${String(prospect.signal_summary ?? "a local business in our service area").slice(0, 500)}
-Goal: ${stepGoal}
-Honest, specific, respectful of their time. Do not claim we noticed a problem at their business.`;
-  const ai = await draftWithAI(settings, task, step === 0 ? 120 : 80);
-  if (ai) return { ...ai, sms: null, source: "ai" };
-
+  // Policy v1: fixed introductory copy. Public signals and AI never invent need,
+  // authority, project timing or purchasing intent in automated cold outreach.
   const name = firstName(prospect.contact_name);
   const opener = name ? `${name},` : `Hello ${prospect.business_name} team,`;
   const bodies = [
-    `${opener}\n\nChill Pros is a San Antonio service company for ${label}. When equipment goes down, every hour costs product, comfort or sales, so we keep it simple: pick an open time online and a technician comes out and diagnoses it. ${feeLine(settings, true)}${offerLine(settings) ? ` ${offerLine(settings)}` : ""}\n\nWe also set up maintenance plans so problems get caught before they turn into emergency calls.`,
-    `${opener}\n\nFollowing up on my note. A lot of local businesses keep us as a backup for when their regular company is booked up in peak season, and some switch to us for preventive maintenance. Either way, our open times are online.`,
+    `${opener}\n\nThis is a business service introduction from Chill Pros, a San Antonio service company for ${label}. We offer equipment service and preventive maintenance. ${feeLine(settings, true)}${offerLine(settings) ? ` ${offerLine(settings)}` : ""}\n\nAre you the right person for equipment service or vendor requests? If there is a current need, you can reply with the details or view available times below.`,
+    `${opener}\n\nFollowing up on our equipment-service introduction. Chill Pros offers repairs and preventive maintenance for ${label}. If your business is considering service or backup vendor coverage, please reply or view available times below.`,
     `${opener}\n\nThis is my last note. If ${label} ever needs attention, the booking link below shows our real open times. Thanks for your time.`,
   ];
   const subjects = [`Equipment service for ${prospect.business_name}`, `Backup service for ${prospect.business_name}`, "Last note from Chill Pros"];

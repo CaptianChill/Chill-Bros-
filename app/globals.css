@@ -180,3 +180,6 @@ a {
     radial-gradient(80% 70% at 0% 100%, rgba(156, 203, 255, 0.28) 0%, rgba(156, 203, 255, 0) 60%),
     linear-gradient(160deg, #0B1626 0%, #05070A 70%);
 }
+/* Isolated buyer marketplace forms. */
+.market-input { display: block; width: 100%; margin-top: .5rem; min-height: 44px; border: 1px solid #35566b; border-radius: .75rem; padding: .75rem 1rem; color: #f1f5f9; background: #0b1827; }
+.market-input:focus { outline: 2px solid #a5f3fc; outline-offset: 2px; }

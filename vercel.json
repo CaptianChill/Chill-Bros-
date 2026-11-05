@@ -1,5 +1,6 @@
 {
   "crons": [
+    { "path": "/api/cron/lead-market", "schedule": "*/5 * * * *" },
     {
       "path": "/api/cron/field-notes",
       "schedule": "*/5 * * * *"

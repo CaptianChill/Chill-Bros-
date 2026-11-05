@@ -9,6 +9,7 @@ import { isInternalOrTestCustomer } from "./audience";
 import { contactPageUrls, osmIdentity, phoneFromHtml } from "./contact-source";
 import { isUsableOutreachEmail, pickBusinessEmail, websiteFromSummary } from "./email-extract";
 import { runInboundFollowups } from "./inbound";
+import { checkOutreachBatch } from "./qualification";
 import { runBounceDesk, runReplyDesk } from "./replies";
 import { replyHoursOpen } from "./replies-logic";
 import { bookingUrl, unsubscribeUrl } from "./links";
@@ -222,6 +223,7 @@ export async function runCold(client: Client, settings: AutopilotSettings, allow
     client.from("chillbros_customers").select("email").not("email", "is", null),
   ]);
   if (prospectError || customerError || prospects === null || customers === null) throw new Error("Cold outreach eligibility could not be verified; sending blocked.");
+  const qualifications = await checkOutreachBatch(client, prospects.map((p) => p.id));
   const customerEmails = new Set((customers ?? []).flatMap((c) => String(c.email).toLowerCase().split(/[,;\s]+/)));
   const used = { cold_kitchen: 0, cold_office: 0 };
   const seenEmails = new Set<string>();
@@ -229,6 +231,7 @@ export async function runCold(client: Client, settings: AutopilotSettings, allow
 
   for (const p of prospects ?? []) {
     if (used.cold_kitchen >= allowance.cold_kitchen && used.cold_office >= allowance.cold_office) break;
+    if (!qualifications[p.id]?.eligible) continue;
     if (["won", "lost", "do_not_contact"].includes(String(p.sales_status ?? ""))) continue;
     const lane = laneForServiceLine(p.service_line);
     if (used[lane] >= allowance[lane]) continue;
