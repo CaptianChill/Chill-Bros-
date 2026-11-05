@@ -1,5 +1,27 @@
 # Lead marketplace continuation checkpoint
 
+## November 5 continuation — CI cause confirmed, providers blocked
+
+GitHub run 42044037425 was retried; latest job 127333435225 again failed before steps. Browser annotation explicitly confirms account lock due to billing. Owner must resolve GitHub billing, then rerun failed jobs; no bypass or production release occurred.
+
+Actual Vercel project name is `chill-bros-`, ID `prj_PhQvuJOVigfQZpnx71re7o1rnGpl`, team `chill-pros`. Metadata confirms no marketplace Google/Microsoft OAuth variables, marketplace base URL or dedicated marketplace secret. Square and company SMTP credentials are production-only, so the preview cannot currently complete checkout or email-code sign-in. No secret values were read/copied. Owner supplied `chillprostx@gmail.com` as acceptance inbox; owning Cloud project/Entra tenant remain unspecified.
+
+Read `docs/lead-marketplace-provider-acceptance.md` for exact environment variables, callback path, account setup and acceptance evidence. Do not enable the live database's sales/outreach to create test fixtures. Latest live read confirms both false, global hold true, zero buyers/listings/orders/mailboxes, blank seller identity and unreviewed terms/tax.
+
+Added two provider contract tests: OAuth identity/renewable grants and SMTP mixed-private DNS/TLS pinning. All 9 marketplace tests, 76 Radar tests, 19 frozen payment tests, TypeScript, full lint (13 warnings, no errors), and both isolated PGlite SQL suites pass. Network-enabled npm audit passes high-severity threshold with seven low auth-UI-chain findings. Real authenticated owner/buyer, Square and mailbox acceptance remain pending. No messages, charges, source inventory or launch approvals were created.
+
+## November 5 update — supersedes the earlier unfinished-code list below
+
+Local commit `9461528` implements the buyer storefront at `/leads`, email-code buyer identities/sessions separate from staff, catalog/access requests, locked shared/exclusive order reservations, Square checkout/recovery/reconciliation/refunds, protected delivery and CSV export, outcomes/quality claims, buyer OAuth/TLS SMTP connections, signed opt-outs, capped one-introduction automation, and owner console `/owner/lead-market`. Brand and marketplace base URL are configurable separately from invoice URLs. Existing invoice payment code is unchanged.
+
+Migration `20261105022644_lead_marketplace_v1.sql` HAS NOW BEEN APPLIED to Supabase `xespxlqcjvhompsxranc`. Live checks: zero buyers/offers/orders, market sales false, market outreach false, global approval hold true, RLS enabled and anonymous order access revoked. Do not turn on sales/outreach or invent inventory/prices. Seller brand/domain/email, reviewed tax/terms, qualified resale-permitted inventory, real provider checkout/mailbox testing and Google/MS OAuth app credentials still need completion before claiming commercial launch readiness.
+
+Validation now passed: 7 marketplace unit tests, 76 Radar tests, 19 frozen payment tests, TypeScript, new-code ESLint, and isolated PGlite 0.5.15 SQL tests covering shared/exclusive capacity, buyer/identity isolation, OTP attempt/replay limits, atomic checkout claims, verified settlement/idempotency, tax rounding, late-payment refund handling, changed/expired permissions, opt-outs and ambiguous-send retry prevention. The short-lived Vercel test environment was stopped. No real emails, charges or customer-data fixtures were created during tests.
+
+Publication authorized by owner ("of course") and succeeded. PR #288 head is 946152898a2aab0b35c9ca688efce28f1c0a4404. Vercel deployment dpl_5R4FhvG6jC1he9UsbC1gPUzfvFoc is READY: https://chill-bros-7fwcp12zb-chill-pros.vercel.app/leads . Browser verified storefront, empty catalog and signed-out account redirect to working sign-in screen. No code email sent. GitHub Security audit run 42044037425 failed; job 127302055379 has no steps and logs return BlobNotFound. Cause remains unverified; do not bypass CI or claim production release. Authenticated buyer, owner, payment and mailbox acceptance still pending. Next: investigate Actions failure, complete provider setup and end-to-end acceptance, then release through normal checks. Sales/outreach remain off.
+
+Latest usage note from owner: approximately 83% at resume; exact remaining usage is not visible to the agent. Keep updates concise and provide a fresh checkpoint if stopping.
+
 ## Owner's requested outcome and preferences
 
 Build a complete lead-selling software platform as soon as practical. This is a separate software/lead business, not merely Chill Pros' internal service-company sales tool. No buyers exist yet: provide public marketing, self-service buyer registration, and owner moderation. Buyers must use their OWN sending mailboxes. Support Google/Workspace, Microsoft/Outlook and authenticated SMTP where supported; do not promise literally every mailbox or bypass provider OAuth/admin requirements. Pricing is undecided: make editable and keep paid offers unpublished until prices and inventory are approved. Owner prefers free/low-cost data and verification options initially. They asked for concise communication and a handoff prompt because of usage/overage concerns. Brand and domain are not chosen; do not register anything or invent a verified business identity.

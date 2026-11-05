@@ -72,3 +72,44 @@ test('repeated card-checkout taps return the saved link without creating another
   try {assert.equal(await commerceFixture({checkout_url:'https://square.link/u/fixture'}).module.openMarketCheckout('order-one','buyer-one'),'https://square.link/u/fixture');}
   finally {global.fetch=oldFetch;}
 });
+
+function mailboxFixture(deps={}) {
+  return load('lib/lead-market/mailbox.ts', {
+    './store': {}, './rules': rules, './secrets': {}, './config': {}, nodemailer: {}, ...deps,
+  });
+}
+test('OAuth rejects unverified Google identity and nonrenewable provider grants', async () => {
+  const oldFetch=global.fetch;
+  const keys=['LEAD_MARKET_GOOGLE_CLIENT_ID','LEAD_MARKET_GOOGLE_CLIENT_SECRET'];
+  const old=keys.map(k=>process.env[k]);keys.forEach(k=>process.env[k]='fixture');
+  try {
+    for (const [tokens,identity,accepted] of [
+      [{access_token:'access',refresh_token:'refresh',expires_in:3600},{email:'buyer@fixture.test',email_verified:true},true],
+      [{access_token:'access',refresh_token:'refresh',expires_in:3600},{email:'buyer@fixture.test',email_verified:false},false],
+      [{access_token:'access',expires_in:3600},{email:'buyer@fixture.test',email_verified:true},false],
+    ]) {
+      const requests=[];
+      global.fetch=async(url,init)=>{requests.push({url,init});return {ok:true,json:async()=>url.includes('/token')?tokens:identity};};
+      const promise=mailboxFixture().exchangeMailboxCode('google','fixture-code','fixture-verifier','https://fixture.test/callback');
+      if(accepted) assert.equal((await promise).email,'buyer@fixture.test');
+      else await assert.rejects(promise,/verify|renewable/);
+      assert.equal(requests[0].init.body.get('code_verifier'),'fixture-verifier');
+      assert.equal(requests[0].init.body.get('redirect_uri'),'https://fixture.test/callback');
+      assert.equal(requests[0].init.redirect,'error');
+    }
+  } finally {global.fetch=oldFetch;keys.forEach((k,i)=>{if(old[i]===undefined)delete process.env[k];else process.env[k]=old[i];});}
+});
+test('SMTP blocks mixed private DNS answers and pins verified TLS before persisting credentials', async () => {
+  for(const privateAnswer of [true,false]) {
+    let saved=0,verified=0,closed=0,options;
+    const box=mailboxFixture({
+      'node:dns/promises':{lookup:async()=>[{address:'8.8.8.8'},...(privateAnswer?[{address:'127.0.0.1'}]:[])]},
+      nodemailer:{createTransport:o=>{options=o;return {verify:async()=>{verified++;},close:()=>{closed++;},sendMail:()=>assert.fail('connection verification must not send mail')};}},
+      './store':{marketDb:()=>({from:()=>({upsert:async()=>{saved++;return {error:null};}})})},
+      './secrets':{sealCredentials:()=> 'encrypted-fixture'},
+    });
+    const pending=box.connectSmtp({id:'buyer-one',email:'buyer@fixture.test'},'buyer@fixture.test',{host:'smtp.fixture.test',port:587,user:'buyer',password:'fixture'});
+    if(privateAnswer){await assert.rejects(pending,/Private or reserved/);assert.equal(saved,0);assert.equal(verified,0);}
+    else {await pending;assert.equal(saved,1);assert.equal(verified,1);assert.equal(closed,1);assert.equal(options.host,'8.8.8.8');assert.equal(options.requireTLS,true);assert.equal(options.tls.servername,'smtp.fixture.test');assert.equal(options.tls.rejectUnauthorized,true);}
+  }
+});
