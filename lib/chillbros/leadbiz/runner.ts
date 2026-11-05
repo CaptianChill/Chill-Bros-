@@ -8,15 +8,15 @@ import { pickBusinessEmail } from "@/lib/chillbros/autopilot/email-extract";
 import { fetchPage } from "@/lib/chillbros/autopilot/engine";
 import { unsubscribeUrl } from "@/lib/chillbros/autopilot/links";
 import { isSuppressed } from "@/lib/chillbros/autopilot/store";
-import { fetchOverpass, type OsmElement } from "@/lib/chillbros/revenue-discovery";
+import { fetchOverpass, SCAN_AREAS, searchGooglePlaces, type OsmElement } from "@/lib/chillbros/revenue-discovery";
 
-import { buyerFromElement, buyerQueries, inSendWindow, LEADBIZ_BRAND, offerEmail } from "./buyers";
+import { buyerFromElement, buyerFromGooglePlace, buyerQueries, GOOGLE_TRADE_QUERIES, googleRotation, inSendWindow, LEADBIZ_BRAND, offerEmail } from "./buyers";
 
 type Client = SupabaseClient;
 const TABLE = "chillbros_leadbiz_buyers";
 const FOLLOW_UP_DAYS = 5;
 
-export type LeadbizRun = { enabled: boolean; mapped?: number; discovered: number; enriched: number; sent: number; followedUp: number; failed: number; note?: string };
+export type LeadbizRun = { enabled: boolean; google?: string; mapped?: number; discovered: number; enriched: number; sent: number; followedUp: number; failed: number; note?: string };
 
 function account() {
   const user = String(process.env.LEADBIZ_SMTP_USER || "").trim();
@@ -43,6 +43,22 @@ export async function discoverBuyers(client: Client, deadline: number, run?: Lea
   const fresh = rows.filter((r) => (seen.has(r.source_url) ? false : (seen.add(r.source_url), true)))
     .map((r) => ({ ...r, status: r.email ? "ready" : r.website ? "new" : "no_email" }));
   const { data, error } = await client.from(TABLE).upsert(fresh, { onConflict: "source_url", ignoreDuplicates: true }).select("id");
+  if (error) throw new Error(`Buyer save failed: ${error.message}`);
+  return data?.length ?? 0;
+}
+
+/** One Google Places search per run (a different trade/area each time), when a key is configured. */
+export async function discoverBuyersGoogle(client: Client, deadline: number, run?: LeadbizRun) {
+  const key = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
+  if (!key) return 0;
+  const { count } = await client.from("chillbros_leadbiz_runs").select("id", { count: "exact", head: true });
+  const { trade, area } = googleRotation(count ?? 0, SCAN_AREAS.length);
+  const places = await searchGooglePlaces(key, GOOGLE_TRADE_QUERIES[trade], SCAN_AREAS[area], deadline);
+  if (run) run.google = `${trade} @ ${SCAN_AREAS[area].name}: ${places.length}`;
+  const rows = places.map((p) => buyerFromGooglePlace(p, trade)).filter((r): r is NonNullable<typeof r> => Boolean(r))
+    .map((r) => ({ ...r, status: r.website ? "new" : "no_email" }));
+  if (!rows.length) return 0;
+  const { data, error } = await client.from(TABLE).upsert(rows, { onConflict: "source_url", ignoreDuplicates: true }).select("id");
   if (error) throw new Error(`Buyer save failed: ${error.message}`);
   return data?.length ?? 0;
 }
@@ -123,8 +139,14 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   // Discovery and enrichment are read-only research and run even while sending is off.
   const { count: queued } = await client.from(TABLE).select("id", { count: "exact", head: true }).in("status", ["new", "ready"]);
   if ((queued ?? 0) < 40) {
-    try { run.discovered = await discoverBuyers(client, Math.min(deadline, Date.now() + 90_000), run); }
-    catch (error) { run.note = error instanceof Error ? error.message : "discovery failed"; }
+    if (process.env.GOOGLE_PLACES_API_KEY) {
+      try { run.discovered = await discoverBuyersGoogle(client, Math.min(deadline, Date.now() + 30_000), run); }
+      catch (error) { run.note = error instanceof Error ? error.message : "google discovery failed"; }
+    } else {
+      try { run.discovered = await discoverBuyers(client, Math.min(deadline, Date.now() + 90_000), run); }
+      catch (error) { run.note = error instanceof Error ? error.message : "discovery failed"; }
+      if (!run.discovered) run.note = `${run.note ?? "free map found no new contractors"}; set GOOGLE_PLACES_API_KEY for real coverage`;
+    }
   }
   run.enriched = await enrichBuyers(client, 20, Math.min(deadline, Date.now() + 120_000));
 

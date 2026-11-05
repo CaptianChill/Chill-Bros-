@@ -57,3 +57,14 @@ test('offer email is trade-specific, has all links, address and unsubscribe', ()
 test('the map query never asks the free map servers for an unsupported regex token', () => {
   for (const q of b.buyerQueries()) { assert.doesNotMatch(q, /\\b/); assert.match(q, /timeout:15/); }
 });
+
+test('google rotation covers every trade and area, one search per run', () => {
+  const seen = new Set();
+  for (let i = 0; i < 8 * 12; i++) { const r = b.googleRotation(i, 12); seen.add(r.trade + '@' + r.area); }
+  assert.equal(seen.size, 96);
+  assert.deepEqual(b.googleRotation(0, 12), { trade: 'plumbing', area: 0 });
+  const row = b.buyerFromGooglePlace({ id: 'abc', displayName: { text: 'Alamo Plumbing' }, websiteUri: 'https://alamo.example', nationalPhoneNumber: '(210) 555-0100' }, 'plumbing');
+  assert.equal(row.source_url, 'https://www.google.com/maps/place/?q=place_id:abc');
+  assert.equal(row.website, 'https://alamo.example');
+  assert.equal(b.buyerFromGooglePlace({ id: 'x', displayName: { text: 'Ferguson Plumbing Supply' } }, 'plumbing'), null);
+});
