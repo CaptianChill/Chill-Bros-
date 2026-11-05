@@ -10,13 +10,14 @@ import { unsubscribeUrl } from "@/lib/chillbros/autopilot/links";
 import { isSuppressed } from "@/lib/chillbros/autopilot/store";
 import { fetchOverpass, SCAN_AREAS, searchGooglePlaces, type OsmElement } from "@/lib/chillbros/revenue-discovery";
 
+import { fetchAllLicenses } from "./licenses";
 import { buyerFromElement, buyerFromGooglePlace, buyerQueries, GOOGLE_TRADE_QUERIES, googleRotation, inSendWindow, LEADBIZ_BRAND, offerEmail } from "./buyers";
 
 type Client = SupabaseClient;
 const TABLE = "chillbros_leadbiz_buyers";
 const FOLLOW_UP_DAYS = 5;
 
-export type LeadbizRun = { enabled: boolean; google?: string; mapped?: number; discovered: number; enriched: number; sent: number; followedUp: number; failed: number; note?: string };
+export type LeadbizRun = { enabled: boolean; licenses?: string; google?: string; mapped?: number; discovered: number; enriched: number; sent: number; followedUp: number; failed: number; note?: string };
 
 function account() {
   const user = String(process.env.LEADBIZ_SMTP_USER || "").trim();
@@ -26,6 +27,26 @@ function account() {
 const dailyCap = () => Math.max(0, Math.min(50, Number(process.env.LEADBIZ_DAILY_CAP || 25) || 25));
 // Each in-window run sends at most this many, spreading the day's cap over the 9am–2pm runs.
 const PER_RUN = 5;
+
+const CONTRACTORS = "chillbros_leadbiz_contractors";
+
+/** Daily refresh of the state license lists (electricians, sign companies, plumbers, pest control)
+ *  behind the Lead Buyers call list and its PDFs. Skips when refreshed in the last 20 hours. */
+export async function refreshContractors(client: Client, now = new Date()) {
+  const { data: last } = await client.from(CONTRACTORS).select("refreshed_at").order("refreshed_at", { ascending: false }).limit(1);
+  const lastAt = last?.[0]?.refreshed_at ? new Date(last[0].refreshed_at).getTime() : 0;
+  if (now.getTime() - lastAt < 20 * 3600_000) return null;
+  const { buyers, failed } = await fetchAllLicenses();
+  const stamp = now.toISOString();
+  const rows = [...new Map(buyers.map((b) => [b.license, { license: b.license, trade: b.trade, name: b.name.slice(0, 200), phone: b.phone || null, address: b.address || null, contact: b.contact || null, source: b.source ?? "state", refreshed_at: stamp }])).values()];
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await client.from(CONTRACTORS).upsert(rows.slice(i, i + 500), { onConflict: "license" });
+    if (error) throw new Error(`Contractor save failed: ${error.message}`);
+  }
+  // Licenses that dropped off every list for a week are expired; only prune when all sources loaded.
+  if (!failed.length) await client.from(CONTRACTORS).delete().lt("refreshed_at", new Date(now.getTime() - 7 * 86400_000).toISOString());
+  return `${rows.length} contractors${failed.length ? `, failed: ${failed.join(",")}` : ""}`;
+}
 
 /** Map search for contractor buyers; new businesses only (source_url is unique). */
 export async function discoverBuyers(client: Client, deadline: number, run?: LeadbizRun) {
@@ -136,6 +157,8 @@ export async function runLeadbizOutreach(client: Client, now = new Date()): Prom
 async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   const run: LeadbizRun = { enabled: process.env.LEADBIZ_OUTREACH_ENABLED === "1", discovered: 0, enriched: 0, sent: 0, followedUp: 0, failed: 0 };
   const deadline = Date.now() + 240_000;
+  try { run.licenses = (await refreshContractors(client, now)) ?? undefined; }
+  catch (error) { run.licenses = error instanceof Error ? error.message.slice(0, 200) : "license refresh failed"; }
   // Discovery and enrichment are read-only research and run even while sending is off.
   const { count: queued } = await client.from(TABLE).select("id", { count: "exact", head: true }).in("status", ["new", "ready"]);
   if ((queued ?? 0) < 40) {

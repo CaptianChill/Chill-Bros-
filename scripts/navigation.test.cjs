@@ -45,8 +45,10 @@ test('merged menu entries switch between their pages with section tabs', () => {
   assert.deepEqual(at('/schedule'), [['Board', 'Calendar'], '/schedule']);
   assert.deepEqual(at('/payments'), [['Quotes & Invoices', 'Payments'], '/payments']);
   assert.deepEqual(at('/invoices/new', 'office'), [['Quotes & Invoices', 'Payments'], '/invoices']);
-  assert.deepEqual(at('/revenue-radar/tasks'), [['Leads', 'Service Plans', 'Sales Tasks'], '/revenue-radar/tasks']);
-  assert.deepEqual(at('/revenue-radar/abc-123'), [['Leads', 'Service Plans', 'Sales Tasks'], '/revenue-radar']);
+  assert.deepEqual(at('/revenue-radar/tasks'), [['Leads', 'Service Plans', 'Sales Tasks', 'Lead Buyers'], '/revenue-radar/tasks']);
+  assert.deepEqual(at('/revenue-radar/abc-123'), [['Leads', 'Service Plans', 'Sales Tasks', 'Lead Buyers'], '/revenue-radar']);
+  assert.deepEqual(at('/revenue-radar/buyers'), [['Leads', 'Service Plans', 'Sales Tasks', 'Lead Buyers'], '/revenue-radar/buyers']);
+  assert.deepEqual(at('/revenue-radar/tasks', 'office'), [['Leads', 'Service Plans', 'Sales Tasks'], '/revenue-radar/tasks']);
   assert.equal(n.sectionTabsFor('/revenue-radar/handoffs', 'technician'), null);
   assert.equal(n.sectionTabsFor('/dispatch', 'technician'), null);
   assert.equal(n.sectionTabsFor('/customers', 'manager'), null);
