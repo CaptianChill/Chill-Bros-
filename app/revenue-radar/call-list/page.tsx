@@ -3,13 +3,14 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { TRADES, isTrade, tradeOpener } from "@/lib/chillbros/trade-fit";
 
 export const dynamic = "force-dynamic";
 
 // Call List: every lead Sales Prep marked ready_to_call, best fit first, with the
 // phone, the plan to pitch and the first line to say. Tap a row for the full card.
 type Row = {
-  id: string; business_name: string; city: string; score: number; service_line: string;
+  id: string; business_name: string; city: string; score: number; service_line: string; category: string | null;
   contact_phone: string | null; contact_email: string | null; email_subject: string | null; assigned_salesperson: string | null;
 };
 type Card = { lead_id: string; content: { fit?: { score?: number }; suggestedPlan?: { tier?: string }; callOpener?: unknown } };
@@ -17,17 +18,19 @@ type Card = { lead_id: string; content: { fit?: { score?: number }; suggestedPla
 const SERVICE: Record<string, string> = { hvac_r: "HVAC/R", refrigeration: "Refrigeration", ice_machine: "Ice machine", kitchen_equipment: "Kitchen equipment", exhaust_hood: "Hood/exhaust", multiple: "Multiple" };
 const text = (v: unknown) => (typeof v === "string" ? v : Array.isArray(v) ? v.join(" ") : "");
 
-export default async function CallListPage({ searchParams }: { searchParams: Promise<{ service?: string }> }) {
+export default async function CallListPage({ searchParams }: { searchParams: Promise<{ service?: string; trade?: string }> }) {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office", "salesperson"].includes(profile.role)) redirect("/");
-  const { service } = await searchParams;
+  const { service, trade: tradeParam } = await searchParams;
+  const trade = isTrade(tradeParam) ? tradeParam : null;
 
   const client = createServiceRoleClient();
   let query = client.from("chillbros_revenue_prospects")
-    .select("id,business_name,city,score,service_line,contact_phone,contact_email,email_subject,assigned_salesperson")
+    .select("id,business_name,city,score,service_line,category,contact_phone,contact_email,email_subject,assigned_salesperson")
     .eq("sales_status", "ready_to_call").eq("do_not_contact", false)
     .order("score", { ascending: false }).limit(1000);
   if (service && SERVICE[service]) query = query.eq("service_line", service);
+  if (trade) query = query.contains("trade_fits", [trade]);
   if (profile.role === "office") query = query.eq("assigned_salesperson", profile.id);
   const { data, error } = await query;
   const rows = (data ?? []) as Row[];
@@ -50,12 +53,16 @@ export default async function CallListPage({ searchParams }: { searchParams: Pro
           <Link href="/revenue-radar/call-list" className={`rounded-full border px-3 py-1.5 ${!service ? "border-cyan-300 text-cyan-100" : "border-white/15 text-zinc-300"}`}>All</Link>
           {Object.entries(SERVICE).map(([k, label]) => <Link key={k} href={`/revenue-radar/call-list?service=${k}`} className={`rounded-full border px-3 py-1.5 ${service === k ? "border-cyan-300 text-cyan-100" : "border-white/15 text-zinc-300"}`}>{label}</Link>)}
         </div>
+        <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-400">Leads for buyer trade</p>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+          {Object.entries(TRADES).map(([k, label]) => <Link key={k} href={`/revenue-radar/call-list?trade=${k}`} className={`rounded-full border px-3 py-1.5 ${trade === k ? "border-amber-300 text-amber-100" : "border-white/15 text-zinc-300"}`}>{label}</Link>)}
+        </div>
       </section>
 
       <ol className="space-y-3">
         {rows.map((r, i) => {
           const card = cards.get(r.id);
-          const opener = text(card?.callOpener);
+          const opener = trade ? tradeOpener(trade, r) : text(card?.callOpener);
           const phone = r.contact_phone?.replace(/[^\d+]/g, "");
           return <li key={r.id} className="rounded-2xl border border-white/10 bg-black/30 p-4">
             <div className="flex items-start justify-between gap-3">
