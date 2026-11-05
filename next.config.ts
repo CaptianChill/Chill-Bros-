@@ -78,6 +78,7 @@ const nextConfig: NextConfig = {
       { source: "/sign-in", headers: privateNoStoreHeaders },
       { source: "/security/:path*", headers: privateNoStoreHeaders },
       { source: "/portal/:path*", headers: privateNoStoreHeaders },
+      { source: "/lp/:path*", headers: privateNoStoreHeaders },
       { source: "/agreement/:path*", headers: privateNoStoreHeaders },
       { source: "/command-center/:path*", headers: [{ key: "Content-Security-Policy", value: commandCenterCsp }] },
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, { key: "Content-Type", value: "application/javascript; charset=utf-8" }] },

@@ -35,6 +35,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/hq",
   // BB Command Center: static owner home screen (no customer data; links + public weather only).
   "/command-center",
+  // Lead business: paid lead-pack downloads under an unguessable token path (public/lp/<token>/), linked only in delivery emails.
+  "/lp",
 ];
 
 function isPublicPath(pathname: string): boolean {
