@@ -1,35 +1,116 @@
 import "server-only";
 
-// Contractor BUYERS for the lead packs, from Texas TDLR's public license data (data.texas.gov,
-// free public records). Fetched live; nothing is stored. Only TDLR-licensed trades are here
-// (electrical, electrical sign); plumbing, pest and security are licensed by other agencies.
-export type Buyer = { name: string; trade: "Electricians" | "Sign companies"; phone: string; address: string; license: string };
+// Contractor BUYERS for the lead packs, from free public Texas license lists. Fetched live and
+// cached in memory for a day; nothing is stored except the owner's call results.
+//  - Electricians, sign companies: TDLR "All Licenses" on data.texas.gov
+//  - Plumbers: TSBPE Responsible Master Plumber list (each plumbing company must have one)
+//  - Pest control: TDA Structural Pest Control commercial business list (no phone in the file)
+export type Trade = "Electricians" | "Sign companies" | "Plumbers" | "Pest control";
+export type Buyer = { name: string; trade: Trade; phone: string; address: string; license: string; contact?: string };
 
 const COUNTIES = ["BEXAR", "COMAL", "GUADALUPE", "KENDALL", "MEDINA", "WILSON"];
-const TYPES: Record<string, Buyer["trade"]> = { "Electrical Contractor": "Electricians", "Electrical Sign Contractor": "Sign companies" };
+const TDLR_TYPES: Record<string, Trade> = { "Electrical Contractor": "Electricians", "Electrical Sign Contractor": "Sign companies" };
+const DAY = 86_400_000;
 
-const fmt = (p: string) => { const d = p.replace(/\D/g, "").slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : ""; };
+export const fmtPhone = (p: string) => { const d = String(p ?? "").replace(/\D/g, "").slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : ""; };
 
-export async function loadBuyers(): Promise<Buyer[]> {
-  const where = `business_county in (${COUNTIES.map((c) => `'${c}'`).join(",")}) AND license_type in (${Object.keys(TYPES).map((t) => `'${t}'`).join(",")})`;
-  const url = `https://data.texas.gov/resource/7358-krk7.json?$select=business_name,license_type,business_telephone,owner_telephone,business_address_line1,business_city_state_zip,license_number&$where=${encodeURIComponent(where)}&$limit=5000`;
-  try {
-    const res = await fetch(url, { next: { revalidate: 86400 } });
-    if (!res.ok) return [];
-    const rows = (await res.json()) as Record<string, string>[];
-    const seen = new Set<string>();
-    const out: Buyer[] = [];
-    for (const r of rows) {
-      const phone = fmt(r.business_telephone || r.owner_telephone || "");
-      const name = String(r.business_name || "").trim();
-      if (!phone || !name) continue;
-      const key = `${name.toLowerCase()}|${phone}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ name, trade: TYPES[r.license_type], phone, address: [r.business_address_line1, r.business_city_state_zip].filter(Boolean).join(", "), license: r.license_number });
-    }
-    return out.sort((a, b) => a.name.localeCompare(b.name));
-  } catch {
-    return [];
+/** Minimal RFC-4180 CSV parser (quoted fields, doubled quotes, CRLF). Returns rows keyed by trimmed header. */
+export function parseCsv(text: string): Record<string, string>[] {
+  const rows: string[][] = [];
+  let row: string[] = [], field = "", quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else quoted = false; }
+      else field += c;
+    } else if (c === '"') quoted = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); field = "";
+      if (row.some((v) => v !== "")) rows.push(row);
+      row = [];
+    } else field += c;
   }
+  if (field || row.length) { row.push(field); if (row.some((v) => v !== "")) rows.push(row); }
+  const [head, ...body] = rows;
+  if (!head) return [];
+  const keys = head.map((h) => h.trim());
+  return body.map((r) => Object.fromEntries(keys.map((k, i) => [k, String(r[i] ?? "").trim()])));
+}
+
+const title = (s: string) => s.toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase()).replace(/\b(Llc|Inc|Lp|Ltd|Co)\b/g, (m) => m.toUpperCase());
+
+export function plumbersFrom(rows: Record<string, string>[]): Buyer[] {
+  return rows.filter((r) => r.LIC_STATUS === "Current" && COUNTIES.includes(String(r.COUNTY).toUpperCase()) && r.PLUMB_COMPANY)
+    .map((r) => ({
+      name: r.PLUMB_COMPANY, trade: "Plumbers" as const, phone: fmtPhone(r.PHONE), license: `RMP-${r.LICENSE_NBR}`,
+      address: [r.ADDR1, [r.CITY, r.ZIP].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+      contact: title([r.FIRST_NAME, r.LAST_NAME].filter(Boolean).join(" ")),
+    }));
+}
+
+export function pestFrom(rows: Record<string, string>[]): Buyer[] {
+  return rows.filter((r) => COUNTIES.includes(String(r.COUNTY).toUpperCase()) && /[PT]/.test(r.CATEGORIES ?? "") && (r.DBA || r.LEGAL_BUSINESS_NAME))
+    .map((r) => ({
+      name: r.DBA || r.LEGAL_BUSINESS_NAME, trade: "Pest control" as const, phone: "", license: `TPCL-${r.TPCL}`,
+      address: `${title(r.COUNTY)} County`, contact: title(r.OPERATOR || r.RESPONSIBLE_APPLICATOR || ""),
+    }));
+}
+
+export function tdlrFrom(rows: Record<string, string>[]): Buyer[] {
+  return rows.map((r) => ({
+    name: String(r.business_name || "").trim(), trade: TDLR_TYPES[r.license_type], phone: fmtPhone(r.business_telephone || r.owner_telephone || ""),
+    address: [r.business_address_line1, r.business_city_state_zip].filter(Boolean).join(", "), license: r.license_number,
+  })).filter((b) => b.name && b.phone && b.trade);
+}
+
+/** One row per company per trade (same name + phone, or same name when there's no phone). */
+export function dedupe(list: Buyer[]) {
+  const seen = new Set<string>();
+  return list.filter((b) => { const k = `${b.trade}|${b.name.toLowerCase().replace(/[^a-z0-9]/g, "")}|${b.phone}`; return seen.has(k) ? false : (seen.add(k), true); });
+}
+
+async function getText(url: string) {
+  const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(25_000) });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.text();
+}
+
+const SOURCES: Record<string, () => Promise<Buyer[]>> = {
+  tdlr: async () => {
+    const where = `business_county in (${COUNTIES.map((c) => `'${c}'`).join(",")}) AND license_type in (${Object.keys(TDLR_TYPES).map((t) => `'${t}'`).join(",")})`;
+    const url = `https://data.texas.gov/resource/7358-krk7.json?$select=business_name,license_type,business_telephone,owner_telephone,business_address_line1,business_city_state_zip,license_number&$where=${encodeURIComponent(where)}&$limit=5000`;
+    return tdlrFrom(JSON.parse(await getText(url)));
+  },
+  tsbpe: async () => plumbersFrom(parseCsv(await getText("https://tsbpe.texas.gov/download-csv/RMP/"))),
+  tda: async () => pestFrom(parseCsv(await getText("https://texasagriculture.gov/Portals/0/Reports/PIR/spcs_commercial_business.csv"))),
+};
+
+const cache = new Map<string, { at: number; rows: Buyer[] }>();
+async function source(name: string) {
+  const hit = cache.get(name);
+  if (hit && Date.now() - hit.at < DAY) return { rows: hit.rows, ok: true };
+  try {
+    const rows = await SOURCES[name]();
+    cache.set(name, { at: Date.now(), rows });
+    return { rows, ok: true };
+  } catch {
+    return { rows: hit?.rows ?? [], ok: false };
+  }
+}
+
+export async function loadBuyers() {
+  const results = await Promise.all(Object.keys(SOURCES).map(async (n) => [n, await source(n)] as const));
+  const buyers = dedupe(results.flatMap(([, r]) => r.rows)).sort((a, b) => a.name.localeCompare(b.name));
+  const failed = results.filter(([, r]) => !r.ok).map(([n]) => n);
+  return { buyers, failed };
+}
+
+/** Counts only (no contact data), for the public health check. */
+export async function sourceCounts() {
+  const { buyers, failed } = await loadBuyers();
+  const byTrade: Record<string, number> = {};
+  for (const b of buyers) byTrade[b.trade] = (byTrade[b.trade] ?? 0) + 1;
+  return { byTrade, failed };
 }
