@@ -8,7 +8,7 @@
     "test:payments": "node --test scripts/square-checkout.test.cjs scripts/square-payments.test.cjs scripts/down-payment-gate.test.cjs",
     "start": "next start",
     "lint": "eslint",
-    "test:radar": "node --test scripts/revenue-discovery.test.cjs scripts/revenue-city-source.test.cjs scripts/auth-sdk-compat.test.cjs scripts/staff-accounts.test.cjs scripts/lead-autopilot.test.cjs scripts/autopilot-safety.test.cjs scripts/reply-desk.test.cjs scripts/radar-pc.test.cjs scripts/sales-prep.test.cjs scripts/trade-fit.test.cjs"
+    "test:radar": "node --test scripts/revenue-discovery.test.cjs scripts/revenue-city-source.test.cjs scripts/auth-sdk-compat.test.cjs scripts/staff-accounts.test.cjs scripts/lead-autopilot.test.cjs scripts/autopilot-safety.test.cjs scripts/reply-desk.test.cjs scripts/radar-pc.test.cjs scripts/sales-prep.test.cjs scripts/trade-fit.test.cjs scripts/leadbiz.test.cjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "3.0.115",

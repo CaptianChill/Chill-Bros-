@@ -41,12 +41,14 @@ async function command(socket: tls.TLSSocket, text: string, expected: string[]) 
   return response;
 }
 
-export async function sendCompanyEmail(to: string, subject: string, text: string, html?: string, cc: string[] = [], extraHeaders: Record<string, string> = {}) {
+// `account` sends from a different Gmail (e.g. the lead business's own outreach inbox) instead of the Chill Pros one.
+export async function sendCompanyEmail(to: string, subject: string, text: string, html?: string, cc: string[] = [], extraHeaders: Record<string, string> = {}, account?: { user: string; password: string; fromName: string }) {
   // CC addresses get the same message; the main recipient is never repeated in CC.
   const ccList = [...new Set(cc.map((address) => safeHeader(address).toLowerCase()).filter((address) => address && address !== safeHeader(to).toLowerCase()))];
-  const user = String(process.env.GMAIL_SMTP_USER || "").trim();
-  const password = String(process.env.GMAIL_SMTP_APP_PASSWORD || "").replace(/\s+/g, "");
-  if (!user || !password) return { sent: false as const, status: "configuration_required" as const, error: "Missing environment variable(s): " + [!user && "GMAIL_SMTP_USER", !password && "GMAIL_SMTP_APP_PASSWORD"].filter(Boolean).join(", ") };
+  const user = account ? account.user.trim() : String(process.env.GMAIL_SMTP_USER || "").trim();
+  const password = account ? account.password.replace(/\s+/g, "") : String(process.env.GMAIL_SMTP_APP_PASSWORD || "").replace(/\s+/g, "");
+  if (!user || !password) return { sent: false as const, status: "configuration_required" as const, error: account ? "Missing sender account credentials" : "Missing environment variable(s): " + [!user && "GMAIL_SMTP_USER", !password && "GMAIL_SMTP_APP_PASSWORD"].filter(Boolean).join(", ") };
+  const fromName = account ? safeHeader(account.fromName) : "Chill Pros";
 
   const socket = tls.connect({ host: "smtp.gmail.com", port: 465, servername: "smtp.gmail.com", timeout: 12000 });
   try {
@@ -63,7 +65,7 @@ export async function sendCompanyEmail(to: string, subject: string, text: string
     await command(socket, "DATA", ["354"]);
 
     const headers = [
-      `From: Chill Pros <${safeHeader(user)}>`,
+      `From: ${fromName} <${safeHeader(user)}>`,
       `To: ${safeHeader(to)}`,
       ...(ccList.length ? [`Cc: ${ccList.join(", ")}`] : []),
       `Subject: ${safeHeader(subject)}`,

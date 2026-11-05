@@ -10,7 +10,7 @@ import type { createServiceRoleClient } from "@/lib/supabase/service-client";
 // enough new leads. Independent businesses (no national brand) and reachable ones
 // (phone/website listed) rank higher; existing Chill Pros customers are skipped.
 
-type OsmElement = {
+export type OsmElement = {
   type: "node" | "way" | "relation";
   id: number;
   tags?: Record<string, string>;
@@ -70,7 +70,7 @@ function timeLeft(deadline: number) {
   return deadline - Date.now();
 }
 
-async function fetchOverpass(query: string, deadline: number): Promise<OverpassPayload> {
+export async function fetchOverpass(query: string, deadline: number): Promise<OverpassPayload> {
   const failures: string[] = [];
   for (const endpoint of OVERPASS_ENDPOINTS) {
     const budget = Math.min(REQUEST_TIMEOUT_MS, timeLeft(deadline) - 2000);
