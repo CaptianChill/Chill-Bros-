@@ -50,7 +50,7 @@ test('offer email is trade-specific, has all links, address and unsubscribe', ()
   for (const url of Object.values(b.PAY_LINKS)) assert.ok(text.includes(url));
   assert.match(text, /15226 Preston Pass, San Antonio, TX 78247/);
   assert.match(text, /Unsubscribe: https:\/\/x\/u\/leads\?c=a&s=b/);
-  assert.doesNotMatch(text, /HVAC/);
+  assert.match(text, /We work these job sites every week/);
   assert.match(b.offerEmail({ business_name: 'X', trade: 'signs' }, 'u', true).subject, /^Re: /);
 });
 

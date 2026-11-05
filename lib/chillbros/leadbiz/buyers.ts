@@ -4,6 +4,7 @@ import type { Trade } from "../trade-fit";
 
 export const LEADBIZ_BRAND = "San Antonio New Openings";
 export const LEADBIZ_PHONE = "(210) 904-9306";
+export const LEADBIZ_QUOTE = "We work these job sites every week. We know which ones are worth the call.";
 export const LEADBIZ_POSTAL = "Chill Professionals LLC, 15226 Preston Pass, San Antonio, TX 78247";
 export const PAY_LINKS = {
   openings: "https://square.link/u/RStoSpmq",
@@ -134,6 +135,8 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
     `  ${PAY_LINKS.starter}`,
     "",
     "Delivered by email within 2 hours of checkout. Reply here with any questions.",
+    "",
+    `"${LEADBIZ_QUOTE}" Built by Chill Pros, San Antonio commercial HVAC & refrigeration.`,
     "",
     `${LEADBIZ_BRAND}`,
     `${LEADBIZ_PHONE}`,

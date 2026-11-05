@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone sites build on their own Vercel projects.
+    "sites/**",
   ]),
 ]);
 
