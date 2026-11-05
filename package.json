@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "npm run test:payments && next build",
     "test:payments": "node --test scripts/square-checkout.test.cjs scripts/square-payments.test.cjs scripts/down-payment-gate.test.cjs",
+    "test:market": "node --test scripts/lead-market.test.cjs",
     "start": "next start",
     "lint": "eslint",
     "test:radar": "node --test scripts/revenue-discovery.test.cjs scripts/revenue-city-source.test.cjs scripts/auth-sdk-compat.test.cjs scripts/staff-accounts.test.cjs scripts/lead-autopilot.test.cjs scripts/autopilot-safety.test.cjs scripts/reply-desk.test.cjs scripts/radar-pc.test.cjs scripts/sales-prep.test.cjs scripts/outreach-qualification.test.cjs"
@@ -20,6 +21,7 @@
     "imapflow": "2.9.1",
     "lucide-react": "^0.539.0",
     "mailparser": "3.12.4",
+    "nodemailer": "10.2.1",
     "next": "16.4.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",

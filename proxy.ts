@@ -10,6 +10,9 @@ const PUBLIC_PATH_PREFIXES = [
   "/portal",
   // Customer homepage: its own email-code sign-in (lib/chillbros/customer-account.ts), not Neon Auth.
   "/my",
+  // Marketplace buyers use their own scoped email-code sessions, never staff auth.
+  "/leads",
+  "/api/lead-market",
   "/agreement",
   // Lead Autopilot: public booking page, unsubscribe page, and secret-guarded lead intake.
   "/book",

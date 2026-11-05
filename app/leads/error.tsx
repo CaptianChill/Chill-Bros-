@@ -1,0 +1,2 @@
+"use client";
+export default function MarketError({ reset }: { reset: () => void }) { return <section className="mx-auto max-w-lg space-y-5 rounded-2xl border border-amber-200/30 p-6"><h1 className="text-2xl font-semibold">This page is temporarily unavailable</h1><p>Your account data stays protected. Retry, or contact support if this continues.</p><button className="rounded-xl bg-cyan-200 px-4 py-3 font-semibold text-slate-950" onClick={reset}>Try again</button></section>; }

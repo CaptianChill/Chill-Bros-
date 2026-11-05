@@ -1,0 +1,6 @@
+import { MarketForm } from "@/components/lead-market/form";
+import { requestBuyerCode, verifyBuyerCode } from "../actions";
+export default async function SignIn({ searchParams }: { searchParams: Promise<{ email?: string; code?: string }> }) {
+  const q = await searchParams;
+  return <section className="mx-auto max-w-md space-y-6"><h1 className="text-3xl font-bold">Your buyer account</h1><p className="text-slate-300">Sign in or create an account with an email code. Buyer accounts never grant access to staff systems.</p>{q.code === "1" ? <MarketForm action={verifyBuyerCode} submit="Verify and continue"><label className="block">Email<input className="market-input" type="email" name="email" defaultValue={q.email} required /></label><label className="block">Newest six-digit code<input className="market-input" name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" required /></label></MarketForm> : null}<MarketForm action={requestBuyerCode} submit={q.code ? "Send a new code" : "Email me a sign-in code"}><label className="block">Email address<input className="market-input" type="email" name="email" defaultValue={q.email} autoComplete="email" required /></label><p className="text-sm text-slate-400">Only the newest requested code works. Codes expire in ten minutes.</p></MarketForm></section>;
+}

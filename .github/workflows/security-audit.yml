@@ -54,6 +54,13 @@ jobs:
       - name: Outreach evidence policy tests
         run: node --test scripts/outreach-qualification.test.cjs
 
+      # Marketplace checks include isolated PostgreSQL; no live payment/mail credentials.
+      - name: Marketplace unit and database tests
+        run: |
+          npm run test:market
+          npm install --prefix "$RUNNER_TEMP/market-policy-tests" --no-save --package-lock=false --ignore-scripts @electric-sql/pglite@0.5.15
+          RADAR_POLICY_PGLITE_MODULE="$RUNNER_TEMP/market-policy-tests/node_modules/@electric-sql/pglite" node --test scripts/marketplace-db.test.cjs scripts/outreach-policy-db.test.cjs
+
       - name: Production build
         run: npm run build
         env:
