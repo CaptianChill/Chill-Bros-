@@ -24,8 +24,8 @@ function account() {
   return user && password ? { user, password, fromName: LEADBIZ_BRAND } : null;
 }
 const dailyCap = () => Math.max(0, Math.min(50, Number(process.env.LEADBIZ_DAILY_CAP || 25) || 25));
-// Each in-window run sends at most this many, spreading the day's cap over the 9–11am runs.
-const PER_RUN = 9;
+// Each in-window run sends at most this many, spreading the day's cap over the 9am–2pm runs.
+const PER_RUN = 5;
 
 /** Map search for contractor buyers; new businesses only (source_url is unique). */
 export async function discoverBuyers(client: Client, deadline: number) {
@@ -112,7 +112,7 @@ export async function runLeadbizOutreach(client: Client, now = new Date()): Prom
   const sender = account();
   if (!run.enabled) return { ...run, note: run.note ?? "Sending is off (LEADBIZ_OUTREACH_ENABLED is not 1)." };
   if (!sender) return { ...run, note: "Sender not configured (LEADBIZ_SMTP_USER / LEADBIZ_SMTP_APP_PASSWORD)." };
-  if (!inSendWindow(now)) return { ...run, note: "Outside the weekday 9–11am Central send window." };
+  if (!inSendWindow(now)) return { ...run, note: "Outside the weekday 9am–3pm Central send window." };
 
   let budget = Math.min(PER_RUN, dailyCap() - (await sentToday(client, now)));
   if (budget <= 0) return { ...run, note: "Daily cap reached." };

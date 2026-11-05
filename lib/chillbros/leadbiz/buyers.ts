@@ -82,12 +82,12 @@ export function buyerFromElement(el: { type: string; id: number; tags?: Record<s
   };
 }
 
-/** Central-time sending window: weekdays 9:00–11:59 (when contractor owners read email). */
+/** Central-time sending window: weekdays 9:00–2:59pm (business hours when contractor owners read email). */
 export function inSendWindow(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short", hour: "numeric", hour12: false }).formatToParts(now);
   const day = parts.find((p) => p.type === "weekday")?.value ?? "";
   const hour = Number(parts.find((p) => p.type === "hour")?.value ?? -1);
-  return !["Sat", "Sun"].includes(day) && hour >= 9 && hour <= 11;
+  return !["Sat", "Sun"].includes(day) && hour >= 9 && hour <= 14;
 }
 
 export function offerEmail(b: { business_name: string; trade: Trade }, unsubscribeUrl: string, followUp = false) {
