@@ -73,6 +73,7 @@ export const SECTION_TABS: SectionTab[][] = [
     { href: "/revenue-radar", label: "Leads", roles: ["manager", "office", "salesperson"] },
     { href: "/agreements", label: "Service Plans", roles: ["manager", "office"] },
     { href: "/revenue-radar/tasks", label: "Sales Tasks", roles: ["manager", "office", "salesperson"] },
+    { href: "/revenue-radar/buyers", label: "Lead Buyers", roles: ["manager"] },
   ],
 ];
 
