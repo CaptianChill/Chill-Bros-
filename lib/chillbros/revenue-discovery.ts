@@ -337,6 +337,7 @@ export async function discoverAreaLeads(area: ScanArea, skipNames: Set<string> =
   nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub|food_court|ice_cream|nursing_home)$"]["name"]${bounds};
   nwr["shop"~"^(supermarket|convenience|bakery|butcher|seafood|deli|alcohol|beverages|florist)$"]["name"]${bounds};
   nwr["tourism"~"^(hotel|motel)$"]["name"]${bounds};
+  nwr["amenity"~"^(clinic|dentist|doctors|veterinary)$"]["name"]${bounds};
 );
 out tags center 600;
 `;
