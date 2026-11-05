@@ -25,6 +25,7 @@ const ownerToolGroups: { title: string; description: string; tools: OwnerTool[] 
     tools: [
       { href: "/owner/autopilot", title: "Lead Autopilot", description: "What the lead machine found, sent and booked, the money it brought in, and its on/off switches.", icon: Rocket },
       { href: "/owner/invoices", title: "Sent invoices", description: "A copy of every quote and invoice sent to customers, including paid and voided ones.", icon: Archive },
+      { href: "/owner/lead-business", title: "Lead business", description: "San Antonio New Openings: contractor outreach, lead-pack sales links and the public sales page.", icon: Archive },
       { href: "/reports", title: "Reports", description: "Revenue, outstanding balances, jobs, technician time, and inventory value.", icon: BarChart3 },
       { href: "/manager", title: "Manager controls", description: "Estimates, approvals, collections, and staff status.", icon: SlidersHorizontal },
       { href: "/inventory", title: "Parts, price book & fees", description: "Stock, cost, retail prices, and fee presets used in estimates.", icon: Package },
