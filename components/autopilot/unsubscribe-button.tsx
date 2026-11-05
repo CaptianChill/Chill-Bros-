@@ -4,10 +4,10 @@ import { useState, useTransition } from "react";
 
 import { unsubscribeAction } from "@/lib/chillbros/autopilot/unsubscribe-actions";
 
-export function UnsubscribeButton({ contact, signature }: { contact: string; signature: string }) {
+export function UnsubscribeButton({ contact, signature, brand = "Chill Pros" }: { contact: string; signature: string; brand?: string }) {
   const [state, setState] = useState<"idle" | "done" | "error">("idle");
   const [pending, start] = useTransition();
-  if (state === "done") return <p className="text-[17px] font-semibold text-[#1F8A4C]">You&apos;re unsubscribed. Chill Pros won&apos;t email you again.</p>;
+  if (state === "done") return <p className="text-[17px] font-semibold text-[#1F8A4C]">You&apos;re unsubscribed. {brand} won&apos;t email you again.</p>;
   return (
     <div>
       <button type="button" disabled={pending} onClick={() => start(async () => setState((await unsubscribeAction(contact, signature)).ok ? "done" : "error"))}
