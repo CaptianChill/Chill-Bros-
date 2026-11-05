@@ -37,9 +37,10 @@ test('builds a buyer row with a usable email and website', () => {
   assert.equal(b.buyerFromElement({ type: 'node', id: 8, tags: { name: 'Taco Hut', amenity: 'restaurant' } }), null);
 });
 
-test('sends only weekdays 9-11am Central', () => {
+test('sends only weekdays 9am-2:59pm Central', () => {
   assert.equal(b.inSendWindow(new Date('2026-11-05T16:00:00Z')), true);  // Thu 10am CST
-  assert.equal(b.inSendWindow(new Date('2026-11-05T19:00:00Z')), false); // Thu 1pm
+  assert.equal(b.inSendWindow(new Date('2026-11-05T19:00:00Z')), true);  // Thu 1pm
+  assert.equal(b.inSendWindow(new Date('2026-11-05T21:00:00Z')), false); // Thu 3pm
   assert.equal(b.inSendWindow(new Date('2026-11-07T16:00:00Z')), false); // Saturday
 });
 
@@ -54,5 +55,5 @@ test('offer email is trade-specific, has all links, address and unsubscribe', ()
 });
 
 test('the map query never asks the free map servers for an unsupported regex token', () => {
-  assert.doesNotMatch(b.buyerQuery(), /\\b/);
+  for (const q of b.buyerQueries()) { assert.doesNotMatch(q, /\\b/); assert.match(q, /timeout:15/); }
 });

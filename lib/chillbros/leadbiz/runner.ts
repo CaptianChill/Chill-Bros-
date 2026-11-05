@@ -8,15 +8,15 @@ import { pickBusinessEmail } from "@/lib/chillbros/autopilot/email-extract";
 import { fetchPage } from "@/lib/chillbros/autopilot/engine";
 import { unsubscribeUrl } from "@/lib/chillbros/autopilot/links";
 import { isSuppressed } from "@/lib/chillbros/autopilot/store";
-import { fetchOverpass } from "@/lib/chillbros/revenue-discovery";
+import { fetchOverpass, type OsmElement } from "@/lib/chillbros/revenue-discovery";
 
-import { buyerFromElement, buyerQuery, inSendWindow, LEADBIZ_BRAND, offerEmail } from "./buyers";
+import { buyerFromElement, buyerQueries, inSendWindow, LEADBIZ_BRAND, offerEmail } from "./buyers";
 
 type Client = SupabaseClient;
 const TABLE = "chillbros_leadbiz_buyers";
 const FOLLOW_UP_DAYS = 5;
 
-export type LeadbizRun = { enabled: boolean; discovered: number; enriched: number; sent: number; followedUp: number; failed: number; note?: string };
+export type LeadbizRun = { enabled: boolean; mapped?: number; discovered: number; enriched: number; sent: number; followedUp: number; failed: number; note?: string };
 
 function account() {
   const user = String(process.env.LEADBIZ_SMTP_USER || "").trim();
@@ -24,13 +24,20 @@ function account() {
   return user && password ? { user, password, fromName: LEADBIZ_BRAND } : null;
 }
 const dailyCap = () => Math.max(0, Math.min(50, Number(process.env.LEADBIZ_DAILY_CAP || 25) || 25));
-// Each in-window run sends at most this many, spreading the day's cap over the 9–11am runs.
-const PER_RUN = 9;
+// Each in-window run sends at most this many, spreading the day's cap over the 9am–2pm runs.
+const PER_RUN = 5;
 
 /** Map search for contractor buyers; new businesses only (source_url is unique). */
-export async function discoverBuyers(client: Client, deadline: number) {
-  const payload = await fetchOverpass(buyerQuery(), deadline);
-  const rows = (payload.elements ?? []).map(buyerFromElement).filter((r): r is NonNullable<typeof r> => Boolean(r));
+export async function discoverBuyers(client: Client, deadline: number, run?: LeadbizRun) {
+  const elements: OsmElement[] = [];
+  const failures: string[] = [];
+  for (const query of buyerQueries()) {
+    if (Date.now() > deadline - 5000) break;
+    try { elements.push(...((await fetchOverpass(query, deadline)).elements ?? [])); }
+    catch (error) { failures.push(error instanceof Error ? error.message.slice(0, 120) : "map search failed"); }
+  }
+  if (run) { run.mapped = elements.length; if (failures.length) run.note = `map searches failed: ${failures.length}`; }
+  const rows = elements.map(buyerFromElement).filter((r): r is NonNullable<typeof r> => Boolean(r));
   if (!rows.length) return 0;
   const seen = new Set<string>();
   const fresh = rows.filter((r) => (seen.has(r.source_url) ? false : (seen.add(r.source_url), true)))
@@ -98,13 +105,25 @@ async function sendOne(client: Client, row: { id: string; business_name: string;
   }
 }
 
+/** Runs one outreach cycle and records the outcome in chillbros_leadbiz_runs. */
 export async function runLeadbizOutreach(client: Client, now = new Date()): Promise<LeadbizRun> {
+  let result: LeadbizRun;
+  try { result = await runCycle(client, now); }
+  catch (error) {
+    await client.from("chillbros_leadbiz_runs").insert({ result: { error: error instanceof Error ? error.message : "run failed" } });
+    throw error;
+  }
+  await client.from("chillbros_leadbiz_runs").insert({ result });
+  return result;
+}
+
+async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   const run: LeadbizRun = { enabled: process.env.LEADBIZ_OUTREACH_ENABLED === "1", discovered: 0, enriched: 0, sent: 0, followedUp: 0, failed: 0 };
   const deadline = Date.now() + 240_000;
   // Discovery and enrichment are read-only research and run even while sending is off.
   const { count: queued } = await client.from(TABLE).select("id", { count: "exact", head: true }).in("status", ["new", "ready"]);
   if ((queued ?? 0) < 40) {
-    try { run.discovered = await discoverBuyers(client, Math.min(deadline, Date.now() + 60_000)); }
+    try { run.discovered = await discoverBuyers(client, Math.min(deadline, Date.now() + 90_000), run); }
     catch (error) { run.note = error instanceof Error ? error.message : "discovery failed"; }
   }
   run.enriched = await enrichBuyers(client, 20, Math.min(deadline, Date.now() + 120_000));
@@ -112,7 +131,7 @@ export async function runLeadbizOutreach(client: Client, now = new Date()): Prom
   const sender = account();
   if (!run.enabled) return { ...run, note: run.note ?? "Sending is off (LEADBIZ_OUTREACH_ENABLED is not 1)." };
   if (!sender) return { ...run, note: "Sender not configured (LEADBIZ_SMTP_USER / LEADBIZ_SMTP_APP_PASSWORD)." };
-  if (!inSendWindow(now)) return { ...run, note: "Outside the weekday 9–11am Central send window." };
+  if (!inSendWindow(now)) return { ...run, note: "Outside the weekday 9am–3pm Central send window." };
 
   let budget = Math.min(PER_RUN, dailyCap() - (await sentToday(client, now)));
   if (budget <= 0) return { ...run, note: "Daily cap reached." };
