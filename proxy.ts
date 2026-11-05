@@ -37,6 +37,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/command-center",
   // Lead business: paid lead-pack downloads under an unguessable token path (public/lp/<token>/), linked only in delivery emails.
   "/lp",
+  // Lead business public sales page (no customer data; live counts only).
+  "/new-openings",
 ];
 
 function isPublicPath(pathname: string): boolean {
