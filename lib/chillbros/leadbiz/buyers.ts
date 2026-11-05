@@ -50,17 +50,15 @@ export function classifyBuyer(tags: Record<string, string>): Trade | null {
   return null;
 }
 
-export function buyerQuery(bbox = SA_BBOX) {
-  return `
-[out:json][timeout:25];
-(
-  nwr["craft"~"^(plumber|electrician|signmaker|pest_control|cleaning)$"]${bbox};
-  nwr["shop"~"^(security|pest_control)$"]${bbox};
-  nwr["office"]["name"~"plumb|electric|hood|exhaust|pest|termite|extermin|janitor|custodial|cleaning|signs|signage|cabling|low voltage|audio visual|security|alarm",i]${bbox};
-  nwr["name"~"plumb|electric|janitor|custodial|pest control|termite|signs|signage|cabling|low voltage|alarm|security systems|hood clean|exhaust clean",i]["website"]${bbox};
-);
-out tags center 2000;
-`;
+// Small, tag-indexed searches (the free map servers time out on one big name scan of the whole metro).
+export function buyerQueries(bbox = SA_BBOX) {
+  const q = (body: string) => `[out:json][timeout:15];(${body});out tags center 800;`;
+  const names = "plumb|electric|hood|exhaust|pest|termite|extermin|janitor|custodial|cleaning|signs|signage|cabling|low voltage|audio visual|security|alarm";
+  return [
+    q(`nwr["craft"~"^(plumber|electrician|signmaker|pest_control|cleaning)$"]${bbox};`),
+    q(`nwr["shop"~"^(security|pest_control|trade)$"]${bbox};nwr["craft"]["name"~"${names}",i]${bbox};`),
+    q(`nwr["office"]["name"~"${names}",i]${bbox};`),
+  ];
 }
 
 export type BuyerRow = { business_name: string; trade: Trade; email: string | null; phone: string | null; website: string | null; address: string | null; source_url: string };

@@ -55,5 +55,5 @@ test('offer email is trade-specific, has all links, address and unsubscribe', ()
 });
 
 test('the map query never asks the free map servers for an unsupported regex token', () => {
-  assert.doesNotMatch(b.buyerQuery(), /\\b/);
+  for (const q of b.buyerQueries()) { assert.doesNotMatch(q, /\\b/); assert.match(q, /timeout:15/); }
 });
