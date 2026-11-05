@@ -107,7 +107,7 @@ export async function fetchOverpass(query: string, deadline: number): Promise<Ov
 // listings are mostly already in Revenue Radar, so Google is the main source when
 // a key is configured. One request returns up to 20 businesses.
 
-type GooglePlace = {
+export type GooglePlace = {
   id: string;
   displayName?: { text?: string };
   formattedAddress?: string;
@@ -173,7 +173,7 @@ export function tagsFromGooglePlace(place: GooglePlace): Record<string, string> 
   return tags;
 }
 
-async function searchGooglePlaces(apiKey: string, textQuery: string, area: ScanArea, deadline: number): Promise<GooglePlace[]> {
+export async function searchGooglePlaces(apiKey: string, textQuery: string, area: ScanArea, deadline: number): Promise<GooglePlace[]> {
   const budget = Math.min(REQUEST_TIMEOUT_MS, timeLeft(deadline) - 2000);
   if (budget < 3000) throw new Error("out of time");
   const response = await fetch("https://places.googleapis.com/v1/places:searchText", {

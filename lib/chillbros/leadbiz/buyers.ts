@@ -61,6 +61,30 @@ export function buyerQueries(bbox = SA_BBOX) {
   ];
 }
 
+// Google Places searches per trade (the free map has almost no San Antonio contractors listed).
+export const GOOGLE_TRADE_QUERIES: Record<Trade, string> = {
+  plumbing: "commercial plumbing contractor",
+  electrical: "commercial electrical contractor",
+  hood_cleaning: "restaurant kitchen hood cleaning service",
+  pest_control: "commercial pest control company",
+  commercial_cleaning: "commercial janitorial cleaning company",
+  signs: "commercial sign company",
+  low_voltage: "low voltage structured cabling contractor",
+  security: "commercial security camera and alarm installer",
+};
+
+/** Which (trade, area index) a run searches: rotates through every pair, one per run. */
+export function googleRotation(runIndex: number, areaCount: number, trades = Object.keys(GOOGLE_TRADE_QUERIES) as Trade[]) {
+  const i = ((runIndex % (trades.length * areaCount)) + trades.length * areaCount) % (trades.length * areaCount);
+  return { trade: trades[i % trades.length], area: Math.floor(i / trades.length) };
+}
+
+export function buyerFromGooglePlace(p: { id: string; displayName?: { text?: string }; formattedAddress?: string; nationalPhoneNumber?: string; websiteUri?: string }, trade: Trade): BuyerRow | null {
+  const name = String(p.displayName?.text ?? "").trim();
+  if (!name || NOT_A_CONTRACTOR.test(name)) return null;
+  return { business_name: name.slice(0, 200), trade, email: null, phone: p.nationalPhoneNumber ?? null, website: p.websiteUri ?? null, address: p.formattedAddress ?? null, source_url: `https://www.google.com/maps/place/?q=place_id:${p.id}` };
+}
+
 export type BuyerRow = { business_name: string; trade: Trade; email: string | null; phone: string | null; website: string | null; address: string | null; source_url: string };
 
 export function buyerFromElement(el: { type: string; id: number; tags?: Record<string, string> }): BuyerRow | null {
