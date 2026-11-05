@@ -4,10 +4,12 @@ import { useMemo, useState, useTransition } from "react";
 import { PACKS } from "@/lib/brand";
 import { saveCall } from "./actions";
 
-type Buyer = { name: string; trade: string; phone: string; address: string; license: string };
+type Buyer = { name: string; trade: string; phone: string; address: string; license: string; contact?: string };
 
 const OPENER: Record<string, string> = {
   Electricians: "Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs from state filings. I've got 16 restaurants and retail sites building in SA right now, each needs panels, kitchen circuits and lighting before inspection, with the owner's contact and phone. I only sell it to 3 electricians. Can I text you the link?",
+  Plumbers: "Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs from state filings. I've got 16 restaurants and retail sites building in SA right now, each needs rough-in, grease traps and backflow before opening day, with the owner's contact and phone. I only sell it to 3 plumbers. Can I text you the link?",
+  "Pest control": "Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs from state filings. I've got 16 restaurants and retail sites opening in SA, every one needs a pest program in place before its health inspection, with the owner's contact and phone. I only sell it to 3 pest control companies. Can I text you the link?",
   "Sign companies": "Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs from state filings. I've got 16 restaurants and retail sites opening in SA, every one needs storefront and pylon signs before opening day, with the owner's contact and phone. I only sell it to 3 sign companies. Can I text you the link?",
 };
 const OUTCOMES: [string, string][] = [["", "Not called"], ["called", "No answer / left VM"], ["callback", "Call back"], ["interested", "Interested, sent link"], ["sold", "Sold"], ["not_interested", "Not interested"], ["wrong_number", "Wrong number"]];
@@ -49,9 +51,10 @@ export function CallList({ buyers, marks }: { buyers: Buyer[]; marks: Record<str
           <li key={b.license + b.name} className={`flex flex-wrap items-center gap-3 p-3 sm:flex-nowrap ${called[b.license] && !TONE[called[b.license]] ? "opacity-50" : ""}`}>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{b.name}</p>
-              <p className="truncate text-xs text-[#8A9BB0]">{b.trade} · {b.address}</p>
+              <p className="truncate text-xs text-[#8A9BB0]">{b.trade}{b.contact ? ` · ${b.contact}` : ""} · {b.address}</p>
             </div>
-            <a href={`tel:${b.phone.replace(/\D/g, "")}`} className="shrink-0 rounded-xl border border-emerald-300/40 px-3 py-2 text-sm font-semibold text-emerald-200">{b.phone}</a>
+            {b.phone ? <a href={`tel:${b.phone.replace(/\D/g, "")}`} className="shrink-0 rounded-xl border border-emerald-300/40 px-3 py-2 text-sm font-semibold text-emerald-200">{b.phone}</a>
+              : <a href={`https://www.google.com/search?q=${encodeURIComponent(`${b.name} San Antonio TX phone`)}`} target="_blank" rel="noreferrer" className="shrink-0 rounded-xl border border-[#7FD4FF]/40 px-3 py-2 text-sm font-semibold text-[#7FD4FF]">Find number ↗</a>}
             <select aria-label={`Call result for ${b.name}`} value={called[b.license] ?? ""} onChange={(e) => mark(b, e.target.value)} className={`h-10 shrink-0 rounded-lg border border-white/15 bg-[#0B1E33] px-2 text-xs ${TONE[called[b.license] ?? ""] ?? "text-[#C9D6E3]"}`}>{OUTCOMES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
           </li>
         ))}
