@@ -1,5 +1,5 @@
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { PAY_LINKS, LEADBIZ_PHONE } from "@/lib/chillbros/leadbiz/buyers";
+import { PAY_LINKS, LEADBIZ_PHONE, LEADBIZ_QUOTE } from "@/lib/chillbros/leadbiz/buyers";
 
 export const revalidate = 3600;
 export const metadata = {
@@ -52,6 +52,11 @@ export default async function NewOpeningsPage() {
           <a href={PAY_LINKS.bundle} className="mt-7 inline-flex min-h-12 items-center rounded-xl bg-[#F5C542] px-6 text-lg font-bold text-[#0B1E33] hover:brightness-105">Get the Founding Bundle, $199</a>
           <p className="mt-3 text-sm text-[#8A9BB0]">Max 3 buyers per trade · delivered by email within 2 hours</p>
         </section>
+
+        <figure className="mt-12 max-w-3xl border-l-4 border-[#FF7A59] pl-5">
+          <blockquote className="text-2xl font-bold leading-snug sm:text-3xl">&ldquo;{LEADBIZ_QUOTE}&rdquo;</blockquote>
+          <figcaption className="mt-2 text-sm text-[#8A9BB0]">Built by Chill Pros, San Antonio commercial HVAC &amp; refrigeration</figcaption>
+        </figure>
 
         <section className="mt-14 grid gap-4 md:grid-cols-3">
           {PACKS.map((p) => (
