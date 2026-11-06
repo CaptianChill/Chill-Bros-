@@ -134,6 +134,7 @@ export function NewOpeningsFlyer({ trades, packs, plans, phone, email }: { trade
             );
           })}
         </div>
+        {plans.length ? <>
         <h3 className="mt-10 text-sm font-bold uppercase tracking-[0.18em] text-[#7FD4FF]">Or get new projects every month</h3>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {plans.map((p) => {
@@ -160,6 +161,7 @@ export function NewOpeningsFlyer({ trades, packs, plans, phone, email }: { trade
           <input id={TERM_ID} type="checkbox" checked={termAgreed} onChange={(e) => setTermAgreed(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[#7FD4FF]" />
           <span className="text-[15px] text-white"><span className="font-semibold">Plans only:</span> I agree to the 12-month minimum term. I&apos;ll pay 12 monthly payments; if I cancel early, the rest of the term is still owed. After 12 months it&apos;s month to month. <a href={TERMS_HREF} className="text-[#7FD4FF] underline underline-offset-2">Plan terms</a></span>
         </label>
+        </> : null}
         <div className="mt-5 rounded-2xl border border-dashed border-[#F5C542]/60 bg-[#0F2740] p-4 text-[15px] text-[#C9D6E3]">
           <p><span className="font-bold text-[#F5C542]">At checkout, type your trade</span>{trade ? <>: <span className="rounded bg-white/10 px-2 py-0.5 font-mono font-bold text-white">{trade.checkout}</span></> : null} so we send the right list.</p>
           <p className="mt-1 text-sm text-[#8A9BB0]">Secure Square checkout: card, Apple Pay, Google Pay or Cash App Pay. Max 3 buyers per trade per project; checkout only opens while your trade has room.</p>
