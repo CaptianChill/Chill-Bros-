@@ -64,3 +64,21 @@ test('Sales Assist only drafts: nothing sends, and Do Not Contact leads are refu
   assert.match(ui, /mailto:/);
   assert.doesNotMatch(ui, /fetch\(/);
 });
+
+test('standard cards carry fit, plan, intro email and a build-out opener without the AI', () => {
+  const wash = sales.buildSafeBattleCard({ businessName: 'Club Car Wash - San Pedro', city: 'San Antonio', score: 88, serviceLine: 'hvac_r', category: 'opening_remodel', industry: 'auto', signalSummary: 'New $2.0M automated tunnel car wash with vacuum stalls, 4,346 sq ft. Construction Aug 17, 2026 to Feb 15, 2027 (TDLR TABS).', signalVerified: true, sourceUrl: 'https://www.tdlr.texas.gov/TABS/Projects/TABS2026018761', observedAt: '2026-11-06T00:00:00Z', contactName: 'NOXXE I, LTD', contactPhone: '(281) 257-5699' });
+  assert.equal(wash.fit.score, 9);
+  assert.match(wash.callOpener, /^Hi, this is \[NAME\]/); // company contact: no first-name greeting
+  assert.match(wash.callOpener, /state filing for the build-out at Club Car Wash/);
+  assert.match(wash.callOpener, /equipment-room cooling/);
+  assert.doesNotMatch(wash.callOpener + wash.serviceAngle, /kitchen|walk-in/);
+  assert.equal(wash.suggestedPlan.tier, 'Gold Protection');
+  assert.match(wash.introEmail.body, /^Hi there,/);
+  const cafe = sales.buildSafeBattleCard({ ...lead, category: 'opening_remodel', contactName: 'Elizabeth Houston', signalSummary: 'New 2,899 sf restaurant build-out, $1.2M.' });
+  assert.match(cafe.callOpener, /^Hi Elizabeth,/);
+  assert.match(cafe.introEmail.body, /^Hi Elizabeth,/);
+  assert.equal(cafe.suggestedPlan.tier, 'Gold Protection');
+  const heb = sales.buildSafeBattleCard({ ...lead, businessName: 'H-E-B Alon Market', category: 'opening_remodel', signalSummary: 'New 125,434 sf grocery store, $21.23M' });
+  assert.equal(heb.suggestedPlan.tier, 'Diamond Operations');
+  assert.equal(sales.firstName('Take 5 Properties SPV'), null);
+});
