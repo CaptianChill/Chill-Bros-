@@ -14,7 +14,7 @@ export const salesLeadStatuses = [
 
 export type SalesLeadStatus = (typeof salesLeadStatuses)[number];
 
-export const BATTLE_CARD_PROMPT_VERSION = "revenue-radar-sales-v1";
+export const BATTLE_CARD_PROMPT_VERSION = "revenue-radar-sales-v2";
 
 export type LeadRankingInput = {
   score: number;
@@ -72,6 +72,8 @@ export type BattleCardInput = {
   contactRole?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
+  category?: string | null;
+  industry?: string | null;
 };
 
 export type SalesBattleCard = {
@@ -89,7 +91,47 @@ export type SalesBattleCard = {
   bestNextStep: string;
   technicalHandoff: string;
   followUpPlan: string;
+  // Also on standard cards since v2 (built from the lead's own data, no AI).
+  fit?: { score: number; reason: string };
+  suggestedPlan?: { tier: "Silver Essential" | "Gold Protection" | "Diamond Operations"; reason: string };
+  introEmail?: { subject: string; body: string };
 };
+
+// A contact name that is a company (LLC, LP, Properties...) gets no first-name greeting.
+const COMPANY_NAME = /\b(llc|l\.l\.c|lp|ltd|inc|corp|corporation|company|co\.|partners|properties|property|fund|associates|group|holdings|trust|ventures|management|enterprises)\b/i;
+export function firstName(contact?: string | null) {
+  const name = String(contact ?? "").trim();
+  if (!name || COMPANY_NAME.test(name) || name.split(/\s+/).length < 2) return null;
+  const first = name.split(/\s+/)[0].replace(/[^A-Za-z'-]/g, "");
+  return first.length > 1 ? first[0].toUpperCase() + first.slice(1).toLowerCase() : null;
+}
+
+const firstSentence = (s: string) => (String(s || "").split(/(?<=\.)\s/)[0] || "").replace(/\s*\(TDLR TABS\)\.?$/, ".").trim();
+const squareFeet = (s: string) => { const m = String(s || "").match(/([\d,]{3,})\s*(?:sf|sq\.?\s*ft|square feet)/i); return m ? Number(m[1].replace(/,/g, "")) : null; };
+const dollars = (s: string) => { const m = String(s || "").match(/\$([\d.,]+)\s*(M|K)?/i); if (!m) return null; const n = Number(m[1].replace(/,/g, "")); return m[2]?.toUpperCase() === "M" ? n * 1e6 : m[2]?.toUpperCase() === "K" ? n * 1e3 : n; };
+
+/** What Chill Pros would service at this kind of site, in plain words. */
+export function siteServices(input: Pick<BattleCardInput, "serviceLine" | "industry" | "signalSummary">) {
+  if (input.industry === "auto") return /car wash/i.test(input.signalSummary) ? "rooftop HVAC, equipment-room cooling and the break-room ice machine" : "rooftop HVAC, shop heaters, makeup air for the bays and paint booths, and break-room ice machines";
+  return ({
+    refrigeration: "walk-in coolers and freezers, reach-ins, display cases and HVAC",
+    ice_machine: "ice machines, walk-ins and HVAC",
+    kitchen_equipment: "kitchen and hot-side equipment, refrigeration and HVAC",
+    exhaust_hood: "kitchen exhaust and hoods, kitchen equipment and HVAC",
+    multiple: "HVAC, walk-ins and reach-ins, ice machines and kitchen equipment",
+  } as Record<string, string>)[input.serviceLine] ?? "HVAC and refrigeration";
+}
+
+/** Plan tier from the size of the operation in the public signal. */
+export function suggestPlan(input: Pick<BattleCardInput, "serviceLine" | "industry" | "signalSummary" | "businessName">) {
+  const text = `${input.businessName} ${input.signalSummary}`;
+  const sf = squareFeet(text) ?? 0, cost = dollars(text) ?? 0;
+  if (sf >= 20000 || cost >= 4e6 || /\b(h-e-b|heb|grocery|hotel|hospital|dealership|multi-?unit|portfolio)\b/i.test(text))
+    return { tier: "Diamond Operations" as const, reason: "A large operation (by size, cost or type) with a lot of equipment fits two visits a month and top priority." };
+  if (input.industry !== "auto" && ["multiple", "kitchen_equipment", "exhaust_hood", "refrigeration", "ice_machine"].includes(input.serviceLine) || /collision|paint|body shop|car wash/i.test(text))
+    return { tier: "Gold Protection" as const, reason: "The business depends on its cold storage, kitchen or shop equipment, so the extended monthly visit and priority scheduling fit." };
+  return { tier: "Silver Essential" as const, reason: "A smaller single-location site: one preventive visit a month with a written report covers it." };
+}
 
 const serviceLabel = (line: string) => ({
   hvac_r: "commercial HVAC/R",
@@ -130,17 +172,52 @@ export function buildSafeBattleCard(input: BattleCardInput): SalesBattleCard {
     "Any customer-confirmed service problem",
   ];
 
+  const opening = input.category === "opening_remodel";
+  const greet = firstName(input.contactName);
+  const services = siteServices(input);
+  const signal = firstSentence(input.signalSummary);
+  const plan = suggestPlan(input);
+  const fit = {
+    score: Math.min(10, Math.max(1, Math.round(Number(input.score) / 10))),
+    reason: opening ? `New build-out on file with the state: ${signal}` : `Revenue Radar score ${input.score}/100: ${signal || "commercial site in the service area."}`,
+  };
+  const introEmail = {
+    subject: `Local HVAC and refrigeration support for ${input.businessName}`,
+    body: [
+      `Hi ${greet ?? "there"},`,
+      "",
+      opening
+        ? `I saw the state filing for the build-out at ${input.businessName} and wanted to introduce Chill Pros, a commercial service company here in San Antonio.`
+        : `I wanted to introduce Chill Pros, a commercial service company here in San Antonio, to ${input.businessName}.`,
+      `We take care of ${services}, with preventive maintenance plans and fast emergency service.`,
+      opening ? "We'd be glad to handle start-up checks and be your service partner once you open." : "We'd be glad to be a reliable local resource or a backup for your current vendor.",
+      "Would you be open to a short call or a walkthrough?",
+      "",
+      "[Your name]",
+      "Chill Pros",
+    ].join("\n"),
+  };
+
   return {
     verifiedFacts,
     reasonableInferences,
     missingInformation,
-    whyNow: input.signalVerified
+    fit,
+    suggestedPlan: plan,
+    introEmail,
+    whyNow: opening
+      ? `Public TDLR records show this build-out: ${signal} Service vendors are usually chosen before opening, so this is the window to get on their list.`
+      : input.signalVerified
       ? "Revenue Radar has a directly verified signal. Confirm the current situation and identify the correct next step."
       : "Revenue Radar found a public commercial signal. Use it only as context for a timely introduction; do not imply Chill Pros knows equipment is failing.",
     primaryContactRole: input.contactRole || "Facilities / Operations Manager",
     backupContactRoles: ["General Manager", "Owner / Property Manager"],
-    serviceAngle: `Introduce Chill Pros as a local ${service} resource and determine who manages service, emergency response, and preventive maintenance.`,
-    callOpener: `Hi, this is [NAME] with Chill Pros. We handle ${service} around San Antonio. I came across ${input.businessName} while reviewing commercial service opportunities in the area. Who is the best person to speak with about your equipment service and preventive maintenance?`,
+    serviceAngle: opening
+      ? `Position Chill Pros as the local service partner for ${services} from day one: start-up checks, a preventive maintenance plan, and a fast backup for emergencies. Do not imply anything is broken.`
+      : `Introduce Chill Pros as a local ${service} resource and determine who manages service, emergency response, and preventive maintenance.`,
+    callOpener: opening
+      ? `Hi${greet ? ` ${greet}` : ""}, this is [NAME] with Chill Pros, a commercial HVAC and refrigeration company here in San Antonio. I saw the state filing for the build-out at ${input.businessName} and wanted to introduce us for ${services} once you're up and running. Who's handling that for you?`
+      : `Hi${greet ? ` ${greet}` : ""}, this is [NAME] with Chill Pros. We handle ${service} around San Antonio. I came across ${input.businessName} while reviewing commercial service opportunities in the area. Who is the best person to speak with about your equipment service and preventive maintenance?`,
     discoveryQuestions: [
       "Who currently handles your HVAC and refrigeration service?",
       "Do you use one service company or several vendors?",

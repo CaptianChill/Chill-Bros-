@@ -18,10 +18,10 @@ import { nextSalesStatus, placesQuery, sameBusiness, wantsAiCard, PREP_CLOSED_ST
 
 type Client = SupabaseClient;
 const AI_TRIGGER = "sales_prep";
-const LEAD_COLUMNS = "id,business_name,city,category,score,service_line,signal_summary,signal_verified,source_url,signal_observed_at,business_address,contact_name,contact_role,contact_phone,contact_email,sales_status,do_not_contact,places_checked_at";
+const LEAD_COLUMNS = "id,business_name,city,category,industry,score,service_line,signal_summary,signal_verified,source_url,signal_observed_at,business_address,contact_name,contact_role,contact_phone,contact_email,sales_status,do_not_contact,places_checked_at";
 
 type Lead = {
-  id: string; business_name: string; city: string; category: string | null; score: number; service_line: string;
+  id: string; business_name: string; city: string; category: string | null; industry?: string | null; score: number; service_line: string;
   signal_summary: string; signal_verified: boolean; source_url: string; signal_observed_at: string;
   business_address: string | null; contact_name: string | null; contact_role: string | null;
   contact_phone: string | null; contact_email: string | null; sales_status: string | null; do_not_contact: boolean;
@@ -66,7 +66,7 @@ function cardInput(lead: Lead): BattleCardInput & { category?: string | null } {
     score: Number(lead.score), serviceLine: lead.service_line, signalSummary: lead.signal_summary,
     signalVerified: Boolean(lead.signal_verified), sourceUrl: lead.source_url, observedAt: lead.signal_observed_at,
     businessAddress: lead.business_address, contactName: lead.contact_name, contactRole: lead.contact_role,
-    contactPhone: lead.contact_phone, contactEmail: lead.contact_email,
+    contactPhone: lead.contact_phone, contactEmail: lead.contact_email, industry: lead.industry,
   };
 }
 
@@ -110,6 +110,8 @@ async function prepQueue(client: Client, limits: { ai: number; standard: number 
     const v = cardVersion.get(l.id);
     if (!v) return true;
     if (v !== AI_BATTLE_CARD_PROMPT_VERSION && wantsAiCard(l)) return true;
+    // An older standard card is rebuilt with the current template.
+    if (v !== AI_BATTLE_CARD_PROMPT_VERSION && v !== BATTLE_CARD_PROMPT_VERSION) return true;
     // Unreachable leads come back once for a Places lookup when a key is available.
     return googleKey && !l.places_checked_at && !wantsAiCard(l);
   });
@@ -154,8 +156,8 @@ export async function runSalesPrep(client: Client, opts: { aiLimit?: number; sta
         }
 
         // 2. Battle card.
-        if (wantsAiCard(lead)) {
-          if (aiBudget <= 0) continue;
+        // With the AI unavailable (out of credits) or its budget spent, every lead still gets a standard card.
+        if (wantsAiCard(lead) && aiBudget > 0) {
           aiBudget--;
           const { card, aiUsed, error: aiError } = await writeAiBattleCard(cardInput(lead));
           if (!aiUsed) console.warn("[sales-prep] AI card fell back to standard", lead.id, aiError);
