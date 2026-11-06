@@ -36,3 +36,10 @@ test('openers are written for the buyer trade, not HVAC', () => {
   assert.equal(t.isTrade('signs'), true);
   assert.equal(t.isTrade('hvac'), false);
 });
+
+test('auto openings get auto-specific openers, not kitchen ones', () => {
+  const o = t.tradeOpener('electrical', { business_name: 'Take 5 Oil Change', category: 'opening_remodel', industry: 'auto' });
+  assert.match(o, /lifts, compressors/);
+  assert.doesNotMatch(o, /kitchen/);
+  assert.match(t.tradeOpener('electrical', { business_name: 'Taco Hut', category: 'opening_remodel' }), /kitchen circuits/);
+});

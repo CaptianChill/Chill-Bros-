@@ -36,6 +36,17 @@ const OPENING_HOOK: Record<Trade, string> = {
   low_voltage: "POS, network, music and camera cabling before the walls close",
   security: "cameras, alarm and access control before you stock the place",
 };
+// Auto openings (car washes, oil change, collision, dealership service shops): no kitchens.
+const AUTO_HOOK: Record<Trade, string> = {
+  plumbing: "water reclaim, oil-water separators and shop plumbing",
+  electrical: "lifts, compressors, bay lighting and EV chargers",
+  hood_cleaning: "shop exhaust and ventilation cleaning",
+  pest_control: "pest service for the shop and customer waiting area",
+  commercial_cleaning: "post-construction cleanup and shop floor and lobby cleaning",
+  signs: "pylon and bay signage so drivers find you on day one",
+  low_voltage: "POS, network, music and camera cabling before the walls close",
+  security: "cameras, alarm and access control for the bays and the lot",
+};
 const EXISTING_HOOK: Record<Trade, string> = {
   plumbing: "grease trap service and emergency plumbing coverage",
   electrical: "repairs, lighting upgrades and backup for kitchen circuits",
@@ -47,9 +58,9 @@ const EXISTING_HOOK: Record<Trade, string> = {
   security: "camera, alarm and access-control upgrades",
 };
 
-export function tradeOpener(trade: Trade, lead: { business_name: string; category?: string | null }) {
+export function tradeOpener(trade: Trade, lead: { business_name: string; category?: string | null; industry?: string | null }) {
   const opening = lead.category === "opening_remodel";
-  const hook = opening ? OPENING_HOOK[trade] : EXISTING_HOOK[trade];
+  const hook = opening ? (lead.industry === "auto" ? AUTO_HOOK : OPENING_HOOK)[trade] : EXISTING_HOOK[trade];
   return opening
     ? `Hi, I saw ${lead.business_name} has a build-out on file with the state. Who's handling ${hook}? We do that locally and can get you a quote this week.`
     : `Hi, I work with businesses like ${lead.business_name} on ${hook}. Who handles that for you now, and when did they last come out?`;
