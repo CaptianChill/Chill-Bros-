@@ -6,6 +6,10 @@ export const LEADBIZ_BRAND = "San Antonio New Openings";
 export const LEADBIZ_PHONE = "(210) 904-9306";
 export const LEADBIZ_QUOTE = "We work these job sites every week. We know which ones are worth the call.";
 export const LEADBIZ_POSTAL = "Chill Professionals LLC, 15226 Preston Pass, San Antonio, TX 78247";
+// Public terms page (absolute, for emails). chill-bros.vercel.app is the live host until
+// chillprostx.com DNS points at Vercel (see docs/2026-09-21-session-log.md).
+export const LEADBIZ_TERMS_URL = "https://chill-bros.vercel.app/new-openings/terms";
+export const LEADBIZ_TERMS_EFFECTIVE = "November 6, 2026";
 export const PAY_LINKS = {
   openings: "https://square.link/u/RStoSpmq",
   bundle: "https://square.link/u/6Cdb25fY",
@@ -190,6 +194,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
     `${LEADBIZ_BRAND}`,
     `${LEADBIZ_PHONE}`,
     LEADBIZ_POSTAL,
+    `Lead Pack Terms: ${LEADBIZ_TERMS_URL}`,
     "",
     `You're getting this business email because ${b.business_name} is listed as a San Antonio contractor. Not interested? Unsubscribe: ${unsubscribeUrl}`,
   ].join("\n");

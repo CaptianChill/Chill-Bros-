@@ -175,3 +175,16 @@ test('Google buyer discovery saves only own-site data + place_id, never Google p
     for (const leak of ['555-0000', '5550000', 'Google Listing', 'GOOGLE NAME', '"rating"', 'Mon 8-5', 'No Site', '555-0002']) assert.ok(!json.includes(leak), `leaked ${leak}`);
   } finally { global.fetch = realFetch; delete process.env.GOOGLE_PLACES_API_KEY; }
 });
+
+test('lead pack terms: public page covers every point, email links it, flyer gates Buy behind the checkbox', () => {
+  const terms = fs.readFileSync('app/new-openings/terms/page.tsx', 'utf8');
+  for (const re of [/digital information product/, /TDLR/, /OpenStreetMap/, /don't guarantee any lead is accurate, current or still available/, /Verify details/, /don't guarantee jobs, contracts/, /TCPA/, /Texas telemarketing/, /CAN-SPAM/, /not a party/, /final once your download link is delivered/, /within 7 days/, /refund/, /Don't resell, share/, /up to 3 buyers per trade/, /limited to the price you paid/, /Texas law/, /Bexar County/, /By completing checkout you agree/, /Effective/, /LEADBIZ_POSTAL/, /satxnewopenings@gmail\.com/]) assert.match(terms, re);
+  assert.doesNotMatch(terms, /chill\s*pros\b/i);
+  assert.equal(b.LEADBIZ_POSTAL, 'Chill Professionals LLC, 15226 Preston Pass, San Antonio, TX 78247');
+  assert.match(b.offerEmail({ business_name: 'X', trade: 'signs' }, 'u').text, /Lead Pack Terms: https:\/\/chill-bros\.vercel\.app\/new-openings\/terms/);
+  const flyer = fs.readFileSync('app/new-openings/flyer.tsx', 'utf8');
+  assert.match(flyer, /type="checkbox"/);
+  assert.match(flyer, /if \(agreed\) return <a href=\{href\}/, 'Buy is a real link only once agreed');
+  assert.doesNotMatch(flyer, /<a href=\{(p|pack)\.href\}/, 'no Buy link bypasses the checkbox gate');
+  assert.match(flyer, /By buying you agree to the/);
+});
