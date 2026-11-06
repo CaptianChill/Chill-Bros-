@@ -5,17 +5,10 @@ import type { Trade } from "@/lib/chillbros/trade-fit";
 
 import { NewOpeningsFlyer, type FlyerPack, type FlyerTrade } from "./flyer";
 
-// Neutral icon so the browser tab / home-screen shortcut never shows the HVAC company's logo.
-const ICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0B1E33"/><path d="M14 46V18h6l12 17V18h6v28h-6L20 29v17z" fill="#FF7A59"/><circle cx="48" cy="20" r="5" fill="#F5C542"/></svg>')}`;
-
+// App name/icon overrides live in ./layout.tsx (shared with /new-openings/terms).
 export const metadata: Metadata = {
   title: "San Antonio New Openings · Commercial lead packs for SA trades",
   description: "Verified new San Antonio restaurant, retail and auto build-outs from Texas state construction filings, with the owner or tenant contact and phone. Lead packs for local contractors.",
-  applicationName: "San Antonio New Openings",
-  manifest: null,
-  appleWebApp: { capable: false, title: "SA New Openings" },
-  icons: { icon: ICON, apple: ICON, shortcut: ICON },
-  other: { "apple-mobile-web-app-title": "SA New Openings", "mobile-web-app-capable": "no", "apple-mobile-web-app-capable": "no" },
 };
 
 const EMAIL = "satxnewopenings@gmail.com";
