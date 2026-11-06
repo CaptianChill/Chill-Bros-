@@ -12,7 +12,7 @@ import { searchPlacesTransient } from "@/lib/chillbros/google-places";
 import { fetchOverpass, SCAN_AREAS, type OsmElement } from "@/lib/chillbros/revenue-discovery";
 
 import { fetchAllLicenses } from "./licenses";
-import { buyerFromElement, buyerFromOwnSite, buyerQueries, GOOGLE_TRADE_QUERIES, googleRotation, inSendWindow, isContractorName, LEADBIZ_BRAND, offerEmail, type BuyerRow } from "./buyers";
+import { buyerFromElement, buyerFromOwnSite, buyerQueries, GOOGLE_TRADE_QUERIES, googleRotation, inSendWindow, isContractorName, LEADBIZ_BRAND, offerEmail, perRunFor, rampCap, type BuyerRow } from "./buyers";
 
 type Client = SupabaseClient;
 const TABLE = "chillbros_leadbiz_buyers";
@@ -25,9 +25,15 @@ function account() {
   const password = String(process.env.LEADBIZ_SMTP_APP_PASSWORD || "").replace(/\s+/g, "");
   return user && password ? { user, password, fromName: LEADBIZ_BRAND } : null;
 }
-const dailyCap = () => Math.max(0, Math.min(50, Number(process.env.LEADBIZ_DAILY_CAP || 25) || 25));
-// Each in-window run sends at most this many, spreading the day's cap over the 9am–2pm runs.
-const PER_RUN = 5;
+// LEADBIZ_DAILY_CAP is a ceiling (max 100); the warm-up ramp in rampCap sets the actual pace.
+const envCap = () => Math.max(0, Math.min(100, Number(process.env.LEADBIZ_DAILY_CAP || 100) || 100));
+async function firstSentAt(client: Client) {
+  const { data } = await client.from(TABLE).select("emailed_at").not("emailed_at", "is", null).order("emailed_at").limit(1);
+  const at = data?.[0]?.emailed_at;
+  return at ? new Date(at) : null;
+}
+// Google searches per discovery run (each one a different trade/area from the rotation).
+const GOOGLE_SEARCHES_PER_RUN = 2;
 
 const CONTRACTORS = "chillbros_leadbiz_contractors";
 
@@ -86,11 +92,11 @@ async function readOwnSite(site: string) {
 }
 
 /** One Google Places search per run (a different trade/area each time), when a key is configured. */
-export async function discoverBuyersGoogle(client: Client, deadline: number, run?: LeadbizRun) {
+export async function discoverBuyersGoogle(client: Client, deadline: number, run?: LeadbizRun, slot = 0) {
   const key = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
   if (!key) return 0;
   const { count } = await client.from("chillbros_leadbiz_runs").select("id", { count: "exact", head: true });
-  const { trade, area } = googleRotation(count ?? 0, SCAN_AREAS.length);
+  const { trade, area } = googleRotation((count ?? 0) * GOOGLE_SEARCHES_PER_RUN + slot, SCAN_AREAS.length);
   const where = SCAN_AREAS[area];
   // Google rule: transient lookup only. Google's results are used here, in memory, just to
   // find each contractor's own website. We save only what that website publishes (name,
@@ -99,7 +105,7 @@ export async function discoverBuyersGoogle(client: Client, deadline: number, run
   const places = await searchPlacesTransient(key, `${GOOGLE_TRADE_QUERIES[trade]} in ${where.name}, San Antonio TX`, {
     pageSize: 20, bias: where, timeoutMs: Math.min(20_000, deadline - Date.now() - 2000),
   });
-  if (run) run.google = `${trade} @ ${where.name}: ${places.length}`;
+  if (run) run.google = `${run.google ? `${run.google}; ` : ""}${trade} @ ${where.name}: ${places.length}`;
   const queue = places.filter((p) => p.operational && p.website && isContractorName(p.name));
   const rows: BuyerRow[] = [];
   const worker = async () => {
@@ -202,8 +208,11 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   const { count: queued } = await client.from(TABLE).select("id", { count: "exact", head: true }).in("status", ["new", "ready"]);
   if ((queued ?? 0) < 40) {
     if (process.env.GOOGLE_PLACES_API_KEY) {
-      try { run.discovered = await discoverBuyersGoogle(client, Math.min(deadline, Date.now() + 90_000), run); }
-      catch (error) { run.note = error instanceof Error ? error.message : "google discovery failed"; }
+      const googleDeadline = Math.min(deadline, Date.now() + 120_000);
+      for (let slot = 0; slot < GOOGLE_SEARCHES_PER_RUN && Date.now() < googleDeadline - 20_000; slot++) {
+        try { run.discovered += await discoverBuyersGoogle(client, googleDeadline, run, slot); }
+        catch (error) { run.note = error instanceof Error ? error.message : "google discovery failed"; break; }
+      }
     } else {
       try { run.discovered = await discoverBuyers(client, Math.min(deadline, Date.now() + 90_000), run); }
       catch (error) { run.note = error instanceof Error ? error.message : "discovery failed"; }
@@ -217,7 +226,8 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   if (!sender) return { ...run, note: "Sender not configured (LEADBIZ_SMTP_USER / LEADBIZ_SMTP_APP_PASSWORD)." };
   if (!inSendWindow(now)) return { ...run, note: "Outside the weekday 9am–3pm Central send window." };
 
-  let budget = Math.min(PER_RUN, dailyCap() - (await sentToday(client, now)));
+  const cap = Math.min(envCap(), rampCap(await firstSentAt(client), now));
+  let budget = Math.min(perRunFor(cap), cap - (await sentToday(client, now)));
   if (budget <= 0) return { ...run, note: "Daily cap reached." };
 
   const due = new Date(now.getTime() - FOLLOW_UP_DAYS * 86400_000).toISOString();

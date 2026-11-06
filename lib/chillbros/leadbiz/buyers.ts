@@ -164,6 +164,16 @@ export function buyerFromElement(el: { type: string; id: number; tags?: Record<s
 }
 
 /** Central-time sending window: weekdays 9:00–2:59pm (business hours when contractor owners read email). */
+/** Sending warms up the new outreach inbox: 25/day for the first 3 days after the first send,
+ *  50/day through day 7, then 100/day. Sudden volume from a fresh Gmail gets it flagged. */
+export function rampCap(firstSentAt: Date | null, now = new Date()) {
+  if (!firstSentAt) return 25;
+  const days = Math.floor((now.getTime() - firstSentAt.getTime()) / 86400_000);
+  return days < 3 ? 25 : days < 7 ? 50 : 100;
+}
+/** Six in-window runs a day (9am–2pm hours), so each run sends its share of the day's cap. */
+export const perRunFor = (cap: number) => Math.max(1, Math.ceil(cap / 6));
+
 export function inSendWindow(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short", hour: "numeric", hour12: false }).formatToParts(now);
   const day = parts.find((p) => p.type === "weekday")?.value ?? "";
@@ -192,7 +202,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
     opener,
     "",
     `Packs for ${t.plural}, each with a fixed number of projects (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
-    ...PACKS.map((p) => `- ${p.name}: ${p.projects} projects${p.contacts ? ` + ${p.contacts} business contacts` : ""}, $${p.price}`),
+    ...PACKS.map((p) => `- ${p.name}: ${p.projects} projects${p.contacts ? ` + ${p.contacts} business contacts` : ""}, $${p.price}: ${salesLink(b.trade)}&pack=${p.key}`),
     ...(SELLING_PLANS.length ? [
       "",
       `Or get new projects every month, never repeats (${PLAN_TERM_MONTHS}-month term, billed monthly):`,
