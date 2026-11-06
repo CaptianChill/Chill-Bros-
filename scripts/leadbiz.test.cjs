@@ -52,6 +52,10 @@ test('offer email is trade-specific, has all links, address and unsubscribe', ()
   assert.match(text, /Unsubscribe: https:\/\/x\/u\/leads\?c=a&s=b/);
   assert.match(text, /We work these job sites every week/);
   assert.match(b.offerEmail({ business_name: 'X', trade: 'signs' }, 'u', true).subject, /^Re: /);
+  assert.match(subject, /^29 new/);
+  assert.match(text, /car washes, oil change/);
+  assert.match(b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u').subject, /^16 new/);
+  assert.doesNotMatch(b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u').text, /car wash/);
 });
 
 test('the map query never asks the free map servers for an unsupported regex token', () => {

@@ -113,23 +113,30 @@ export function inSendWindow(now = new Date()) {
   return !["Sat", "Sun"].includes(day) && hour >= 9 && hour <= 14;
 }
 
+// Projects in the New Openings Pack per trade: 16 restaurant/retail + 13 auto (hood cleaners skip auto).
+export const FOOD_OPENINGS = 16;
+export const AUTO_OPENINGS = 13;
+export const packProjects = (trade: Trade) => FOOD_OPENINGS + (trade === "hood_cleaning" ? 0 : AUTO_OPENINGS);
+
 export function offerEmail(b: { business_name: string; trade: Trade }, unsubscribeUrl: string, followUp = false) {
   const t = TRADE_LABEL[b.trade];
+  const n = packProjects(b.trade);
+  const mix = n > FOOD_OPENINGS ? `${FOOD_OPENINGS} new restaurants, grocery and quick-service openings plus ${AUTO_OPENINGS} new car washes, oil change, collision and auto repair shops` : "new restaurants, grocery and quick-service openings";
   const subject = followUp
     ? `Re: new San Antonio commercial projects for ${t.plural}`
-    : `16 new San Antonio commercial projects for ${t.plural}`;
+    : `${n} new San Antonio commercial projects for ${t.plural}`;
   const opener = followUp
     ? `Quick follow-up on the new commercial projects list. The founding rate is only open to the first few ${t.plural}, max 3 per trade.`
-    : `I track new restaurant and retail build-outs across San Antonio from Texas state construction filings. Right now there are 16 active projects (new restaurants, grocery and quick-service openings), each with the owner or tenant contact and phone, and every one of them needs ${t.hook}.`;
+    : `I track new commercial build-outs across San Antonio from Texas state construction filings. Right now there are ${n} active projects (${mix}), each with the owner or tenant contact and phone, and every one of them needs ${t.hook}.`;
   const text = [
     `Hi ${b.business_name} team,`,
     "",
     opener,
     "",
     `I'm offering packs to a few local ${t.plural} (max 3 per trade):`,
-    `- New Openings Pack, 16 verified projects: $150 founding rate (normally $250)`,
+    `- New Openings Pack, ${n} verified projects: $150 founding rate (normally $250)`,
     `  ${PAY_LINKS.openings}`,
-    `- Founding Bundle, the 16 projects + 50 ready-to-call restaurants and markets, with call openers written for your trade: $199`,
+    `- Founding Bundle, the ${n} projects + 50 ready-to-call restaurants and markets, with call openers written for your trade: $199`,
     `  ${PAY_LINKS.bundle}`,
     `- Commercial Starter Pack, 50 ready-to-call businesses: $75`,
     `  ${PAY_LINKS.starter}`,
