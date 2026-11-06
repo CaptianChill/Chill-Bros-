@@ -1,123 +1,99 @@
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { PAY_LINKS, LEADBIZ_PHONE, LEADBIZ_QUOTE } from "@/lib/chillbros/leadbiz/buyers";
+import type { Metadata } from "next";
 
-export const revalidate = 3600;
-export const metadata = {
+import { LEADBIZ_PHONE, LEADBIZ_QUOTE, TRADE_LABEL, packProjects, FOOD_OPENINGS, AUTO_OPENINGS } from "@/lib/chillbros/leadbiz/buyers";
+import { PACKS, PLANS, perProject, termTotal, type Product } from "@/lib/chillbros/leadbiz/catalog";
+import type { Trade } from "@/lib/chillbros/trade-fit";
+
+import { NewOpeningsFlyer, type FlyerPack, type FlyerTrade } from "./flyer";
+
+// App name/icon overrides live in ./layout.tsx (shared with /new-openings/terms).
+export const metadata: Metadata = {
   title: "San Antonio New Openings · Commercial lead packs for SA trades",
   description: "Verified new San Antonio restaurant, retail and auto build-outs from Texas state construction filings, with the owner or tenant contact and phone. Lead packs for local contractors.",
 };
 
-// Public sales page for the lead business. Counts are live; contacts are never shown here.
-async function liveCounts() {
-  try {
-    const db = createServiceRoleClient();
-    const [openings, ready] = await Promise.all([
-      db.from("chillbros_revenue_prospects").select("id", { count: "exact", head: true }).eq("category", "opening_remodel").eq("sales_status", "ready_to_call").eq("do_not_contact", false),
-      db.from("chillbros_revenue_prospects").select("id", { count: "exact", head: true }).eq("sales_status", "ready_to_call").eq("do_not_contact", false).not("contact_phone", "is", null),
-    ]);
-    return { openings: openings.count || 16, ready: ready.count || 230 };
-  } catch {
-    return { openings: 16, ready: 230 };
-  }
-}
+const EMAIL = "satxnewopenings@gmail.com";
 
-const TRADES = ["Plumbers", "Electricians", "Hood cleaners", "Pest control", "Commercial cleaning", "Sign companies", "Low voltage", "Security", "HVAC & refrigeration", "Hot side / kitchen equipment"];
-
-const PACKS = [
-  { name: "New Openings Pack", price: "$150", was: "$250", href: PAY_LINKS.openings, best: false,
-    points: (n: number) => [`${n} verified new openings & remodels`, "Owner or tenant contact + phone", "Project size, cost & timing", "Max 3 buyers per trade"] },
-  { name: "Founding Bundle", price: "$199", was: "$299", href: PAY_LINKS.bundle, best: true,
-    points: (n: number) => [`All ${n} new projects`, "+ 50 ready-to-call restaurants & markets", "Call openers written for your trade", "PDF + spreadsheet, delivered in 2 hours"] },
-  { name: "Commercial Starter Pack", price: "$75", was: null, href: PAY_LINKS.starter, best: false,
-    points: () => ["50 ready-to-call SA restaurants & markets", "Address, phone & business type", "Matched to your trade", "Delivered in 2 hours"] },
-  { name: "Auto Openings Pack", price: "$99", was: null, href: PAY_LINKS.auto, best: false, badge: "Auto only",
-    points: () => ["13 new car washes, oil change, collision & dealer service shops", "Owner or tenant contact + phone", "Call openers for your trade", "Not for hood cleaning or kitchen equipment"] },
-  { name: "Restaurant & Retail Pack", price: "$99", was: null, href: PAY_LINKS.food, best: false, badge: "Food & retail only",
-    points: () => ["16 new restaurant, grocery & retail build-outs", "Owner or tenant contact + phone", "Project size, cost & timing", "Call openers for your trade"] },
-  { name: "Exclusive Trade Bundle", price: "$449", was: null, href: PAY_LINKS.exclusive, best: false, badge: "1 buyer per trade",
-    points: (n: number) => [`Everything in the Founding Bundle (${n} projects + 50 businesses)`, "You're the only company in your trade on this list", "Exclusive for 30 days", "Only while your trade is still open"] },
+// Public sales flyer for the lead business. Fully static: no database reads, and it
+// never shows lead contact details or any lead-pack download link.
+// slug -> trade; slugs are the ?trade= deep links used in texts and emails.
+const TRADES: { slug: string; trade: Trade; label: string; need: string; checkout: string; opener: string }[] = [
+  { slug: "plumbers", trade: "plumbing", label: "Plumbers", need: "a plumber", checkout: "Plumbing",
+    opener: "Hi, this is [your name] with [your company]. Congrats on the new location. We do commercial rough-in, grease traps and backflow testing for new openings in San Antonio. Who's handling plumbing before your inspection?" },
+  { slug: "electricians", trade: "electrical", label: "Electricians", need: "an electrician", checkout: "Electrical",
+    opener: "Hi, this is [your name] with [your company]. Saw you're building out the new space. We wire panels, kitchen circuits and lighting for new commercial openings. Is your electrical locked in before inspection?" },
+  { slug: "hood-cleaners", trade: "hood_cleaning", label: "Hood cleaners", need: "a hood cleaner", checkout: "Hood cleaning",
+    opener: "Hi, this is [your name] with [your company]. Before your fire inspection the hood system has to be cleaned and certified. We do that for new kitchens all over SA. Want me to get you on the schedule before opening?" },
+  { slug: "pest-control", trade: "pest_control", label: "Pest control", need: "pest control", checkout: "Pest control",
+    opener: "Hi, this is [your name] with [your company]. The health inspector will want a pest program in place before you open. We set those up for new restaurants and stores. Who's handling that for you?" },
+  { slug: "commercial-cleaning", trade: "commercial_cleaning", label: "Commercial cleaning", need: "a cleaning crew", checkout: "Commercial cleaning",
+    opener: "Hi, this is [your name] with [your company]. When construction wraps you'll need a post-construction clean, then a nightly crew. We do both for new openings in SA. Can I send you a quote?" },
+  { slug: "signs", trade: "signs", label: "Sign companies", need: "signs", checkout: "Signs",
+    opener: "Hi, this is [your name] with [your company]. Congrats on the new build. We make and permit storefront and pylon signs for new San Antonio openings. Is your signage handled for opening day?" },
+  { slug: "low-voltage", trade: "low_voltage", label: "Low voltage", need: "low voltage", checkout: "Low voltage",
+    opener: "Hi, this is [your name] with [your company]. Before the walls close you'll want POS, network, music and camera cabling run. We do that for new openings in SA. Who's doing your low voltage?" },
+  { slug: "security", trade: "security", label: "Security", need: "security", checkout: "Security",
+    opener: "Hi, this is [your name] with [your company]. Before you stock the place you'll want cameras, an alarm and access control live. We install those for new San Antonio businesses. Have you picked a security company yet?" },
+  { slug: "hvac-refrigeration", trade: "hvac_refrigeration", label: "HVAC & refrigeration", need: "HVAC & refrigeration", checkout: "HVAC & refrigeration",
+    opener: "Hi, this is [your name] with [your company]. New openings need rooftop units, walk-in coolers and ice machines installed and on a service plan. We do that across SA. Who's handling your HVAC and refrigeration?" },
+  { slug: "kitchen-equipment", trade: "kitchen_equipment", label: "Hot side / kitchen equipment", need: "kitchen equipment", checkout: "Kitchen equipment",
+    opener: "Hi, this is [your name] with [your company]. Your fryers, ovens, ranges and dish machine need to be started up and serviced before opening. We do that for new SA kitchens. Who's doing your equipment startup?" },
 ];
 
-export default async function NewOpeningsPage() {
-  const { openings } = await liveCounts();
+export default function NewOpeningsPage() {
+  const trades: FlyerTrade[] = TRADES.map((t) => {
+    const projects = packProjects(t.trade);
+    return {
+      slug: t.slug, label: t.label, need: t.need, checkout: t.checkout, opener: t.opener,
+      plural: TRADE_LABEL[t.trade].plural, hook: TRADE_LABEL[t.trade].hook, projects,
+      mix: projects > FOOD_OPENINGS
+        ? `${FOOD_OPENINGS} restaurant & retail + ${AUTO_OPENINGS} auto (car washes, oil change, collision, dealer service)`
+        : `${FOOD_OPENINGS} restaurant & retail projects (auto shops left out: no kitchens to work on)`,
+    };
+  });
+  const card = (p: Product): FlyerPack => ({
+    key: p.key, name: p.name, price: `$${p.price}`, was: null, best: p.best, points: p.points,
+    perProject: `$${perProject(p).toFixed(2)}`, monthly: p.kind === "subscription", termTotal: `$${termTotal(p).toLocaleString("en-US")}`,
+  });
+  const packs = PACKS.map(card);
+  const plans = PLANS.map(card);
+
   return (
-    <main className="min-h-dvh bg-[#0B1E33] text-white">
+    <main className="min-h-dvh overflow-x-hidden bg-[#0B1E33] text-white">
       <div className="pointer-events-none fixed inset-0 opacity-[0.07]" style={{ backgroundImage: "linear-gradient(#7FD4FF 1px, transparent 1px), linear-gradient(90deg, #7FD4FF 1px, transparent 1px)", backgroundSize: "48px 48px" }} aria-hidden="true" />
-      <div className="relative mx-auto max-w-5xl px-4 pb-16 pt-6 sm:px-6">
+      <div className="relative mx-auto max-w-5xl px-4 pb-32 pt-5 sm:px-6 sm:pb-16">
         <header className="flex items-center justify-between gap-3">
           <div className="leading-tight">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#7FD4FF]">San Antonio</p>
-            <p className="text-2xl font-bold uppercase tracking-wide">New Openings</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#7FD4FF]">San Antonio</p>
+            <p className="text-xl font-bold uppercase tracking-wide sm:text-2xl">New Openings</p>
           </div>
-          <span className="rounded-md bg-[#FF7A59] px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#0B1E33]">Founding rate · first 5 buyers</span>
+          <a href={`tel:${LEADBIZ_PHONE.replace(/\D/g, "")}`} className="rounded-lg border border-[#7FD4FF]/40 px-3 py-2 text-sm font-bold text-[#7FD4FF]">{LEADBIZ_PHONE}</a>
         </header>
 
-        <section className="mt-12 max-w-3xl">
-          <h1 className="text-5xl font-bold uppercase leading-[0.95] sm:text-7xl">{openings} new commercial projects. <span className="text-[#FF7A59]">Building right now.</span></h1>
-          <p className="mt-5 max-w-2xl text-lg text-[#C9D6E3]">Verified San Antonio restaurant, retail and auto build-outs from Texas state construction filings, each with the owner or tenant contact and phone. Call them before your competition knows they exist.</p>
-          <a href={PAY_LINKS.bundle} className="mt-7 inline-flex min-h-12 items-center rounded-xl bg-[#F5C542] px-6 text-lg font-bold text-[#0B1E33] hover:brightness-105">Get the Founding Bundle, $199</a>
-          <p className="mt-3 text-sm text-[#8A9BB0]">Max 3 buyers per trade · delivered by email within 2 hours</p>
-        </section>
+        <NewOpeningsFlyer trades={trades} packs={packs} plans={plans} phone={LEADBIZ_PHONE} email={EMAIL} />
 
         <figure className="mt-12 max-w-3xl border-l-4 border-[#FF7A59] pl-5">
           <blockquote className="text-2xl font-bold leading-snug sm:text-3xl">&ldquo;{LEADBIZ_QUOTE}&rdquo;</blockquote>
-          <figcaption className="mt-2 text-sm text-[#8A9BB0]">Built by Chill Pros, San Antonio commercial HVAC &amp; refrigeration</figcaption>
         </figure>
 
-        <section className="mt-14 grid gap-x-4 gap-y-8 md:grid-cols-3">
-          {PACKS.map((p) => (
-            <div key={p.name} className={`relative flex flex-col rounded-2xl border p-5 ${p.best ? "border-[#7FD4FF] bg-[#12304D]" : "border-white/10 bg-[#102A44]"}`}>
-              {p.best || p.badge ? <span className="absolute -top-3 left-5 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">{p.best ? "Best value" : p.badge}</span> : null}
-              <p className="text-lg font-bold uppercase tracking-wide">{p.name}</p>
-              <p className="mt-3 flex items-baseline gap-3"><span className="text-5xl font-bold text-[#F5C542]">{p.price}</span>{p.was ? <span className="text-[#8A9BB0] line-through">{p.was}</span> : null}</p>
-              <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[#C9D6E3]">{p.points(openings).map((t) => <li key={t}>✓ {t}</li>)}</ul>
-              <a href={p.href} className={`mt-5 inline-flex min-h-12 items-center justify-center rounded-xl px-5 font-bold ${p.best ? "bg-[#F5C542] text-[#0B1E33]" : "border border-[#7FD4FF]/50 text-[#7FD4FF]"}`}>Buy now</a>
-            </div>
-          ))}
-        </section>
-
-        <section className="mt-14 grid gap-6 md:grid-cols-2 md:items-center">
-          <div>
-            <h2 className="text-3xl font-bold uppercase">What a lead looks like</h2>
-            <p className="mt-3 text-[#C9D6E3]">Every project comes straight from a state construction filing, so it&apos;s real, current and verifiable. You get who to call, their number, what&apos;s being built, how big, and when it opens.</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-[#102A44] p-5 font-mono text-sm">
-            <p className="text-xs uppercase tracking-wider text-[#7FD4FF]">Sample · details hidden</p>
-            <p className="mt-3 text-lg font-bold text-white">Quick-service restaurant · North SA</p>
-            <dl className="mt-3 grid grid-cols-[110px_1fr] gap-y-1.5 text-[#C9D6E3]">
-              <dt className="text-[#8A9BB0]">Project</dt><dd>New 2,899 sf build, $1.2M</dd>
-              <dt className="text-[#8A9BB0]">Opening</dt><dd>Nov 2026</dd>
-              <dt className="text-[#8A9BB0]">Contact</dt><dd><span className="rounded bg-white/15 px-10 text-transparent select-none">hidden</span> (tenant)</dd>
-              <dt className="text-[#8A9BB0]">Phone</dt><dd><span className="rounded bg-white/15 px-12 text-transparent select-none">hidden</span></dd>
-              <dt className="text-[#8A9BB0]">Source</dt><dd>Texas TDLR filing #</dd>
-            </dl>
-          </div>
-        </section>
-
-        <section className="mt-14">
-          <h2 className="text-3xl font-bold uppercase">How it works</h2>
-          <ol className="mt-5 grid gap-4 sm:grid-cols-3">
-            {["Pick a pack and pay securely with Square.", "Type your trade at checkout.", "Your PDF + spreadsheet, with call openers for your trade, arrives by email within 2 hours."].map((t, i) => (
+        <section className="mt-12">
+          <h2 className="text-2xl font-bold uppercase sm:text-3xl">How it works</h2>
+          <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+            {["Pick your trade and a pack, then pay securely with Square: card, Apple Pay, Google Pay or Cash App Pay.", "Type your trade at checkout so we send the right list.", "A private link to your projects, with call openers and a spreadsheet download, arrives by email within 2 hours."].map((t, i) => (
               <li key={t} className="rounded-2xl border border-white/10 bg-[#102A44] p-5"><p className="text-3xl font-bold text-[#FF7A59]">0{i + 1}</p><p className="mt-2 text-[#C9D6E3]">{t}</p></li>
             ))}
           </ol>
+          <p className="mt-5 max-w-3xl text-[#C9D6E3]">One commercial account is worth thousands a year in recurring work. No more than 3 contractors in your trade ever get the same project, and you never get a project twice, so you&apos;re not fighting the whole city for the same jobs.</p>
         </section>
 
-        <section className="mt-14">
-          <h2 className="text-3xl font-bold uppercase">Built for SA trades</h2>
-          <div className="mt-4 flex flex-wrap gap-2">{TRADES.map((t) => <span key={t} className="rounded-full border border-[#7FD4FF]/40 px-4 py-2 text-sm text-[#7FD4FF]">{t}</span>)}</div>
-          <p className="mt-5 max-w-3xl text-[#C9D6E3]">One commercial account is worth thousands a year in recurring work. Only 3 contractors per trade get each list, so you&apos;re not fighting the whole city for the same jobs.</p>
-          <p className="mt-3 max-w-3xl font-semibold text-white"><span className="mr-2 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">New</span>Now including auto: 13 new car washes, oil change, collision and dealer service shops. Included for every trade except hood cleaning and kitchen equipment.</p>
+        <section className="mt-12 rounded-2xl border border-[#7FD4FF]/40 bg-[#12304D] p-6 text-center">
+          <p className="text-2xl font-bold uppercase">Want new projects every month?</p>
+          <p className="mt-2 text-[#C9D6E3]">The Local and Pro plans send fresh projects for your trade each month, never repeats. 12-month term, billed monthly.</p>
+          <p className="mt-3 text-[#C9D6E3]">Questions? <a className="font-bold text-white underline-offset-2 hover:underline" href={`tel:${LEADBIZ_PHONE.replace(/\D/g, "")}`}>Call</a> or <a className="font-bold text-white underline-offset-2 hover:underline" href={`sms:${LEADBIZ_PHONE.replace(/\D/g, "")}`}>text</a> {LEADBIZ_PHONE} · <a className="font-bold text-white underline-offset-2 hover:underline" href={`mailto:${EMAIL}`}>{EMAIL}</a></p>
         </section>
 
-        <section className="mt-14 rounded-2xl border border-[#7FD4FF]/40 bg-[#12304D] p-6 text-center">
-          <p className="text-2xl font-bold uppercase">Founding pricing ends after the first 5 buyers.</p>
-          <a href={PAY_LINKS.bundle} className="mt-5 inline-flex min-h-12 items-center rounded-xl bg-[#F5C542] px-6 text-lg font-bold text-[#0B1E33]">Get the Founding Bundle, $199</a>
-          <p className="mt-3 text-sm text-[#8A9BB0]">Questions? Call or text {LEADBIZ_PHONE}</p>
-        </section>
-
-        <footer className="mt-14 border-t border-white/10 pt-6 text-sm text-[#8A9BB0]">
-          <p>Built by Chill Pros, a working San Antonio commercial HVAC &amp; refrigeration company. <span className="text-white">A service of Chill Professionals LLC</span> · {LEADBIZ_PHONE} · satxnewopenings@gmail.com</p>
+        <footer className="mt-12 border-t border-white/10 pt-6 text-sm text-[#8A9BB0]">
+          <p><span className="text-white">San Antonio New Openings</span>, a service of Chill Professionals LLC · {LEADBIZ_PHONE} · {EMAIL}</p>
           <p className="mt-2">Project data from public Texas Department of Licensing and Regulation filings. Business data © OpenStreetMap contributors.</p>
         </footer>
       </div>

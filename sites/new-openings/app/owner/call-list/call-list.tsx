@@ -34,7 +34,7 @@ export function CallList({ buyers, marks }: { buyers: Buyer[]; marks: Record<str
   };
   const trades = ["All", ...Array.from(new Set(buyers.map((b) => b.trade)))];
   const rows = useMemo(() => buyers.filter((b) => (trade === "All" || b.trade === trade) && (!q || b.name.toLowerCase().includes(q.toLowerCase())) && (!hideCalled || !called[b.license])), [buyers, trade, q, hideCalled, called]);
-  const bundle = PACKS.find((p) => p.key === "bundle")!;
+  const growth = PACKS.find((p) => p.key === "growth")!;
 
   if (!buyers.length) return <p className="mt-6 rounded-xl border border-[#FF7A59]/50 p-3 text-[#FF7A59]">The state license data didn&apos;t load. Try again in a few minutes.</p>;
   return (
@@ -45,7 +45,7 @@ export function CallList({ buyers, marks }: { buyers: Buyer[]; marks: Record<str
       </div>
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company name" className="h-11 w-full rounded-xl border border-white/15 bg-black/30 px-4" />
       {failed ? <p className="rounded-xl border border-[#FF7A59]/50 p-2 text-sm text-[#FF7A59]">That last update didn&apos;t save. Check your connection and try again.</p> : null}
-      <p className="text-sm text-[#8A9BB0]">{rows.length} contractors · {Object.keys(called).length} called · {Object.values(called).filter((v) => v === "sold").length} sold · Text after the call: {bundle.href}</p>
+      <p className="text-sm text-[#8A9BB0]">{rows.length} contractors · {Object.keys(called).length} called · {Object.values(called).filter((v) => v === "sold").length} sold · Text after the call: {growth.href.split("?")[0]}</p>
       {trade !== "All" && OPENER[trade] ? <p className="rounded-xl border border-[#7FD4FF]/30 bg-[#12304D] p-3 text-sm">&ldquo;{OPENER[trade]}&rdquo;</p> : null}
       <ul className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-black/30">
         {rows.slice(0, 300).map((b) => (
