@@ -90,7 +90,7 @@ test('buyer-facing copy never says "Chill Pros" (legal entity Chill Professional
     assert.match(text, /Chill Professionals LLC, 15226 Preston Pass/);
     assert.match(text, /Unsubscribe: https:\/\/x\/u\/leads/);
   }
-  for (const file of ['app/new-openings/page.tsx', 'app/new-openings/flyer.tsx', 'app/u/leads/page.tsx', 'lib/chillbros/leadbiz/buyers.ts', 'lib/chillbros/leadbiz/buyer-scripts.ts', 'sites/new-openings/lib/brand.ts', 'sites/new-openings/app/page.tsx']) {
+  for (const file of ['app/new-openings/page.tsx', 'app/new-openings/flyer.tsx', 'app/new-openings/loading.tsx', 'app/u/leads/loading.tsx', 'app/u/leads/page.tsx', 'lib/chillbros/leadbiz/buyers.ts', 'lib/chillbros/leadbiz/buyer-scripts.ts', 'sites/new-openings/lib/brand.ts', 'sites/new-openings/app/page.tsx']) {
     assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /chill\s*pros\b/i, file);
   }
   // The unsubscribe page must not wrap itself in the Chill Pros customer frame/logo.
