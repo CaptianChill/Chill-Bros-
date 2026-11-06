@@ -11,14 +11,15 @@ export const metadata: Metadata = {
 const EMAIL = "satxnewopenings@gmail.com";
 
 const TERMS: [string, string][] = [
-  ["What you're buying", "A lead pack is a digital information product (PDF + spreadsheet) delivered by email. It is not a service, a referral or an appointment."],
+  ["What you're buying", "A lead pack is a digital information product: a fixed number of projects for your trade, delivered by email as a private link with a spreadsheet download. It is not a service, a referral or an appointment."],
   ["Where the leads come from", "Projects and businesses come from public records (Texas TDLR construction filings, City of San Antonio reports and OpenStreetMap) as of the date the pack was prepared. We don't guarantee any lead is accurate, current or still available. Verify details before you quote or schedule work."],
   ["No guarantee of results", "We sell information only. We don't guarantee jobs, contracts, callbacks, responses or revenue."],
   ["You work the leads", "You are solely responsible for contacting leads by phone, text or email, winning and locking in the work, and following every law that applies to you, including the TCPA, Texas telemarketing rules, CAN-SPAM, do-not-call rules and your trade's licensing requirements."],
   ["We're not part of your deals", "We are not a party to any agreement, bid or dispute between you and a lead."],
-  ["All sales final", "Sales are final once your download link is delivered. If a file is damaged or never arrives, contact us within 7 days and we'll resend or fix it. If we fail to deliver your pack, we'll refund you."],
-  ["Your business use only", "The list is licensed for your own business. Don't resell, share, publish or give it to anyone else."],
-  ["Shared lists", "Each list is sold to up to 3 buyers per trade, so other contractors may contact the same leads."],
+  ["All sales final", "Sales are final once your link is delivered. If a file is damaged or never arrives, contact us within 7 days and we'll resend or fix it. If we fail to deliver your pack, we'll refund you."],
+  ["Your business use only", "Each pack is licensed to the buying company only and is marked with your name and order number. Don't resell, forward, post or share it or your link. We record when your link is opened, and we may turn off access to a pack that has been shared."],
+  ["Shared projects", "Each project is sold to no more than 3 buyers in the same trade, so other contractors may contact the same leads. You will never be sold the same project twice."],
+  ["Monthly plans", "Plans renew each month through Square until you cancel; cancel anytime and you keep what was already delivered. Each month you get at least the number of new projects your plan lists. If fewer qualifying projects are filed that month, the difference carries to your next delivery, or we refund it if you cancel."],
   ["Limit of liability", "Our total liability for any claim is limited to the price you paid for the pack. These terms are governed by Texas law, and any dispute will be handled in Bexar County, Texas."],
   ["Agreement", "By completing checkout you agree to these terms."],
 ];

@@ -2,6 +2,8 @@
 // writing the offer email. No I/O here so it is unit-tested (scripts/leadbiz.test.cjs).
 import type { Trade } from "../trade-fit";
 
+import { MAX_BUYERS_PER_TRADE, PACKS, PLANS, TRADE_SLUG } from "./catalog";
+
 export const LEADBIZ_BRAND = "San Antonio New Openings";
 export const LEADBIZ_PHONE = "(210) 904-9306";
 export const LEADBIZ_QUOTE = "We work these job sites every week. We know which ones are worth the call.";
@@ -10,7 +12,14 @@ export const LEADBIZ_POSTAL = "Chill Professionals LLC, 15226 Preston Pass, San 
 // chillprostx.com DNS points at Vercel (see docs/2026-09-21-session-log.md).
 export const LEADBIZ_TERMS_URL = "https://chill-bros.vercel.app/new-openings/terms";
 export const LEADBIZ_TERMS_EFFECTIVE = "November 6, 2026";
-export const PAY_LINKS = {
+// Public sales page. Every Buy goes through /new-openings/buy (capacity gate), never straight to Square.
+export const LEADBIZ_SALES_URL = "https://chill-bros.vercel.app/new-openings";
+export const salesLink = (trade: Trade) => `${LEADBIZ_SALES_URL}?trade=${TRADE_SLUG[trade]}`;
+
+// RETIRED Square links from the v1 lineup (all-projects packs + $449 exclusive). Not shown to
+// buyers anymore; listed on the owner page so they can be turned off in Square. If one is paid
+// anyway, the ledger still honors it (products legacy_* in chillbros_leadpack_products).
+export const LEGACY_PAY_LINKS = {
   openings: "https://square.link/u/RStoSpmq",
   bundle: "https://square.link/u/6Cdb25fY",
   starter: "https://square.link/u/DMHFLgWQ",
@@ -175,24 +184,20 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
     ? `Re: new San Antonio commercial projects for ${t.plural}`
     : `${n} new San Antonio commercial projects for ${t.plural}`;
   const opener = followUp
-    ? `Quick follow-up on the new commercial projects list. The founding rate is only open to the first few ${t.plural}, max 3 per trade.`
+    ? `Quick follow-up on the new commercial projects list. Each project goes to no more than ${MAX_BUYERS_PER_TRADE} ${t.plural}, so open spots go first come, first served.`
     : `I track new commercial build-outs across San Antonio from Texas state construction filings. Right now there are ${n} active projects (${mix}), each with the owner or tenant contact and phone, and every one of them needs ${t.hook}.`;
   const text = [
     `Hi ${b.business_name} team,`,
     "",
     opener,
     "",
-    `I'm offering packs to a few local ${t.plural} (max 3 per trade):`,
-    `- New Openings Pack, ${n} verified projects: $150 founding rate (normally $250)`,
-    `  ${PAY_LINKS.openings}`,
-    `- Founding Bundle, the ${n} projects + 50 ready-to-call restaurants and markets, with call openers written for your trade: $199`,
-    `  ${PAY_LINKS.bundle}`,
-    `- Commercial Starter Pack, 50 ready-to-call businesses: $75`,
-    `  ${PAY_LINKS.starter}`,
-    `- Just one industry: Restaurant & Retail Pack (16 projects) $99 ${PAY_LINKS.food}`,
-    ...(n > FOOD_OPENINGS ? [`  or Auto Openings Pack (13 car washes, oil change and repair shops) $99 ${PAY_LINKS.auto}`] : []),
-    `- Exclusive: the whole bundle and no other ${t.plural} get it for 30 days: $449`,
-    `  ${PAY_LINKS.exclusive}`,
+    `Packs for ${t.plural}, each with a fixed number of projects (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
+    ...PACKS.map((p) => `- ${p.name}: ${p.projects} projects${p.contacts ? ` + ${p.contacts} business contacts` : ""}, $${p.price}`),
+    "",
+    "Or get new projects every month, never repeats, cancel anytime:",
+    ...PLANS.map((p) => `- ${p.name}: at least ${p.projects} new projects a month, $${p.price}/month`),
+    "",
+    `Pick your pack here: ${salesLink(b.trade)}`,
     "",
     "Delivered by email within 2 hours of checkout. Reply here with any questions.",
     "",

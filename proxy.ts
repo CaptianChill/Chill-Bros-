@@ -35,7 +35,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/hq",
   // BB Command Center: static owner home screen (no customer data; links + public weather only).
   "/command-center",
-  // Lead business: paid lead-pack downloads under an unguessable token path (public/lp/<token>/), linked only in delivery emails.
+  // Lead business: per-order lead-pack pages /lp/o/<token> (64-hex token, revocable, checked in the database).
   "/lp",
   // Lead business public sales page (no customer data; live counts only).
   "/new-openings",

@@ -1,5 +1,5 @@
 // Call scripts and result labels for the Lead Buyers list (app tab and PDFs).
-import { LEADBIZ_BRAND, PAY_LINKS } from "./buyers";
+import { LEADBIZ_BRAND, LEADBIZ_SALES_URL } from "./buyers";
 
 const hook: Record<string, [string, string]> = {
   Electricians: ["electricians", "panels, kitchen circuits and lighting before inspection"],
@@ -11,7 +11,7 @@ const hook: Record<string, [string, string]> = {
 
 export const BUYER_TRADES = Object.keys(hook);
 export const BUYER_SCRIPTS: Record<string, string> = Object.fromEntries(Object.entries(hook).map(([t, [plural, need]]) => [t,
-  `Hi, this is [your name] with ${LEADBIZ_BRAND}. We track new commercial build-outs from state filings. I've got 29 new commercial projects building in San Antonio right now, restaurants, retail and auto shops, and each one needs ${need}, with the owner's contact and phone. I only sell it to 3 ${plural}. Can I text you the link? It's $199 for the bundle: ${PAY_LINKS.bundle}`]));
+  `Hi, this is [your name] with ${LEADBIZ_BRAND}. We track new commercial build-outs from state filings. I've got new commercial projects building in San Antonio right now, restaurants, retail and auto shops, and each one needs ${need}, with the owner's contact and phone. No more than 3 ${plural} ever get the same project. Can I text you the link? Packs start at $89 for 5 projects, or $99 a month for new ones every month: ${LEADBIZ_SALES_URL}`]));
 
 export const CALL_RESULTS: [string, string][] = [["", "Not called"], ["called", "No answer / VM"], ["callback", "Call back"], ["interested", "Interested, link sent"], ["sold", "Sold"], ["not_interested", "Not interested"], ["wrong_number", "Wrong number"]];
 export const RESULT_LABEL = Object.fromEntries(CALL_RESULTS) as Record<string, string>;

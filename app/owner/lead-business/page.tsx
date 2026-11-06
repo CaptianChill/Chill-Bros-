@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { SectionCard } from "@/components/section-card";
-import { PAY_LINKS, TRADE_LABEL } from "@/lib/chillbros/leadbiz/buyers";
+import { LEGACY_PAY_LINKS, TRADE_LABEL } from "@/lib/chillbros/leadbiz/buyers";
+import { MAX_BUYERS_PER_TRADE, SLUG_TRADE } from "@/lib/chillbros/leadbiz/catalog";
+
+import { revokeLeadPackOrder } from "./actions";
 import { getOwnerProfile } from "@/lib/chillbros/sent-invoice-history";
 import { TRADES, type Trade } from "@/lib/chillbros/trade-fit";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
@@ -12,6 +15,9 @@ export const dynamic = "force-dynamic";
 
 type Buyer = { business_name: string; trade: Trade; email: string | null; status: string; emailed_at: string | null; followup_at: string | null; last_error: string | null };
 type Run = { ran_at: string; result: Record<string, unknown> };
+type Usage = { trade: string; projects_total: number; projects_open: number; projects_full: number; buyers: number };
+type Order = { id: string; square_ref: string; product: string; trade: string | null; buyer_email: string; buyer_name: string | null; amount_cents: number | null; status: string; note: string | null; projects_owed: number; projects_delivered: number; created_at: string; first_opened_at: string | null; open_count: number };
+type ProductRow = { key: string; name: string; kind: string; price_cents: number; projects: number; contacts: number; on_sale: boolean; square_link: string | null };
 
 const when = (v: string | null) => (v ? new Date(v).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—");
 
@@ -25,12 +31,19 @@ export default async function LeadBusinessPage() {
   if (!(await getOwnerProfile())) redirect("/");
   const db = createServiceRoleClient();
   const { dayAgo, weekAgo } = windows();
-  const [{ data: buyers }, { data: runs }, ready, unsubs] = await Promise.all([
+  const [{ data: buyers }, { data: runs }, ready, unsubs, { data: usage }, { data: orders }, { data: products }] = await Promise.all([
     db.from("chillbros_leadbiz_buyers").select("business_name,trade,email,status,emailed_at,followup_at,last_error").order("emailed_at", { ascending: false, nullsFirst: false }).limit(2000),
     db.from("chillbros_leadbiz_runs").select("ran_at,result").order("id", { ascending: false }).limit(6),
     db.from("chillbros_revenue_prospects").select("id", { count: "exact", head: true }).eq("sales_status", "ready_to_call").eq("do_not_contact", false),
     db.from("chillbros_outreach_suppressions").select("contact", { count: "exact", head: true }),
+    db.rpc("chillbros_leadpack_trade_usage"),
+    db.from("chillbros_leadpack_orders").select("id,square_ref,product,trade,buyer_email,buyer_name,amount_cents,status,note,projects_owed,projects_delivered,created_at,first_opened_at,open_count").order("created_at", { ascending: false }).limit(100),
+    db.from("chillbros_leadpack_products").select("key,name,kind,price_cents,projects,contacts,on_sale,square_link").order("sort"),
   ]);
+  const usageRows = (usage ?? []) as Usage[];
+  const orderRows = (orders ?? []) as Order[];
+  const productRows = (products ?? []) as ProductRow[];
+  const tradeName = (slug: string | null) => (slug && SLUG_TRADE[slug] ? TRADE_LABEL[SLUG_TRADE[slug]].plural : slug ?? "no trade");
   const list = (buyers ?? []) as Buyer[];
   const sentDay = list.filter((b) => (b.emailed_at && b.emailed_at >= dayAgo) || (b.followup_at && b.followup_at >= dayAgo)).length;
   const sentWeek = list.filter((b) => b.emailed_at && b.emailed_at >= weekAgo).length;
@@ -62,18 +75,48 @@ export default async function LeadBusinessPage() {
 
       {lastRun ? <p className="rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-zinc-300">Last run: {String(lastRun.result.note ?? `found ${lastRun.result.discovered ?? 0}, emails ${lastRun.result.sent ?? 0}, follow-ups ${lastRun.result.followedUp ?? 0}`)}</p> : null}
 
-      <SectionCard title="Sales links">
-        <div className="flex flex-wrap gap-2 text-sm">
+      <SectionCard title="Lead pack lineup" description="Buy buttons go through the capacity check first. A product without a Square link shows “opening soon” to buyers.">
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs uppercase text-zinc-400"><tr><th className="py-2">Product</th><th>Price</th><th>Projects</th><th>Square link</th></tr></thead>
+          <tbody>{productRows.filter((p) => p.kind !== "legacy").map((p) => <tr key={p.key} className="border-t border-white/10">
+            <td className="py-2 text-white">{p.name}</td>
+            <td>${(p.price_cents / 100).toFixed(0)}{p.kind === "subscription" ? "/mo" : ""}</td>
+            <td>{p.projects}{p.contacts ? ` + ${p.contacts} contacts` : ""}{p.kind === "subscription" ? " / month" : ""}</td>
+            <td>{p.square_link && p.on_sale ? <a className="text-cyan-200 underline" href={p.square_link} target="_blank">live ↗</a> : <span className="text-amber-200">needs link</span>}</td>
+          </tr>)}</tbody>
+        </table>
+        <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <a className="rounded-xl border border-cyan-300/40 px-4 py-2.5 text-cyan-100" href="/new-openings" target="_blank">Public sales page ↗</a>
-          <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href={PAY_LINKS.bundle} target="_blank">Bundle $199</a>
-          <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href={PAY_LINKS.openings} target="_blank">Openings $150</a>
-          <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href={PAY_LINKS.starter} target="_blank">Starter $75</a>
-          <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href={PAY_LINKS.food} target="_blank">Restaurant & Retail $99</a>
-          <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href={PAY_LINKS.auto} target="_blank">Auto $99</a>
-          <a className="rounded-xl border border-amber-300/40 px-4 py-2.5 text-amber-100" href={PAY_LINKS.exclusive} target="_blank">Exclusive $449</a>
           <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href="https://app.squareup.com/dashboard/sales/transactions" target="_blank">Sales in Square ↗</a>
           <Link className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href="/revenue-radar/call-list">Call List by trade</Link>
         </div>
+        <details className="mt-3 text-sm text-zinc-400">
+          <summary className="cursor-pointer">Old v1 Square links: turn these off in Square</summary>
+          <ul className="mt-2 space-y-1">{Object.entries(LEGACY_PAY_LINKS).map(([k, u]) => <li key={k}>{k}: <a className="underline" href={u} target="_blank">{u}</a></li>)}</ul>
+          <p className="mt-2">If one is paid anyway the delivery still works and is recorded; the $449 Exclusive is auto-flagged for refund.</p>
+        </details>
+      </SectionCard>
+
+      <SectionCard title="Projects left per trade" description={`Each project can go to ${MAX_BUYERS_PER_TRADE} buyers per trade. "Full" means all ${MAX_BUYERS_PER_TRADE} slots are taken.`}>
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs uppercase text-zinc-400"><tr><th className="py-2">Trade</th><th>Buyers</th><th>Open</th><th>Full</th><th>Total</th></tr></thead>
+          <tbody>{usageRows.map((u) => <tr key={u.trade} className="border-t border-white/10"><td className="py-2 capitalize text-white">{tradeName(u.trade)}</td><td>{u.buyers}</td><td className={u.projects_open < 5 ? "text-amber-200" : ""}>{u.projects_open}</td><td>{u.projects_full}</td><td>{u.projects_total}</td></tr>)}</tbody>
+        </table>
+      </SectionCard>
+
+      <SectionCard title="Lead pack orders" description="Every delivery is recorded here. Revoke turns the buyer's link off and frees their project slots (use after a refund or if a pack was shared).">
+        {orderRows.length ? <ul className="divide-y divide-white/10 text-sm">
+          {orderRows.map((o) => <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+            <div className="min-w-0">
+              <p className="truncate text-white">{o.buyer_name ?? o.buyer_email} <span className="text-zinc-500">· {o.product} · {tradeName(o.trade)}</span></p>
+              <p className="text-xs text-zinc-400">{when(o.created_at)} · {o.square_ref} · {o.projects_delivered}/{o.projects_owed} projects · opened {o.open_count}×{o.note ? ` · ${o.note}` : ""}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`rounded-full px-2 py-0.5 text-xs ${o.status === "delivered" ? "bg-emerald-400/15 text-emerald-200" : o.status === "revoked" ? "bg-zinc-500/20 text-zinc-300" : "bg-amber-400/15 text-amber-200"}`}>{o.status.replace("_", " ")}</span>
+              {o.status === "delivered" ? <form action={revokeLeadPackOrder}><input type="hidden" name="id" value={o.id} /><button className="rounded-lg border border-red-300/40 px-2.5 py-1 text-xs text-red-200">Revoke</button></form> : null}
+            </div>
+          </li>)}
+        </ul> : <p className="text-sm text-zinc-400">No lead pack orders yet.</p>}
       </SectionCard>
 
       <SectionCard title="Contractors by trade">

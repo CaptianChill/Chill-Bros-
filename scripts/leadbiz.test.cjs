@@ -4,10 +4,19 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const ts = require('typescript');
 
-const src = ts.transpileModule(fs.readFileSync('lib/chillbros/leadbiz/buyers.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-const mod = { exports: {} };
-new Function('require', 'module', 'exports', src)(require, mod, mod.exports);
-const b = mod.exports;
+const path = require('node:path');
+// Transpile a TS module (and its relative imports) on the fly.
+const cache = {};
+function load(file) {
+  if (cache[file]) return cache[file].exports;
+  const src = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const mod = (cache[file] = { exports: {} });
+  const req = (id) => (id.startsWith('.') ? load(path.join(path.dirname(file), id) + '.ts') : require(id));
+  new Function('require', 'module', 'exports', src)(req, mod, mod.exports);
+  return mod.exports;
+}
+const b = load('lib/chillbros/leadbiz/buyers.ts');
+const c = load('lib/chillbros/leadbiz/catalog.ts');
 
 test('classifies contractor buyers into the 8 trades', () => {
   assert.equal(b.classifyBuyer({ name: 'Alamo City Plumbing' }), 'plumbing');
@@ -47,10 +56,13 @@ test('sends only weekdays 9am-2:59pm Central', () => {
   assert.equal(b.inSendWindow(new Date('2026-11-07T16:00:00Z')), false); // Saturday
 });
 
-test('offer email is trade-specific, has all links, address and unsubscribe', () => {
+test('offer email is trade-specific, sells the v2 lineup through the sales page, address and unsubscribe', () => {
   const { subject, text } = b.offerEmail({ business_name: 'Bug Busters', trade: 'pest_control' }, 'https://x/u/leads?c=a&s=b');
   assert.match(subject, /pest control companies/);
-  for (const url of Object.values(b.PAY_LINKS)) assert.ok(text.includes(url));
+  assert.ok(text.includes('https://chill-bros.vercel.app/new-openings?trade=pest-control'));
+  for (const p of [...c.PACKS, ...c.PLANS]) assert.ok(text.includes(p.name) && text.includes(`$${p.price}`), p.name);
+  for (const url of Object.values(b.LEGACY_PAY_LINKS)) assert.ok(!text.includes(url), 'no retired Square links');
+  assert.doesNotMatch(text, /\$449|exclusive|founding/i);
   assert.match(text, /15226 Preston Pass, San Antonio, TX 78247/);
   assert.match(text, /Unsubscribe: https:\/\/x\/u\/leads\?c=a&s=b/);
   assert.match(text, /We work these job sites every week/);
@@ -59,8 +71,7 @@ test('offer email is trade-specific, has all links, address and unsubscribe', ()
   assert.match(text, /car washes, oil change/);
   assert.match(b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u').subject, /^16 new/);
   assert.doesNotMatch(b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u').text, /car wash/);
-  assert.ok(!b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u').text.includes(b.PAY_LINKS.auto));
-  assert.match(text, /\$449/);
+
 });
 
 test('the map query never asks the free map servers for an unsupported regex token', () => {
@@ -99,13 +110,14 @@ test('buyer-facing copy never says "Chill Pros" (legal entity Chill Professional
   assert.doesNotMatch(fs.readFileSync('app/u/leads/page.tsx', 'utf8'), /CustomerFrame|PlatformLogo/);
 });
 
-test('public flyer never shows lead contacts or pack download links, and buys only through real Square links', () => {
+test('public flyer never shows lead contacts or pack download links, and buys only through the capacity gate', () => {
   const page = fs.readFileSync('app/new-openings/page.tsx', 'utf8') + fs.readFileSync('app/new-openings/flyer.tsx', 'utf8');
   assert.doesNotMatch(page, /\/lp\//);
   assert.doesNotMatch(page, /createServiceRoleClient|from\("chillbros_/);
   const links = page.match(/https:\/\/square\.link\/u\/\w+/g) || [];
-  assert.equal(links.length, 0, 'flyer uses PAY_LINKS from buyers.ts, not its own copies');
-  assert.match(page, /PAY_LINKS/);
+  assert.equal(links.length, 0, 'no Square links on the flyer: Buy goes through /new-openings/buy');
+  assert.match(page, /\/new-openings\/buy\?product=/);
+  assert.doesNotMatch(page, /PAY_LINKS|Exclusive|founding/i);
   for (const slug of ['plumbers', 'electricians', 'hood-cleaners', 'pest-control', 'commercial-cleaning', 'signs', 'low-voltage', 'security', 'hvac-refrigeration', 'kitchen-equipment']) assert.match(page, new RegExp(`"${slug}"`), slug);
   assert.match(page, /satxnewopenings@gmail\.com/);
   assert.equal(b.packProjects('hood_cleaning'), 16);
@@ -180,7 +192,7 @@ test('Google buyer discovery saves only own-site data + place_id, never Google p
 
 test('lead pack terms: public page covers every point, email links it, flyer gates Buy behind the checkbox', () => {
   const terms = fs.readFileSync('app/new-openings/terms/page.tsx', 'utf8');
-  for (const re of [/digital information product/, /TDLR/, /OpenStreetMap/, /don't guarantee any lead is accurate, current or still available/, /Verify details/, /don't guarantee jobs, contracts/, /TCPA/, /Texas telemarketing/, /CAN-SPAM/, /not a party/, /final once your download link is delivered/, /within 7 days/, /refund/, /Don't resell, share/, /up to 3 buyers per trade/, /limited to the price you paid/, /Texas law/, /Bexar County/, /By completing checkout you agree/, /Effective/, /LEADBIZ_POSTAL/, /satxnewopenings@gmail\.com/]) assert.match(terms, re);
+  for (const re of [/digital information product/, /TDLR/, /OpenStreetMap/, /don't guarantee any lead is accurate, current or still available/, /Verify details/, /don't guarantee jobs, contracts/, /TCPA/, /Texas telemarketing/, /CAN-SPAM/, /not a party/, /final once your link is delivered/, /within 7 days/, /refund/, /Don't resell, forward/, /no more than 3 buyers in the same trade/, /never be sold the same project twice/, /Monthly plans/, /cancel anytime/, /limited to the price you paid/, /Texas law/, /Bexar County/, /By completing checkout you agree/, /Effective/, /LEADBIZ_POSTAL/, /satxnewopenings@gmail\.com/]) assert.match(terms, re);
   assert.doesNotMatch(terms, /chill\s*pros\b/i);
   assert.equal(b.LEADBIZ_POSTAL, 'Chill Professionals LLC, 15226 Preston Pass, San Antonio, TX 78247');
   assert.match(b.offerEmail({ business_name: 'X', trade: 'signs' }, 'u').text, /Lead Pack Terms: https:\/\/chill-bros\.vercel\.app\/new-openings\/terms/);
@@ -188,5 +200,49 @@ test('lead pack terms: public page covers every point, email links it, flyer gat
   assert.match(flyer, /type="checkbox"/);
   assert.match(flyer, /if \(agreed\) return <a href=\{href\}/, 'Buy is a real link only once agreed');
   assert.doesNotMatch(flyer, /<a href=\{(p|pack)\.href\}/, 'no Buy link bypasses the checkbox gate');
+  assert.match(flyer, /const ready = agreed && Boolean\(trade\)/, 'Buy also needs a trade picked');
   assert.match(flyer, /By buying you agree to the/);
+});
+
+test('v2 lineup: fixed counts, fair per-project prices, no exclusive', () => {
+  assert.deepEqual(c.PACKS.map((p) => [p.key, p.price, p.projects, p.contacts]), [['starter', 89, 5, 0], ['trade', 149, 9, 0], ['growth', 199, 13, 0], ['pro', 249, 16, 50]]);
+  assert.deepEqual(c.PLANS.map((p) => [p.key, p.price, p.projects]), [['local', 99, 6], ['pro_plan', 179, 12]]);
+  const per = c.PACKS.filter((p) => !p.contacts).map(c.perProject);
+  for (let i = 1; i < per.length; i++) assert.ok(per[i] < per[i - 1], 'bigger project-only packs cost less per project');
+  assert.ok(c.perProject(c.PACKS.find((p) => p.key === 'pro')) < 16, 'Pro Bundle (with 50 contacts) stays under $16/project');
+  for (const p of c.PRODUCTS) assert.ok(c.perProject(p) >= 14 && c.perProject(p) <= 18, `${p.key} stays in the $14-18/project band`);
+  assert.equal(c.MAX_BUYERS_PER_TRADE, 3);
+  assert.equal(Object.keys(c.SLUG_TRADE).length, 10);
+  assert.equal(c.buyHref('growth', 'plumbers'), '/new-openings/buy?product=growth&trade=plumbers');
+  assert.ok(c.isSquareCheckoutLink('https://square.link/u/RStoSpmq'));
+  assert.ok(!c.isSquareCheckoutLink('https://evil.example/u/x'));
+  assert.ok(!c.isSquareCheckoutLink('javascript:alert(1)'));
+  assert.match(c.shortfallCopy(0, 5), /full/);
+  assert.match(c.shortfallCopy(3, 5), /Only 3 open projects/);
+});
+
+test('ledger migration enforces the caps in the database, service role only', () => {
+  const sql = fs.readFileSync('supabase/migrations/20261106120000_leadpack_ledger.sql', 'utf8');
+  assert.match(sql, /coalesce\(u\.buyers, 0\) < 3/);
+  assert.match(sql, /lower\(o2\.buyer_email\) = lower\(p_email\)/, 'no repeats for the same buyer');
+  assert.match(sql, /p_trade in \('hood-cleaners', 'kitchen-equipment'\)/);
+  assert.match(sql, /pg_advisory_xact_lock/);
+  assert.match(sql, /square_ref text not null unique/);
+  assert.doesNotMatch(sql, /grant [^;]*to (anon|authenticated)/i);
+  for (const p of c.PRODUCTS) assert.match(sql, new RegExp(`\\('${p.key}',\\s+'${p.name}',\\s+'${p.kind}',\\s*${p.price}00,\\s*${p.projects},\\s*${p.contacts},`), `${p.key} matches catalog.ts`);
+});
+
+test('delivery page and CSV: token-checked, revocable, stamped with the buyer', () => {
+  const lib = fs.readFileSync('lib/chillbros/leadbiz/delivery.ts', 'utf8');
+  assert.match(lib, /\^\[a-f0-9\]\{64\}\$/);
+  assert.match(lib, /order\.status !== "delivered"/);
+  assert.match(lib, /Licensed to/);
+  assert.match(lib, /\[=\+\\-@\]/, 'CSV formula guard');
+  const page = fs.readFileSync('app/lp/o/[token]/page.tsx', 'utf8');
+  assert.match(page, /Licensed to/);
+  assert.match(page, /Don&apos;t resell, forward or post it/);
+  assert.ok(!fs.existsSync('public/lp'), 'no static shareable pack files');
+  const gate = fs.readFileSync('app/new-openings/buy/page.tsx', 'utf8');
+  assert.match(gate, /chillbros_leadpack_capacity/);
+  assert.match(gate, /isSquareCheckoutLink\(link\)/);
 });

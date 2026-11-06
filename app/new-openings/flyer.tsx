@@ -3,7 +3,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 export type FlyerTrade = { slug: string; label: string; need: string; checkout: string; opener: string; plural: string; hook: string; projects: number; mix: string };
-export type FlyerPack = { key: string; name: string; price: string; was: string | null; href: string; best?: boolean; points: string[] };
+export type FlyerPack = { key: string; name: string; price: string; was: string | null; best?: boolean; points: string[]; perProject?: string; monthly?: boolean };
+
+const buyUrl = (pack: string, trade: string) => `/new-openings/buy?product=${pack}&trade=${encodeURIComponent(trade)}`;
 
 const TERMS_HREF = "/new-openings/terms";
 const AGREE_ID = "agree-terms";
@@ -13,7 +15,7 @@ const AGREE_ID = "agree-terms";
 function BuyLink({ href, agreed, className, children }: { href: string; agreed: boolean; className: string; children: ReactNode }) {
   if (agreed) return <a href={href} rel="noopener" className={className}>{children}</a>;
   return (
-    <a role="link" aria-disabled="true" tabIndex={0} title="Tick the terms box first"
+    <a role="link" aria-disabled="true" tabIndex={0} title="Pick your trade and tick the terms box first"
       onClick={() => document.getElementById(AGREE_ID)?.focus()}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); document.getElementById(AGREE_ID)?.focus(); } }}
       className={`${className} cursor-not-allowed opacity-45 grayscale`}>{children}</a>
@@ -26,7 +28,7 @@ function AgreeLine() {
 
 // The interactive part of /new-openings: trade chooser (deep link ?trade=<slug>) and pack picker.
 // Everything it shows comes in as props from the static page; it fetches nothing.
-export function NewOpeningsFlyer({ trades, packs, phone, email }: { trades: FlyerTrade[]; packs: FlyerPack[]; phone: string; email: string }) {
+export function NewOpeningsFlyer({ trades, packs, plans, phone, email }: { trades: FlyerTrade[]; packs: FlyerPack[]; plans: FlyerPack[]; phone: string; email: string }) {
   const [slug, setSlug] = useState<string | null>(null);
   const [packKey, setPackKey] = useState(packs.find((p) => p.best)?.key ?? packs[0].key);
   const [agreed, setAgreed] = useState(false);
@@ -36,7 +38,9 @@ export function NewOpeningsFlyer({ trades, packs, phone, email }: { trades: Flye
     const wanted = new URLSearchParams(window.location.search).get("trade");
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from the URL on mount
     if (wanted && trades.some((t) => t.slug === wanted)) setSlug(wanted);
-  }, [trades]);
+    const wantedPack = new URLSearchParams(window.location.search).get("pack");
+    if (wantedPack && [...packs, ...plans].some((p) => p.key === wantedPack)) setPackKey(wantedPack);
+  }, [trades, packs, plans]);
 
   const pick = (next: string) => {
     setSlug(next);
@@ -46,16 +50,19 @@ export function NewOpeningsFlyer({ trades, packs, phone, email }: { trades: Flye
   const trade = trades.find((t) => t.slug === slug) ?? null;
   const max = Math.max(...trades.map((t) => t.projects));
   const n = trade?.projects ?? max;
-  const pack = packs.find((p) => p.key === packKey) ?? packs[0];
+  const pack = [...packs, ...plans].find((p) => p.key === packKey) ?? packs[0];
   const fill = (s: string) => s.replace("{n}", String(n));
+  // Buy needs both the terms box and a trade (the gate checks that trade still has open projects).
+  const ready = agreed && Boolean(trade);
+  const hrefFor = (key: string) => (trade ? buyUrl(key, trade.slug) : "#pick-trade");
   const digits = phone.replace(/\D/g, "");
 
   return (
     <>
       <section className="mt-8 max-w-3xl">
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-md bg-[#FF7A59] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#0B1E33]">Founding rate: first 5 buyers</span>
-          <span className="rounded-md border border-[#F5C542]/60 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#F5C542]">Max 3 buyers per trade</span>
+          <span className="rounded-md bg-[#FF7A59] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#0B1E33]">Fixed counts · no contracts</span>
+          <span className="rounded-md border border-[#F5C542]/60 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#F5C542]">Max 3 buyers per trade per project</span>
         </div>
         <h1 key={trade?.slug ?? "all"} className="mt-5 text-[2.6rem] font-bold uppercase leading-[0.95] sm:text-7xl">
           {trade ? <>{n} new SA projects need {trade.need}.</> : <>{n} new commercial projects.</>}{" "}
@@ -86,14 +93,15 @@ export function NewOpeningsFlyer({ trades, packs, phone, email }: { trades: Flye
       {trade ? (
         <section className="mt-6 grid gap-4 md:grid-cols-2" aria-live="polite">
           <div className="rounded-2xl border border-white/10 bg-[#102A44] p-5">
-            <p className="text-xs font-bold uppercase tracking-wider text-[#7FD4FF]">Your list · {trade.label}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#7FD4FF]">On file for {trade.label}</p>
             <p className="mt-2 text-5xl font-bold text-[#F5C542]">{trade.projects}<span className="ml-2 text-lg font-semibold uppercase text-white">projects</span></p>
+            <p className="mt-1 text-sm text-[#8A9BB0]">Each pack gets a fixed number of them. Max 3 {trade.plural} per project.</p>
             <p className="mt-2 text-[15px] text-[#C9D6E3]">{trade.mix}</p>
           </div>
           <div className="rounded-2xl border border-[#FF7A59]/50 bg-[#12304D] p-5">
             <p className="text-xs font-bold uppercase tracking-wider text-[#FF7A59]">Sample call opener</p>
             <p className="mt-2 text-[16px] leading-relaxed text-white">&ldquo;{trade.opener}&rdquo;</p>
-            <p className="mt-2 text-xs text-[#8A9BB0]">The Founding Bundle includes openers like this, written for {trade.plural}.</p>
+            <p className="mt-2 text-xs text-[#8A9BB0]">Every project in your pack comes with an opener like this, written for {trade.plural}.</p>
           </div>
         </section>
       ) : (
@@ -102,20 +110,42 @@ export function NewOpeningsFlyer({ trades, packs, phone, email }: { trades: Flye
 
       <section className="mt-10" aria-labelledby="pick-pack">
         <h2 id="pick-pack" className="text-sm font-bold uppercase tracking-[0.18em] text-[#7FD4FF]">Step 2 · Pick your pack</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {packs.map((p) => {
             const on = p.key === pack.key;
             return (
               <div key={p.key} onClick={() => setPackKey(p.key)}
                 className={`relative flex cursor-pointer flex-col rounded-2xl border p-5 transition ${on ? "border-[#F5C542] bg-[#12304D] shadow-[0_0_0_3px_rgba(245,197,66,0.2)]" : "border-white/10 bg-[#102A44]"}`}>
-                {p.best ? <span className="absolute -top-3 left-5 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">Best value · founding rate</span> : null}
+                {p.best ? <span className="absolute -top-3 left-5 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">Best value</span> : null}
                 <label className="flex items-center gap-3 text-lg font-bold uppercase tracking-wide">
                   <input type="radio" name="pack" checked={on} onChange={() => setPackKey(p.key)} className="h-5 w-5 accent-[#F5C542]" />
                   {p.name}
                 </label>
                 <p className="mt-3 flex items-baseline gap-3"><span className="text-5xl font-bold text-[#F5C542]">{p.price}</span>{p.was ? <span className="text-[#8A9BB0] line-through">{p.was}</span> : null}</p>
-                <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[#C9D6E3]">{p.points.map((t) => <li key={t}>✓ {fill(t)}</li>)}<li>✓ Delivered by email within 2 hours</li></ul>
-                <BuyLink href={p.href} agreed={agreed} className={`mt-5 inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-lg font-bold ${p.best || on ? "bg-[#F5C542] text-[#0B1E33]" : "border border-[#7FD4FF]/50 text-[#7FD4FF]"}`}>Buy {p.name.replace(/ Pack$/, "")} · {p.price}</BuyLink>
+                {p.perProject ? <p className="mt-1 text-sm text-[#8A9BB0]">{p.perProject} per project · one-time</p> : null}
+                <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[#C9D6E3]">{p.points.map((t) => <li key={t}>✓ {fill(t)}</li>)}<li>✓ Private download link, delivered by email within 2 hours</li></ul>
+                <BuyLink href={hrefFor(p.key)} agreed={ready} className={`mt-5 inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-lg font-bold ${p.best || on ? "bg-[#F5C542] text-[#0B1E33]" : "border border-[#7FD4FF]/50 text-[#7FD4FF]"}`}>Buy {p.name.replace(/ Pack$/, "")} · {p.price}</BuyLink>
+                <AgreeLine />
+              </div>
+            );
+          })}
+        </div>
+        <h3 className="mt-10 text-sm font-bold uppercase tracking-[0.18em] text-[#7FD4FF]">Or get new projects every month</h3>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {plans.map((p) => {
+            const on = p.key === pack.key;
+            return (
+              <div key={p.key} onClick={() => setPackKey(p.key)}
+                className={`relative flex cursor-pointer flex-col rounded-2xl border p-5 transition ${on ? "border-[#F5C542] bg-[#12304D] shadow-[0_0_0_3px_rgba(245,197,66,0.2)]" : "border-[#7FD4FF]/30 bg-[#102A44]"}`}>
+                {p.best ? <span className="absolute -top-3 left-5 rounded bg-[#7FD4FF] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">Most popular plan</span> : null}
+                <label className="flex items-center gap-3 text-lg font-bold uppercase tracking-wide">
+                  <input type="radio" name="pack" checked={on} onChange={() => setPackKey(p.key)} className="h-5 w-5 accent-[#F5C542]" />
+                  {p.name}
+                </label>
+                <p className="mt-3 flex items-baseline gap-2"><span className="text-5xl font-bold text-[#F5C542]">{p.price}</span><span className="text-lg font-semibold text-white">/month</span></p>
+                {p.perProject ? <p className="mt-1 text-sm text-[#8A9BB0]">{p.perProject} per project · no contract</p> : null}
+                <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[#C9D6E3]">{p.points.map((t) => <li key={t}>✓ {t}</li>)}</ul>
+                <BuyLink href={hrefFor(p.key)} agreed={ready} className={`mt-5 inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-lg font-bold ${p.best || on ? "bg-[#F5C542] text-[#0B1E33]" : "border border-[#7FD4FF]/50 text-[#7FD4FF]"}`}>Start {p.name} · {p.price}/mo</BuyLink>
                 <AgreeLine />
               </div>
             );
@@ -123,7 +153,7 @@ export function NewOpeningsFlyer({ trades, packs, phone, email }: { trades: Flye
         </div>
         <div className="mt-5 rounded-2xl border border-dashed border-[#F5C542]/60 bg-[#0F2740] p-4 text-[15px] text-[#C9D6E3]">
           <p><span className="font-bold text-[#F5C542]">At checkout, type your trade</span>{trade ? <>: <span className="rounded bg-white/10 px-2 py-0.5 font-mono font-bold text-white">{trade.checkout}</span></> : null} so we send the right list.</p>
-          <p className="mt-1 text-sm text-[#8A9BB0]">Secure Square checkout: card, Apple Pay, Google Pay or Cash App Pay. Max 3 buyers per trade.</p>
+          <p className="mt-1 text-sm text-[#8A9BB0]">Secure Square checkout: card, Apple Pay, Google Pay or Cash App Pay. Max 3 buyers per trade per project; checkout only opens while your trade has room.</p>
         </div>
         <div className="mt-4 rounded-2xl border border-white/10 bg-[#102A44] p-4 text-[14px] text-[#C9D6E3]">
           <p className="text-xs font-bold uppercase tracking-wider text-[#7FD4FF]">The short version of our terms</p>
@@ -132,7 +162,7 @@ export function NewOpeningsFlyer({ trades, packs, phone, email }: { trades: Flye
             <li>• From public records; verify before you quote</li>
             <li>• No guarantee of jobs, replies or revenue</li>
             <li>• You contact the leads and follow call/text/email laws</li>
-            <li>• Up to 3 buyers per trade see the same list</li>
+            <li>• Up to 3 buyers per trade get the same project</li>
             <li>• All sales final once delivered; file problems fixed within 7 days</li>
           </ul>
           <a href={TERMS_HREF} className="mt-2 inline-block text-sm font-bold text-[#F5C542] underline-offset-2 hover:underline">Read the full Lead Pack Terms →</a>
@@ -140,7 +170,7 @@ export function NewOpeningsFlyer({ trades, packs, phone, email }: { trades: Flye
             <input id={AGREE_ID} type="checkbox" required checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[#F5C542]" />
             <span className="text-[15px] font-semibold text-white">I&apos;ve read the <a href={TERMS_HREF} className="text-[#F5C542] underline underline-offset-2">terms</a> — leads are info only and I&apos;m responsible for contacting them.</span>
           </label>
-          {!agreed ? <p className="mt-2 text-xs text-[#8A9BB0]">Tick the box to turn on the Buy buttons.</p> : null}
+          {!ready ? <p className="mt-2 text-xs text-[#8A9BB0]">{!trade ? "Pick your trade (Step 1) and tick the box to turn on the Buy buttons." : "Tick the box to turn on the Buy buttons."}</p> : null}
         </div>
       </section>
 
@@ -174,8 +204,8 @@ export function NewOpeningsFlyer({ trades, packs, phone, email }: { trades: Flye
 
       {/* Sticky buy bar on phones: always one tap from checkout for the selected pack. */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#0B1E33]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur sm:hidden">
-        <BuyLink href={pack.href} agreed={agreed} className="flex min-h-12 items-center justify-center rounded-xl bg-[#F5C542] px-4 text-center text-[17px] font-bold text-[#0B1E33]">
-          {agreed ? <>Buy {pack.name} · {pack.price}</> : <>Tick the terms box to buy</>}
+        <BuyLink href={hrefFor(pack.key)} agreed={ready} className="flex min-h-12 items-center justify-center rounded-xl bg-[#F5C542] px-4 text-center text-[17px] font-bold text-[#0B1E33]">
+          {ready ? <>{pack.monthly ? "Start" : "Buy"} {pack.name} · {pack.price}{pack.monthly ? "/mo" : ""}</> : !trade ? <>Pick your trade to buy</> : <>Tick the terms box to buy</>}
         </BuyLink>
         <p className="mt-1.5 text-center text-[11px] text-[#8A9BB0]">{trade ? <>Type &ldquo;{trade.checkout}&rdquo; at checkout</> : "Type your trade at checkout"} · By buying you agree to the <a href={TERMS_HREF} className="underline underline-offset-2">Lead Pack Terms</a></p>
       </div>

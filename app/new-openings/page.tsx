@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import { LEADBIZ_PHONE, LEADBIZ_QUOTE, PAY_LINKS, TRADE_LABEL, packProjects, FOOD_OPENINGS, AUTO_OPENINGS } from "@/lib/chillbros/leadbiz/buyers";
+import { LEADBIZ_PHONE, LEADBIZ_QUOTE, TRADE_LABEL, packProjects, FOOD_OPENINGS, AUTO_OPENINGS } from "@/lib/chillbros/leadbiz/buyers";
+import { PACKS, PLANS, perProject, type Product } from "@/lib/chillbros/leadbiz/catalog";
 import type { Trade } from "@/lib/chillbros/trade-fit";
 
 import { NewOpeningsFlyer, type FlyerPack, type FlyerTrade } from "./flyer";
@@ -50,14 +51,12 @@ export default function NewOpeningsPage() {
         : `${FOOD_OPENINGS} restaurant & retail projects (auto shops left out: no kitchens to work on)`,
     };
   });
-  const packs: FlyerPack[] = [
-    { key: "openings", name: "New Openings Pack", price: "$150", was: "$250", href: PAY_LINKS.openings,
-      points: ["{n} verified new openings & remodels", "Owner or tenant contact + phone", "Project size, cost & timing"] },
-    { key: "bundle", name: "Founding Bundle", price: "$199", was: "$299", href: PAY_LINKS.bundle, best: true,
-      points: ["All {n} new projects", "+ 50 ready-to-call restaurants & markets", "Call openers written for your trade", "PDF + spreadsheet"] },
-    { key: "starter", name: "Commercial Starter Pack", price: "$75", was: null, href: PAY_LINKS.starter,
-      points: ["50 ready-to-call SA restaurants & markets", "Address, phone & business type", "Matched to your trade"] },
-  ];
+  const card = (p: Product): FlyerPack => ({
+    key: p.key, name: p.name, price: `$${p.price}`, was: null, best: p.best, points: p.points,
+    perProject: `$${perProject(p).toFixed(2)}`, monthly: p.kind === "subscription",
+  });
+  const packs = PACKS.map(card);
+  const plans = PLANS.map(card);
 
   return (
     <main className="min-h-dvh overflow-x-hidden bg-[#0B1E33] text-white">
@@ -71,7 +70,7 @@ export default function NewOpeningsPage() {
           <a href={`tel:${LEADBIZ_PHONE.replace(/\D/g, "")}`} className="rounded-lg border border-[#7FD4FF]/40 px-3 py-2 text-sm font-bold text-[#7FD4FF]">{LEADBIZ_PHONE}</a>
         </header>
 
-        <NewOpeningsFlyer trades={trades} packs={packs} phone={LEADBIZ_PHONE} email={EMAIL} />
+        <NewOpeningsFlyer trades={trades} packs={packs} plans={plans} phone={LEADBIZ_PHONE} email={EMAIL} />
 
         <figure className="mt-12 max-w-3xl border-l-4 border-[#FF7A59] pl-5">
           <blockquote className="text-2xl font-bold leading-snug sm:text-3xl">&ldquo;{LEADBIZ_QUOTE}&rdquo;</blockquote>
@@ -80,15 +79,16 @@ export default function NewOpeningsPage() {
         <section className="mt-12">
           <h2 className="text-2xl font-bold uppercase sm:text-3xl">How it works</h2>
           <ol className="mt-5 grid gap-3 sm:grid-cols-3">
-            {["Pick your trade and a pack, then pay securely with Square: card, Apple Pay, Google Pay or Cash App Pay.", "Type your trade at checkout so we send the right list.", "Your PDF + spreadsheet, with call openers for your trade, arrives by email within 2 hours."].map((t, i) => (
+            {["Pick your trade and a pack, then pay securely with Square: card, Apple Pay, Google Pay or Cash App Pay.", "Type your trade at checkout so we send the right list.", "A private link to your projects, with call openers and a spreadsheet download, arrives by email within 2 hours."].map((t, i) => (
               <li key={t} className="rounded-2xl border border-white/10 bg-[#102A44] p-5"><p className="text-3xl font-bold text-[#FF7A59]">0{i + 1}</p><p className="mt-2 text-[#C9D6E3]">{t}</p></li>
             ))}
           </ol>
-          <p className="mt-5 max-w-3xl text-[#C9D6E3]">One commercial account is worth thousands a year in recurring work. Only 3 contractors per trade get each list, so you&apos;re not fighting the whole city for the same jobs.</p>
+          <p className="mt-5 max-w-3xl text-[#C9D6E3]">One commercial account is worth thousands a year in recurring work. No more than 3 contractors in your trade ever get the same project, and you never get a project twice, so you&apos;re not fighting the whole city for the same jobs.</p>
         </section>
 
         <section className="mt-12 rounded-2xl border border-[#7FD4FF]/40 bg-[#12304D] p-6 text-center">
-          <p className="text-2xl font-bold uppercase">Founding pricing ends after the first 5 buyers.</p>
+          <p className="text-2xl font-bold uppercase">Want new projects every month?</p>
+          <p className="mt-2 text-[#C9D6E3]">The Local and Pro plans send fresh projects for your trade each month, never repeats. Cancel anytime.</p>
           <p className="mt-3 text-[#C9D6E3]">Questions? <a className="font-bold text-white underline-offset-2 hover:underline" href={`tel:${LEADBIZ_PHONE.replace(/\D/g, "")}`}>Call</a> or <a className="font-bold text-white underline-offset-2 hover:underline" href={`sms:${LEADBIZ_PHONE.replace(/\D/g, "")}`}>text</a> {LEADBIZ_PHONE} · <a className="font-bold text-white underline-offset-2 hover:underline" href={`mailto:${EMAIL}`}>{EMAIL}</a></p>
         </section>
 
