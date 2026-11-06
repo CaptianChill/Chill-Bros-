@@ -262,3 +262,20 @@ test('monthly plans carry a 12-month term everywhere they are sold, with its own
   assert.match(flyer, /agreed=\{planReady\}/, 'plan Start button needs the term checkbox');
   assert.match(flyer, /I agree to the 12-month minimum term/);
 });
+
+test('outreach warms up the new inbox: 25/day, then 50 after 3 days, 100 after a week', () => {
+  const first = new Date('2026-11-06T15:00:00Z');
+  assert.equal(b.rampCap(null), 25);
+  assert.equal(b.rampCap(first, new Date('2026-11-08T15:00:00Z')), 25);
+  assert.equal(b.rampCap(first, new Date('2026-11-09T15:00:00Z')), 50);
+  assert.equal(b.rampCap(first, new Date('2026-11-13T15:00:00Z')), 100);
+  assert.equal(b.perRunFor(25), 5);
+  assert.equal(b.perRunFor(50), 9);
+  assert.equal(b.perRunFor(100), 17);
+});
+
+test('offer email links each pack straight to its card on the sales page', () => {
+  const { text } = b.offerEmail({ business_name: 'P', trade: 'plumbing' }, 'u');
+  for (const p of c.PACKS) assert.ok(text.includes(`https://chill-bros.vercel.app/new-openings?trade=plumbers&pack=${p.key}`), p.key);
+  assert.doesNotMatch(text, /square\.link/);
+});
