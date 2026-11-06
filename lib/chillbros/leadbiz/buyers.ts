@@ -70,6 +70,7 @@ export function buyerQueries(bbox = SA_BBOX) {
 }
 
 // Google Places searches per trade (the free map has almost no San Antonio contractors listed).
+// Transient lookup only: see lib/chillbros/google-places.ts and buyerFromOwnSite below.
 export const GOOGLE_TRADE_QUERIES: Record<Trade, string> = {
   plumbing: "commercial plumbing contractor",
   electrical: "commercial electrical contractor",
@@ -89,10 +90,45 @@ export function googleRotation(runIndex: number, areaCount: number, trades = Obj
   return { trade: trades[i % trades.length], area: Math.floor(i / trades.length) };
 }
 
-export function buyerFromGooglePlace(p: { id: string; displayName?: { text?: string }; formattedAddress?: string; nationalPhoneNumber?: string; websiteUri?: string }, trade: Trade): BuyerRow | null {
-  const name = String(p.displayName?.text ?? "").trim();
-  if (!name || NOT_A_CONTRACTOR.test(name)) return null;
-  return { business_name: name.slice(0, 200), trade, email: null, phone: p.nationalPhoneNumber ?? null, website: p.websiteUri ?? null, address: p.formattedAddress ?? null, source_url: `https://www.google.com/maps/place/?q=place_id:${p.id}` };
+/** False for stores, suppliers, schools and other names that aren't contractor buyers. */
+export const isContractorName = (name: string) => Boolean(name.trim()) && !NOT_A_CONTRACTOR.test(name);
+
+const decodeEntities = (s: string) => s
+  .replace(/&amp;/gi, "&").replace(/&#0*39;|&apos;|&rsquo;|&#8217;/gi, "'").replace(/&quot;/gi, '"')
+  .replace(/&ndash;|&#8211;/gi, "–").replace(/&mdash;|&#8212;/gi, "—").replace(/&nbsp;/gi, " ").replace(/&#x27;/gi, "'");
+const GENERIC_TITLE = /^(home(\s*page)?|welcome|index|contact(\s+us)?|about(\s+us)?|services|official\s+(site|website))$/i;
+
+/** The business's name as its OWN website states it (og:site_name, else the <title>), else its domain. */
+export function siteBusinessName(html: string, website: string): string | null {
+  let host = "";
+  try { host = new URL(website).hostname.replace(/^www\./i, ""); } catch { return null; }
+  const label = host.split(".")[0]?.toLowerCase() ?? "";
+  const og = /<meta[^>]+property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i.exec(html)?.[1]
+    ?? /<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:site_name["']/i.exec(html)?.[1];
+  const clean = (s: string) => decodeEntities(s).replace(/\s+/g, " ").trim();
+  if (og && clean(og).length >= 2) return clean(og).slice(0, 200);
+  const title = clean(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? "");
+  const parts = title.split(/\s+[|–—:·•-]\s+/).map((p) => p.trim()).filter((p) => p.length >= 2 && !GENERIC_TITLE.test(p));
+  // Prefer the title segment that matches the domain ("Commercial Plumbing SA | Alamo Plumbing" on alamoplumbing.com).
+  const overlap = (p: string) => p.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && label.includes(w)).length;
+  const best = [...parts].sort((a, b) => overlap(b) - overlap(a))[0];
+  if (best) return best.slice(0, 200);
+  return label.length >= 2 ? host : null;
+}
+
+/**
+ * A buyer row built ONLY from the business's own website, plus the Google place_id.
+ * Google Places content (name, phone, address, ...) may not be stored, so nothing from
+ * the Places result is accepted here: the name, email and phone all come from the site.
+ */
+export function buyerFromOwnSite(input: { placeId: string; trade: Trade; website: string; html: string; email: string | null; phone: string | null }): BuyerRow | null {
+  if (!input.html) return null;
+  const name = siteBusinessName(input.html, input.website);
+  if (!name || !isContractorName(name)) return null;
+  return {
+    business_name: name.slice(0, 200), trade: input.trade, email: input.email, phone: input.phone,
+    website: input.website, address: null, source_url: `https://www.google.com/maps/place/?q=place_id:${input.placeId}`,
+  };
 }
 
 export type BuyerRow = { business_name: string; trade: Trade; email: string | null; phone: string | null; website: string | null; address: string | null; source_url: string };
@@ -156,7 +192,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
     "",
     "Delivered by email within 2 hours of checkout. Reply here with any questions.",
     "",
-    `"${LEADBIZ_QUOTE}" Built by Chill Pros, San Antonio commercial HVAC & refrigeration.`,
+    `"${LEADBIZ_QUOTE}"`,
     "",
     `${LEADBIZ_BRAND}`,
     `${LEADBIZ_PHONE}`,

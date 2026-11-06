@@ -4,13 +4,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchPage } from "@/lib/chillbros/autopilot/engine";
 import { contactPageUrls, phoneFromHtml } from "@/lib/chillbros/autopilot/contact-source";
 import { pickBusinessEmail } from "@/lib/chillbros/autopilot/email-extract";
+import { searchPlacesTransient } from "@/lib/chillbros/google-places";
 import { AI_BATTLE_CARD_PROMPT_VERSION, writeAiBattleCard, type AiBattleCard } from "@/lib/chillbros/revenue-ai";
 import { BATTLE_CARD_PROMPT_VERSION, buildSafeBattleCard, type BattleCardInput } from "@/lib/chillbros/revenue-sales";
 import { nextSalesStatus, placesQuery, sameBusiness, wantsAiCard, PREP_CLOSED_STATUSES } from "@/lib/chillbros/sales-prep-logic";
 
 // Sales Prep: works through every open Revenue Radar lead and makes it ready to sell.
-//  1. Contact: leads with no phone and no email get a Google Places lookup (when
-//     GOOGLE_PLACES_API_KEY is set) for phone + website, then the website is checked for an email.
+//  1. Contact: leads with no phone and no email get a transient Google Places lookup (when
+//     GOOGLE_PLACES_API_KEY is set) to find the business's own website; the phone and email
+//     saved come only from that website, never from Google.
 //  2. Battle card: reachable leads get the AI card (call opener, questions, objections,
 //     plan tier, intro email draft); unreachable leads get the free standard card.
 //  3. Status: fresh leads with a way to reach them move to ready_to_call.
@@ -20,7 +22,7 @@ type Client = SupabaseClient;
 const AI_TRIGGER = "sales_prep";
 const LEAD_COLUMNS = "id,business_name,city,category,industry,score,service_line,signal_summary,signal_verified,source_url,signal_observed_at,business_address,contact_name,contact_role,contact_phone,contact_email,sales_status,do_not_contact,places_checked_at";
 
-type Lead = {
+export type Lead = {
   id: string; business_name: string; city: string; category: string | null; industry?: string | null; score: number; service_line: string;
   signal_summary: string; signal_verified: boolean; source_url: string; signal_observed_at: string;
   business_address: string | null; contact_name: string | null; contact_role: string | null;
@@ -30,19 +32,25 @@ type Lead = {
 
 export type SalesPrepRun = { contactsLooked: number; contactsFound: number; aiCards: number; standardCards: number; readied: number; remaining: number; googleKey: boolean; errors: number };
 
-async function lookupPlace(apiKey: string, lead: Lead) {
-  const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": apiKey, "x-goog-fieldmask": "places.displayName,places.nationalPhoneNumber,places.websiteUri,places.businessStatus" },
-    body: JSON.stringify({ textQuery: placesQuery(lead.business_name, lead.business_address, lead.city), pageSize: 1 }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!response.ok) throw new Error(`Google Places returned ${response.status}`);
-  const payload = (await response.json()) as { places?: { displayName?: { text?: string }; nationalPhoneNumber?: string; websiteUri?: string; businessStatus?: string }[] };
-  const place = payload.places?.[0];
-  if (!place?.displayName?.text || !sameBusiness(lead.business_name, place.displayName.text)) return null;
-  return { phone: place.nationalPhoneNumber ?? null, website: place.websiteUri ?? null, closed: Boolean(place.businessStatus && place.businessStatus !== "OPERATIONAL") };
+// Google rule: transient lookup only. The Places result is used in memory just to find the
+// business's own website (Google's name is only compared to make sure it's the same business).
+// Google's phone, address, status, etc. are never saved (Maps Platform terms forbid storing
+// Places content); we don't even request the phone. Only what the business's own website
+// publishes is saved.
+async function websiteFromPlaces(apiKey: string, lead: Lead) {
+  const [place] = await searchPlacesTransient(apiKey, placesQuery(lead.business_name, lead.business_address, lead.city), { pageSize: 1 });
+  if (!place || !place.operational || !sameBusiness(lead.business_name, place.name)) return null;
+  return place.website;
+}
+
+/** The fields Sales Prep saves for a lead with no contact: only what the business's own site publishes. */
+export async function contactUpdateFromPlaces(apiKey: string, lead: Lead): Promise<{ places_checked_at: string; contact_phone?: string; contact_email?: string }> {
+  const website = await websiteFromPlaces(apiKey, lead).catch((e) => { console.warn("[sales-prep] places lookup failed", e instanceof Error ? e.message : e); return null; });
+  const found = website ? await emailFromSite(website) : { email: null, phone: null };
+  const update: { places_checked_at: string; contact_phone?: string; contact_email?: string } = { places_checked_at: new Date().toISOString() };
+  if (found.phone) update.contact_phone = found.phone;
+  if (found.email) update.contact_email = found.email;
+  return update;
 }
 
 async function emailFromSite(site: string) {
@@ -143,14 +151,9 @@ export async function runSalesPrep(client: Client, opts: { aiLimit?: number; sta
         // 1. Contact info for leads with none.
         if (!lead.contact_phone && !lead.contact_email && googleKey && !lead.places_checked_at) {
           run.contactsLooked++;
-          const place = await lookupPlace(googleKey, lead).catch((e) => { console.warn("[sales-prep] places lookup failed", e instanceof Error ? e.message : e); return null; });
-          const found = place?.website ? await emailFromSite(place.website) : { email: null, phone: null };
-          const phone = place?.phone || found.phone || null;
-          const email = found.email || null;
-          const update: Record<string, unknown> = { places_checked_at: new Date().toISOString() };
-          if (phone) update.contact_phone = phone;
-          if (email) update.contact_email = email;
-          if (place?.closed) update.status_reason = "Google lists this business as closed";
+          const update = await contactUpdateFromPlaces(googleKey, lead);
+          const phone = update.contact_phone ?? null;
+          const email = update.contact_email ?? null;
           await client.from("chillbros_revenue_prospects").update(update).eq("id", lead.id);
           if (phone || email) { run.contactsFound++; lead.contact_phone = phone; lead.contact_email = email; }
         }

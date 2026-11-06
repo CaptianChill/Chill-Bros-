@@ -5,7 +5,6 @@ export const BRAND = {
   wordmark: "New Openings",
   tagline: "Know who's building before your competition does.",
   quote: "We work these job sites every week. We know which ones are worth the call.",
-  quoteBy: "Built by Chill Pros, San Antonio commercial HVAC & refrigeration",
   phone: "(210) 904-9306",
   email: "satxnewopenings@gmail.com",
   legal: "A service of Chill Professionals LLC",
