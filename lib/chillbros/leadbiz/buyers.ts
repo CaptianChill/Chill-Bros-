@@ -2,7 +2,7 @@
 // writing the offer email. No I/O here so it is unit-tested (scripts/leadbiz.test.cjs).
 import type { Trade } from "../trade-fit";
 
-import { MAX_BUYERS_PER_TRADE, PACKS, PLANS, TRADE_SLUG } from "./catalog";
+import { MAX_BUYERS_PER_TRADE, PACKS, PLANS, PLAN_TERM_MONTHS, TRADE_SLUG } from "./catalog";
 
 export const LEADBIZ_BRAND = "San Antonio New Openings";
 export const LEADBIZ_PHONE = "(210) 904-9306";
@@ -194,7 +194,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
     `Packs for ${t.plural}, each with a fixed number of projects (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
     ...PACKS.map((p) => `- ${p.name}: ${p.projects} projects${p.contacts ? ` + ${p.contacts} business contacts` : ""}, $${p.price}`),
     "",
-    "Or get new projects every month, never repeats, cancel anytime:",
+    `Or get new projects every month, never repeats (${PLAN_TERM_MONTHS}-month term, billed monthly):`,
     ...PLANS.map((p) => `- ${p.name}: at least ${p.projects} new projects a month, $${p.price}/month`),
     "",
     `Pick your pack here: ${salesLink(b.trade)}`,

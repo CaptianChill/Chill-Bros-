@@ -192,7 +192,7 @@ test('Google buyer discovery saves only own-site data + place_id, never Google p
 
 test('lead pack terms: public page covers every point, email links it, flyer gates Buy behind the checkbox', () => {
   const terms = fs.readFileSync('app/new-openings/terms/page.tsx', 'utf8');
-  for (const re of [/digital information product/, /TDLR/, /OpenStreetMap/, /don't guarantee any lead is accurate, current or still available/, /Verify details/, /don't guarantee jobs, contracts/, /TCPA/, /Texas telemarketing/, /CAN-SPAM/, /not a party/, /final once your link is delivered/, /within 7 days/, /refund/, /Don't resell, forward/, /no more than 3 buyers in the same trade/, /never be sold the same project twice/, /Monthly plans/, /cancel anytime/, /limited to the price you paid/, /Texas law/, /Bexar County/, /By completing checkout you agree/, /Effective/, /LEADBIZ_POSTAL/, /satxnewopenings@gmail\.com/]) assert.match(terms, re);
+  for (const re of [/digital information product/, /TDLR/, /OpenStreetMap/, /don't guarantee any lead is accurate, current or still available/, /Verify details/, /don't guarantee jobs, contracts/, /TCPA/, /Texas telemarketing/, /CAN-SPAM/, /not a party/, /final once your link is delivered/, /within 7 days/, /refund/, /Don't resell, forward/, /no more than 3 buyers in the same trade/, /never be sold the same project twice/, /12-month minimum term/, /remaining monthly payments for the term are still owed/, /month to month/, /short two months in a row, you may cancel/, /limited to the price you paid/, /Texas law/, /Bexar County/, /By completing checkout you agree/, /Effective/, /LEADBIZ_POSTAL/, /satxnewopenings@gmail\.com/]) assert.match(terms, re);
   assert.doesNotMatch(terms, /chill\s*pros\b/i);
   assert.equal(b.LEADBIZ_POSTAL, 'Chill Professionals LLC, 15226 Preston Pass, San Antonio, TX 78247');
   assert.match(b.offerEmail({ business_name: 'X', trade: 'signs' }, 'u').text, /Lead Pack Terms: https:\/\/chill-bros\.vercel\.app\/new-openings\/terms/);
@@ -245,4 +245,18 @@ test('delivery page and CSV: token-checked, revocable, stamped with the buyer', 
   const gate = fs.readFileSync('app/new-openings/buy/page.tsx', 'utf8');
   assert.match(gate, /chillbros_leadpack_capacity/);
   assert.match(gate, /isSquareCheckoutLink\(link\)/);
+});
+
+test('monthly plans carry a 12-month term everywhere they are sold, with its own checkbox', () => {
+  assert.equal(c.PLAN_TERM_MONTHS, 12);
+  assert.equal(c.termTotal(c.PLANS[0]), 1188);
+  assert.equal(c.termTotal(c.PLANS[1]), 2148);
+  for (const p of c.PLANS) assert.ok(p.points.includes('12-month term, billed monthly'), p.key);
+  const sources = ['lib/chillbros/leadbiz/catalog.ts', 'lib/chillbros/leadbiz/buyers.ts', 'app/new-openings/page.tsx', 'app/new-openings/flyer.tsx', 'sites/new-openings/lib/brand.ts', 'sites/new-openings/app/page.tsx'];
+  for (const f of sources) assert.doesNotMatch(fs.readFileSync(f, 'utf8'), /cancel anytime|no contract/i, f);
+  assert.match(b.offerEmail({ business_name: 'X', trade: 'signs' }, 'u').text, /12-month term, billed monthly/);
+  const flyer = fs.readFileSync('app/new-openings/flyer.tsx', 'utf8');
+  assert.match(flyer, /const planReady = ready && termAgreed/);
+  assert.match(flyer, /agreed=\{planReady\}/, 'plan Start button needs the term checkbox');
+  assert.match(flyer, /I agree to the 12-month minimum term/);
 });

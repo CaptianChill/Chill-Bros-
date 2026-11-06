@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { LEADBIZ_PHONE, LEADBIZ_QUOTE, TRADE_LABEL, packProjects, FOOD_OPENINGS, AUTO_OPENINGS } from "@/lib/chillbros/leadbiz/buyers";
-import { PACKS, PLANS, perProject, type Product } from "@/lib/chillbros/leadbiz/catalog";
+import { PACKS, PLANS, perProject, termTotal, type Product } from "@/lib/chillbros/leadbiz/catalog";
 import type { Trade } from "@/lib/chillbros/trade-fit";
 
 import { NewOpeningsFlyer, type FlyerPack, type FlyerTrade } from "./flyer";
@@ -53,7 +53,7 @@ export default function NewOpeningsPage() {
   });
   const card = (p: Product): FlyerPack => ({
     key: p.key, name: p.name, price: `$${p.price}`, was: null, best: p.best, points: p.points,
-    perProject: `$${perProject(p).toFixed(2)}`, monthly: p.kind === "subscription",
+    perProject: `$${perProject(p).toFixed(2)}`, monthly: p.kind === "subscription", termTotal: `$${termTotal(p).toLocaleString("en-US")}`,
   });
   const packs = PACKS.map(card);
   const plans = PLANS.map(card);
@@ -88,7 +88,7 @@ export default function NewOpeningsPage() {
 
         <section className="mt-12 rounded-2xl border border-[#7FD4FF]/40 bg-[#12304D] p-6 text-center">
           <p className="text-2xl font-bold uppercase">Want new projects every month?</p>
-          <p className="mt-2 text-[#C9D6E3]">The Local and Pro plans send fresh projects for your trade each month, never repeats. Cancel anytime.</p>
+          <p className="mt-2 text-[#C9D6E3]">The Local and Pro plans send fresh projects for your trade each month, never repeats. 12-month term, billed monthly.</p>
           <p className="mt-3 text-[#C9D6E3]">Questions? <a className="font-bold text-white underline-offset-2 hover:underline" href={`tel:${LEADBIZ_PHONE.replace(/\D/g, "")}`}>Call</a> or <a className="font-bold text-white underline-offset-2 hover:underline" href={`sms:${LEADBIZ_PHONE.replace(/\D/g, "")}`}>text</a> {LEADBIZ_PHONE} · <a className="font-bold text-white underline-offset-2 hover:underline" href={`mailto:${EMAIL}`}>{EMAIL}</a></p>
         </section>
 

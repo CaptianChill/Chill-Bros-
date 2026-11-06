@@ -22,6 +22,9 @@ export const SLUG_TRADE = Object.fromEntries(Object.entries(TRADE_SLUG).map(([t,
 export const isTradeSlug = (s: unknown): s is string => typeof s === "string" && s in SLUG_TRADE;
 
 export type ProductKey = "starter" | "trade" | "growth" | "pro" | "local" | "pro_plan";
+/** Monthly plans: minimum term in months, billed monthly; month to month after that. */
+export const PLAN_TERM_MONTHS = 12;
+
 export type Product = {
   key: ProductKey; name: string; kind: "pack" | "subscription"; price: number; projects: number; contacts: number;
   best?: boolean; points: string[];
@@ -40,12 +43,14 @@ export const PACKS: Product[] = [
 
 export const PLANS: Product[] = [
   { key: "local", name: "Local Plan", kind: "subscription", price: 99, projects: 6, contacts: 0,
-    points: ["At least 6 new projects every month", "One trade, delivered each billing month", "Never the same project twice", "Short month? The difference carries to next month", "Cancel anytime"] },
+    points: ["At least 6 new projects every month", "One trade, delivered each billing month", "Never the same project twice", "Short month? The difference carries to next month", "12-month term, billed monthly"] },
   { key: "pro_plan", name: "Pro Plan", kind: "subscription", price: 179, projects: 12, contacts: 0, best: true,
-    points: ["At least 12 new projects every month", "Sent in two batches a month so you call first", "Spreadsheet export", "Never the same project twice", "Cancel anytime"] },
+    points: ["At least 12 new projects every month", "Sent in two batches a month so you call first", "Spreadsheet export", "Never the same project twice", "12-month term, billed monthly"] },
 ];
 
 export const PRODUCTS: Product[] = [...PACKS, ...PLANS];
+/** Total a buyer commits to over the minimum term. */
+export const termTotal = (p: Product) => (p.kind === "subscription" ? p.price * PLAN_TERM_MONTHS : p.price);
 export const productByKey = (k: unknown) => PRODUCTS.find((p) => p.key === k) ?? null;
 export const perProject = (p: Product) => Math.round((p.price / p.projects) * 100) / 100;
 

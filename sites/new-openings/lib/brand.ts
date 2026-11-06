@@ -27,9 +27,9 @@ export const PACKS = [
   { key: "pro", name: "Pro Bundle", price: "$249", period: "", was: null, href: buy("pro"), best: false, badge: null,
     points: () => ["16 verified new openings & remodels", "+ 50 basic business contacts", "Call openers for your trade", "Spreadsheet download"] },
   { key: "local", name: "Local Plan", price: "$99", period: "/mo", was: null, href: buy("local"), best: false, badge: "Monthly",
-    points: () => ["At least 6 new projects every month", "Never the same project twice", "Cancel anytime"] },
+    points: () => ["At least 6 new projects every month", "Never the same project twice", "12-month term, billed monthly"] },
   { key: "pro_plan", name: "Pro Plan", price: "$179", period: "/mo", was: null, href: buy("pro_plan"), best: false, badge: "Monthly",
-    points: () => ["At least 12 new projects every month", "Two batches a month", "Never the same project twice", "Cancel anytime"] },
+    points: () => ["At least 12 new projects every month", "Two batches a month", "Never the same project twice", "12-month term, billed monthly"] },
 ] as const;
 
 export const TRADES = ["Plumbers", "Electricians", "Hood cleaners", "Pest control", "Commercial cleaning", "Sign companies", "Low voltage", "Security", "HVAC & refrigeration", "Hot side / kitchen equipment"];

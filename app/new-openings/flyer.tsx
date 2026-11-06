@@ -3,12 +3,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 export type FlyerTrade = { slug: string; label: string; need: string; checkout: string; opener: string; plural: string; hook: string; projects: number; mix: string };
-export type FlyerPack = { key: string; name: string; price: string; was: string | null; best?: boolean; points: string[]; perProject?: string; monthly?: boolean };
+export type FlyerPack = { key: string; name: string; price: string; was: string | null; best?: boolean; points: string[]; perProject?: string; monthly?: boolean; termTotal?: string };
 
 const buyUrl = (pack: string, trade: string) => `/new-openings/buy?product=${pack}&trade=${encodeURIComponent(trade)}`;
 
 const TERMS_HREF = "/new-openings/terms";
 const AGREE_ID = "agree-terms";
+const TERM_ID = "agree-plan-term";
 
 // A real <a href> to Square once the buyer has ticked the terms box; until then an inert
 // link-styled element that points them at the checkbox.
@@ -32,6 +33,8 @@ export function NewOpeningsFlyer({ trades, packs, plans, phone, email }: { trade
   const [slug, setSlug] = useState<string | null>(null);
   const [packKey, setPackKey] = useState(packs.find((p) => p.best)?.key ?? packs[0].key);
   const [agreed, setAgreed] = useState(false);
+  // Monthly plans carry a 12-month minimum term, so they need their own explicit agreement.
+  const [termAgreed, setTermAgreed] = useState(false);
 
   // Deep link: /new-openings?trade=plumbers. Read after mount so the page itself stays static.
   useEffect(() => {
@@ -54,6 +57,7 @@ export function NewOpeningsFlyer({ trades, packs, plans, phone, email }: { trade
   const fill = (s: string) => s.replace("{n}", String(n));
   // Buy needs both the terms box and a trade (the gate checks that trade still has open projects).
   const ready = agreed && Boolean(trade);
+  const planReady = ready && termAgreed;
   const hrefFor = (key: string) => (trade ? buyUrl(key, trade.slug) : "#pick-trade");
   const digits = phone.replace(/\D/g, "");
 
@@ -61,7 +65,7 @@ export function NewOpeningsFlyer({ trades, packs, plans, phone, email }: { trade
     <>
       <section className="mt-8 max-w-3xl">
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-md bg-[#FF7A59] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#0B1E33]">Fixed counts · no contracts</span>
+          <span className="rounded-md bg-[#FF7A59] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#0B1E33]">Fixed project counts</span>
           <span className="rounded-md border border-[#F5C542]/60 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#F5C542]">Max 3 buyers per trade per project</span>
         </div>
         <h1 key={trade?.slug ?? "all"} className="mt-5 text-[2.6rem] font-bold uppercase leading-[0.95] sm:text-7xl">
@@ -143,14 +147,19 @@ export function NewOpeningsFlyer({ trades, packs, plans, phone, email }: { trade
                   {p.name}
                 </label>
                 <p className="mt-3 flex items-baseline gap-2"><span className="text-5xl font-bold text-[#F5C542]">{p.price}</span><span className="text-lg font-semibold text-white">/month</span></p>
-                {p.perProject ? <p className="mt-1 text-sm text-[#8A9BB0]">{p.perProject} per project · no contract</p> : null}
+                {p.perProject ? <p className="mt-1 text-sm text-[#8A9BB0]">{p.perProject} per project · 12-month term</p> : null}
                 <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[#C9D6E3]">{p.points.map((t) => <li key={t}>✓ {t}</li>)}</ul>
-                <BuyLink href={hrefFor(p.key)} agreed={ready} className={`mt-5 inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-lg font-bold ${p.best || on ? "bg-[#F5C542] text-[#0B1E33]" : "border border-[#7FD4FF]/50 text-[#7FD4FF]"}`}>Start {p.name} · {p.price}/mo</BuyLink>
+                <p className="mt-3 text-xs text-[#8A9BB0]">12 monthly payments of {p.price} ({p.termTotal} over the term), then month to month.</p>
+                <BuyLink href={hrefFor(p.key)} agreed={planReady} className={`mt-3 inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-lg font-bold ${p.best || on ? "bg-[#F5C542] text-[#0B1E33]" : "border border-[#7FD4FF]/50 text-[#7FD4FF]"}`}>Start {p.name} · {p.price}/mo</BuyLink>
                 <AgreeLine />
               </div>
             );
           })}
         </div>
+        <label htmlFor={TERM_ID} className={`mt-4 flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${termAgreed ? "border-[#7FD4FF] bg-[#12304D]" : "border-[#7FD4FF]/40 bg-[#0F2740]"}`}>
+          <input id={TERM_ID} type="checkbox" checked={termAgreed} onChange={(e) => setTermAgreed(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[#7FD4FF]" />
+          <span className="text-[15px] text-white"><span className="font-semibold">Plans only:</span> I agree to the 12-month minimum term. I&apos;ll pay 12 monthly payments; if I cancel early, the rest of the term is still owed. After 12 months it&apos;s month to month. <a href={TERMS_HREF} className="text-[#7FD4FF] underline underline-offset-2">Plan terms</a></span>
+        </label>
         <div className="mt-5 rounded-2xl border border-dashed border-[#F5C542]/60 bg-[#0F2740] p-4 text-[15px] text-[#C9D6E3]">
           <p><span className="font-bold text-[#F5C542]">At checkout, type your trade</span>{trade ? <>: <span className="rounded bg-white/10 px-2 py-0.5 font-mono font-bold text-white">{trade.checkout}</span></> : null} so we send the right list.</p>
           <p className="mt-1 text-sm text-[#8A9BB0]">Secure Square checkout: card, Apple Pay, Google Pay or Cash App Pay. Max 3 buyers per trade per project; checkout only opens while your trade has room.</p>
@@ -204,8 +213,8 @@ export function NewOpeningsFlyer({ trades, packs, plans, phone, email }: { trade
 
       {/* Sticky buy bar on phones: always one tap from checkout for the selected pack. */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#0B1E33]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur sm:hidden">
-        <BuyLink href={hrefFor(pack.key)} agreed={ready} className="flex min-h-12 items-center justify-center rounded-xl bg-[#F5C542] px-4 text-center text-[17px] font-bold text-[#0B1E33]">
-          {ready ? <>{pack.monthly ? "Start" : "Buy"} {pack.name} · {pack.price}{pack.monthly ? "/mo" : ""}</> : !trade ? <>Pick your trade to buy</> : <>Tick the terms box to buy</>}
+        <BuyLink href={hrefFor(pack.key)} agreed={pack.monthly ? planReady : ready} className="flex min-h-12 items-center justify-center rounded-xl bg-[#F5C542] px-4 text-center text-[17px] font-bold text-[#0B1E33]">
+          {(pack.monthly ? planReady : ready) ? <>{pack.monthly ? "Start" : "Buy"} {pack.name} · {pack.price}{pack.monthly ? "/mo" : ""}</> : !trade ? <>Pick your trade to buy</> : !agreed ? <>Tick the terms box to buy</> : <>Agree to the 12-month term to start</>}
         </BuyLink>
         <p className="mt-1.5 text-center text-[11px] text-[#8A9BB0]">{trade ? <>Type &ldquo;{trade.checkout}&rdquo; at checkout</> : "Type your trade at checkout"} · By buying you agree to the <a href={TERMS_HREF} className="underline underline-offset-2">Lead Pack Terms</a></p>
       </div>
