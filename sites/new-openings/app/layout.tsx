@@ -4,7 +4,7 @@ import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: `${BRAND.name} · Commercial lead packs for San Antonio trades`,
-  description: "Verified new San Antonio restaurant and retail build-outs from Texas state construction filings, with the owner or tenant contact and phone.",
+  description: "Verified new San Antonio restaurant, retail and auto build-outs from Texas state construction filings, with the owner or tenant contact and phone.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

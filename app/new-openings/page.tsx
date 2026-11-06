@@ -4,7 +4,7 @@ import { PAY_LINKS, LEADBIZ_PHONE, LEADBIZ_QUOTE } from "@/lib/chillbros/leadbiz
 export const revalidate = 3600;
 export const metadata = {
   title: "San Antonio New Openings · Commercial lead packs for SA trades",
-  description: "Verified new San Antonio restaurant and retail build-outs from Texas state construction filings, with the owner or tenant contact and phone. Lead packs for local contractors.",
+  description: "Verified new San Antonio restaurant, retail and auto build-outs from Texas state construction filings, with the owner or tenant contact and phone. Lead packs for local contractors.",
 };
 
 // Public sales page for the lead business. Counts are live; contacts are never shown here.
@@ -48,7 +48,7 @@ export default async function NewOpeningsPage() {
 
         <section className="mt-12 max-w-3xl">
           <h1 className="text-5xl font-bold uppercase leading-[0.95] sm:text-7xl">{openings} new commercial projects. <span className="text-[#FF7A59]">Building right now.</span></h1>
-          <p className="mt-5 max-w-2xl text-lg text-[#C9D6E3]">Verified San Antonio restaurant and retail build-outs from Texas state construction filings, each with the owner or tenant contact and phone. Call them before your competition knows they exist.</p>
+          <p className="mt-5 max-w-2xl text-lg text-[#C9D6E3]">Verified San Antonio restaurant, retail and auto build-outs from Texas state construction filings, each with the owner or tenant contact and phone. Call them before your competition knows they exist.</p>
           <a href={PAY_LINKS.bundle} className="mt-7 inline-flex min-h-12 items-center rounded-xl bg-[#F5C542] px-6 text-lg font-bold text-[#0B1E33] hover:brightness-105">Get the Founding Bundle, $199</a>
           <p className="mt-3 text-sm text-[#8A9BB0]">Max 3 buyers per trade · delivered by email within 2 hours</p>
         </section>
@@ -101,6 +101,7 @@ export default async function NewOpeningsPage() {
           <h2 className="text-3xl font-bold uppercase">Built for SA trades</h2>
           <div className="mt-4 flex flex-wrap gap-2">{TRADES.map((t) => <span key={t} className="rounded-full border border-[#7FD4FF]/40 px-4 py-2 text-sm text-[#7FD4FF]">{t}</span>)}</div>
           <p className="mt-5 max-w-3xl text-[#C9D6E3]">One commercial account is worth thousands a year in recurring work. Only 3 contractors per trade get each list, so you&apos;re not fighting the whole city for the same jobs.</p>
+          <p className="mt-3 max-w-3xl font-semibold text-white"><span className="mr-2 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">New</span>Now including auto: 13 new car washes, oil change, collision and dealer service shops. Included for every trade except hood cleaning.</p>
         </section>
 
         <section className="mt-14 rounded-2xl border border-[#7FD4FF]/40 bg-[#12304D] p-6 text-center">
