@@ -30,8 +30,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="preload" as="image" href="cc/mascot.jpg">
+  <link rel="preload" as="image" href="cc/nightlife.webp" media="(min-width: 768px)">
+  <link rel="preload" as="image" href="cc/mobile.webp" media="(max-width: 767px)">
   <link rel="stylesheet" href="cc/cc.css">
+  <link rel="stylesheet" href="cc/desktop.css?v=nightlife-1">
 </head>
 <body data-fx="heavy">
   <!-- Neon light background + Chill Pros dice sign -->
@@ -43,8 +45,35 @@
     <div class="neon-floor"></div>
   </div>
 
-  <main class="stage cc-page">
-    <!-- top banner: BB Command Center title, like the reference crown banner -->
+  <main class="stage">
+    <!-- ================= DESKTOP ================= -->
+    <div class="desktop-shell">
+      <header class="desktop-header">
+        <div class="desktop-brand"><img src="assets/bb-command-center-logo.svg" alt="BB"><div><p>PRIVATE WORKSPACE</p><h1>Command Center</h1></div></div>
+        <div class="desktop-clock"><b data-clock="time">--:--</b><span data-clock="date"></span></div>
+        <button class="desktop-button" data-go="settings" type="button">Settings</button>
+      </header>
+      <div class="desktop-layout">
+        <nav class="desktop-projects" aria-label="Projects"><h2>My projects</h2><div class="proj-items" data-apps="list"></div><button class="desktop-button" data-go="apps" type="button">All apps</button></nav>
+        <div class="desktop-main">
+          <section class="desktop-hero" aria-label="BB Command Center luxury nightlife scene"><img src="cc/nightlife.webp" alt="BB Command Center luxury nightlife scene with diamond framing and neon lights" width="1678" height="937" fetchpriority="high"></section>
+          <nav class="desktop-actions" aria-label="Quick actions">
+            <button data-go="gibam" type="button"><span>Workspace</span><b>Projects</b><small><span data-stat="apps">—</span> connected apps</small></button>
+            <button data-go="decisions" type="button"><span>Review</span><b>Approvals</b><small><span data-stat="approvals">—</span> pending</small></button>
+            <button data-go="money" type="button"><span data-money="tag">Money today</span><b data-money="total">—</b><small data-money="line">Checking payments</small></button>
+            <button data-go="app:alpha" type="button"><span>Alpha Hunter</span><b>Trading</b><small>Open trading workspace</small></button>
+          </nav>
+          <section class="desktop-apps"><h2>Your apps</h2><div class="ops-big" data-apps="big"></div></section>
+        </div>
+        <aside class="desktop-activity" aria-label="Activity">
+          <section><div class="desktop-section-heading"><h2>Notifications</h2><button data-go="alerts" type="button">View all</button></div><ul class="side-list" data-notifs aria-live="polite"></ul></section>
+          <button class="desktop-weather" data-go="weather" type="button"><span data-wx="icon">☀️</span><b data-wx="temp">—</b><span data-wx="cond">Checking weather</span><small data-wx="hl"></small></button>
+          <p class="desktop-note">Your private workspace.<br>Projects, activity, and tools in one place.</p>
+        </aside>
+      </div>
+    </div>
+
+<div class="mobile-workspace">    <!-- top banner: BB Command Center title, like the reference crown banner -->
     <header class="cc-top">
       <img src="assets/bb-command-center-logo.svg" alt="" class="cc-brand-mark">
       <h1>BB COMMAND CENTER</h1>
@@ -63,7 +92,7 @@
         <section class="cc-hero" aria-label="Overview">
           <div class="cc-jewel" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
           <div class="cc-hero-art">
-            <img class="cc-mascot" src="cc/mascot.jpg" alt="Chill Pros" width="420" height="560">
+            <img class="cc-mascot" src="cc/nightlife.webp" alt="BB Command Center luxury nightlife scene" width="1678" height="937">
           </div>
           <p class="cc-kicker"><span data-wx="icon">☀️</span> <span data-wx="temp">--°F</span> · <span data-wx="cond">Loading</span> · San Antonio, TX</p>
         </section>
@@ -147,6 +176,7 @@
       <div class="dock-title"><img src="cc/dice.webp" alt=""><span>MY APPS</span></div>
       <div class="cc-apps-grid" data-apps="dock"></div>
     </section>
+</div>
   </main>
 
   <!-- Drawer -->
@@ -167,5 +197,7 @@
   <script src="cc/watch.js"></script>
   <script src="cc/hq-embed.js"></script>
   <script src="cc/talk.js"></script>
+  <script src="cc/brai.js"></script>
+  <script src="cc/jewelry.js?v=1"></script>
 </body>
 </html>
