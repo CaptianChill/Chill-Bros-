@@ -21,4 +21,4 @@ export const PACKS = [
     points: () => ["50 ready-to-call SA restaurants & markets", "Address, phone & business type", "Matched to your trade", "Delivered in 2 hours"] },
 ] as const;
 
-export const TRADES = ["Plumbers", "Electricians", "Hood cleaners", "Pest control", "Commercial cleaning", "Sign companies", "Low voltage", "Security"];
+export const TRADES = ["Plumbers", "Electricians", "Hood cleaners", "Pest control", "Commercial cleaning", "Sign companies", "Low voltage", "Security", "HVAC & refrigeration", "Hot side / kitchen equipment"];

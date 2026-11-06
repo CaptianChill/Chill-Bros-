@@ -10,19 +10,20 @@ new Function('require', 'module', 'exports', src)(require, mod, mod.exports);
 const t = mod.exports;
 
 test('covers every buyer trade the lead business sells to', () => {
-  assert.deepEqual(t.TRADE_KEYS, ['plumbing', 'electrical', 'hood_cleaning', 'pest_control', 'commercial_cleaning', 'signs', 'low_voltage', 'security']);
+  assert.deepEqual(t.TRADE_KEYS, ['plumbing', 'electrical', 'hood_cleaning', 'pest_control', 'commercial_cleaning', 'signs', 'low_voltage', 'security', 'hvac_refrigeration', 'kitchen_equipment']);
 });
 
 test('new openings and kitchens fit every trade; other sites skip hood cleaning', () => {
-  assert.equal(t.tradeFitsFor({ category: 'opening_remodel', service_line: 'hvac_r' }).length, 8);
-  assert.equal(t.tradeFitsFor({ category: 'other', service_line: 'multiple' }).length, 8);
+  assert.equal(t.tradeFitsFor({ category: 'opening_remodel', service_line: 'hvac_r' }).length, 10);
+  assert.equal(t.tradeFitsFor({ category: 'other', service_line: 'multiple' }).length, 10);
   const market = t.tradeFitsFor({ category: 'other', service_line: 'refrigeration' });
-  assert.ok(!market.includes('hood_cleaning'));
+  assert.ok(!market.includes('hood_cleaning') && !market.includes('kitchen_equipment'));
+  assert.ok(market.includes('hvac_refrigeration'));
   assert.ok(market.includes('pest_control') && market.includes('security'));
 });
 
 test('SQL trigger rules match the TypeScript rules', () => {
-  const sql = fs.readFileSync('supabase/migrations/20261105170000_revenue_radar_trade_fits.sql', 'utf8');
+  const sql = fs.readFileSync('supabase/migrations/20261106010000_trade_fits_hvac_kitchen.sql', 'utf8');
   assert.match(sql, /p_category = 'opening_remodel' or p_service_line in \('multiple', 'kitchen_equipment', 'exhaust_hood'\)/);
   for (const k of t.TRADE_KEYS) assert.match(sql, new RegExp(`'${k}'`));
 });

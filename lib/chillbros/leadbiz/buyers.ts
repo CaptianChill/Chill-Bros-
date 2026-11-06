@@ -24,9 +24,13 @@ export const TRADE_LABEL: Record<Trade, { plural: string; hook: string }> = {
   signs: { plural: "sign companies", hook: "storefront and pylon signage before opening day" },
   low_voltage: { plural: "low voltage contractors", hook: "POS, network, music and camera cabling before the walls close" },
   security: { plural: "security companies", hook: "cameras, alarm and access control before they stock the place" },
+  hvac_refrigeration: { plural: "HVAC and refrigeration companies", hook: "rooftop units, walk-in coolers and ice machines installed and serviced" },
+  kitchen_equipment: { plural: "commercial kitchen equipment companies", hook: "fryers, ovens, ranges and dish machines started up and serviced" },
 };
 
 const RULES: [Trade, RegExp][] = [
+  ["kitchen_equipment", /(restaurant|kitchen|food\s*service|cooking)\s+equipment|appliance\s+repair/i],
+  ["hvac_refrigeration", /\bhvac\b|air\s+condition|\ba\/?c\b|heating|refrigerat|cooling|mechanical/i],
   ["hood_cleaning", /\b(hood|exhaust)\s*(and|&)?\s*(duct\s*)?clean|kitchen\s+exhaust/i],
   ["plumbing", /plumb|\bdrain\b|rooter|sewer/i],
   ["pest_control", /\bpest\b|termite|extermin|bug\s*(man|guy)/i],
@@ -36,8 +40,8 @@ const RULES: [Trade, RegExp][] = [
   ["signs", /\bsigns?\b|signage|sign\s+co/i],
   ["electrical", /electric(al|ian|s)?\b/i],
 ];
-const NOT_A_CONTRACTOR = /dry\s*clean|car\s*wash|carpet\s+one|supply|wholesale|depot|store|bank|social security|church|school|college|university|hospital|restaurant/i;
-const CRAFT: Record<string, Trade> = { plumber: "plumbing", electrician: "electrical", signmaker: "signs", pest_control: "pest_control", cleaning: "commercial_cleaning" };
+const NOT_A_CONTRACTOR = /dry\s*clean|car\s*wash|carpet\s+one|supply|wholesale|depot|store|bank|social security|church|school|college|university|hospital|restaurant(?!\s+equipment)/i;
+const CRAFT: Record<string, Trade> = { hvac: "hvac_refrigeration", plumber: "plumbing", electrician: "electrical", signmaker: "signs", pest_control: "pest_control", cleaning: "commercial_cleaning" };
 
 /** Which buyer trade a mapped business is, or null if it isn't one of the 8 contractor trades. */
 export function classifyBuyer(tags: Record<string, string>): Trade | null {
@@ -72,6 +76,8 @@ export const GOOGLE_TRADE_QUERIES: Record<Trade, string> = {
   signs: "commercial sign company",
   low_voltage: "low voltage structured cabling contractor",
   security: "commercial security camera and alarm installer",
+  hvac_refrigeration: "commercial HVAC and refrigeration contractor",
+  kitchen_equipment: "commercial kitchen equipment repair service",
 };
 
 /** Which (trade, area index) a run searches: rotates through every pair, one per run. */
@@ -113,10 +119,10 @@ export function inSendWindow(now = new Date()) {
   return !["Sat", "Sun"].includes(day) && hour >= 9 && hour <= 14;
 }
 
-// Projects in the New Openings Pack per trade: 16 restaurant/retail + 13 auto (hood cleaners skip auto).
+// Projects in the New Openings Pack per trade: 16 restaurant/retail + 13 auto (hood cleaning and kitchen equipment skip auto).
 export const FOOD_OPENINGS = 16;
 export const AUTO_OPENINGS = 13;
-export const packProjects = (trade: Trade) => FOOD_OPENINGS + (trade === "hood_cleaning" ? 0 : AUTO_OPENINGS);
+export const packProjects = (trade: Trade) => FOOD_OPENINGS + (trade === "hood_cleaning" || trade === "kitchen_equipment" ? 0 : AUTO_OPENINGS);
 
 export function offerEmail(b: { business_name: string; trade: Trade }, unsubscribeUrl: string, followUp = false) {
   const t = TRADE_LABEL[b.trade];
