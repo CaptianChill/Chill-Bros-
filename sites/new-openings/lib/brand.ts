@@ -29,7 +29,7 @@ export const PACKS = [
   { key: "local", name: "Local Plan", price: "$99", period: "/mo", was: null, href: buy("local"), best: false, badge: "Monthly",
     points: () => ["At least 6 new projects every month", "Never the same project twice", "12-month term, billed monthly"] },
   { key: "pro_plan", name: "Pro Plan", price: "$179", period: "/mo", was: null, href: buy("pro_plan"), best: false, badge: "Monthly",
-    points: () => ["At least 12 new projects every month", "Two batches a month", "Never the same project twice", "12-month term, billed monthly"] },
+    points: () => ["At least 12 new projects every month", "Delivered each billing month", "Never the same project twice", "12-month term, billed monthly"] },
 ] as const;
 
 export const TRADES = ["Plumbers", "Electricians", "Hood cleaners", "Pest control", "Commercial cleaning", "Sign companies", "Low voltage", "Security", "HVAC & refrigeration", "Hot side / kitchen equipment"];

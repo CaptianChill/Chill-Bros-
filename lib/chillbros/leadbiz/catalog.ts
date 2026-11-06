@@ -45,7 +45,7 @@ export const PLANS: Product[] = [
   { key: "local", name: "Local Plan", kind: "subscription", price: 99, projects: 6, contacts: 0,
     points: ["At least 6 new projects every month", "One trade, delivered each billing month", "Never the same project twice", "Short month? The difference carries to next month", "12-month term, billed monthly"] },
   { key: "pro_plan", name: "Pro Plan", kind: "subscription", price: 179, projects: 12, contacts: 0, best: true,
-    points: ["At least 12 new projects every month", "Sent in two batches a month so you call first", "Spreadsheet export", "Never the same project twice", "12-month term, billed monthly"] },
+    points: ["At least 12 new projects every month", "New projects as soon as your billing month starts", "Spreadsheet export", "Never the same project twice", "12-month term, billed monthly"] },
 ];
 
 export const PRODUCTS: Product[] = [...PACKS, ...PLANS];
