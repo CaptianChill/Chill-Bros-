@@ -43,12 +43,12 @@ export type BattleCard = {
 };
 
 const SERVICE_OFFER: Record<string, string> = {
-  hvac_r: "Chill Bros commercial HVAC/R service introduction and preventive-maintenance proposal",
-  refrigeration: "Chill Bros commercial refrigeration service and preventive-maintenance proposal",
-  ice_machine: "Chill Bros ice-machine service and maintenance proposal",
-  kitchen_equipment: "Chill Bros commercial kitchen equipment service proposal",
-  exhaust_hood: "Chill Bros exhaust hood and ventilation service proposal",
-  multiple: "Chill Bros multi-line proposal covering HVAC/R, refrigeration, ice, and kitchen equipment",
+  hvac_r: "Chill Pros commercial HVAC/R service introduction and preventive-maintenance proposal",
+  refrigeration: "Chill Pros commercial refrigeration service and preventive-maintenance proposal",
+  ice_machine: "Chill Pros ice-machine service and maintenance proposal",
+  kitchen_equipment: "Chill Pros commercial kitchen equipment service proposal",
+  exhaust_hood: "Chill Pros exhaust hood and ventilation service proposal",
+  multiple: "Chill Pros multi-line proposal covering HVAC/R, refrigeration, ice, and kitchen equipment",
 };
 
 const CATEGORY_OFFER_SUFFIX: Record<string, string> = {
@@ -91,7 +91,7 @@ export function isGenericDiscoveryLead(lead: Pick<BattleCardLead, "category" | "
 
 export function buildBattleCard(lead: BattleCardLead): BattleCard {
   const generic = isGenericDiscoveryLead(lead);
-  const service = SERVICE_OFFER[lead.service_line] ?? "Chill Bros commercial service proposal";
+  const service = SERVICE_OFFER[lead.service_line] ?? "Chill Pros commercial service proposal";
   const offerSuffix = CATEGORY_OFFER_SUFFIX[lead.category] ?? "";
 
   const businessSummary = generic
@@ -152,11 +152,11 @@ export function buildBattleCard(lead: BattleCardLead): BattleCard {
   } else if (lead.follow_up_at && new Date(lead.follow_up_at).getTime() > Date.now()) {
     nextAction = `Follow up on the scheduled date (${new Date(lead.follow_up_at).toLocaleDateString()}).`;
   } else if (lead.contact_name && (decisionMaker?.phone || decisionMaker?.email)) {
-    nextAction = `Call or email ${lead.contact_name} to introduce Chill Bros and confirm the project timeline.`;
+    nextAction = `Call or email ${lead.contact_name} to introduce Chill Pros and confirm the project timeline.`;
   } else if (decisionMaker?.phone || decisionMaker?.email) {
-    nextAction = "Call the number or email on file to introduce Chill Bros and identify the decision-maker.";
+    nextAction = "Call the number or email on file to introduce Chill Pros and identify the decision-maker.";
   } else {
-    nextAction = "Research the facilities or operations decision-maker, then call to introduce Chill Bros.";
+    nextAction = "Research the facilities or operations decision-maker, then call to introduce Chill Pros.";
   }
 
   return {

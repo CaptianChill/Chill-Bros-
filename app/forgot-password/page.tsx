@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
           {sent ? (
             <div className="space-y-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-4 text-sm leading-6 text-emerald-100">
               <p className="font-semibold">Check your email.</p>
-              <p>If that address belongs to a Chill Bros account, Neon Auth sent a secure password-reset link. Check spam or junk if it does not appear in your inbox.</p>
+              <p>If that address belongs to a Chill Pros account, Neon Auth sent a secure password-reset link. Check spam or junk if it does not appear in your inbox.</p>
             </div>
           ) : (
             <form onSubmit={requestReset} className="space-y-4">

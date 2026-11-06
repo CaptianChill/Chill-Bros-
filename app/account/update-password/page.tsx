@@ -78,7 +78,7 @@ export default async function UpdatePasswordPage({ searchParams }: UpdatePasswor
             </button>
           </form>
 
-          <Link href="/" className="block text-center text-sm text-[#bafcfc] hover:text-white">Return to Chill Bros</Link>
+          <Link href="/" className="block text-center text-sm text-[#bafcfc] hover:text-white">Return to Chill Pros</Link>
         </div>
       </div>
     </div>

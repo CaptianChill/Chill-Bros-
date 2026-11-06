@@ -85,9 +85,9 @@ export function PhoneAlertsSwitch() {
 
   const help =
     state === "needs-install"
-      ? "On iPhone: tap Share, then Add to Home Screen. Open Chill Bros from the home screen and come back here."
+      ? "On iPhone: tap Share, then Add to Home Screen. Open Chill Pros from the home screen and come back here."
       : state === "blocked"
-        ? "Notifications are blocked. Turn them on in Settings → Notifications → Chill Bros."
+        ? "Notifications are blocked. Turn them on in Settings → Notifications → Chill Pros."
         : state === "unsupported"
           ? "This browser can't receive app alerts."
           : "Alerts show the Chill Pros icon. ntfy keeps working as a backup.";
