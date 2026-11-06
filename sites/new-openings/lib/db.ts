@@ -18,8 +18,8 @@ async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T
   }
 }
 
-export type PublicStats = { openings: number; ready: number };
-export const publicStats = async () => (await rpc<PublicStats>("leadbiz_public_stats")) ?? { openings: 16, ready: 230 };
+export type PublicStats = { openings: number; auto?: number; ready: number };
+export const publicStats = async () => (await rpc<PublicStats>("leadbiz_public_stats")) ?? { openings: 22, auto: 10, ready: 230 };
 
 export type Dashboard = {
   buyers: { business_name: string; trade: string; email: string | null; status: string; emailed_at: string | null; followup_at: string | null; last_error: string | null }[];
