@@ -10,6 +10,9 @@ export const PAY_LINKS = {
   openings: "https://square.link/u/RStoSpmq",
   bundle: "https://square.link/u/6Cdb25fY",
   starter: "https://square.link/u/DMHFLgWQ",
+  auto: "https://square.link/u/ju26cQ8a",
+  food: "https://square.link/u/bTgyfEEO",
+  exclusive: "https://square.link/u/ESlEYsen",
 } as const;
 
 // San Antonio metro (Boerne/New Braunfels/Schertz edges to Lackland/Southside).
@@ -146,6 +149,10 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
     `  ${PAY_LINKS.bundle}`,
     `- Commercial Starter Pack, 50 ready-to-call businesses: $75`,
     `  ${PAY_LINKS.starter}`,
+    `- Just one industry: Restaurant & Retail Pack (16 projects) $99 ${PAY_LINKS.food}`,
+    ...(n > FOOD_OPENINGS ? [`  or Auto Openings Pack (13 car washes, oil change and repair shops) $99 ${PAY_LINKS.auto}`] : []),
+    `- Exclusive: the whole bundle and no other ${t.plural} get it for 30 days: $449`,
+    `  ${PAY_LINKS.exclusive}`,
     "",
     "Delivered by email within 2 hours of checkout. Reply here with any questions.",
     "",
