@@ -152,7 +152,7 @@ export function ScanSendTool({ defaultRecipient }: { defaultRecipient: string })
   const [pages, setPages] = useState<ScanPage[]>([]);
   const [documentType, setDocumentType] = useState("Paperwork");
   const [recipient, setRecipient] = useState(defaultRecipient);
-  const [subject, setSubject] = useState("Chill Bros scanned paperwork");
+  const [subject, setSubject] = useState("Chill Pros scanned paperwork");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
@@ -319,7 +319,7 @@ export function ScanSendTool({ defaultRecipient }: { defaultRecipient: string })
         </div>
 
         {status ? <p className="mt-4 rounded-xl border border-[#2d7dff]/20 bg-[#07152c]/45 px-3 py-2.5 text-sm text-[#d9fbff]">{status}</p> : null}
-        <p className="mt-4 text-xs leading-5 text-zinc-500">Email credentials remain server-side. The scan page is available only to signed-in Chill Bros staff.</p>
+        <p className="mt-4 text-xs leading-5 text-zinc-500">Email credentials remain server-side. The scan page is available only to signed-in Chill Pros staff.</p>
       </form>
     </div>
   );

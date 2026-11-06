@@ -147,7 +147,7 @@ test('office finalizes without sending; finalize never emails and never touches 
   const result = await h.load('lib/chillbros/billing-actions.ts').finalizeInvoiceAction('invoice');
   assert.equal(result.ok, true);
   assert.equal(h.tables.chillbros_invoices[0].status, 'approved');
-  assert.equal(h.tables.chillbros_invoices[0].signature_name, 'Approved by Chill Bros office');
+  assert.equal(h.tables.chillbros_invoices[0].signature_name, 'Approved by Chill Pros office');
   assert.equal(h.tables.chillbros_jobs[0].status, 'work_complete');
   assert.equal(new Date(h.tables.chillbros_invoices[0].due_at) - new Date(h.tables.chillbros_invoices[0].signed_at), 7 * 86400000);
   assert.equal(h.tables.chillbros_workflow_events[0].stage, 'invoice_finalized');

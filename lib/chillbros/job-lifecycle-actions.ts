@@ -104,7 +104,7 @@ export async function approveEstimateLifecycleAction(token: string, signatureNam
 
   const { data: customer } = await supabase.from("chillbros_customers").select("name").eq("id", invoice.customer_id).maybeSingle();
   await sendApprovalNotification({
-    subject: `Chill Bros estimate approved · ${invoice.invoice_number}`,
+    subject: `Chill Pros estimate approved · ${invoice.invoice_number}`,
     documentLabel: "Estimate",
     documentNumber: invoice.invoice_number,
     signedBy: name,
@@ -201,7 +201,7 @@ export async function setIssuedInvoicePaymentMethodAction(token: string, method:
   const invoice = await activeInvoiceByToken(token);
   if (!invoice) return { ok: false, error: "This secure payment link is no longer active." };
   if (invoice.status !== "approved") return { ok: false, error: "Approve the estimate before payment." };
-  if (!invoice.issued_at) return { ok: false, error: "Payment is not due until Chill Bros completes the work and issues the invoice." };
+  if (!invoice.issued_at) return { ok: false, error: "Payment is not due until Chill Pros completes the work and issues the invoice." };
   if (invoice.payment_status === "paid") return { ok: false, error: "Payment is already recorded." };
 
   const supabase = createServiceRoleClient();

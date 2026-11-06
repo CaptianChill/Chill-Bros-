@@ -41,7 +41,7 @@ export default async function SecurityPage({ searchParams }: Props) {
             {[
               ["Login throttling", "Repeated failed sign-in attempts are rate-limited and logged using hashed identifiers."],
               ["Role authorization", "Manager, office, and technician permissions are re-checked on the server before protected actions."],
-              ["Private business data", "Chill Bros business tables and private media are not directly exposed to anonymous browser clients."],
+              ["Private business data", "Chill Pros business tables and private media are not directly exposed to anonymous browser clients."],
               ["Browser hardening", "CSP, anti-clickjacking, no-sniff, HSTS, noindex, and restrictive browser permissions remain enabled."],
               ["Supply-chain checks", "GitHub security CI continues to audit dependencies, lint the application, and run a production build."],
               ["Protected workflows", "Closed calls, estimates, parts, payments, timesheets, staff controls, and uploads retain server-side validation."],
@@ -65,7 +65,7 @@ export default async function SecurityPage({ searchParams }: Props) {
             </form>
           </SectionCard>
 
-          <SectionCard eyebrow="Authentication" title="Two-factor authentication disabled" description="The paid/SMS MFA gate has been removed from Chill Bros.">
+          <SectionCard eyebrow="Authentication" title="Two-factor authentication disabled" description="The paid/SMS MFA gate has been removed from Chill Pros.">
             <div className="flex gap-3 rounded-2xl border border-[#2d7dff]/25 bg-black/25 p-4">
               <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-[#8ffafa]" />
               <p className="text-sm leading-6 text-zinc-300">Managers now sign in with their normal account password and active Supabase session. Backend role checks and security controls still apply to every protected operation.</p>

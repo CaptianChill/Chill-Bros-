@@ -33,7 +33,7 @@ export function RevenueRadarCloseScript({
 
   const script = useMemo(() => {
     const greeting = contactName ? `Hi ${contactName},` : "Hi,";
-    const intro = `${greeting} this is [YOUR NAME] with Chill Bros. We help San Antonio businesses keep their HVAC, refrigeration, ice, kitchen, and exhaust equipment running without having to chase multiple service companies.`;
+    const intro = `${greeting} this is [YOUR NAME] with Chill Pros. We help San Antonio businesses keep their HVAC, refrigeration, ice, kitchen, and exhaust equipment running without having to chase multiple service companies.`;
     const reason = signalVerified
       ? `I’m reaching out because we found a current service signal for ${businessName}: ${signalSummary}`
       : `I’m reaching out because ${businessName} fits the type of commercial operation we support. I’m not assuming you have a problem today; I wanted to make sure you have a reliable local option before an equipment issue turns into downtime.`;

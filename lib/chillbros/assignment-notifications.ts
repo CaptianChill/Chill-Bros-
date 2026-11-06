@@ -82,7 +82,7 @@ export async function sendTechnicianAssignmentEmail(jobId:string, kind:"assigned
 
   const email=resolved.email;
   const customerName=String(customer?.name??"Customer");
-  const subject=kind==="assigned"?`New Chill Bros service call: ${customerName}`:`Chill Bros schedule updated: ${customerName}`;
+  const subject=kind==="assigned"?`New Chill Pros service call: ${customerName}`:`Chill Pros schedule updated: ${customerName}`;
   const text=[`Hi ${techName},`,"",kind==="assigned"?"A new service call has been assigned to you.":"One of your assigned service calls has been updated.",`Customer: ${customerName}`,`Schedule: ${job.scheduled_window||"Not set"}`,`Location: ${job.location||"Not set"}`,job.scope?`Scope: ${job.scope}`:"","",`Open call: ${appBaseUrl()}/technician?job=${encodeURIComponent(job.id)}`].filter(Boolean).join("\n");
   let status="failed";
   try{const result=await sendCompanyEmail(email,subject,text);status=result.sent?result.status:result.error;}catch(e){status=`failed: ${e instanceof Error?e.message.slice(0,160):"unknown"}`;}

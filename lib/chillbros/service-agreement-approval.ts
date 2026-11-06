@@ -10,7 +10,7 @@ export async function acceptServiceAgreementAndNotifyAction(token: string, signa
   const agreement = await getServiceAgreementByToken(token);
   if (agreement) {
     await sendApprovalNotification({
-      subject: `Chill Bros plan accepted · ${agreement.agreementNumber}`,
+      subject: `Chill Pros plan accepted · ${agreement.agreementNumber}`,
       documentLabel: "Monthly service agreement",
       documentNumber: agreement.agreementNumber,
       signedBy: agreement.signatureName ?? signatureName,

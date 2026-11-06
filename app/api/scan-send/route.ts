@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const to = String(body?.to || "").trim();
-    const subject = String(body?.subject || "Chill Bros scanned paperwork").trim().slice(0, 180);
+    const subject = String(body?.subject || "Chill Pros scanned paperwork").trim().slice(0, 180);
     const notes = String(body?.notes || "").trim().slice(0, 5000);
     const pdfBase64 = String(body?.pdfBase64 || "");
     const filename = cleanFilename(body?.filename);
@@ -61,8 +61,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         from,
         to: [to],
-        subject: subject || "Chill Bros scanned paperwork",
-        text: notes || `Scanned paperwork sent by ${profile.fullName} through the Chill Bros app.`,
+        subject: subject || "Chill Pros scanned paperwork",
+        text: notes || `Scanned paperwork sent by ${profile.fullName} through the Chill Pros app.`,
         attachments: [{ filename, content: pdfBase64 }],
       }),
     });

@@ -47,7 +47,7 @@ export async function createAuthServerClient() {
 }
 
 /**
- * Returns an active Chill Bros staff profile using the Neon Auth session.
+ * Returns an active Chill Pros staff profile using the Neon Auth session.
  * Owner authorization is resolved directly from the authenticated Neon
  * identity so the legacy Supabase data client cannot block owner access.
  */

@@ -11,7 +11,7 @@ export default async function ScanSendPage() {
   if (!profile) redirect("/sign-in?next=/scan-send");
 
   return (
-    <AppShell title="Scan & Send" description="Photograph paperwork, combine the pages into one PDF, and email it directly from the Chill Bros app.">
+    <AppShell title="Scan & Send" description="Photograph paperwork, combine the pages into one PDF, and email it directly from the Chill Pros app.">
       <ScanSendTool defaultRecipient={(process.env.SCAN_DEFAULT_TO || "").trim()} />
     </AppShell>
   );

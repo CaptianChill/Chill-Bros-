@@ -168,7 +168,7 @@ export async function approveInvoiceV2Action(token: string, signatureName: strin
   if (error || !data) return { ok: false, error: error?.message ?? "Approval could not be recorded." };
   await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.job_id, invoice_id: invoice.id, stage: "approved", message: `Customer approved estimate as ${name}. Invoice issued.` });
   const { data: customer } = await supabase.from("chillbros_customers").select("name").eq("id", invoice.customer_id).maybeSingle();
-  await sendApprovalNotification({ subject: `Chill Bros approval · ${invoice.invoice_number}`, documentLabel: "Estimate / invoice", documentNumber: invoice.invoice_number, signedBy: name, customerName: customer?.name ?? null, relatedInvoiceId: invoice.id });
+  await sendApprovalNotification({ subject: `Chill Pros approval · ${invoice.invoice_number}`, documentLabel: "Estimate / invoice", documentNumber: invoice.invoice_number, signedBy: name, customerName: customer?.name ?? null, relatedInvoiceId: invoice.id });
   try { await archiveInvoicePdf(invoice.id, "approved"); } catch (error) { console.error("[billing] document creation failed", error); }
   await sendBillingDeliveryRecorded(invoice.id, "invoice", "email");
   refresh(["/manager", "/dispatch", "/technician", "/office", "/invoices", "/reports", "/", `/portal/${token}`, `/portal/${token}/document`]);

@@ -140,11 +140,11 @@ export async function finalizeInvoiceAction(invoiceId: string): Promise<Result> 
   if (invoice.revoked_at || !["draft", "awaiting_approval"].includes(invoice.status) || invoice.payment_status === "paid") return { ok: false, error: `Cannot finalize invoice with status "${invoice.status}" and payment status "${invoice.payment_status}".` };
   const now = new Date();
   const { data: updated, error } = await supabase.from("chillbros_invoices").update({
-    status: "approved", signature_name: "Approved by Chill Bros office", signed_at: now.toISOString(),
+    status: "approved", signature_name: "Approved by Chill Pros office", signed_at: now.toISOString(),
     issued_at: invoice.issued_at ?? now.toISOString(), due_at: approvalDueAt(invoice.payment_terms ?? "due_on_receipt", invoice.due_at, now), updated_at: now.toISOString(),
   }).eq("id", invoiceId).eq("status", invoice.status).eq("updated_at", invoice.updated_at).is("revoked_at", null).neq("payment_status", "paid").select("id").maybeSingle();
   if (error || !updated) return { ok: false, error: error?.message ?? "Invoice changed. Refresh before finalizing." };
-  const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.job_id, invoice_id: invoiceId, actor_id: guard.profile.id, stage: "invoice_finalized", message: "Approved by Chill Bros office. Finalized and held for review before it is sent to the customer." });
+  const { error: eventError } = await supabase.from("chillbros_workflow_events").insert({ job_id: invoice.job_id, invoice_id: invoiceId, actor_id: guard.profile.id, stage: "invoice_finalized", message: "Approved by Chill Pros office. Finalized and held for review before it is sent to the customer." });
   if (eventError) return { ok: false, error: `Invoice finalized, but audit logging failed: ${eventError.message}` };
   try {
     await archiveInvoicePdf(invoiceId, "approved", guard.profile.id);
