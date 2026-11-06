@@ -3,7 +3,7 @@ import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { JobStatus } from "./types";
 
-export type DispatchJob = { id: string; customerId: string; customerName: string; assignedTechId: string | null; assignedTechName: string | null; status: JobStatus; location: string | null; scope: string | null; workPerformed: string | null; scheduledWindow: string | null; createdAt: string; workflowStage: string };
+export type DispatchJob = { id: string; customerId: string; customerName: string; assignedTechId: string | null; assignedTechName: string | null; status: JobStatus; location: string | null; scope: string | null; workPerformed: string | null; scheduledWindow: string | null; createdAt: string; workflowStage: string; updatedAt?: string | null };
 export type ActiveTechnician = { id: string; fullName: string; role: "technician" | "manager" };
 export type TimekeepingStaff = { id: string; fullName: string; role: "technician" | "office"; lastClockEvent: string | null };
 export type OpenTimesheet = { id: string; location: string | null; clockInAt: string; jobId: string | null; breakStartedAt: string | null; breakMinutes: number };
@@ -13,7 +13,7 @@ export type StaffCallRow = { id: string; technicianId: string; technicianName: s
 
 export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("chillbros_jobs").select("id, customer_id, assigned_tech_id, status, location, scope, work_performed, scheduled_window, created_at, customer:chillbros_customers(name), tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)").is("archived_at", null).order("created_at", { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from("chillbros_jobs").select("id, customer_id, assigned_tech_id, status, location, scope, work_performed, scheduled_window, created_at, updated_at, customer:chillbros_customers(name), tech:chillbros_profiles!chillbros_jobs_assigned_tech_id_fkey(full_name)").is("archived_at", null).order("created_at", { ascending: false }).limit(limit);
   if (error || !data) return [];
   const ids = data.map((row) => row.id);
   const [{ data: invoices }, { data: events }] = ids.length ? await Promise.all([
@@ -23,7 +23,7 @@ export async function getDispatchJobs(limit = 100): Promise<DispatchJob[]> {
   const stageByJob = new Map<string, string>();
   for (const e of events ?? []) if (e.job_id && !stageByJob.has(e.job_id)) stageByJob.set(e.job_id, e.stage);
   for (const i of invoices ?? []) if (i.job_id && !stageByJob.has(i.job_id)) stageByJob.set(i.job_id, i.payment_status === "paid" ? "paid" : i.status === "approved" ? "approved" : "awaiting_approval");
-  return data.map((row) => { const customer = Array.isArray(row.customer) ? row.customer[0] : row.customer; const tech = Array.isArray(row.tech) ? row.tech[0] : row.tech; return { id: row.id, customerId: row.customer_id, customerName: customer?.name ?? "Unknown customer", assignedTechId: row.assigned_tech_id, assignedTechName: tech?.full_name ?? null, status: row.status, location: row.location, scope: row.scope, workPerformed: row.work_performed, scheduledWindow: row.scheduled_window, createdAt: row.created_at, workflowStage: stageByJob.get(row.id) ?? row.status }; });
+  return data.map((row) => { const customer = Array.isArray(row.customer) ? row.customer[0] : row.customer; const tech = Array.isArray(row.tech) ? row.tech[0] : row.tech; return { id: row.id, customerId: row.customer_id, customerName: customer?.name ?? "Unknown customer", assignedTechId: row.assigned_tech_id, assignedTechName: tech?.full_name ?? null, status: row.status, location: row.location, scope: row.scope, workPerformed: row.work_performed, scheduledWindow: row.scheduled_window, createdAt: row.created_at, updatedAt: row.updated_at ?? null, workflowStage: stageByJob.get(row.id) ?? row.status }; });
 }
 
 export async function getActiveTechnicians(): Promise<ActiveTechnician[]> {

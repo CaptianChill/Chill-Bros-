@@ -30,6 +30,8 @@ function initialsFor(name: string) {
   return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? "?").slice(0, 2)).toUpperCase();
 }
 
+const LIVE_STATUS_MS = 12 * 60 * 60 * 1000;
+
 export default async function DispatchPage({ searchParams }: Props) {
   const profile = await getCurrentStaffProfile();
   if (!profile || !["manager", "office"].includes(profile.role)) redirect("/");
@@ -66,10 +68,14 @@ export default async function DispatchPage({ searchParams }: Props) {
   for (const event of locationEvents ?? []) { try { const payload=JSON.parse(event.message); const job=openJobs.find((j)=>j.id===event.job_id); if(job?.assignedTechId&&!latestLocation.has(job.assignedTechId)&&Number.isFinite(payload.lat)&&Number.isFinite(payload.lon)) latestLocation.set(job.assignedTechId,{lat:payload.lat,lon:payload.lon,at:payload.at||event.created_at}); } catch {} }
   const techRows = technicians.map((tech) => {
     const count = dayJobs.filter((job) => job.assignedTechId === tech.id).length;
-    const onSite = openJobs.find((job) => job.assignedTechId === tech.id && ON_SITE_STATUSES.includes(job.status));
-    const enRoute = openJobs.find((job) => job.assignedTechId === tech.id && EN_ROUTE_STATUSES.includes(job.status));
+    // Only a call that is live right now (scheduled today or touched in the last 12h) puts a
+    // tech "On site" / "En route". An old call left In progress weeks ago must not.
+    const isLive = (job: (typeof openJobs)[number]) => parseWindow(job.scheduledWindow)?.date === today || (job.updatedAt ? Date.now() - new Date(job.updatedAt).getTime() < LIVE_STATUS_MS : false);
+    const onSite = openJobs.find((job) => job.assignedTechId === tech.id && ON_SITE_STATUSES.includes(job.status) && isLive(job));
+    const enRoute = openJobs.find((job) => job.assignedTechId === tech.id && EN_ROUTE_STATUSES.includes(job.status) && isLive(job));
+    const liveJob = onSite ?? enRoute ?? null;
     const status = onSite ? `On site · ${onSite.customerName}` : enRoute ? `En route · ${enRoute.customerName}` : "Available";
-    return { tech, count, status, busy: Boolean(onSite || enRoute), location: latestLocation.get(tech.id) ?? null };
+    return { tech, count, status, busy: Boolean(liveJob), liveJobId: liveJob?.id ?? null, location: latestLocation.get(tech.id) ?? null };
   });
   const barMax = Math.max(4, ...techRows.map((row) => row.count));
   const techOptions = technicians.map((tech) => ({ id: tech.id, fullName: tech.fullName }));
@@ -146,7 +152,7 @@ export default async function DispatchPage({ searchParams }: Props) {
             <p className="px-3.5 py-5 text-sm text-[#2B3F5C]">No active technicians.</p>
           ) : (
             <ul className="divide-y divide-[#0A1A33]/10">
-              {techRows.map(({ tech, count, status, busy, location }) => (
+              {techRows.map(({ tech, count, status, busy, liveJobId, location }) => (
                 <li key={tech.id} className="flex items-center gap-2.5 px-3.5 py-2">
                   <span aria-hidden="true" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#9FD3FF] text-[11px] font-bold text-[#0A1A33]">
                     {initialsFor(tech.fullName)}
@@ -154,7 +160,7 @@ export default async function DispatchPage({ searchParams }: Props) {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-semibold leading-tight text-[#0A1A33]">{tech.fullName}</p>
                     <p className="truncate text-xs leading-tight">
-                      <span className={busy ? "font-semibold text-[#1530A8]" : "text-[#2B3F5C]"}>{status}</span>
+                      {liveJobId ? <Link href={`/jobs/${liveJobId}`} className="font-semibold text-[#1530A8] underline underline-offset-2">{status}</Link> : <span className={busy ? "font-semibold text-[#1530A8]" : "text-[#2B3F5C]"}>{status}</span>}
                       {location ? (
                         <>
                           <span className="text-[#5B6B82]"> · </span>
