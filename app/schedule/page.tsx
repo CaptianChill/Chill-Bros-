@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { ScheduleDeleteButton } from "@/components/schedule-delete-button";
 import { ScheduleSubmitButton } from "@/components/schedule-submit-button";
 import { getActiveTechnicians } from "@/lib/chillbros/operations-queries";
-import { getCalendarJobs } from "@/lib/chillbros/schedule-queries";
+import { getCalendarJobs, getNeedsSchedulingJobs } from "@/lib/chillbros/schedule-queries";
 import { getCustomers } from "@/lib/chillbros/queries";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createTeamMeetingAction, rescheduleJobAction } from "./actions";
@@ -55,7 +55,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   const dayCount = Math.round((dateAt(gridEnd).getTime()-dateAt(gridStart).getTime())/86400000)+1;
   const days = Array.from({ length:dayCount },(_,i)=>shift(gridStart,i));
   const selectedDay = focus;
-  const [rawCustomers,technicians,jobs] = await Promise.all([getCustomers(),getActiveTechnicians(),getCalendarJobs()]);
+  const [rawCustomers,technicians,jobs,needsScheduling] = await Promise.all([getCustomers(),getActiveTechnicians(),getCalendarJobs(),getNeedsSchedulingJobs()]);
   const customers = uniqueCustomers(rawCustomers.filter((c)=>c.name!=="Chill Pros Team"));
   const selectedCustomer = customers.some((customer)=>customer.id===params.customer) ? params.customer : "";
   const parsed = jobs.map((job)=>({job,slot:parseWindow(job.scheduledWindow)})).filter((entry)=>entry.slot).sort((a,b)=>(a.slot!.start).localeCompare(b.slot!.start));
@@ -82,6 +82,40 @@ export default async function SchedulePage({ searchParams }: Props) {
         {params.success ? <p className="w-full rounded-xl bg-[#0A7FC2]/10 px-3 py-2 text-sm font-medium text-[#065A8A]">{params.success}</p> : null}
         {params.warning ? <p className="w-full rounded-xl bg-[#FFB400]/15 px-3 py-2 text-sm font-medium text-[#7A5200]">{params.warning}</p> : null}
         {params.error ? <p className="w-full rounded-xl bg-[#E3261C]/10 px-3 py-2 text-sm font-medium text-[#B91C12]">{params.error}</p> : null}
+      </section>
+
+      <section id="needs-scheduling" aria-labelledby="needs-scheduling-title" className="cb-card overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-[#0A1A33]/10 px-3.5 py-3">
+          <div className="min-w-0">
+            <h2 id="needs-scheduling-title" className="truncate text-[22px] leading-none">Needs scheduling</h2>
+            <p className="mt-1 text-sm text-[#2B3F5C]">Approved quotes and requests waiting for a date</p>
+          </div>
+          <span className={`inline-flex shrink-0 items-center justify-center rounded-full px-2.5 py-1 text-sm font-bold ${needsScheduling.length?"bg-[#FFB400] text-[#0A1A33]":"bg-[#0A1A33]/8 text-[#2B3F5C]"}`}>{needsScheduling.length}</span>
+        </div>
+        {needsScheduling.length===0 ? <p className="px-3.5 py-4 text-sm text-[#2B3F5C]">Nothing waiting. When a customer approves a quote or pays a down payment, the call shows up here.</p> : <ul className="divide-y divide-[#0A1A33]/10">{needsScheduling.map(job=>{
+          const deposit = job.downPaymentAmount>0 ? (job.downPaymentPaid ? {text:"Down payment paid",tone:"bg-[#0A7FC2]/12 text-[#065A8A]"} : {text:`Waiting on $${job.downPaymentAmount.toFixed(2)} down payment`,tone:"bg-[#FFB400]/20 text-[#7A5200]"}) : null;
+          return <li key={job.id} className="px-3.5 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-[15px] font-semibold text-[#0A1A33]">{job.customerName}</p>
+                <p className="truncate text-[13px] text-[#2B3F5C]">{[job.jobNumber, job.quoteNumber?`${job.quoteNumber}${job.quoteApproved?" approved":""}`:null, shortLocation(job.location)].filter(Boolean).join(" · ")}</p>
+              </div>
+              {deposit?<span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${deposit.tone}`}>{deposit.text}</span>:null}
+            </div>
+            <details className="group mt-2.5">
+              <summary className="inline-flex min-h-10 w-full cursor-pointer list-none items-center justify-center rounded-xl bg-[#1B3FD0] px-3 text-sm font-semibold text-white group-open:bg-white group-open:text-[#1B3FD0] group-open:ring-1 group-open:ring-[#1B3FD0] [&::-webkit-details-marker]:hidden"><span className="group-open:hidden">Schedule</span><span className="hidden group-open:inline">Close</span></summary>
+              <form data-no-draft action={rescheduleJobAction} className="mt-2.5 grid gap-2 rounded-xl border border-[#C7D3E2] bg-white/80 p-2.5 sm:grid-cols-4">
+                <input type="hidden" name="jobId" value={job.id}/><input type="hidden" name="week" value={selectedDay}/>
+                <label className={label}>Date<input required name="date" type="date" defaultValue={selectedDay} className={`${field} mt-1`}/></label>
+                <label className={label}>Start<select required name="start" defaultValue="09:00" className={`${field} mt-1`}>{TIMES.map(t=><option key={t} value={t}>{displayTime(t)}</option>)}</select></label>
+                <label className={label}>End<select required name="end" defaultValue="11:00" className={`${field} mt-1`}>{TIMES.map(t=><option key={t} value={t}>{displayTime(t)}</option>)}</select></label>
+                <label className={label}>Technician<select name="assignedTechId" defaultValue={job.assignedTechId??""} className={`${field} mt-1`}><option value="">Assign later</option>{technicians.map(t=><option key={t.id} value={t.id}>{t.fullName}</option>)}</select></label>
+                <button type="submit" className="min-h-11 rounded-xl bg-[#1B3FD0] px-4 text-sm font-semibold text-white hover:bg-[#1530A8] sm:col-span-4">Put on the schedule</button>
+              </form>
+              <Link href={`/jobs/${job.id}`} className="mt-2 inline-flex text-sm font-semibold text-[#1B3FD0] underline underline-offset-2">Open job</Link>
+            </details>
+          </li>;
+        })}</ul>}
       </section>
 
       {/* One form starts every service call: /jobs/new, prefilled with the selected day and any just-added customer. */}

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Archive, Mail, MessageSquareText, RefreshCw, ReceiptText, Send, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { overrideQuoteToEstimateAction, convertQuoteToInvoiceAction, finalizeInvoiceAction, saveCustomerEmailAndSendAction, ensureInvoiceArchiveAction, recordInvoiceAdjustmentAction, sendInvoiceCommunicationAction, updateInvoiceBillingSettingsAction } from "@/lib/chillbros/billing-actions";
+import { overrideQuoteToEstimateAction, convertQuoteToInvoiceAction, recordCustomerApprovalAction, finalizeInvoiceAction, saveCustomerEmailAndSendAction, ensureInvoiceArchiveAction, recordInvoiceAdjustmentAction, sendInvoiceCommunicationAction, updateInvoiceBillingSettingsAction } from "@/lib/chillbros/billing-actions";
 import { markInvoicePaidV2Action } from "@/lib/chillbros/estimate-actions-v2";
 import { revokeEstimateAction } from "@/lib/chillbros/mutations";
 import type { InvoiceAdjustmentType, InvoiceStatus, PaymentStatus, PaymentTerms } from "@/lib/chillbros/types";
@@ -30,6 +30,8 @@ type Props = {
   customerEmails?: string[];
   issuedAt: string | null;
   convertedInvoiceId?: string | null;
+  downPaymentAmount?: number;
+  downPaymentStatus?: PaymentStatus;
 };
 
 function inputDate(value: string | null) { return value ? new Date(value).toISOString().slice(0, 10) : ""; }
@@ -55,6 +57,7 @@ export function InvoiceAdminControls(props: Props) {
   const [pickedEmails, setPickedEmails] = useState<string[]>(savedEmails.slice(0, 1));
   const togglePicked = (address: string) => setPickedEmails((current) => current.includes(address) ? current.filter((item) => item !== address) : [...current, address]);
   const [sendToPhone, setSendToPhone] = useState("");
+  const [approvalWay, setApprovalWay] = useState("signed");
   const taxLocked = props.status === "approved";
   const isAwaitingApproval = props.status === "awaiting_approval";
   const isQuote = props.invoiceNumber.toUpperCase().startsWith("Q-") || !props.issuedAt;
@@ -125,6 +128,12 @@ export function InvoiceAdminControls(props: Props) {
         return result;
       }, "Invoice ready — Waiting for Payment.")} className="rounded-xl border border-[#8ffafa]/45 bg-[#2d7dff]/10 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">{props.convertedInvoiceId ? "Open converted invoice" : "Convert to Invoice"}</button> }
       {props.invoiceNumber.toUpperCase().startsWith("Q-") && !props.convertedInvoiceId ? <label className="rounded-xl border border-amber-400/25 px-3 py-2 text-xs text-amber-100">Billing Override / Document Type <select aria-label="Billing Override / Document Type" value="quote" disabled={pending} onChange={(event) => { if (event.target.value === "estimate") void run(() => overrideQuoteToEstimateAction(props.invoiceId), "Document changed to Estimate. Audit history recorded."); }} className="ml-2 rounded-lg bg-zinc-950 p-1 text-white"><option value="quote">Quote</option><option value="estimate">Estimate</option></select></label> : null}
+      {isAwaitingApproval ? <div className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/[0.06] p-2">
+        <label className="text-xs text-emerald-100">Customer approved by <select aria-label="How the customer approved" value={approvalWay} disabled={pending} onChange={(event) => setApprovalWay(event.target.value)} className="ml-1 rounded-lg bg-zinc-950 p-1 text-white"><option value="signed">Signed paper copy</option><option value="email">Email</option><option value="phone">Phone</option><option value="text">Text message</option><option value="in_person">In person</option></select></label>
+        <button type="button" disabled={pending} onClick={() => void run(() => recordCustomerApprovalAction(props.invoiceId, approvalWay), "Customer approval recorded. The job is now on Schedule → Needs scheduling.")} className="rounded-xl border border-emerald-400/50 bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">Mark customer approved</button>
+      </div> : null}
+      {props.status === "approved" && Number(props.downPaymentAmount ?? 0) > 0 && props.downPaymentStatus !== "paid" ? <Link href={`/payments?tab=down&invoice=${encodeURIComponent(props.invoiceId)}`} className="rounded-xl border border-amber-400/40 px-3 py-2 text-xs font-semibold text-amber-100">Record ${Number(props.downPaymentAmount).toFixed(2)} down payment (cash / check / Zelle…)</Link> : null}
+      {props.status === "approved" ? <Link href="/schedule#needs-scheduling" className="rounded-xl border border-[#8ffafa]/45 px-3 py-2 text-xs font-semibold text-white">Schedule the work</Link> : null}
       {props.status !== "approved" ? <p className="w-full text-xs text-amber-200">Approval is required before conversion. Finalize below to record office approval, or send the quote for customer approval.</p> : null}
     </div> : null}
 

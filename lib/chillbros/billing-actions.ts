@@ -11,6 +11,7 @@ import type { InvoiceAdjustmentType, PaymentTerms } from "@/lib/chillbros/types"
 import { approvalDueAt } from "@/lib/chillbros/billing-terms";
 import { normalizeEmailListInput, parseEmailList } from "@/lib/chillbros/email-list";
 import { sendInvoiceCommunicationAs } from "@/lib/chillbros/invoice-send-core";
+import { routeApprovedJob } from "@/lib/chillbros/approved-job-routing";
 
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string; status?: string };
 const TERMS = new Set<PaymentTerms>(["due_on_receipt", "net_7", "net_15", "net_30", "custom"]);
@@ -228,5 +229,38 @@ export async function overrideQuoteToEstimateAction(invoiceId: string): Promise<
   const { data: document } = await supabase.from("chillbros_invoices").select("portal_token,job_id").eq("id", invoiceId).maybeSingle();
   refreshInvoicePaths(document?.portal_token);
   if (document?.job_id) revalidatePath(`/jobs/${document.job_id}`);
+  return { ok: true, data: undefined };
+}
+
+const OFFLINE_APPROVAL_WAYS: Record<string, string> = { signed: "signed paper copy", email: "email", phone: "phone", in_person: "in person", text: "text message" };
+
+/**
+ * The customer approved a sent quote outside the app (signed paper, email,
+ * phone, in person). Records the approval exactly like a portal signature and
+ * moves the job to Needs scheduling so it shows on the Schedule page.
+ */
+export async function recordCustomerApprovalAction(invoiceId: string, how: string): Promise<Result> {
+  const guard = await requireManager();
+  if (!guard.ok) return guard;
+  const way = OFFLINE_APPROVAL_WAYS[how];
+  if (!way) return { ok: false, error: "Choose how the customer approved." };
+  const supabase = createServiceRoleClient();
+  const { data: quote, error: readError } = await supabase.from("chillbros_invoices")
+    .select("id,invoice_number,job_id,status,portal_token,down_payment_amount,down_payment_status").eq("id", invoiceId).is("revoked_at", null).maybeSingle();
+  if (readError || !quote) return { ok: false, error: readError?.message ?? "Quote not found." };
+  if (quote.status !== "awaiting_approval") return { ok: false, error: `Only a quote waiting on approval can be approved (this one is "${quote.status}").` };
+  const now = new Date().toISOString();
+  const { data: approved, error } = await supabase.from("chillbros_invoices")
+    .update({ status: "approved", signature_name: `Customer approved by ${way}, recorded by ${guard.profile.fullName}`.slice(0, 200), signed_at: now, issued_at: null, due_at: null, updated_at: now })
+    .eq("id", invoiceId).eq("status", "awaiting_approval").is("revoked_at", null).select("id").maybeSingle();
+  if (error || !approved) return { ok: false, error: error?.message ?? "Quote changed. Refresh and try again." };
+  if (quote.job_id) await routeApprovedJob(supabase, quote.job_id, now);
+  const deposit = Number(quote.down_payment_amount ?? 0);
+  const depositNote = deposit > 0 && quote.down_payment_status !== "paid" ? ` Down payment of ${deposit.toLocaleString("en-US", { style: "currency", currency: "USD" })} still to record.` : "";
+  await supabase.from("chillbros_workflow_events").insert({ job_id: quote.job_id, invoice_id: invoiceId, actor_id: guard.profile.id, stage: "approved_needs_action", message: `Customer approved ${quote.invoice_number} by ${way}. Recorded by ${guard.profile.fullName}. Job moved to Needs scheduling.${depositNote}` });
+  try { await archiveInvoicePdf(invoiceId, "approved", guard.profile.id); } catch { /* approval stays authoritative */ }
+  refreshInvoicePaths(quote.portal_token);
+  for (const path of ["/schedule", "/dispatch", "/payments"]) revalidatePath(path);
+  if (quote.job_id) revalidatePath(`/jobs/${quote.job_id}`);
   return { ok: true, data: undefined };
 }
