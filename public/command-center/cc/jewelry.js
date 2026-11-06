@@ -1,5 +1,15 @@
 /* Glints follow the actual jewelry; respect the device's motion preference. */
 (() => {
+  // The assistant dock belongs to the same page frame and scrolls with it.
+  const shell = document.querySelector('.desktop-shell');
+  const dock = document.querySelector('.talk-dock');
+  const desktop = matchMedia('(min-width:768px) and (orientation:landscape),(min-width:1101px)');
+  function placeDock() {
+    if (!shell || !dock) return;
+    (desktop.matches ? shell : document.body).append(dock);
+  }
+  placeDock();
+  desktop.addEventListener('change', placeDock);
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const hero = document.querySelector('.desktop-hero');
   if (!hero) return;

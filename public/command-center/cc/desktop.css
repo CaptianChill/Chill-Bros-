@@ -32,3 +32,40 @@
 .desktop-hero{position:relative}.jewelry-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.mobile-workspace .cc-hero{padding:0}.mobile-workspace .cc-jewel{display:none}.mobile-workspace .cc-mascot{max-width:none;width:100%;padding:0;border-radius:0;box-shadow:none}.mobile-workspace .cc-kicker{margin:0;padding:12px}.mobile-workspace{padding:16px}
 @media (min-width:768px) and (orientation:landscape),(min-width:1101px){.mobile-workspace{display:none}}
 @media (prefers-reduced-motion:reduce){.jewelry-fx{display:none}}
+
+/* One continuous diamond-framed workspace, all the way to the page edges. */
+.page-jewels{display:none}
+@media (min-width:768px) and (orientation:landscape),(min-width:1101px){
+ .stage{--frame:clamp(16px,1.55vw,30px);padding:var(--frame);background:#03080de8;isolation:isolate}
+ .stage::before{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;background-image:url(side/hchain.webp),url(side/hchain.webp),url(side/vchain.webp),url(side/vchain.webp);background-repeat:repeat-x,repeat-x,repeat-y,repeat-y;background-position:left top,left bottom,left top,right top;background-size:auto var(--frame),auto var(--frame),var(--frame) auto,var(--frame) auto;filter:drop-shadow(0 0 5px #bde8ff55)}
+ .page-jewels{display:block;position:absolute;inset:0;z-index:4;pointer-events:none}
+ .page-jewels i{position:absolute;width:calc(var(--frame)*2.1);height:calc(var(--frame)*2.1);background:url(side/gem.webp) center/contain no-repeat;filter:drop-shadow(0 0 6px #a5dfff66)}
+ .page-jewels i:nth-child(1){left:0;top:0}.page-jewels i:nth-child(2){right:0;top:0}.page-jewels i:nth-child(3){left:0;bottom:0}.page-jewels i:nth-child(4){right:0;bottom:0}
+ .desktop-shell{max-width:none;min-height:calc(100dvh - 2*var(--frame));display:flex;flex-direction:column;background:linear-gradient(135deg,#07111bd9,#03070cd9)}
+ .desktop-header{margin:0;padding:18px 24px 24px;position:relative;border:0}
+ .desktop-header::after{content:"";position:absolute;bottom:0;left:0;right:0;height:12px;background:url(side/hchain.webp) repeat-x left center/auto 12px;pointer-events:none}
+ .desktop-layout{flex:1;grid-template-columns:clamp(200px,15vw,270px) minmax(0,1fr) clamp(220px,18vw,310px);gap:0;align-items:stretch}
+ .desktop-projects{border:0;border-radius:0;padding:24px 18px;background:linear-gradient(180deg,#020609e6,#06111be6);position:relative}
+ .desktop-projects::after{content:"";position:absolute;right:0;top:0;bottom:0;width:12px;background:url(side/vchain.webp) repeat-y center top/12px auto;pointer-events:none}
+ .desktop-projects .proj-items{max-height:none}
+ .desktop-main{padding:20px;gap:20px;align-content:start}
+ .desktop-hero{border:0;border-radius:0;box-shadow:0 0 24px #4ecfff12;background:transparent}
+ .desktop-hero img{width:100%;height:auto}
+ .desktop-actions{gap:0;border-block:1px solid #94dbf52e}
+ .desktop-actions>button{border:0;border-right:1px solid #94dbf52e;border-radius:0;background:#06101b99;padding:18px}
+ .desktop-actions>button:last-child{border-right:0}
+ .desktop-apps{border:0;border-radius:0;padding:0;background:transparent}
+ .desktop-apps .big-tile{background:#081521aa;border-radius:6px}
+ .desktop-activity{grid-column:auto;position:relative;display:flex;flex-direction:column;gap:0;padding:24px 18px 20px 26px;background:linear-gradient(180deg,#020609e6,#06111be6)}
+ .desktop-activity::before{content:"";position:absolute;left:0;top:0;bottom:0;width:12px;background:url(side/vchain.webp) repeat-y center top/12px auto;pointer-events:none}
+ .desktop-activity>section{padding:0 0 20px;border:0;border-radius:0;background:transparent}
+ .desktop-weather{border:0;border-top:1px solid #94dbf52e;border-radius:0;padding:20px 0;background:transparent;width:100%}
+ .desktop-note{margin:12px 0 0}
+ .desktop-shell>.talk-dock{position:relative;left:auto;right:auto;bottom:auto;transform:none;align-self:center;flex:none;flex-wrap:wrap;justify-content:center;margin:18px 12px 22px;padding:10px 16px;border-radius:0;border:0;background:transparent;box-shadow:none;z-index:2}
+}
+@media (min-width:768px) and (max-width:1100px) and (orientation:landscape){
+ .desktop-layout{grid-template-columns:190px minmax(0,1fr)}
+ .desktop-activity{grid-column:2;display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:20px;padding:20px;border-top:1px solid #94dbf52e}
+ .desktop-activity::before{display:none}.desktop-weather{border-top:0;padding:0}
+ .desktop-main{padding:16px}.desktop-actions>button{padding:14px}.desktop-apps .ops-big{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
