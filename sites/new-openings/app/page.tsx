@@ -30,10 +30,10 @@ export default async function SalesPage() {
           <figcaption className="mt-2 text-sm text-[#8A9BB0]">{BRAND.quoteBy}</figcaption>
         </figure>
 
-        <section className="mt-14 grid gap-4 md:grid-cols-3">
+        <section className="mt-14 grid gap-x-4 gap-y-8 md:grid-cols-3">
           {PACKS.map((p) => (
             <div key={p.key} className={`relative flex flex-col rounded-2xl border p-5 ${p.best ? "border-[#7FD4FF] bg-[#12304D]" : "border-white/10 bg-[#102A44]"}`}>
-              {p.best ? <span className="absolute -top-3 left-5 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">Best value</span> : null}
+              {p.best || p.badge ? <span className="absolute -top-3 left-5 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">{p.best ? "Best value" : p.badge}</span> : null}
               <p className="text-lg font-bold uppercase tracking-wide">{p.name}</p>
               <p className="mt-3 flex items-baseline gap-3"><span className="text-5xl font-bold text-[#F5C542]">{p.price}</span>{p.was ? <span className="text-[#8A9BB0] line-through">{p.was}</span> : null}</p>
               <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[#C9D6E3]">{p.points(openings).map((t) => <li key={t}>✓ {t}</li>)}</ul>

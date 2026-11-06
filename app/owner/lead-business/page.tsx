@@ -68,6 +68,9 @@ export default async function LeadBusinessPage() {
           <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href={PAY_LINKS.bundle} target="_blank">Bundle $199</a>
           <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href={PAY_LINKS.openings} target="_blank">Openings $150</a>
           <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href={PAY_LINKS.starter} target="_blank">Starter $75</a>
+          <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href={PAY_LINKS.food} target="_blank">Restaurant & Retail $99</a>
+          <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href={PAY_LINKS.auto} target="_blank">Auto $99</a>
+          <a className="rounded-xl border border-amber-300/40 px-4 py-2.5 text-amber-100" href={PAY_LINKS.exclusive} target="_blank">Exclusive $449</a>
           <a className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href="https://app.squareup.com/dashboard/sales/transactions" target="_blank">Sales in Square ↗</a>
           <Link className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200" href="/revenue-radar/call-list">Call List by trade</Link>
         </div>

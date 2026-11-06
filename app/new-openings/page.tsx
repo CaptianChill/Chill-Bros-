@@ -30,6 +30,12 @@ const PACKS = [
     points: (n: number) => [`All ${n} new projects`, "+ 50 ready-to-call restaurants & markets", "Call openers written for your trade", "PDF + spreadsheet, delivered in 2 hours"] },
   { name: "Commercial Starter Pack", price: "$75", was: null, href: PAY_LINKS.starter, best: false,
     points: () => ["50 ready-to-call SA restaurants & markets", "Address, phone & business type", "Matched to your trade", "Delivered in 2 hours"] },
+  { name: "Auto Openings Pack", price: "$99", was: null, href: PAY_LINKS.auto, best: false, badge: "Auto only",
+    points: () => ["13 new car washes, oil change, collision & dealer service shops", "Owner or tenant contact + phone", "Call openers for your trade", "Not for hood cleaning or kitchen equipment"] },
+  { name: "Restaurant & Retail Pack", price: "$99", was: null, href: PAY_LINKS.food, best: false, badge: "Food & retail only",
+    points: () => ["16 new restaurant, grocery & retail build-outs", "Owner or tenant contact + phone", "Project size, cost & timing", "Call openers for your trade"] },
+  { name: "Exclusive Trade Bundle", price: "$449", was: null, href: PAY_LINKS.exclusive, best: false, badge: "1 buyer per trade",
+    points: (n: number) => [`Everything in the Founding Bundle (${n} projects + 50 businesses)`, "You're the only company in your trade on this list", "Exclusive for 30 days", "Only while your trade is still open"] },
 ];
 
 export default async function NewOpeningsPage() {
@@ -58,10 +64,10 @@ export default async function NewOpeningsPage() {
           <figcaption className="mt-2 text-sm text-[#8A9BB0]">Built by Chill Pros, San Antonio commercial HVAC &amp; refrigeration</figcaption>
         </figure>
 
-        <section className="mt-14 grid gap-4 md:grid-cols-3">
+        <section className="mt-14 grid gap-x-4 gap-y-8 md:grid-cols-3">
           {PACKS.map((p) => (
             <div key={p.name} className={`relative flex flex-col rounded-2xl border p-5 ${p.best ? "border-[#7FD4FF] bg-[#12304D]" : "border-white/10 bg-[#102A44]"}`}>
-              {p.best ? <span className="absolute -top-3 left-5 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">Best value</span> : null}
+              {p.best || p.badge ? <span className="absolute -top-3 left-5 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">{p.best ? "Best value" : p.badge}</span> : null}
               <p className="text-lg font-bold uppercase tracking-wide">{p.name}</p>
               <p className="mt-3 flex items-baseline gap-3"><span className="text-5xl font-bold text-[#F5C542]">{p.price}</span>{p.was ? <span className="text-[#8A9BB0] line-through">{p.was}</span> : null}</p>
               <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[#C9D6E3]">{p.points(openings).map((t) => <li key={t}>✓ {t}</li>)}</ul>
