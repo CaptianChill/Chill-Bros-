@@ -71,6 +71,8 @@ do $$ declare t text; begin
     execute format('grant select, insert, update on public.chillbros_leadpack_%I to service_role', t);
   end loop;
 end $$;
+-- Only chillbros_leadpack_set_trade deletes (an undelivered trade_question order, re-recorded with its trade).
+grant delete on public.chillbros_leadpack_orders to service_role;
 
 insert into public.chillbros_leadpack_products (key, name, kind, price_cents, projects, contacts, industry, exclusive, on_sale, sort) values
   ('starter',   'Starter Pack',        'pack',         8900,  5,  0, null, false, true, 1),
