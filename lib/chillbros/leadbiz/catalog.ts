@@ -48,6 +48,12 @@ export const PLANS: Product[] = [
     points: ["At least 12 new projects every month", "New projects as soon as your billing month starts", "Spreadsheet export", "Never the same project twice", "12-month term, billed monthly"] },
 ];
 
+/** Monthly plans are off sale until a monthly feed of new projects exists (they promise new
+ *  projects every month). Flip to true only once that feed is running. */
+export const PLANS_ON_SALE = false;
+/** Plans shown on the sales page and in outreach emails. */
+export const SELLING_PLANS: Product[] = PLANS_ON_SALE ? PLANS : [];
+
 export const PRODUCTS: Product[] = [...PACKS, ...PLANS];
 /** Total a buyer commits to over the minimum term. */
 export const termTotal = (p: Product) => (p.kind === "subscription" ? p.price * PLAN_TERM_MONTHS : p.price);

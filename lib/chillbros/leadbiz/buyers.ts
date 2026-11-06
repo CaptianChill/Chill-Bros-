@@ -2,7 +2,7 @@
 // writing the offer email. No I/O here so it is unit-tested (scripts/leadbiz.test.cjs).
 import type { Trade } from "../trade-fit";
 
-import { MAX_BUYERS_PER_TRADE, PACKS, PLANS, PLAN_TERM_MONTHS, TRADE_SLUG } from "./catalog";
+import { MAX_BUYERS_PER_TRADE, PACKS, SELLING_PLANS, PLAN_TERM_MONTHS, TRADE_SLUG } from "./catalog";
 
 export const LEADBIZ_BRAND = "San Antonio New Openings";
 export const LEADBIZ_PHONE = "(210) 904-9306";
@@ -172,8 +172,8 @@ export function inSendWindow(now = new Date()) {
 }
 
 // Projects in the New Openings Pack per trade: 16 restaurant/retail + 13 auto (hood cleaning and kitchen equipment skip auto).
-export const FOOD_OPENINGS = 16;
-export const AUTO_OPENINGS = 13;
+export const FOOD_OPENINGS = 12;
+export const AUTO_OPENINGS = 10;
 export const packProjects = (trade: Trade) => FOOD_OPENINGS + (trade === "hood_cleaning" || trade === "kitchen_equipment" ? 0 : AUTO_OPENINGS);
 
 export function offerEmail(b: { business_name: string; trade: Trade }, unsubscribeUrl: string, followUp = false) {
@@ -193,9 +193,11 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
     "",
     `Packs for ${t.plural}, each with a fixed number of projects (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
     ...PACKS.map((p) => `- ${p.name}: ${p.projects} projects${p.contacts ? ` + ${p.contacts} business contacts` : ""}, $${p.price}`),
-    "",
-    `Or get new projects every month, never repeats (${PLAN_TERM_MONTHS}-month term, billed monthly):`,
-    ...PLANS.map((p) => `- ${p.name}: at least ${p.projects} new projects a month, $${p.price}/month`),
+    ...(SELLING_PLANS.length ? [
+      "",
+      `Or get new projects every month, never repeats (${PLAN_TERM_MONTHS}-month term, billed monthly):`,
+      ...SELLING_PLANS.map((p) => `- ${p.name}: at least ${p.projects} new projects a month, $${p.price}/month`),
+    ] : []),
     "",
     `Pick your pack here: ${salesLink(b.trade)}`,
     "",

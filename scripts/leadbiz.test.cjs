@@ -29,7 +29,7 @@ test('classifies contractor buyers into the 8 trades', () => {
   assert.equal(b.classifyBuyer({ name: 'Guardian Security Systems' }), 'security');
   assert.equal(b.classifyBuyer({ name: 'Alamo Air Conditioning & Heating' }), 'hvac_refrigeration');
   assert.equal(b.classifyBuyer({ name: 'Lone Star Restaurant Equipment Repair' }), 'kitchen_equipment');
-  assert.match(b.offerEmail({ business_name: 'K', trade: 'kitchen_equipment' }, 'u').subject, /^16 new .*kitchen equipment/);
+  assert.match(b.offerEmail({ business_name: 'K', trade: 'kitchen_equipment' }, 'u').subject, /^12 new .*kitchen equipment/);
 });
 
 test('skips stores, restaurants and non-contractors', () => {
@@ -60,16 +60,17 @@ test('offer email is trade-specific, sells the v2 lineup through the sales page,
   const { subject, text } = b.offerEmail({ business_name: 'Bug Busters', trade: 'pest_control' }, 'https://x/u/leads?c=a&s=b');
   assert.match(subject, /pest control companies/);
   assert.ok(text.includes('https://chill-bros.vercel.app/new-openings?trade=pest-control'));
-  for (const p of [...c.PACKS, ...c.PLANS]) assert.ok(text.includes(p.name) && text.includes(`$${p.price}`), p.name);
+  for (const p of [...c.PACKS, ...c.SELLING_PLANS]) assert.ok(text.includes(p.name) && text.includes(`$${p.price}`), p.name);
+  if (!c.PLANS_ON_SALE) for (const p of c.PLANS) assert.ok(!text.includes(p.name), `${p.name} is off sale`);
   for (const url of Object.values(b.LEGACY_PAY_LINKS)) assert.ok(!text.includes(url), 'no retired Square links');
   assert.doesNotMatch(text, /\$449|exclusive|founding/i);
   assert.match(text, /15226 Preston Pass, San Antonio, TX 78247/);
   assert.match(text, /Unsubscribe: https:\/\/x\/u\/leads\?c=a&s=b/);
   assert.match(text, /We work these job sites every week/);
   assert.match(b.offerEmail({ business_name: 'X', trade: 'signs' }, 'u', true).subject, /^Re: /);
-  assert.match(subject, /^29 new/);
+  assert.match(subject, /^22 new/);
   assert.match(text, /car washes, oil change/);
-  assert.match(b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u').subject, /^16 new/);
+  assert.match(b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u').subject, /^12 new/);
   assert.doesNotMatch(b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u').text, /car wash/);
 
 });
@@ -120,9 +121,9 @@ test('public flyer never shows lead contacts or pack download links, and buys on
   assert.doesNotMatch(page, /PAY_LINKS|Exclusive|founding/i);
   for (const slug of ['plumbers', 'electricians', 'hood-cleaners', 'pest-control', 'commercial-cleaning', 'signs', 'low-voltage', 'security', 'hvac-refrigeration', 'kitchen-equipment']) assert.match(page, new RegExp(`"${slug}"`), slug);
   assert.match(page, /satxnewopenings@gmail\.com/);
-  assert.equal(b.packProjects('hood_cleaning'), 16);
-  assert.equal(b.packProjects('kitchen_equipment'), 16);
-  assert.equal(b.packProjects('plumbing'), 29);
+  assert.equal(b.packProjects('hood_cleaning'), 12);
+  assert.equal(b.packProjects('kitchen_equipment'), 12);
+  assert.equal(b.packProjects('plumbing'), 22);
 });
 
 // Runner: Google is a transient lookup. Load runner.ts with its I/O stubbed.
@@ -254,7 +255,8 @@ test('monthly plans carry a 12-month term everywhere they are sold, with its own
   for (const p of c.PLANS) assert.ok(p.points.includes('12-month term, billed monthly'), p.key);
   const sources = ['lib/chillbros/leadbiz/catalog.ts', 'lib/chillbros/leadbiz/buyers.ts', 'app/new-openings/page.tsx', 'app/new-openings/flyer.tsx', 'sites/new-openings/lib/brand.ts', 'sites/new-openings/app/page.tsx'];
   for (const f of sources) assert.doesNotMatch(fs.readFileSync(f, 'utf8'), /cancel anytime|no contract/i, f);
-  assert.match(b.offerEmail({ business_name: 'X', trade: 'signs' }, 'u').text, /12-month term, billed monthly/);
+  if (c.PLANS_ON_SALE) assert.match(b.offerEmail({ business_name: 'X', trade: 'signs' }, 'u').text, /12-month term, billed monthly/);
+  else assert.doesNotMatch(b.offerEmail({ business_name: 'X', trade: 'signs' }, 'u').text, /Local Plan|Pro Plan/);
   const flyer = fs.readFileSync('app/new-openings/flyer.tsx', 'utf8');
   assert.match(flyer, /const planReady = ready && termAgreed/);
   assert.match(flyer, /agreed=\{planReady\}/, 'plan Start button needs the term checkbox');
