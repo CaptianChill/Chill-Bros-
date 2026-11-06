@@ -27,7 +27,6 @@ export default async function SalesPage() {
 
         <figure className="mt-12 max-w-3xl border-l-4 border-[#FF7A59] pl-5">
           <blockquote className="text-2xl font-bold leading-snug sm:text-3xl">&ldquo;{BRAND.quote}&rdquo;</blockquote>
-          <figcaption className="mt-2 text-sm text-[#8A9BB0]">{BRAND.quoteBy}</figcaption>
         </figure>
 
         <section className="mt-14 grid gap-4 md:grid-cols-3">

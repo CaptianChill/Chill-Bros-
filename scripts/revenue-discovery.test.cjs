@@ -98,13 +98,15 @@ test('a hung map server cannot run the scan past its time budget', async () => {
   } finally { global.fetch = realFetch; clearInterval(keepAlive); }
 });
 
-test('with a Google Places key, Google is the source and known businesses are not re-added', async () => {
+// Google Maps Platform terms: no storing/caching Places content and no reselling it.
+// Radar prospects can end up in lead packs we sell, so discovery must never touch Google.
+test('Radar discovery never calls Google Places, even when GOOGLE_PLACES_API_KEY is set', async () => {
   const saved = [];
   const client = {
     from(table) {
-      if (table === 'chillbros_customers') return { select: () => ({ order: () => ({ range: async () => ({ data: [{ name: 'Bird Bakery' }] }) }) }) };
+      if (table === 'chillbros_customers') return { select: () => ({ order: () => ({ range: async () => ({ data: [] }) }) }) };
       return {
-        select: () => ({ order: () => ({ range: async () => ({ data: [{ business_name: "Rosario's" }] }) }) }),
+        select: () => ({ order: () => ({ range: async () => ({ data: [] }) }) }),
         upsert: (rows) => { saved.push(...rows); return { select: async () => ({ data: rows.map((_, i) => ({ id: i })), error: null }) }; },
       };
     },
@@ -113,31 +115,41 @@ test('with a Google Places key, Google is the source and known businesses are no
   const urls = [];
   global.fetch = async (url) => {
     urls.push(String(url));
-    return { ok: true, json: async () => ({ places: [
-      { id: 'a', displayName: { text: "Rosario's" }, primaryType: 'mexican_restaurant' },
-      { id: 'b', displayName: { text: 'Bird Bakery' }, primaryType: 'bakery' },
-      { id: 'c', displayName: { text: 'Pearl Ice House' }, primaryType: 'bar', nationalPhoneNumber: '(210) 555-0101', websiteUri: 'https://pearl.example', formattedAddress: '1 Pearl Pkwy, San Antonio, TX' },
-      { id: 'd', displayName: { text: 'Closed Cafe' }, primaryType: 'cafe', businessStatus: 'CLOSED_PERMANENTLY' },
-    ] }) };
+    if (String(url).includes('googleapis.com')) return { ok: true, json: async () => ({ places: [{ id: 'g1', displayName: { text: 'Google Only Cafe' }, nationalPhoneNumber: '(210) 555-0199' }] }) };
+    return { ok: true, json: async () => ({ elements: [el(77, { amenity: 'restaurant', name: 'Map Kitchen' })] }) };
   };
   process.env.GOOGLE_PLACES_API_KEY = 'test-key';
   try {
-    const result = await d.runLeadScan(client, { mode: 'daily', actorId: null, target: 1, maxAreas: 4 });
-    assert.equal(result.source, 'google');
-    assert.ok(urls.every((u) => u.startsWith('https://places.googleapis.com/')));
-    assert.deepEqual(saved.map((r) => r.business_name), ['Pearl Ice House']);
-    assert.equal(saved[0].contact_phone, '(210) 555-0101');
-    assert.match(saved[0].signal_summary, /Website: https:\/\/pearl\.example/);
-    assert.equal(saved[0].service_line, 'kitchen_equipment');
+    // Map path (city source unavailable in this fixture).
+    const result = await d.runLeadScan(client, { mode: 'daily', actorId: null, target: 1, maxAreas: 2 });
+    assert.equal(result.source, 'openstreetmap');
+    // City path still runs first when a key is set.
+    const records = [{ name: 'City Kitchen', address: '1 Main St', observedAt: '2026-10-20T00:00:00Z', sourceUrl: 'https://www.sa.gov/r.xlsx#row-2' }];
+    const city = await load(async () => records).runLeadScan(client, { mode: 'scheduled', actorId: null, target: 1 });
+    assert.equal(city.source, 'san-antonio-reports');
+    assert.ok(urls.length > 0);
+    assert.ok(urls.every((u) => !u.includes('googleapis.com')), `called ${urls.join(', ')}`);
+    assert.deepEqual(saved.map((r) => r.business_name), ['Map Kitchen', 'City Kitchen']);
+    assert.ok(saved.every((r) => !/google/i.test(JSON.stringify(r))));
   } finally { global.fetch = realFetch; delete process.env.GOOGLE_PLACES_API_KEY; }
+});
+
+test('Radar discovery has no Google code path left', () => {
+  const src = read('lib/chillbros/revenue-discovery.ts');
+  assert.doesNotMatch(src, /process\.env\.GOOGLE_PLACES_API_KEY/);
+  assert.doesNotMatch(src, /["'`]https:\/\/places\.googleapis\.com/);
+  assert.doesNotMatch(src, /google-places/);
+  for (const name of ['searchGooglePlaces', 'leadsFromGooglePlaces', 'tagsFromGooglePlace', 'GOOGLE_QUERIES']) assert.equal(d[name], undefined, name);
+  // The Revenue Radar discovery entry points (cron + manual scan) only import the free discovery module.
+  for (const f of ['app/api/cron/revenue-radar/route.ts', 'app/revenue-radar/actions.ts']) assert.doesNotMatch(read(f), /google-places|googleapis/);
 });
 
 test('independent professional buyers with a phone and website clear the cold-email bar (70)', () => {
   const area = d.SCAN_AREAS[0];
-  for (const type of ['real_estate_agency', 'dental_clinic', 'church', 'gym']) {
-    const [lead] = d.leadsFromGooglePlaces([{ id: type, displayName: { text: `Test ${type}` }, primaryType: type, nationalPhoneNumber: '(210) 555-0100', websiteUri: 'https://x.example', formattedAddress: '1 Main St' }], area, 'now');
+  for (const tags of [{ office: 'property_management' }, { amenity: 'dentist' }, { amenity: 'place_of_worship' }, { leisure: 'fitness_centre' }]) {
+    const [lead] = d.leadsFromElements([el(1, { ...tags, name: 'Test Place', phone: '(210) 555-0100', website: 'https://x.example', 'addr:street': '1 Main St' })], area, 'now');
     assert.equal(lead.service_line, 'hvac_r');
-    assert.ok(lead.score >= 70, `${type} scored ${lead.score}`);
+    assert.ok(lead.score >= 70, `${JSON.stringify(tags)} scored ${lead.score}`);
   }
 });
 const source = 'lib/chillbros/revenue-prospects.ts';
@@ -169,11 +181,10 @@ test('scheduled discovery rotates across every area in four hours and runs every
   assert.equal(crons.find(c => c.path === '/api/cron/revenue-radar').schedule, '*/15 * * * *');
 });
 
-test('both discovery providers include hot-side and ventilation fit without claiming verified equipment', () => {
+test('discovered kitchens include hot-side and ventilation fit without claiming verified equipment', () => {
   const area = d.SCAN_AREAS[0];
   const osm = d.leadsFromElements([el(20, { amenity: 'restaurant', name: 'Test Kitchen' })], area, 'now')[0];
-  const google = d.leadsFromGooglePlaces([{ id: '20', displayName: { text: 'Test Kitchen' }, primaryType: 'restaurant' }], area, 'now')[0];
-  for (const lead of [osm, google]) {
+  for (const lead of [osm]) {
     for (const term of ['fryers', 'ovens', 'ranges', 'griddles', 'steamers', 'dishwashers', 'hoods', 'exhaust', 'makeup air', 'refrigeration', 'ice', 'HVAC']) assert.ok(lead.signal_summary.includes(term), term);
     assert.equal(lead.signal_verified, false);
     assert.match(lead.signal_summary, /current need unverified/);
@@ -188,7 +199,7 @@ test('discovery fails closed before searching or writing if a customer or prospe
   }
 });
 
-test('OSM discovery skips previously imported businesses as Google does', async () => {
+test('OSM discovery skips previously imported businesses', async () => {
   const saved = [];
   const client = { from(table) { return {
     select() { return { order() { return { async range() { return { data: table === 'chillbros_customers' ? [] : [{ business_name: 'Known Cafe' }] }; } }; } }; },
