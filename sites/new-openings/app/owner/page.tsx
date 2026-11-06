@@ -5,7 +5,7 @@ import { ownerDashboard } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-const TRADE_NAMES: Record<string, string> = { plumbing: "Plumbers", electrical: "Electricians", hood_cleaning: "Hood cleaners", pest_control: "Pest control", commercial_cleaning: "Commercial cleaning", signs: "Sign companies", low_voltage: "Low voltage", security: "Security" };
+const TRADE_NAMES: Record<string, string> = { plumbing: "Plumbers", electrical: "Electricians", hood_cleaning: "Hood cleaners", pest_control: "Pest control", commercial_cleaning: "Commercial cleaning", signs: "Sign companies", low_voltage: "Low voltage", security: "Security", hvac_refrigeration: "HVAC & refrigeration", kitchen_equipment: "Kitchen equipment" };
 const when = (v: string | null) => (v ? new Date(v).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—");
 function windows() { const now = Date.now(); return { dayAgo: new Date(now - 86400000).toISOString(), weekAgo: new Date(now - 7 * 86400000).toISOString() }; }
 

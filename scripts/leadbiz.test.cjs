@@ -18,6 +18,9 @@ test('classifies contractor buyers into the 8 trades', () => {
   assert.equal(b.classifyBuyer({ name: 'Texas Sign Co' }), 'signs');
   assert.equal(b.classifyBuyer({ name: 'Hill Country Low Voltage' }), 'low_voltage');
   assert.equal(b.classifyBuyer({ name: 'Guardian Security Systems' }), 'security');
+  assert.equal(b.classifyBuyer({ name: 'Alamo Air Conditioning & Heating' }), 'hvac_refrigeration');
+  assert.equal(b.classifyBuyer({ name: 'Lone Star Restaurant Equipment Repair' }), 'kitchen_equipment');
+  assert.match(b.offerEmail({ business_name: 'K', trade: 'kitchen_equipment' }, 'u').subject, /^16 new .*kitchen equipment/);
 });
 
 test('skips stores, restaurants and non-contractors', () => {

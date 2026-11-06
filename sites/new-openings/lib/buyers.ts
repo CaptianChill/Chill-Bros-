@@ -5,11 +5,13 @@ import "server-only";
 //  - Electricians, sign companies: TDLR "All Licenses" on data.texas.gov
 //  - Plumbers: TSBPE Responsible Master Plumber list (each plumbing company must have one)
 //  - Pest control: TDA Structural Pest Control commercial business list (no phone in the file)
-export type Trade = "Electricians" | "Sign companies" | "Plumbers" | "Pest control";
+export type Trade = "Electricians" | "Sign companies" | "Plumbers" | "Pest control" | "HVAC & refrigeration";
 export type Buyer = { name: string; trade: Trade; phone: string; address: string; license: string; contact?: string };
 
 const COUNTIES = ["BEXAR", "COMAL", "GUADALUPE", "KENDALL", "MEDINA", "WILSON"];
-const TDLR_TYPES: Record<string, Trade> = { "Electrical Contractor": "Electricians", "Electrical Sign Contractor": "Sign companies" };
+const TDLR_TYPES: Record<string, Trade> = { "Electrical Contractor": "Electricians", "Electrical Sign Contractor": "Sign companies", "A/C Contractor": "HVAC & refrigeration" };
+// A/C contractors: Class A only (unlimited tonnage, the commercial-size license). The state file has no phones for them.
+const isClassA = (subtype: string) => /^A/.test(subtype || "");
 const DAY = 86_400_000;
 
 export const fmtPhone = (p: string) => { const d = String(p ?? "").replace(/\D/g, "").slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : ""; };
@@ -59,10 +61,11 @@ export function pestFrom(rows: Record<string, string>[]): Buyer[] {
 }
 
 export function tdlrFrom(rows: Record<string, string>[]): Buyer[] {
-  return rows.map((r) => ({
+  return rows.filter((r) => r.license_type !== "A/C Contractor" || isClassA(r.license_subtype)).map((r) => ({
     name: String(r.business_name || "").trim(), trade: TDLR_TYPES[r.license_type], phone: fmtPhone(r.business_telephone || r.owner_telephone || ""),
-    address: [r.business_address_line1, r.business_city_state_zip].filter(Boolean).join(", "), license: r.license_number,
-  })).filter((b) => b.name && b.phone && b.trade);
+    address: [r.business_address_line1, r.business_city_state_zip].filter(Boolean).join(", ") || (r.business_county ? `${title(r.business_county)} County` : ""), license: r.license_number,
+    contact: r.license_type === "A/C Contractor" ? title(r.owner_name || "") : undefined,
+  })).filter((b) => b.name && b.trade && (b.phone || b.trade === "HVAC & refrigeration"));
 }
 
 /** One row per company per trade (same name + phone, or same name when there's no phone). */
@@ -80,7 +83,7 @@ async function getText(url: string) {
 const SOURCES: Record<string, () => Promise<Buyer[]>> = {
   tdlr: async () => {
     const where = `business_county in (${COUNTIES.map((c) => `'${c}'`).join(",")}) AND license_type in (${Object.keys(TDLR_TYPES).map((t) => `'${t}'`).join(",")})`;
-    const url = `https://data.texas.gov/resource/7358-krk7.json?$select=business_name,license_type,business_telephone,owner_telephone,business_address_line1,business_city_state_zip,license_number&$where=${encodeURIComponent(where)}&$limit=5000`;
+    const url = `https://data.texas.gov/resource/7358-krk7.json?$select=business_name,license_type,license_subtype,owner_name,business_county,business_telephone,owner_telephone,business_address_line1,business_city_state_zip,license_number&$where=${encodeURIComponent(where)}&$limit=5000`;
     return tdlrFrom(JSON.parse(await getText(url)));
   },
   tsbpe: async () => plumbersFrom(parseCsv(await getText("https://tsbpe.texas.gov/download-csv/RMP/"))),

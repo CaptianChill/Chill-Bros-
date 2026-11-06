@@ -1,6 +1,6 @@
 // Buyer trades for the lead business. Revenue Radar leads are sold to contractors in
 // these trades, so every lead is tagged with the trades it fits (trade_fits column,
-// filled by a database trigger on insert; see migration 20261105170000).
+// filled by a database trigger on insert; see migration 20261106010000).
 export const TRADES = {
   plumbing: "Plumbers",
   electrical: "Electricians",
@@ -10,18 +10,20 @@ export const TRADES = {
   signs: "Signs",
   low_voltage: "Low voltage",
   security: "Security",
+  hvac_refrigeration: "HVAC & refrigeration",
+  kitchen_equipment: "Hot side / kitchen equipment",
 } as const;
 export type Trade = keyof typeof TRADES;
 export const TRADE_KEYS = Object.keys(TRADES) as Trade[];
 export const isTrade = (v: unknown): v is Trade => typeof v === "string" && v in TRADES;
 
-// Kitchens with cooking lines need hood cleaning; every commercial site needs the rest.
+// Kitchens with cooking lines need hood cleaning and kitchen equipment service; every commercial site needs the rest.
 const COOKING_LINES = new Set(["multiple", "kitchen_equipment", "exhaust_hood"]);
 
 // Mirrors the SQL in chillbros_revenue_trade_fits() so tests and the database agree.
 export function tradeFitsFor(lead: { category?: string | null; service_line?: string | null }): Trade[] {
   if (lead.category === "opening_remodel" || COOKING_LINES.has(lead.service_line ?? "")) return [...TRADE_KEYS];
-  return TRADE_KEYS.filter((t) => t !== "hood_cleaning");
+  return TRADE_KEYS.filter((t) => t !== "hood_cleaning" && t !== "kitchen_equipment");
 }
 
 // What each trade opens a cold call with, by lead type. A new build-out is the
@@ -35,6 +37,8 @@ const OPENING_HOOK: Record<Trade, string> = {
   signs: "your storefront and pylon signage so customers find you on day one",
   low_voltage: "POS, network, music and camera cabling before the walls close",
   security: "cameras, alarm and access control before you stock the place",
+  hvac_refrigeration: "rooftop units, walk-in coolers and ice machines before you open",
+  kitchen_equipment: "fryers, ovens, ranges and dish machines start-up and service before you open",
 };
 // Auto openings (car washes, oil change, collision, dealership service shops): no kitchens.
 const AUTO_HOOK: Record<Trade, string> = {
@@ -46,6 +50,8 @@ const AUTO_HOOK: Record<Trade, string> = {
   signs: "pylon and bay signage so drivers find you on day one",
   low_voltage: "POS, network, music and camera cabling before the walls close",
   security: "cameras, alarm and access control for the bays and the lot",
+  hvac_refrigeration: "rooftop units, shop heaters and makeup air for the bays and paint booths",
+  kitchen_equipment: "break-room appliances and equipment service",
 };
 const EXISTING_HOOK: Record<Trade, string> = {
   plumbing: "grease trap service and emergency plumbing coverage",
@@ -56,6 +62,8 @@ const EXISTING_HOOK: Record<Trade, string> = {
   signs: "sign repair, relighting and refresh",
   low_voltage: "network, POS and camera cabling fixes and upgrades",
   security: "camera, alarm and access-control upgrades",
+  hvac_refrigeration: "AC, walk-in cooler and ice machine maintenance and repair",
+  kitchen_equipment: "fryer, oven, range and dish machine repair and preventive maintenance",
 };
 
 export function tradeOpener(trade: Trade, lead: { business_name: string; category?: string | null; industry?: string | null }) {

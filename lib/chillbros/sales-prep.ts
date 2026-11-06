@@ -113,6 +113,10 @@ async function prepQueue(client: Client, limits: { ai: number; standard: number 
     // Unreachable leads come back once for a Places lookup when a key is available.
     return googleKey && !l.places_checked_at && !wantsAiCard(l);
   });
+  // Leads with no card at all go first (stable sort keeps score order): when AI cards fail
+  // (e.g. the AI account is out of credits) the same top leads were retried every run and
+  // new leads never got even a standard card.
+  pending.sort((a, b) => Number(cardVersion.has(a.id)) - Number(cardVersion.has(b.id)));
   // Mix the batch so the cheap standard cards are not stuck behind slower AI ones.
   const ai = pending.filter((l) => wantsAiCard(l)).slice(0, limits.ai);
   const rest = pending.filter((l) => !wantsAiCard(l)).slice(0, limits.standard);

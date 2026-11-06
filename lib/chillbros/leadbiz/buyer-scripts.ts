@@ -6,6 +6,7 @@ const hook: Record<string, [string, string]> = {
   Plumbers: ["plumbers", "rough-in, grease traps and backflow before opening day"],
   "Pest control": ["pest control companies", "a pest program in place before its health inspection"],
   "Sign companies": ["sign companies", "storefront and pylon signs before opening day"],
+  "HVAC & refrigeration": ["HVAC and refrigeration companies", "rooftop units, walk-in coolers and ice machines installed and serviced"],
 };
 
 export const BUYER_TRADES = Object.keys(hook);
