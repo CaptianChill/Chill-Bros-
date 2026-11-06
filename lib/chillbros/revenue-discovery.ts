@@ -102,129 +102,11 @@ export async function fetchOverpass(query: string, deadline: number): Promise<Ov
   throw new Error("Lead discovery sources are temporarily unavailable. Revenue Radar tried all configured discovery sources; try the scan again shortly.");
 }
 
-// ---------- Google Places (used when GOOGLE_PLACES_API_KEY is set) ----------
-// The free OpenStreetMap servers are often at capacity and San Antonio's OSM
-// listings are mostly already in Revenue Radar, so Google is the main source when
-// a key is configured. One request returns up to 20 businesses.
-
-export type GooglePlace = {
-  id: string;
-  displayName?: { text?: string };
-  formattedAddress?: string;
-  nationalPhoneNumber?: string;
-  websiteUri?: string;
-  primaryType?: string;
-  types?: string[];
-  businessStatus?: string;
-};
-
-// Kitchens alternate with professional/commercial HVAC buyers (offices, property
-// managers, medical, schools, churches, gyms), which feed the office outreach lane.
-export const GOOGLE_QUERIES = ["restaurants", "property management companies", "grocery stores and meat markets", "medical and dental offices", "hotels and motels", "office buildings and business parks", "bars and cafes", "churches", "nursing homes and assisted living", "private schools and daycares", "bakeries and donut shops", "gyms and fitness centers", "convenience stores and liquor stores", "auto dealerships", "ice cream and snow cone shops", "veterinary clinics"];
-
-const GOOGLE_TYPE_TAGS: Record<string, Record<string, string>> = {
-  restaurant: { amenity: "restaurant" },
-  fast_food_restaurant: { amenity: "fast_food" },
-  meal_takeaway: { amenity: "fast_food" },
-  cafe: { amenity: "cafe" },
-  coffee_shop: { amenity: "cafe" },
-  bar: { amenity: "bar" },
-  pub: { amenity: "pub" },
-  ice_cream_shop: { amenity: "ice_cream" },
-  bakery: { shop: "bakery" },
-  donut_shop: { shop: "bakery" },
-  supermarket: { shop: "supermarket" },
-  grocery_store: { shop: "supermarket" },
-  butcher_shop: { shop: "butcher" },
-  convenience_store: { shop: "convenience" },
-  liquor_store: { shop: "alcohol" },
-  florist: { shop: "florist" },
-  hotel: { tourism: "hotel" },
-  lodging: { tourism: "hotel" },
-  motel: { tourism: "motel" },
-  nursing_home: { amenity: "nursing_home" },
-  real_estate_agency: { office: "property_management" },
-  doctor: { amenity: "doctors" },
-  medical_clinic: { amenity: "clinic" },
-  dentist: { amenity: "dentist" },
-  dental_clinic: { amenity: "dentist" },
-  veterinary_care: { amenity: "veterinary" },
-  school: { amenity: "school" },
-  primary_school: { amenity: "school" },
-  secondary_school: { amenity: "school" },
-  preschool: { amenity: "kindergarten" },
-  child_care_agency: { amenity: "kindergarten" },
-  church: { amenity: "place_of_worship" },
-  place_of_worship: { amenity: "place_of_worship" },
-  gym: { leisure: "fitness_centre" },
-  fitness_center: { leisure: "fitness_centre" },
-  car_dealer: { shop: "car" },
-  assisted_living_facility: { amenity: "nursing_home" },
-};
-
-// Turns a Google place into the same tag shape the OSM path scores, so both rank alike.
-export function tagsFromGooglePlace(place: GooglePlace): Record<string, string> {
-  const types = [place.primaryType, ...(place.types ?? [])].filter(Boolean) as string[];
-  const typeTags = types.map((t) => GOOGLE_TYPE_TAGS[t] ?? (t.endsWith("_restaurant") ? { amenity: "restaurant" } : null)).find(Boolean) ?? {};
-  const tags: Record<string, string> = { ...typeTags, name: place.displayName?.text ?? "" };
-  if (place.nationalPhoneNumber) tags.phone = place.nationalPhoneNumber;
-  if (place.websiteUri) tags.website = place.websiteUri;
-  if (place.formattedAddress) tags["addr:street"] = place.formattedAddress;
-  return tags;
-}
-
-export async function searchGooglePlaces(apiKey: string, textQuery: string, area: ScanArea, deadline: number): Promise<GooglePlace[]> {
-  const budget = Math.min(REQUEST_TIMEOUT_MS, timeLeft(deadline) - 2000);
-  if (budget < 3000) throw new Error("out of time");
-  const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-goog-api-key": apiKey,
-      "x-goog-fieldmask": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.primaryType,places.types,places.businessStatus",
-    },
-    body: JSON.stringify({ textQuery: `${textQuery} in ${area.name}, San Antonio TX`, pageSize: 20, locationBias: { circle: { center: { latitude: area.lat, longitude: area.lon }, radius: Math.min(50000, area.radiusM) } } }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(budget),
-  });
-  if (!response.ok) {
-    console.warn("[revenue-discovery] google places failed", response.status, (await response.text().catch(() => "")).slice(0, 300));
-    throw new Error(`Google Places returned ${response.status}.`);
-  }
-  const payload = (await response.json()) as { places?: GooglePlace[] };
-  return (payload.places ?? []).filter((p) => p.id && p.displayName?.text && (!p.businessStatus || p.businessStatus === "OPERATIONAL"));
-}
-
-export function leadsFromGooglePlaces(places: GooglePlace[], area: ScanArea, now: string): DiscoveredRevenueLead[] {
-  const seen = new Set<string>();
-  const leads: DiscoveredRevenueLead[] = [];
-  for (const place of places) {
-    if (seen.has(place.id)) continue;
-    seen.add(place.id);
-    const tags = tagsFromGooglePlace(place);
-    const name = tags.name.trim();
-    if (name.length < 2) continue;
-    const fit = scoreLead(tags);
-    const sourceUrl = `https://www.google.com/maps/place/?q=place_id:${place.id}`;
-    const website = tags.website || null;
-    leads.push({
-      business_name: name.slice(0, 200),
-      city: "San Antonio",
-      category: "other",
-      service_line: fit.service_line,
-      signal_summary: `Automatically discovered in ${area.name} (Google Maps). Business type indicates ${fit.reason}; ${fit.notes.join(", ")}.${website ? ` Website: ${website.slice(0, 200)}.` : ""} Office review is still required before outreach.`.slice(0, 1000),
-      source_url: sourceUrl,
-      signal_observed_at: now,
-      signal_verified: false,
-      normalized_key: normalizedKey(name, "San Antonio", "auto_discovery", sourceUrl),
-      score: fit.score,
-      business_address: place.formattedAddress ?? null,
-      contact_email: null,
-      contact_phone: place.nationalPhoneNumber ?? null,
-    });
-  }
-  return leads.sort((a, b) => b.score - a.score);
-}
+// No Google Places here, ever. Google's terms forbid storing Places content (other
+// than place_id) and forbid reselling it, and prospects saved here can end up in the
+// lead packs we sell. Discovery uses only free/public sources: OpenStreetMap and the
+// City of San Antonio's published reports. scripts/revenue-discovery.test.cjs checks
+// that discovery never calls places.googleapis.com, even when GOOGLE_PLACES_API_KEY is set.
 
 export function serviceFit(tags: Record<string, string>) {
   const amenity = tags.amenity ?? "";
@@ -255,7 +137,7 @@ export function serviceFit(tags: Record<string, string>) {
   if (tourism === "motel") {
     return { service_line: "hvac_r" as const, score: 58, reason: "many room HVAC units" };
   }
-  // Professional/commercial HVAC buyers (from the Google searches).
+  // Professional/commercial HVAC buyers.
   if (tags.office === "property_management") {
     return { service_line: "hvac_r" as const, score: 66, reason: "manages many buildings and tenant comfort calls" };
   }
@@ -353,10 +235,10 @@ export function startAreaIndex(mode: "daily" | "manual" | "scheduled", now = new
 }
 
 type Client = ReturnType<typeof createServiceRoleClient>;
-export type LeadScanResult = { added: number; scanned: string[]; skippedCustomers: number; source: "google" | "openstreetmap" | "san-antonio-reports" };
+export type LeadScanResult = { added: number; scanned: string[]; skippedCustomers: number; source: "openstreetmap" | "san-antonio-reports" };
 
 // Business names already in Revenue Radar, so a business found again through a
-// different source (Google vs OpenStreetMap) isn't added twice.
+// different source (city reports vs OpenStreetMap) isn't added twice.
 async function existingProspectNames(client: Client) {
   const names = new Set<string>();
   const sources = new Set<string>();
@@ -431,16 +313,15 @@ export async function runLeadScan(client: Client, options: { mode: "daily" | "ma
   const target = options.target ?? 25;
   const maxAreas = Math.min(options.maxAreas ?? 3, SCAN_AREAS.length);
   const deadline = Date.now() + (options.budgetMs ?? 50000);
-  const googleKey = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
   const customerNames = await existingCustomerNames(client);
   const { names: knownNames, sources: knownSources } = await existingProspectNames(client);
 
   // Prefer the city's current, published local records to overloaded public map
-  // servers when no paid Places provider is configured. This source has no contacts
+  // servers. This source has no contacts
   // and its food-safety score is never used as a sales qualification score.
   // RADAR_CITY_FROM_PC=1: the city blocks cloud servers, so the owner's PC fetches the report and posts it to
   // /api/cron/radar-city-import instead; the cloud scan then skips straight to the map search.
-  if (!googleKey && process.env.RADAR_CITY_FROM_PC !== "1") {
+  if (process.env.RADAR_CITY_FROM_PC !== "1") {
     try {
       const businesses = await discoverCityEstablishments(deadline);
       return await saveCityEstablishments(client, businesses, { actorId: options.actorId, target, customerNames, knownNames, knownSources });
@@ -452,23 +333,13 @@ export async function runLeadScan(client: Client, options: { mode: "daily" | "ma
   }
 
   const start = startAreaIndex(options.mode);
-  const result: LeadScanResult = { added: 0, scanned: [], skippedCustomers: 0, source: googleKey ? "google" : "openstreetmap" };
+  const result: LeadScanResult = { added: 0, scanned: [], skippedCustomers: 0, source: "openstreetmap" };
   let lastError: Error | null = null;
-  // Google: rotate the business-type searches too, so each day asks something new.
-  let queryIndex = start;
   for (let i = 0; i < maxAreas && result.added < target && timeLeft(deadline) > 8000; i++) {
     const area = SCAN_AREAS[(start + i) % SCAN_AREAS.length];
     let all: DiscoveredRevenueLead[] = [];
     try {
-      if (googleKey) {
-        const now = new Date().toISOString();
-        for (let q = 0; q < 3 && timeLeft(deadline) > 8000; q++) {
-          const places = await searchGooglePlaces(googleKey, GOOGLE_QUERIES[queryIndex++ % GOOGLE_QUERIES.length], area, deadline);
-          all.push(...leadsFromGooglePlaces(places, area, now));
-        }
-      } else {
-        all = await discoverAreaLeads(area, new Set(), deadline);
-      }
+      all = await discoverAreaLeads(area, new Set(), deadline);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Lead discovery failed.");
       if (!all.length) continue;

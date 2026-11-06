@@ -3,15 +3,16 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { sendCompanyEmail } from "@/lib/chillbros/approval-notifications";
-import { contactPageUrls } from "@/lib/chillbros/autopilot/contact-source";
+import { contactPageUrls, phoneFromHtml } from "@/lib/chillbros/autopilot/contact-source";
 import { pickBusinessEmail } from "@/lib/chillbros/autopilot/email-extract";
 import { fetchPage } from "@/lib/chillbros/autopilot/engine";
 import { unsubscribeUrl } from "@/lib/chillbros/autopilot/links";
 import { isSuppressed } from "@/lib/chillbros/autopilot/store";
-import { fetchOverpass, SCAN_AREAS, searchGooglePlaces, type OsmElement } from "@/lib/chillbros/revenue-discovery";
+import { searchPlacesTransient } from "@/lib/chillbros/google-places";
+import { fetchOverpass, SCAN_AREAS, type OsmElement } from "@/lib/chillbros/revenue-discovery";
 
 import { fetchAllLicenses } from "./licenses";
-import { buyerFromElement, buyerFromGooglePlace, buyerQueries, GOOGLE_TRADE_QUERIES, googleRotation, inSendWindow, LEADBIZ_BRAND, offerEmail } from "./buyers";
+import { buyerFromElement, buyerFromOwnSite, buyerQueries, GOOGLE_TRADE_QUERIES, googleRotation, inSendWindow, isContractorName, LEADBIZ_BRAND, offerEmail, type BuyerRow } from "./buyers";
 
 type Client = SupabaseClient;
 const TABLE = "chillbros_leadbiz_buyers";
@@ -68,20 +69,58 @@ export async function discoverBuyers(client: Client, deadline: number, run?: Lea
   return data?.length ?? 0;
 }
 
+/** Reads a business's OWN website (home page, then its contact/about pages) for its published email and phone. */
+async function readOwnSite(site: string) {
+  const html = await fetchPage(site);
+  if (!html) return { html: "", email: null, phone: null };
+  let email = pickBusinessEmail(html, site);
+  let phone = phoneFromHtml(html);
+  for (const url of email && phone ? [] : contactPageUrls(html, site)) {
+    const page = await fetchPage(url);
+    if (!page) continue;
+    email ||= pickBusinessEmail(page, site);
+    phone ||= phoneFromHtml(page);
+    if (email && phone) break;
+  }
+  return { html, email, phone };
+}
+
 /** One Google Places search per run (a different trade/area each time), when a key is configured. */
 export async function discoverBuyersGoogle(client: Client, deadline: number, run?: LeadbizRun) {
   const key = String(process.env.GOOGLE_PLACES_API_KEY || "").trim();
   if (!key) return 0;
   const { count } = await client.from("chillbros_leadbiz_runs").select("id", { count: "exact", head: true });
   const { trade, area } = googleRotation(count ?? 0, SCAN_AREAS.length);
-  const places = await searchGooglePlaces(key, GOOGLE_TRADE_QUERIES[trade], SCAN_AREAS[area], deadline);
-  if (run) run.google = `${trade} @ ${SCAN_AREAS[area].name}: ${places.length}`;
-  const rows = places.map((p) => buyerFromGooglePlace(p, trade)).filter((r): r is NonNullable<typeof r> => Boolean(r))
-    .map((r) => ({ ...r, status: r.website ? "new" : "no_email" }));
-  if (!rows.length) return 0;
-  const { data, error } = await client.from(TABLE).upsert(rows, { onConflict: "source_url", ignoreDuplicates: true }).select("id");
-  if (error) throw new Error(`Buyer save failed: ${error.message}`);
-  return data?.length ?? 0;
+  const where = SCAN_AREAS[area];
+  // Google rule: transient lookup only. Google's results are used here, in memory, just to
+  // find each contractor's own website. We save only what that website publishes (name,
+  // email, phone) plus the website URL and Google place_id. Google's name, phone, address,
+  // rating, hours, etc. are never saved (Maps Platform terms forbid storing Places content).
+  const places = await searchPlacesTransient(key, `${GOOGLE_TRADE_QUERIES[trade]} in ${where.name}, San Antonio TX`, {
+    pageSize: 20, bias: where, timeoutMs: Math.min(20_000, deadline - Date.now() - 2000),
+  });
+  if (run) run.google = `${trade} @ ${where.name}: ${places.length}`;
+  const queue = places.filter((p) => p.operational && p.website && isContractorName(p.name));
+  const rows: BuyerRow[] = [];
+  const worker = async () => {
+    while (queue.length && Date.now() < deadline - 3000) {
+      const place = queue.shift()!;
+      const site = await readOwnSite(place.website!);
+      const row = buyerFromOwnSite({ placeId: place.id, trade, website: place.website!, ...site });
+      if (row) rows.push(row);
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
+  let saved = 0;
+  const now = new Date().toISOString();
+  for (const row of rows) {
+    const { data, error } = await client.from(TABLE)
+      .upsert({ ...row, status: row.email ? "ready" : "no_email", enriched_at: now }, { onConflict: "source_url", ignoreDuplicates: true }).select("id");
+    if (error?.code === "23505") continue; // Email already on another buyer row.
+    if (error) throw new Error(`Buyer save failed: ${error.message}`);
+    saved += data?.length ?? 0;
+  }
+  return saved;
 }
 
 /** Find a published contact email on each new buyer's own website. */
@@ -163,7 +202,7 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   const { count: queued } = await client.from(TABLE).select("id", { count: "exact", head: true }).in("status", ["new", "ready"]);
   if ((queued ?? 0) < 40) {
     if (process.env.GOOGLE_PLACES_API_KEY) {
-      try { run.discovered = await discoverBuyersGoogle(client, Math.min(deadline, Date.now() + 30_000), run); }
+      try { run.discovered = await discoverBuyersGoogle(client, Math.min(deadline, Date.now() + 90_000), run); }
       catch (error) { run.note = error instanceof Error ? error.message : "google discovery failed"; }
     } else {
       try { run.discovered = await discoverBuyers(client, Math.min(deadline, Date.now() + 90_000), run); }
