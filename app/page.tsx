@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertCircle, BellRing, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, CreditCard, Package, PackageCheck, Plus, X } from "lucide-react";
+import { AlertCircle, BellRing, Briefcase, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, CreditCard, Package, PackageCheck, PhoneCall, Plus, X } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { EN_ROUTE_STATUSES, JobStatusChip, ON_SITE_STATUSES } from "@/components/job-status-chip";
@@ -44,6 +44,8 @@ export default async function HomePage() {
   if (profile.role === "technician") redirect("/technician");
   if (profile.role === "office") redirect("/office");
   if (profile.role === "salesperson") redirect("/revenue-radar");
+  // Same owner check as /owner and /owner/lead-business.
+  const isOwner = profile.email.trim().toLowerCase() === "chillprostx@gmail.com";
 
   const [jobs, lifecycleJobs, invoiceCenter] = await Promise.all([
     getCalendarJobs(),
@@ -183,6 +185,19 @@ export default async function HomePage() {
           <Link href="/invoices/new?type=invoice" className="flex min-h-[50px] items-center justify-center rounded-xl border-2 border-[#1B3FD0] bg-[#F8FAFD] px-3 text-center text-sm font-bold text-[#1B3FD0] transition hover:bg-[#EAF2FC]">
             + New invoice
           </Link>
+        </div>
+        {/* Owner shortcuts to the lead business (also in Sales > Lead Buyers and Owner Access). */}
+        <div className={`grid gap-2.5 ${isOwner ? "grid-cols-2" : "grid-cols-1"}`}>
+          <Link href="/revenue-radar/buyers" className="flex min-h-[50px] items-center justify-center gap-2 rounded-xl border-2 border-[#1B3FD0] bg-[#F8FAFD] px-3 text-center text-sm font-bold text-[#1B3FD0] transition hover:bg-[#EAF2FC]">
+            <PhoneCall className="h-4 w-4 shrink-0" aria-hidden="true" />
+            Lead Buyers
+          </Link>
+          {isOwner ? (
+            <Link href="/owner/lead-business" className="flex min-h-[50px] items-center justify-center gap-2 rounded-xl border-2 border-[#1B3FD0] bg-[#F8FAFD] px-3 text-center text-sm font-bold text-[#1B3FD0] transition hover:bg-[#EAF2FC]">
+              <Briefcase className="h-4 w-4 shrink-0" aria-hidden="true" />
+              Lead business
+            </Link>
+          ) : null}
         </div>
 
         <div className="grid gap-3 lg:grid-cols-2">
