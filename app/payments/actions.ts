@@ -9,6 +9,7 @@ import { sendDownPaymentReceivedNotification, sendInvoicePaidNotification } from
 import { getInvoiceV2ById, invoiceTotals, recordDownPaymentReceived } from "@/lib/chillbros/invoice-v2";
 import { getCurrentStaffProfile } from "@/lib/supabase/auth-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { routeApprovedJob } from "@/lib/chillbros/approved-job-routing";
 
 const METHODS = new Set(["cash", "check", "ach", "cash_app", "venmo", "zelle", "apple_pay", "card"]);
 
@@ -129,6 +130,9 @@ export async function recordDownPaymentAction(formData: FormData): Promise<never
   const recorded = await recordDownPaymentReceived(invoiceId, { method, recordedBy: profile.id, paidAt: paidAt.toISOString() });
   if (!recorded) redirect(`/payments?tab=down&invoice=${encodeURIComponent(invoiceId)}&error=Down+payment+could+not+be+recorded.`);
 
+  // Deposit in hand: the sold work belongs on the Schedule page's Needs scheduling list.
+  if (invoice.job_id) await routeApprovedJob(supabase, invoice.job_id, new Date().toISOString());
+
   await supabase.from("chillbros_workflow_events").insert({
     job_id: invoice.job_id,
     invoice_id: invoiceId,
@@ -148,5 +152,7 @@ export async function recordDownPaymentAction(formData: FormData): Promise<never
   revalidatePath("/");
   revalidatePath(`/portal/${invoice.portal_token}`);
   revalidatePath(`/portal/${invoice.portal_token}/document`);
+  revalidatePath("/schedule");
+  revalidatePath("/dispatch");
   redirect(`/payments?tab=down&invoice=${encodeURIComponent(invoiceId)}&success=Down+payment+recorded.`);
 }
