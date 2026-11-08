@@ -49,11 +49,12 @@ test('builds a buyer row with a usable email and website', () => {
   assert.equal(b.buyerFromElement({ type: 'node', id: 8, tags: { name: 'Taco Hut', amenity: 'restaurant' } }), null);
 });
 
-test('sends only weekdays 9am-2:59pm Central', () => {
+test('sends every day 9am-4:59pm Central', () => {
   assert.equal(b.inSendWindow(new Date('2026-11-05T16:00:00Z')), true);  // Thu 10am CST
-  assert.equal(b.inSendWindow(new Date('2026-11-05T19:00:00Z')), true);  // Thu 1pm
-  assert.equal(b.inSendWindow(new Date('2026-11-05T21:00:00Z')), false); // Thu 3pm
-  assert.equal(b.inSendWindow(new Date('2026-11-07T16:00:00Z')), false); // Saturday
+  assert.equal(b.inSendWindow(new Date('2026-11-05T22:00:00Z')), true);  // Thu 4pm
+  assert.equal(b.inSendWindow(new Date('2026-11-05T23:00:00Z')), false); // Thu 5pm
+  assert.equal(b.inSendWindow(new Date('2026-11-05T14:00:00Z')), false); // Thu 8am
+  assert.equal(b.inSendWindow(new Date('2026-11-08T20:10:00Z')), true);  // Sunday 2:10pm
 });
 
 test('offer email is trade-specific, sells the launch promo with the free sample, address and unsubscribe', () => {
@@ -275,9 +276,9 @@ test('outreach warms up the new inbox: 25/day, then 50 after 3 days, 100 after a
   assert.equal(b.rampCap(first, new Date('2026-11-08T15:00:00Z')), 25);
   assert.equal(b.rampCap(first, new Date('2026-11-09T15:00:00Z')), 50);
   assert.equal(b.rampCap(first, new Date('2026-11-13T15:00:00Z')), 100);
-  assert.equal(b.perRunFor(25), 5);
-  assert.equal(b.perRunFor(50), 9);
-  assert.equal(b.perRunFor(100), 17);
+  assert.equal(b.perRunFor(25), 7);
+  assert.equal(b.perRunFor(50), 13);
+  assert.equal(b.perRunFor(100), 25);
 });
 
 test('promo email asks for a reply (Square invoice after availability check), never a checkout link', () => {

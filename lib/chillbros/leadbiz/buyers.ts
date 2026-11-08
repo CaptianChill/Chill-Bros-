@@ -163,7 +163,7 @@ export function buyerFromElement(el: { type: string; id: number; tags?: Record<s
   };
 }
 
-/** Central-time sending window: weekdays 9:00–2:59pm (business hours when contractor owners read email). */
+/** Central-time sending window: every day 9:00am–4:59pm. */
 /** Sending warms up the new outreach inbox: 25/day for the first 3 days after the first send,
  *  50/day through day 7, then 100/day. Sudden volume from a fresh Gmail gets it flagged. */
 export function rampCap(firstSentAt: Date | null, now = new Date()) {
@@ -171,14 +171,15 @@ export function rampCap(firstSentAt: Date | null, now = new Date()) {
   const days = Math.floor((now.getTime() - firstSentAt.getTime()) / 86400_000);
   return days < 3 ? 25 : days < 7 ? 50 : 100;
 }
-/** Six in-window runs a day (9am–2pm hours), so each run sends its share of the day's cap. */
-export const perRunFor = (cap: number) => Math.max(1, Math.ceil(cap / 6));
+/** Eight in-window runs a day (9am–4pm hours). Each run sends a quarter of the day's cap, so the
+ *  day's emails go out in the first few runs and the later runs catch up if one fails. */
+export const perRunFor = (cap: number) => Math.max(1, Math.ceil(cap / 4));
 
+// Owner, 2026-11-08: start outreach right away, including weekends (contractors work Saturdays).
 export function inSendWindow(now = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short", hour: "numeric", hour12: false }).formatToParts(now);
-  const day = parts.find((p) => p.type === "weekday")?.value ?? "";
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", hour12: false }).formatToParts(now);
   const hour = Number(parts.find((p) => p.type === "hour")?.value ?? -1);
-  return !["Sat", "Sun"].includes(day) && hour >= 9 && hour <= 14;
+  return hour >= 9 && hour <= 16;
 }
 
 // Projects in the New Openings Pack per trade: 16 restaurant/retail + 13 auto (hood cleaning and kitchen equipment skip auto).
