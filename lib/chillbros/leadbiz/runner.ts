@@ -125,6 +125,8 @@ export async function discoverBuyersGoogle(client: Client, deadline: number, run
     if (error?.code === "23505") continue; // Email already on another buyer row.
     if (error) throw new Error(`Buyer save failed: ${error.message}`);
     saved += data?.length ?? 0;
+    // Emails read off a new buyer's own site count as enriched, so the run log shows them.
+    if (row.email && data?.length && run) run.enriched += 1;
   }
   return saved;
 }
@@ -219,7 +221,7 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
       if (!run.discovered) run.note = `${run.note ?? "free map found no new contractors"}; set GOOGLE_PLACES_API_KEY for real coverage`;
     }
   }
-  run.enriched = await enrichBuyers(client, 20, Math.min(deadline, Date.now() + 120_000));
+  run.enriched += await enrichBuyers(client, 20, Math.min(deadline, Date.now() + 120_000));
 
   const sender = account();
   if (!run.enabled) return { ...run, note: run.note ?? "Sending is off (LEADBIZ_OUTREACH_ENABLED is not 1)." };
