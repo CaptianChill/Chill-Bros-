@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free Project Sample | San Antonio New Openings</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#081627;color:#fff;font:16px/1.5 system-ui}main{max-width:1200px;margin:26px auto;padding:0 20px}header,section{padding:24px;background:#0b1e33;border-radius:14px}header{border:2px solid #ff7a59;margin-bottom:20px}h1{color:#fff;margin:0}h2{color:#7fd4ff}p{margin:.5rem 0 1rem}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}img{display:block;width:100%;height:auto;border-radius:10px}form{display:grid;gap:12px}label{display:grid;gap:4px}input,select,button{width:100%;font:inherit;border-radius:8px;padding:10px}input,select{border:1px solid #8a9bb3;background:#152e49;color:white}button{border:0;background:#7fd4ff;color:#0b1e33;font-weight:700;cursor:pointer}a{color:#7fd4ff}@media(max-width:740px){.grid{grid-template-columns:1fr}}
+.card{margin-top:20px;border:1px solid #7fd4ff}.card h2{color:#fff;font-size:clamp(1.8rem,5vw,3rem);margin:.25rem 0}.card h3,.brand{color:#7fd4ff}.brand{font-weight:700}.card strong{color:#c4d4e4}.notice{padding:12px;background:#f5c52220;color:#ffdc7c;border-radius:8px}
+</style>
+<body>
+<main>
+<header><p class="brand">SAN ANTONIO</p><h1>NEW OPENINGS</h1><p>See what a commercial project card looks like for your trade.</p></header>
+<section><h2>Build your free sample</h2><p>Choose your trade and project city to see a demo instantly.</p>
+<form id="request">
+<label>Trade<select name="trade" required><option value="">Select your trade</option><option>Commercial cleaning</option><option>HVAC and refrigeration</option><option>Plumbing</option><option>Electrical</option><option>Hood cleaning</option><option>Commercial kitchen equipment</option><option>Pest control</option><option>Signage</option><option>Low voltage</option><option>Security</option></select></label>
+<label>What city do you want projects in?<input name="city" autocomplete="address-level2" maxlength="80" pattern=".*\S.*" required></label>
+<label>ZIP code (optional)<input name="zip" autocomplete="postal-code" maxlength="5" inputmode="numeric" pattern="[0-9]{5}"></label>
+<label>Which pack are you considering?<select name="pack"><option>Free sample only</option><option>Starter — 5 cards for $49</option><option>Trade — 9 cards for $89</option><option>Growth — 13 cards for $119</option></select></label>
+<button>Show my free sample</button>
+</form></section>
+<section id="sample" class="card" aria-labelledby="sample-title" hidden>
+<p class="brand">SAN ANTONIO NEW OPENINGS · FREE DEMO</p>
+<h2 id="sample-title" tabindex="-1">Demo Kitchen &amp; Market</h2>
+<p class="notice">Fictional example. All project details, contacts and milestones are invented. Do not use this card for outreach.</p>
+<div class="grid">
+<div><h3>01 · Business &amp; Project</h3><p><strong>Project type</strong><br>Commercial tenant buildout</p><p><strong>Illustrative location</strong><br>100 Demo Way, <span id="area"></span></p></div>
+<div><h3>02 · Contact &amp; Source Checks</h3><p><strong>Example contact</strong><br>Jordan Example · Project coordinator<br>jordan@example.com</p><p><strong>Source status</strong><br>Demo record. No filing or contact was checked.</p></div>
+<div><h3>03 · Project Timeline</h3><p><strong>Illustrative schedule</strong><br>Week 1 · Scope review<br>Week 3 · Trade coordination<br>Week 8 · Target turnover</p></div>
+<div><h3>04 · Why It Matches Your Business</h3><p id="match"></p><p id="pack-choice"></p></div>
+</div></section>
+<section class="card" aria-labelledby="packs">
+<h2 id="packs">Commercial project packs</h2>
+<p>Each pack covers one trade and service area. We confirm availability, allocation and delivery timing before emailing a Square invoice.</p>
+<ul><li>Launch Starter · 5 cards · $49</li><li>Trade Pack · 9 cards · $89</li><li>Growth Pack · 13 cards · $119</li></ul>
+<p><a id="order" href="mailto:satxnewopenings@gmail.com?subject=Project%20pack%20availability">Email us to check pack availability</a></p>
+</section>
+<footer class="card"><p>Powered by Chill Pros</p><p>San Antonio New Openings, a service of Chill Professionals LLC · <a href="tel:+12109049306">(210) 904-9306</a></p></footer>
+</main>
+<script>
+const scopes = new Map([
+  ['Commercial cleaning', 'Post-construction cleanup, floor care and turnover cleaning.'],
+  ['HVAC and refrigeration', 'Rooftop unit coordination and walk-in cooler commissioning.'],
+  ['Plumbing', 'Fixture rough-ins, floor drains and grease waste piping.'],
+  ['Electrical', 'Panel coordination, lighting circuits and equipment connections.'],
+  ['Hood cleaning', 'Kitchen exhaust access review and recurring hood cleaning after opening.'],
+  ['Commercial kitchen equipment', 'Cookline installation, startup and service planning.'],
+  ['Pest control', 'Pre-opening inspection, entry-point review and recurring service.'],
+  ['Signage', 'Storefront sign measurements, fabrication and installation coordination.'],
+  ['Low voltage', 'Network cabling, equipment rack layout and device drops.'],
+  ['Security', 'Camera placement, door access and intrusion alarm coordination.']
+]);
+
+const form = document.querySelector('#request');
+const sample = document.querySelector('#sample');
+form.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const fields = new FormData(form);
+  const trade = fields.get('trade');
+  const city = fields.get('city').trim();
+  const zip = fields.get('zip');
+  document.querySelector('#area').textContent = [city || 'Example City', zip].filter(Boolean).join(' ');
+  document.querySelector('#match').textContent = trade + ' · Possible scope in this example: ' + scopes.get(trade);
+  document.querySelector('#pack-choice').textContent = 'Your selection: ' + fields.get('pack');
+  const selection = fields.get('pack');
+  const request = ['Trade: ' + trade, 'City: ' + city, zip && 'ZIP: ' + zip,
+    selection !== 'Free sample only' && 'Pack: ' + selection].filter(Boolean).join('\r\n');
+  document.querySelector('#order').href = 'mailto:satxnewopenings@gmail.com?subject=Project%20pack%20availability&body=' + encodeURIComponent(request);
+  sample.hidden = false;
+  document.querySelector('#sample-title').focus();
+  sample.scrollIntoView({ block: 'start' });
+});
+</script>
+</body>
+</html>
