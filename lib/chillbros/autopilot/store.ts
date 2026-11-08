@@ -12,6 +12,8 @@ export type AutopilotSettings = SlotSettings & PlaybookSettings & {
   inbound_enabled: boolean;
   reactivation_enabled: boolean;
   cold_email_enabled: boolean;
+  /** When set in the future, cold email ignores its best-time window until then (owner "send now"). */
+  cold_send_now_until?: string | null;
   reply_enabled: boolean;
   cold_daily_cap: number;
   reactivation_daily_cap: number;
