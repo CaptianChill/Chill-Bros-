@@ -141,10 +141,10 @@ Honest, specific, respectful of their time. Do not claim we noticed a problem at
   const opener = name ? `${name},` : `Hello ${prospect.business_name} team,`;
   const bodies = [
     `${opener}\n\nChill Pros is a San Antonio service company for ${label}. When equipment goes down, every hour costs product, comfort or sales, so we keep it simple: pick an open time online and a technician comes out and diagnoses it. ${feeLine(settings, true)}${offerLine(settings) ? ` ${offerLine(settings)}` : ""}\n\nWe also set up maintenance plans so problems get caught before they turn into emergency calls.`,
-    `${opener}\n\nFollowing up on my note. A lot of local businesses keep us as a backup for when their regular company is booked up in peak season, and some switch to us for preventive maintenance. Either way, our open times are online.`,
-    `${opener}\n\nThis is my last note. If ${label} ever needs attention, the booking link below shows our real open times. Thanks for your time.`,
+    `${opener}\n\nFollowing up on my note. A lot of local businesses keep us as a backup for when their regular company is booked up, and some switch to us for preventive maintenance.${offerLine(settings) ? ` ${offerLine(settings)}` : ""} Our open times are online.`,
+    `${opener}\n\nOne last note from Chill Pros, with an offer for new customers.${offerLine(settings) ? ` ${offerLine(settings)}` : ""} If ${label} ever needs attention, the booking link below shows our real open times. Thanks for your time.`,
   ];
-  const subjects = [`Equipment service for ${prospect.business_name}`, `Backup service for ${prospect.business_name}`, "Last note from Chill Pros"];
+  const subjects = [`Equipment service for ${prospect.business_name}`, `Backup service for ${prospect.business_name}`, `New-customer offer for ${prospect.business_name}`];
   return { subject: safeSubject(subjects[Math.min(step, 2)]), body: bodies[Math.min(step, 2)], sms: null, source: "template" };
 }
 
