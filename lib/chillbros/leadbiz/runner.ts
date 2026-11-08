@@ -182,7 +182,10 @@ async function sendOne(client: Client, row: { id: string; business_name: string;
     if (!result.sent) throw new Error(result.error);
     return "sent" as const;
   } catch (error) {
-    await client.from(TABLE).update({ last_error: error instanceof Error ? error.message.slice(0, 300) : "send failed" }).eq("id", row.id);
+    // Release the claim: a send that never left must not count toward the daily cap or
+    // trigger a "Re:" follow-up to someone who never got the first email.
+    const release = followUp ? { followup_at: null, status: "emailed" } : { emailed_at: null, status: "ready" };
+    await client.from(TABLE).update({ ...release, last_error: error instanceof Error ? error.message.slice(0, 300) : "send failed" }).eq("id", row.id);
     return "failed" as const;
   }
 }
@@ -235,7 +238,7 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   for (const row of followUps ?? []) {
     if (budget <= 0 || Date.now() > deadline) break;
     const r = await sendOne(client, row, true, sender);
-    if (r === "sent") { run.followedUp++; budget--; } else if (r === "failed") run.failed++;
+    if (r === "sent") { run.followedUp++; budget--; } else if (r === "failed") { run.failed++; break; } // A failed send (bad password, blocked inbox) fails them all; stop and retry next run.
   }
   // Mix trades so one trade's buyers don't all go out on the same morning.
   const { data: fresh } = await client.from(TABLE).select("id,business_name,trade,email").eq("status", "ready").not("email", "is", null).order("created_at").limit(200);
@@ -246,7 +249,7 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   for (const row of queue) {
     if (budget <= 0 || Date.now() > deadline) break;
     const r = await sendOne(client, row, false, sender);
-    if (r === "sent") { run.sent++; budget--; } else if (r === "failed") run.failed++;
+    if (r === "sent") { run.sent++; budget--; } else if (r === "failed") { run.failed++; break; } // A failed send (bad password, blocked inbox) fails them all; stop and retry next run.
   }
   return run;
 }
