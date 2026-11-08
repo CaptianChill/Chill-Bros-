@@ -182,9 +182,19 @@ async function sendOne(client: Client, row: { id: string; business_name: string;
     if (!result.sent) throw new Error(result.error);
     return "sent" as const;
   } catch (error) {
-    await client.from(TABLE).update({ last_error: error instanceof Error ? error.message.slice(0, 300) : "send failed" }).eq("id", row.id);
+    // The email did not go out: undo the claim so the row is retried (and never gets a
+    // follow-up for an offer it never received), and keep the error for the owner page.
+    const undo = followUp ? { followup_at: null, status: "emailed" } : { emailed_at: null, status: "ready" };
+    await client.from(TABLE).update({ ...undo, last_error: error instanceof Error ? error.message.slice(0, 300) : "send failed" }).eq("id", row.id);
     return "failed" as const;
   }
+}
+
+/** Rows a past run claimed but could not send (e.g. Gmail login rejected) go back in the queue. */
+export async function requeueFailedSends(client: Client) {
+  const { data } = await client.from(TABLE).update({ status: "ready", emailed_at: null })
+    .eq("status", "emailed").is("followup_at", null).like("last_error", "SMTP%").select("id");
+  return data?.length ?? 0;
 }
 
 /** Runs one outreach cycle and records the outcome in chillbros_leadbiz_runs. */
@@ -226,6 +236,7 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   if (!sender) return { ...run, note: "Sender not configured (LEADBIZ_SMTP_USER / LEADBIZ_SMTP_APP_PASSWORD)." };
   if (!inSendWindow(now)) return { ...run, note: "Outside the 9am–5pm Central send window." };
 
+  await requeueFailedSends(client);
   const cap = Math.min(envCap(), rampCap(await firstSentAt(client), now));
   let budget = Math.min(perRunFor(cap), cap - (await sentToday(client, now)));
   if (budget <= 0) return { ...run, note: "Daily cap reached." };
@@ -235,7 +246,7 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   for (const row of followUps ?? []) {
     if (budget <= 0 || Date.now() > deadline) break;
     const r = await sendOne(client, row, true, sender);
-    if (r === "sent") { run.followedUp++; budget--; } else if (r === "failed") run.failed++;
+    if (r === "sent") { run.followedUp++; budget--; } else if (r === "failed") { run.failed++; return { ...run, note: "Send failed; stopped this run (see last_error)." }; }
   }
   // Mix trades so one trade's buyers don't all go out on the same morning.
   const { data: fresh } = await client.from(TABLE).select("id,business_name,trade,email").eq("status", "ready").not("email", "is", null).order("created_at").limit(200);
@@ -246,7 +257,7 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   for (const row of queue) {
     if (budget <= 0 || Date.now() > deadline) break;
     const r = await sendOne(client, row, false, sender);
-    if (r === "sent") { run.sent++; budget--; } else if (r === "failed") run.failed++;
+    if (r === "sent") { run.sent++; budget--; } else if (r === "failed") { run.failed++; return { ...run, note: "Send failed; stopped this run (see last_error)." }; }
   }
   return run;
 }
