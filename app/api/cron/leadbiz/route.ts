@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 // Hourly (vercel.json). Finds San Antonio contractor buyers for the lead business, looks up
-// their published email, and sends the lead-pack offer weekdays 9am–3pm Central (capped daily).
+// their published email, and sends the lead-pack offer every day 9am–5pm Central (capped daily).
 export async function GET(request: Request) {
   const secret = String(process.env.CRON_SECRET || "");
   if (!secret) return Response.json({ ok: false, error: "Cron secret is not configured." }, { status: 503 });

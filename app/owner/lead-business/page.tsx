@@ -129,7 +129,7 @@ export default async function LeadBusinessPage() {
       <SectionCard title="Recently emailed">
         {list.filter((b) => b.emailed_at).length ? <ul className="divide-y divide-white/10 text-sm">
           {list.filter((b) => b.emailed_at).slice(0, 25).map((b) => <li key={`${b.business_name}${b.emailed_at}`} className="flex justify-between gap-3 py-2"><span className="truncate text-white">{b.business_name} <span className="text-zinc-500">· {TRADE_LABEL[b.trade].plural}</span></span><span className="shrink-0 text-zinc-400">{b.status === "followed_up" ? "followed up" : when(b.emailed_at)}</span></li>)}
-        </ul> : <p className="text-sm text-zinc-400">No outreach emails yet. They send weekdays 9am–3pm once contractors with emails are found.</p>}
+        </ul> : <p className="text-sm text-zinc-400">No outreach emails yet. They send every day 9am–5pm once contractors with emails are found.</p>}
       </SectionCard>
     </div>
   </AppShell>;
