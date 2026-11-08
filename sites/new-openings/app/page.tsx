@@ -21,7 +21,7 @@ export default async function SalesPage() {
         <section className="mt-12 max-w-3xl">
           <h1 className="text-5xl font-bold uppercase leading-[0.95] sm:text-7xl">{openings} new commercial projects. <span className="text-[#FF7A59]">Building right now.</span></h1>
           <p className="mt-5 max-w-2xl text-lg text-[#C9D6E3]">Verified San Antonio restaurant, retail and auto build-outs from Texas state construction filings, each with the owner or tenant contact and phone. {BRAND.tagline}</p>
-          <a href={growth.href} className="mt-7 inline-flex min-h-12 items-center rounded-xl bg-[#F5C542] px-6 text-lg font-bold text-[#0B1E33] hover:brightness-105">Packs from $89 · plans from $99/mo</a>
+          <a href={growth.href} className="mt-7 inline-flex min-h-12 items-center rounded-xl bg-[#F5C542] px-6 text-lg font-bold text-[#0B1E33] hover:brightness-105">Packs from $89</a>
           <p className="mt-3 text-sm text-[#8A9BB0]">Fixed project counts · private link by email within 2 hours</p>
         </section>
 
@@ -73,12 +73,6 @@ export default async function SalesPage() {
           <div className="mt-4 flex flex-wrap gap-2">{TRADES.map((t) => <span key={t} className="rounded-full border border-[#7FD4FF]/40 px-4 py-2 text-sm text-[#7FD4FF]">{t}</span>)}</div>
           <p className="mt-5 max-w-3xl text-[#C9D6E3]">One commercial account is worth thousands a year in recurring work. No more than 3 contractors in your trade ever get the same project, so you&apos;re not fighting the whole city for the same jobs.</p>
           <p className="mt-3 max-w-3xl font-semibold text-white"><span className="mr-2 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">New</span>Now including auto: 13 new car washes, oil change, collision and dealer service shops. Included for every trade except hood cleaning and kitchen equipment.</p>
-        </section>
-
-        <section className="mt-14 rounded-2xl border border-[#7FD4FF]/40 bg-[#12304D] p-6 text-center">
-          <p className="text-2xl font-bold uppercase">New projects every month, never repeats.</p>
-          <a href={growth.href.replace("growth", "local")} className="mt-5 inline-flex min-h-12 items-center rounded-xl bg-[#F5C542] px-6 text-lg font-bold text-[#0B1E33]">Start the Local Plan, $99/mo</a>
-          <p className="mt-3 text-sm text-[#8A9BB0]">Questions? Call or text {BRAND.phone}</p>
         </section>
 
         <footer className="mt-14 border-t border-white/10 pt-6 text-sm text-[#8A9BB0]">

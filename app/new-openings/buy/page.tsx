@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { LEADBIZ_PHONE, TRADE_LABEL } from "@/lib/chillbros/leadbiz/buyers";
-import { SLUG_TRADE, isSquareCheckoutLink, isTradeSlug, productByKey, shortfallCopy } from "@/lib/chillbros/leadbiz/catalog";
+import { PLANS_ON_SALE, SLUG_TRADE, isSquareCheckoutLink, isTradeSlug, productByKey, shortfallCopy } from "@/lib/chillbros/leadbiz/catalog";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,8 @@ export default async function BuyGate({ searchParams }: Props) {
   const { product: productKey, trade } = await searchParams;
   const product = productByKey(productKey);
   if (!product) return <Notice title="Pick a pack first" body="That pack isn't available. Go back and pick one." />;
+  // Monthly plans can't be delivered yet. Block them here even if the database row says on_sale.
+  if (product.kind === "subscription" && !PLANS_ON_SALE) return <Notice title={`${product.name}: opening soon`} body="Monthly plans aren't open yet. Grab a one-time pack instead, or call or text us and we'll set you up." />;
   if (!isTradeSlug(trade)) return <Notice title="Pick your trade first" body="Go back, tap your trade (Step 1), then tap Buy again so we can check your trade still has open projects." />;
 
   let link: string | null = null;
