@@ -176,9 +176,9 @@ async function sendOne(client: Client, row: { id: string; business_name: string;
     : await client.from(TABLE).update({ emailed_at: new Date().toISOString(), status: "emailed" }).eq("id", row.id).eq("status", "ready").select("id");
   if (claim.error || !claim.data?.length) return "skipped" as const;
   const unsub = unsubscribeUrl(row.email).replace("/u?", "/u/leads?");
-  const { subject, text } = offerEmail({ business_name: row.business_name, trade: row.trade as never }, unsub, followUp);
+  const { subject, text, html } = offerEmail({ business_name: row.business_name, trade: row.trade as never }, unsub, followUp);
   try {
-    const result = await sendCompanyEmail(row.email, subject, text, undefined, [], { "List-Unsubscribe": `<${unsub}>` }, sender);
+    const result = await sendCompanyEmail(row.email, subject, text, html, [], { "List-Unsubscribe": `<${unsub}>` }, sender);
     if (!result.sent) throw new Error(result.error);
     return "sent" as const;
   } catch (error) {
