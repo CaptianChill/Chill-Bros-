@@ -281,6 +281,13 @@ test('outreach warms up the new inbox: 25/day, then 50 after 3 days, 100 after a
   assert.equal(b.perRunFor(100), 25);
 });
 
+test('greeting falls back to "Hi there" when the saved name is a page title or domain', () => {
+  for (const n of ['Mysite', 'Janiking.com', 'Custom signs & banners company | Sign Shop | Signs of San Antonio', 'Welcome to signs above the rest, inc.', 'JPI Electric: Premier Electrical Services in San Antonio & Austin']) {
+    assert.match(b.offerEmail({ business_name: n, trade: 'signs' }, 'u').text, /^Hi there,/, n);
+  }
+  assert.match(b.offerEmail({ business_name: 'Bell Electric LLC', trade: 'electrical' }, 'u').text, /^Hi Bell Electric LLC team,/);
+});
+
 test('promo email asks for a reply (Square invoice after availability check), never a checkout link', () => {
   const { text, html } = b.offerEmail({ business_name: 'P & Sons', trade: 'plumbing' }, 'u');
   assert.doesNotMatch(text + html, /square\.link/);

@@ -209,8 +209,18 @@ const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const claimHref = (pack: string, plural: string, business: string) =>
   `mailto:${LEADBIZ_EMAIL}?subject=${encodeURIComponent(`${pack} availability: ${plural}`)}&body=${encodeURIComponent(`Hi, I'd like the ${pack}. Business: ${business}`)}`;
 
+/** A business name fit for "Hi X team," or null when it is really a web page title or a domain
+ *  ("Mysite", "Janiking.com", "Sign Shop | Signs of San Antonio", "Welcome to ..."). */
+export function greetingName(name: string) {
+  const n = name.trim();
+  if (!n || n.length > 40 || /[|:]|^welcome\b|^home\b|^mysite$|\.(com|net|org|us|biz)$/i.test(n)) return null;
+  return n;
+}
+
 export function offerEmail(b: { business_name: string; trade: Trade }, unsubscribeUrl: string, followUp = false) {
   const t = TRADE_LABEL[b.trade];
+  const gName = greetingName(b.business_name);
+  const greeting = gName ? `Hi ${gName} team,` : "Hi there,";
   const n = packProjects(b.trade);
   const packs = promoPacksFor(b.trade);
   const mix = n > FOOD_OPENINGS ? `${FOOD_OPENINGS} new restaurants, grocery and quick-service openings plus ${AUTO_OPENINGS} new car washes, oil change, collision and auto repair shops` : "new restaurants, grocery and quick-service openings";
@@ -223,7 +233,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
   const how = `Want one? Reply to this email with the pack name, or call or text ${LEADBIZ_PHONE}. We confirm your trade still has open spots, then send a Square invoice. Your project cards arrive by email after you pay.`;
 
   const text = [
-    `Hi ${b.business_name} team,`,
+    greeting,
     "",
     opener,
     "",
@@ -259,7 +269,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
 </td></tr>
 <tr><td style="height:12px"></td></tr>
 <tr><td style="background:${navy};border-radius:14px;padding:22px;font-size:16px;line-height:1.5;color:${muted}">
-<p style="margin:0 0 12px;color:#fff">Hi ${esc(b.business_name)} team,</p>
+<p style="margin:0 0 12px;color:#fff">${esc(greeting)}</p>
 <p style="margin:0 0 16px">${esc(opener)}</p>
 <p style="margin:0 0 18px"><a href="${LEADBIZ_SAMPLE_URL}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:12px 18px">See your free sample card</a></p>
 <div style="color:${sky};font-weight:700;font-size:18px;margin-bottom:4px">Launch promo: first ${PROMO_BUYER_LIMIT} buyers</div>
