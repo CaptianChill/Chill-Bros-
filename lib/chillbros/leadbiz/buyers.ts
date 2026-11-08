@@ -2,7 +2,7 @@
 // writing the offer email. No I/O here so it is unit-tested (scripts/leadbiz.test.cjs).
 import type { Trade } from "../trade-fit";
 
-import { MAX_BUYERS_PER_TRADE, PACKS, SELLING_PLANS, PLAN_TERM_MONTHS, TRADE_SLUG } from "./catalog";
+import { MAX_BUYERS_PER_TRADE, TRADE_SLUG } from "./catalog";
 
 export const LEADBIZ_BRAND = "San Antonio New Openings";
 export const LEADBIZ_PHONE = "(210) 904-9306";
@@ -186,41 +186,91 @@ export const FOOD_OPENINGS = 12;
 export const AUTO_OPENINGS = 10;
 export const packProjects = (trade: Trade) => FOOD_OPENINGS + (trade === "hood_cleaning" || trade === "kitchen_equipment" ? 0 : AUTO_OPENINGS);
 
+// Launch promo (owner, 2026-11-08): same packs and prices as the LinkedIn post and the free
+// sample page. Paid by Square invoice after we confirm the trade still has open spots, so the
+// email asks for a reply instead of linking to checkout.
+export const LEADBIZ_SITE_URL = "https://san-antonio-new-openings.vercel.app";
+export const LEADBIZ_SAMPLE_URL = `${LEADBIZ_SITE_URL}/project-sample.html?ref=email`;
+export const LEADBIZ_LOGO_URL = `${LEADBIZ_SITE_URL}/chill-pros-logo.png`;
+export const LEADBIZ_EMAIL = "satxnewopenings@gmail.com";
+export const LEADBIZ_POWERED_BY = "Powered by Chill Pros";
+// Launch promo is open to the first 30 buyers (owner, 2026-11-08): about 10 trades x 3 buyers per trade.
+export const PROMO_BUYER_LIMIT = 30;
+export const PROMO_PACKS = [
+  { name: "Launch Starter", cards: 5, price: 49 },
+  { name: "Trade Pack", cards: 9, price: 89 },
+  { name: "Growth Pack", cards: 13, price: 119 },
+] as const;
+/** Promo packs this trade can actually be filled with today (hood/kitchen get restaurant projects only). */
+export const promoPacksFor = (trade: Trade) => PROMO_PACKS.filter((p) => p.cards <= packProjects(trade));
+
+const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const claimHref = (pack: string, plural: string, business: string) =>
+  `mailto:${LEADBIZ_EMAIL}?subject=${encodeURIComponent(`${pack} availability: ${plural}`)}&body=${encodeURIComponent(`Hi, I'd like the ${pack}. Business: ${business}`)}`;
+
 export function offerEmail(b: { business_name: string; trade: Trade }, unsubscribeUrl: string, followUp = false) {
   const t = TRADE_LABEL[b.trade];
   const n = packProjects(b.trade);
+  const packs = promoPacksFor(b.trade);
   const mix = n > FOOD_OPENINGS ? `${FOOD_OPENINGS} new restaurants, grocery and quick-service openings plus ${AUTO_OPENINGS} new car washes, oil change, collision and auto repair shops` : "new restaurants, grocery and quick-service openings";
   const subject = followUp
-    ? `Re: new San Antonio commercial projects for ${t.plural}`
-    : `${n} new San Antonio commercial projects for ${t.plural}`;
+    ? `Re: ${n} new San Antonio commercial projects for ${t.plural}`
+    : `${n} new San Antonio commercial projects for ${t.plural}: free sample inside`;
   const opener = followUp
-    ? `Quick follow-up on the new commercial projects list. Each project goes to no more than ${MAX_BUYERS_PER_TRADE} ${t.plural}, so open spots go first come, first served.`
-    : `I track new commercial build-outs across San Antonio from Texas state construction filings. Right now there are ${n} active projects (${mix}), each with the owner or tenant contact and phone, and every one of them needs ${t.hook}.`;
+    ? `Quick follow-up. Each project goes to no more than ${MAX_BUYERS_PER_TRADE} ${t.plural}, so open spots go first come, first served. The launch promo is still on.`
+    : `I track new commercial build-outs across San Antonio from Texas state construction filings. Right now there are ${n} active projects (${mix}), and every one of them will need ${t.hook}.`;
+  const how = `Want one? Reply to this email with the pack name, or call or text ${LEADBIZ_PHONE}. We confirm your trade still has open spots, then send a Square invoice. Your project cards arrive by email after you pay.`;
+
   const text = [
     `Hi ${b.business_name} team,`,
     "",
     opener,
     "",
-    `Packs for ${t.plural}, each with a fixed number of projects (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
-    ...PACKS.map((p) => `- ${p.name}: ${p.projects} projects${p.contacts ? ` + ${p.contacts} business contacts` : ""}, $${p.price}: ${salesLink(b.trade)}&pack=${p.key}`),
-    ...(SELLING_PLANS.length ? [
-      "",
-      `Or get new projects every month, never repeats (${PLAN_TERM_MONTHS}-month term, billed monthly):`,
-      ...SELLING_PLANS.map((p) => `- ${p.name}: at least ${p.projects} new projects a month, $${p.price}/month`),
-    ] : []),
+    `See a free sample project card for your trade (a demo, takes 10 seconds): ${LEADBIZ_SAMPLE_URL}`,
     "",
-    `Pick your pack here: ${salesLink(b.trade)}`,
+    `Launch promo, first ${PROMO_BUYER_LIMIT} buyers only. Limited availability by trade and service area (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
+    ...packs.map((p) => `- ${p.name}: ${p.cards} cards · $${p.price}`),
     "",
-    "Delivered by email within 2 hours of checkout. Reply here with any questions.",
+    how,
     "",
     `"${LEADBIZ_QUOTE}"`,
     "",
-    `${LEADBIZ_BRAND}`,
-    `${LEADBIZ_PHONE}`,
+    `${LEADBIZ_BRAND} · ${LEADBIZ_POWERED_BY}`,
+    `${LEADBIZ_PHONE} · ${LEADBIZ_EMAIL}`,
     LEADBIZ_POSTAL,
     `Lead Pack Terms: ${LEADBIZ_TERMS_URL}`,
     "",
     `You're getting this business email because ${b.business_name} is listed as a San Antonio contractor. Not interested? Unsubscribe: ${unsubscribeUrl}`,
   ].join("\n");
-  return { subject, text };
+
+  const navy = "#0b1e33", sky = "#7fd4ff", gold = "#f5c542", muted = "#c9d6e3";
+  const packCells = packs.map((p) => `<td style="padding:6px;width:${Math.floor(100 / packs.length)}%" valign="top"><div style="border:1px solid #36526b;border-radius:8px;padding:14px;background:#102a44">
+<div style="color:#fff;font-weight:700;font-size:16px">${esc(p.name)}</div>
+<div style="color:${muted};font-size:14px">${p.cards} cards</div>
+<div style="color:${gold};font-weight:700;font-size:24px;margin:6px 0">$${p.price}</div>
+<a href="${esc(claimHref(p.name, t.plural, b.business_name))}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:8px 12px;font-size:14px">Check availability</a></div></td>`).join("");
+  const html = `<!doctype html><html><body style="margin:0;background:#081627">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#081627"><tr><td align="center" style="padding:20px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:Arial,Helvetica,sans-serif;color:#fff">
+<tr><td style="background:${navy};border:2px solid #ff705b;border-radius:14px;padding:22px">
+<div style="color:${sky};font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase">San Antonio New Openings</div>
+<div style="font-size:24px;font-weight:700;margin-top:6px;color:#fff">${n} new commercial projects for ${esc(t.plural)}</div>
+</td></tr>
+<tr><td style="height:12px"></td></tr>
+<tr><td style="background:${navy};border-radius:14px;padding:22px;font-size:16px;line-height:1.5;color:${muted}">
+<p style="margin:0 0 12px;color:#fff">Hi ${esc(b.business_name)} team,</p>
+<p style="margin:0 0 16px">${esc(opener)}</p>
+<p style="margin:0 0 18px"><a href="${LEADBIZ_SAMPLE_URL}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:12px 18px">See your free sample card</a></p>
+<div style="color:${sky};font-weight:700;font-size:18px;margin-bottom:4px">Launch promo: first ${PROMO_BUYER_LIMIT} buyers</div>
+<div style="font-size:14px;margin-bottom:6px">Limited availability by trade and service area. Never more than ${MAX_BUYERS_PER_TRADE} ${esc(t.plural)} get the same project.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${packCells}</tr></table>
+<p style="margin:16px 0 0">${esc(how)}</p>
+<p style="margin:16px 0 0;font-style:italic">&ldquo;${esc(LEADBIZ_QUOTE)}&rdquo;</p>
+</td></tr>
+<tr><td style="padding:18px 22px;font-size:12px;line-height:1.5;color:#8a9bb0">
+<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="padding-right:8px" valign="middle"><img src="${LEADBIZ_LOGO_URL}" alt="Chill Pros logo" height="36" style="height:36px;width:auto;display:block;border:0"></td><td valign="middle" style="color:#fff;font-size:14px;font-weight:700">${LEADBIZ_POWERED_BY}</td></tr></table>
+<p style="margin:10px 0 0">${LEADBIZ_BRAND} is a service of Chill Professionals LLC · <a href="tel:+12109049306" style="color:${sky}">${LEADBIZ_PHONE}</a> · <a href="mailto:${LEADBIZ_EMAIL}" style="color:${sky}">${LEADBIZ_EMAIL}</a><br>${esc(LEADBIZ_POSTAL)}<br><a href="${LEADBIZ_TERMS_URL}" style="color:${sky}">Lead Pack Terms</a></p>
+<p style="margin:10px 0 0">You're getting this business email because ${esc(b.business_name)} is listed as a San Antonio contractor. Not interested? <a href="${esc(unsubscribeUrl)}" style="color:${sky}">Unsubscribe</a>.</p>
+</td></tr></table></td></tr></table></body></html>`;
+  return { subject, text, html };
 }

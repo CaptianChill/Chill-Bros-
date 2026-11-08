@@ -56,11 +56,14 @@ test('sends only weekdays 9am-2:59pm Central', () => {
   assert.equal(b.inSendWindow(new Date('2026-11-07T16:00:00Z')), false); // Saturday
 });
 
-test('offer email is trade-specific, sells the v2 lineup through the sales page, address and unsubscribe', () => {
-  const { subject, text } = b.offerEmail({ business_name: 'Bug Busters', trade: 'pest_control' }, 'https://x/u/leads?c=a&s=b');
+test('offer email is trade-specific, sells the launch promo with the free sample, address and unsubscribe', () => {
+  const { subject, text, html } = b.offerEmail({ business_name: 'Bug Busters', trade: 'pest_control' }, 'https://x/u/leads?c=a&s=b');
   assert.match(subject, /pest control companies/);
-  assert.ok(text.includes('https://chill-bros.vercel.app/new-openings?trade=pest-control'));
-  for (const p of [...c.PACKS, ...c.SELLING_PLANS]) assert.ok(text.includes(p.name) && text.includes(`$${p.price}`), p.name);
+  assert.ok(text.includes('https://san-antonio-new-openings.vercel.app/project-sample.html?ref=email'));
+  for (const p of b.PROMO_PACKS) assert.ok(text.includes(`${p.name}: ${p.cards} cards · $${p.price}`) && html.includes(`$${p.price}`), p.name);
+  assert.match(text, /first 30 buyers/);
+  assert.match(html, /Unsubscribe<\/a>/);
+  assert.match(html, /15226 Preston Pass/);
   if (!c.PLANS_ON_SALE) for (const p of c.PLANS) assert.ok(!text.includes(p.name), `${p.name} is off sale`);
   for (const url of Object.values(b.LEGACY_PAY_LINKS)) assert.ok(!text.includes(url), 'no retired Square links');
   assert.doesNotMatch(text, /\$449|exclusive|founding/i);
@@ -97,14 +100,17 @@ test('a Google-found buyer row holds only what the business\'s own site says, pl
   assert.equal(b.buyerFromOwnSite({ placeId: 'y', trade: 'plumbing', website: 'https://down.com', html: '', email: null, phone: null }), null, 'site did not load: nothing to save');
 });
 
-test('buyer-facing copy never says "Chill Pros" (legal entity Chill Professionals LLC is fine)', () => {
+test('outreach email carries the approved "Powered by Chill Pros" footer; other buyer pages stay white-label', () => {
+  // Owner approved "Powered by Chill Pros" + logo for buyer outreach on 2026-11-08 (matches the LinkedIn post).
   for (const trade of Object.keys(b.TRADE_LABEL)) for (const f of [false, true]) {
-    const { subject, text } = b.offerEmail({ business_name: 'X', trade }, 'https://x/u/leads?c=a&s=b', f);
-    assert.doesNotMatch(subject + text, /chill\s*pros\b/i);
+    const { subject, text, html } = b.offerEmail({ business_name: 'X', trade }, 'https://x/u/leads?c=a&s=b', f);
+    assert.doesNotMatch(subject, /chill\s*pros\b/i);
+    assert.match(text, /Powered by Chill Pros/);
+    assert.match(html, /chill-pros-logo\.png" alt="Chill Pros logo"/);
     assert.match(text, /Chill Professionals LLC, 15226 Preston Pass/);
     assert.match(text, /Unsubscribe: https:\/\/x\/u\/leads/);
   }
-  for (const file of ['app/new-openings/page.tsx', 'app/new-openings/flyer.tsx', 'app/new-openings/loading.tsx', 'app/lp/layout.tsx', 'app/lp/loading.tsx', 'app/lp/o/[token]/page.tsx', 'app/new-openings/buy/page.tsx', 'lib/chillbros/leadbiz/catalog.ts', 'app/u/leads/loading.tsx', 'app/u/leads/page.tsx', 'lib/chillbros/leadbiz/buyers.ts', 'lib/chillbros/leadbiz/buyer-scripts.ts', 'sites/new-openings/lib/brand.ts', 'sites/new-openings/app/page.tsx']) {
+  for (const file of ['app/new-openings/page.tsx', 'app/new-openings/flyer.tsx', 'app/new-openings/loading.tsx', 'app/lp/layout.tsx', 'app/lp/loading.tsx', 'app/lp/o/[token]/page.tsx', 'app/new-openings/buy/page.tsx', 'lib/chillbros/leadbiz/catalog.ts', 'app/u/leads/loading.tsx', 'app/u/leads/page.tsx', 'lib/chillbros/leadbiz/buyer-scripts.ts', 'sites/new-openings/lib/brand.ts', 'sites/new-openings/app/page.tsx']) {
     assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /chill\s*pros\b/i, file);
   }
   // The unsubscribe page must not wrap itself in the Chill Pros customer frame/logo.
@@ -274,8 +280,14 @@ test('outreach warms up the new inbox: 25/day, then 50 after 3 days, 100 after a
   assert.equal(b.perRunFor(100), 17);
 });
 
-test('offer email links each pack straight to its card on the sales page', () => {
-  const { text } = b.offerEmail({ business_name: 'P', trade: 'plumbing' }, 'u');
-  for (const p of c.PACKS) assert.ok(text.includes(`https://chill-bros.vercel.app/new-openings?trade=plumbers&pack=${p.key}`), p.key);
-  assert.doesNotMatch(text, /square\.link/);
+test('promo email asks for a reply (Square invoice after availability check), never a checkout link', () => {
+  const { text, html } = b.offerEmail({ business_name: 'P & Sons', trade: 'plumbing' }, 'u');
+  assert.doesNotMatch(text + html, /square\.link/);
+  assert.match(text, /Reply to this email with the pack name/);
+  assert.match(html, /mailto:satxnewopenings@gmail\.com\?subject=Launch%20Starter%20availability/);
+  assert.match(html, /P &amp; Sons/, 'business name is HTML-escaped');
+  // Hood cleaning / kitchen equipment only have 12 restaurant projects: no 13-card Growth Pack offered.
+  const hood = b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u');
+  assert.doesNotMatch(hood.text + hood.html, /Growth Pack/);
+  assert.match(hood.text, /Trade Pack: 9 cards/);
 });
