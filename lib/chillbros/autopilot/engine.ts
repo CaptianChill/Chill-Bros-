@@ -330,10 +330,13 @@ export async function runAutopilot(now = new Date()): Promise<AutopilotRun> {
   if (settings.cold_email_enabled) {
     const sentToday = await sentTodayCount(client, "cold", now);
     const common = { weekday: ct.weekday, hour: ct.hour, openSlots: run.openSlots5Days, sendsPerSlot: settings.sends_per_open_slot, dailyCap: settings.cold_daily_cap, sentToday };
-    const kitchen = batchSize({ lane: "cold_kitchen", ...common });
-    const office = batchSize({ lane: "cold_office", ...common });
-    // Both lanes share one daily cap.
+    // Owner "send now": inside the override window, skip the best-time window and send today's remaining cap.
+    const sendNow = !!settings.cold_send_now_until && new Date(settings.cold_send_now_until).getTime() > now.getTime();
     const room = Math.max(0, settings.cold_daily_cap - sentToday);
+    const kitchen = sendNow ? room : batchSize({ lane: "cold_kitchen", ...common });
+    const office = sendNow ? 0 : batchSize({ lane: "cold_office", ...common });
+    if (sendNow) run.notes.push("Owner send-now override: cold window skipped.");
+    // Both lanes share one daily cap.
     run.cold = await runCold(client, settings, { cold_kitchen: Math.min(kitchen, room), cold_office: Math.min(office, Math.max(0, room - kitchen)) }).catch((e) => { console.error("[autopilot] cold outreach failed", e); return 0; });
   }
 
