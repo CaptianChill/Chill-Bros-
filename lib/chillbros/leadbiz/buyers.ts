@@ -197,11 +197,14 @@ export const LEADBIZ_EMAIL = "satxnewopenings@gmail.com";
 export const LEADBIZ_POWERED_BY = "Powered by Chill Pros";
 // Launch promo is open to the first 30 buyers (owner, 2026-11-08): about 10 trades x 3 buyers per trade.
 export const PROMO_BUYER_LIMIT = 30;
-export const PROMO_PACKS = [
-  { name: "Launch Starter", cards: 5, price: 49 },
-  { name: "Trade Pack", cards: 9, price: 89 },
-  { name: "Growth Pack", cards: 13, price: 119 },
-] as const;
+// `was` is the regular price shown struck through. `buyUrl` is a Square payment link AT THE PROMO PRICE;
+// leave it empty until one exists so the card falls back to "Check availability" (never link a promo card
+// to a regular-price checkout).
+export const PROMO_PACKS: readonly { name: string; cards: number; price: number; was: number; buyUrl: string }[] = [
+  { name: "Launch Starter", cards: 5, price: 49, was: 89, buyUrl: "" },
+  { name: "Trade Pack", cards: 9, price: 89, was: 149, buyUrl: "" },
+  { name: "Growth Pack", cards: 13, price: 119, was: 199, buyUrl: "" },
+];
 /** Promo packs this trade can actually be filled with today (hood/kitchen get restaurant projects only). */
 export const promoPacksFor = (trade: Trade) => PROMO_PACKS.filter((p) => p.cards <= packProjects(trade));
 
@@ -240,7 +243,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
     `See a free sample project card for your trade (a demo, takes 10 seconds): ${LEADBIZ_SAMPLE_URL}`,
     "",
     `Launch promo, first ${PROMO_BUYER_LIMIT} buyers only. Limited availability by trade and service area (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
-    ...packs.map((p) => `- ${p.name}: ${p.cards} cards · $${p.price}`),
+    ...packs.map((p) => `- ${p.name}: ${p.cards} cards · $${p.price} (regularly $${p.was})${p.buyUrl ? ` · Buy now: ${p.buyUrl}` : ""}`),
     "",
     how,
     "",
@@ -258,8 +261,11 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
   const packCells = packs.map((p) => `<td style="padding:6px;width:${Math.floor(100 / packs.length)}%" valign="top"><div style="border:1px solid #36526b;border-radius:8px;padding:14px;background:#102a44">
 <div style="color:#fff;font-weight:700;font-size:16px">${esc(p.name)}</div>
 <div style="color:${muted};font-size:14px">${p.cards} cards</div>
-<div style="color:${gold};font-weight:700;font-size:24px;margin:6px 0">$${p.price}</div>
-<a href="${esc(claimHref(p.name, t.plural, b.business_name))}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:8px 12px;font-size:14px">Check availability</a></div></td>`).join("");
+<div style="margin:6px 0"><span style="color:#8a9bb0;text-decoration:line-through;font-size:15px">$${p.was}</span> <span style="color:${gold};font-weight:700;font-size:26px">$${p.price}</span></div>
+<div style="display:inline-block;background:#ff705b;color:#fff;font-size:11px;font-weight:700;border-radius:4px;padding:2px 6px;margin-bottom:8px">SAVE $${p.was - p.price}</div><br>
+${p.buyUrl
+  ? `<a href="${esc(p.buyUrl)}" style="display:inline-block;background:${gold};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:10px 14px;font-size:15px">Buy now $${p.price}</a>`
+  : `<a href="${esc(claimHref(p.name, t.plural, b.business_name))}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:8px 12px;font-size:14px">Check availability</a>`}</div></td>`).join("");
   const html = `<!doctype html><html><body style="margin:0;background:#081627">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#081627"><tr><td align="center" style="padding:20px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:Arial,Helvetica,sans-serif;color:#fff">
@@ -272,7 +278,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
 <p style="margin:0 0 12px;color:#fff">${esc(greeting)}</p>
 <p style="margin:0 0 16px">${esc(opener)}</p>
 <p style="margin:0 0 18px"><a href="${LEADBIZ_SAMPLE_URL}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:12px 18px">See your free sample card</a></p>
-<div style="color:${sky};font-weight:700;font-size:18px;margin-bottom:4px">Launch promo: first ${PROMO_BUYER_LIMIT} buyers</div>
+<div style="background:${gold};color:${navy};font-weight:700;font-size:18px;border-radius:8px;padding:10px 14px;margin-bottom:8px;text-align:center">LAUNCH PROMO: up to 45% off, first ${PROMO_BUYER_LIMIT} buyers only</div>
 <div style="font-size:14px;margin-bottom:6px">Limited availability by trade and service area. Never more than ${MAX_BUYERS_PER_TRADE} ${esc(t.plural)} get the same project.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${packCells}</tr></table>
 <p style="margin:16px 0 0">${esc(how)}</p>
