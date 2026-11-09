@@ -201,9 +201,9 @@ export const PROMO_BUYER_LIMIT = 30;
 // leave it empty until one exists so the card falls back to "Check availability" (never link a promo card
 // to a regular-price checkout).
 export const PROMO_PACKS: readonly { name: string; cards: number; price: number; was: number; buyUrl: string }[] = [
-  { name: "Launch Starter", cards: 5, price: 49, was: 89, buyUrl: "" },
-  { name: "Trade Pack", cards: 9, price: 89, was: 149, buyUrl: "" },
-  { name: "Growth Pack", cards: 13, price: 119, was: 199, buyUrl: "" },
+  { name: "Launch Starter", cards: 5, price: 49, was: 89, buyUrl: "https://square.link/u/R7RAsl2b" },
+  { name: "Trade Pack", cards: 9, price: 89, was: 149, buyUrl: "https://square.link/u/DNl5zcUw" },
+  { name: "Growth Pack", cards: 13, price: 119, was: 199, buyUrl: "https://square.link/u/7HVs131n" },
 ];
 /** Promo packs this trade can actually be filled with today (hood/kitchen get restaurant projects only). */
 export const promoPacksFor = (trade: Trade) => PROMO_PACKS.filter((p) => p.cards <= packProjects(trade));
@@ -233,7 +233,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
   const opener = followUp
     ? `Quick follow-up. Each project goes to no more than ${MAX_BUYERS_PER_TRADE} ${t.plural}, so open spots go first come, first served. The launch promo is still on.`
     : `I track new commercial build-outs across San Antonio from Texas state construction filings. Right now there are ${n} active projects (${mix}), and every one of them will need ${t.hook}.`;
-  const how = `Want one? Reply to this email with the pack name, or call or text ${LEADBIZ_PHONE}. We confirm your trade still has open spots, then send a Square invoice. Your project cards arrive by email after you pay.`;
+  const how = `Tap Buy now to check out securely with Square, then reply with your business name and trade so we send the right cards. Questions? Call or text ${LEADBIZ_PHONE}. Your project cards arrive by email after you pay.`;
 
   const text = [
     greeting,
