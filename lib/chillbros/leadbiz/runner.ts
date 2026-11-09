@@ -180,6 +180,9 @@ async function sendOne(client: Client, row: { id: string; business_name: string;
   try {
     const result = await sendCompanyEmail(row.email, subject, text, html, [], { "List-Unsubscribe": `<${unsub}>` }, sender);
     if (!result.sent) throw new Error(result.error);
+    // Clear any error from an earlier failed attempt; requeueFailedSends treats an SMTP error on an
+    // "emailed" row as "never went out", so a stale one would make every run re-send this email.
+    await client.from(TABLE).update({ last_error: null }).eq("id", row.id);
     return "sent" as const;
   } catch (error) {
     // The email did not go out: undo the claim so the row is retried (and never gets a
@@ -239,8 +242,10 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   if (!inSendWindow(now) && !(sendNowUntil > now.getTime())) return { ...run, note: "Outside the 9am–5pm Central send window." };
 
   await requeueFailedSends(client);
-  const cap = Math.min(envCap(), rampCap(await firstSentAt(client), now));
-  let budget = Math.min(perRunFor(cap), cap - (await sentToday(client, now)));
+  // Owner override (LEADBIZ_RAMP_OFF=1): skip the new-sender warm-up and send the whole remaining daily cap in one run.
+  const rampOff = process.env.LEADBIZ_RAMP_OFF === "1";
+  const cap = rampOff ? envCap() : Math.min(envCap(), rampCap(await firstSentAt(client), now));
+  let budget = Math.min(rampOff ? cap : perRunFor(cap), cap - (await sentToday(client, now)));
   if (budget <= 0) return { ...run, note: "Daily cap reached." };
 
   const due = new Date(now.getTime() - FOLLOW_UP_DAYS * 86400_000).toISOString();
