@@ -234,7 +234,9 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   const sender = account();
   if (!run.enabled) return { ...run, note: run.note ?? "Sending is off (LEADBIZ_OUTREACH_ENABLED is not 1)." };
   if (!sender) return { ...run, note: "Sender not configured (LEADBIZ_SMTP_USER / LEADBIZ_SMTP_APP_PASSWORD)." };
-  if (!inSendWindow(now)) return { ...run, note: "Outside the 9am–5pm Central send window." };
+  // Owner "send now": LEADBIZ_SEND_NOW_UNTIL (ISO time) opens sending outside the window until then.
+  const sendNowUntil = Date.parse(process.env.LEADBIZ_SEND_NOW_UNTIL || "");
+  if (!inSendWindow(now) && !(sendNowUntil > now.getTime())) return { ...run, note: "Outside the 9am–5pm Central send window." };
 
   await requeueFailedSends(client);
   const cap = Math.min(envCap(), rampCap(await firstSentAt(client), now));
