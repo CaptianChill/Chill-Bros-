@@ -224,6 +224,33 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
   const t = TRADE_LABEL[b.trade];
   const gName = greetingName(b.business_name);
   const greeting = gName ? `Hi ${gName} team,` : "Hi there,";
+  if (!followUp) {
+    const subject = `Commercial projects for San Antonio ${t.plural}`;
+    const offer = "Get five researched commercial project cards for $49, subject to availability for your trade and service area.";
+    const details = "Each card covers project scope, expected timing and available contact details so you can decide who to call.";
+    const next = "Reply with your service area and we'll check availability before sending a Square invoice.";
+    const sampleUrl = "https://san-antonio-new-openings-chill-pros.vercel.app/project-sample.html?utm_source=leadbiz&utm_medium=email&utm_campaign=contractor_starter";
+    const text = [
+      greeting, "", offer, details, "", `See a free example: ${sampleUrl}`, "", next, "",
+      LEADBIZ_BRAND, "A service of Chill Professionals LLC", LEADBIZ_POSTAL,
+      `Lead Pack Terms: ${LEADBIZ_TERMS_URL}`, `Unsubscribe: ${unsubscribeUrl}`,
+    ].join("\n");
+    const html = `<!doctype html><html><body style="margin:0;background:#081627">
+<table role="presentation" width="100%" cellpadding="20" cellspacing="0"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="22" cellspacing="0" style="max-width:600px;background:#0b1e33;color:#fff;font:16px/1.5 Arial,sans-serif"><tr><td>
+<p style="color:#7fd4ff;font-weight:bold">SAN ANTONIO NEW OPENINGS</p>
+<h1 style="font-size:28px">Find local commercial projects worth a call</h1>
+<p>${esc(greeting)}</p>
+<p>${esc(details)}</p>
+<p style="color:#f5c542;font-size:22px;font-weight:bold">5 project cards for $49</p>
+<p>Subject to availability for your trade and service area.</p>
+<p><a href="${esc(sampleUrl)}" style="display:inline-block;background:#7fd4ff;color:#0b1e33;padding:10px 16px;font-weight:bold">See a free example</a></p>
+<p>${esc(next)}</p>
+<p style="font-size:12px;color:#c9d6e3">A service of Chill Professionals LLC<br>${esc(LEADBIZ_POSTAL)}<br>
+<a href="${esc(LEADBIZ_TERMS_URL)}" style="color:#7fd4ff">Lead Pack Terms</a> · <a href="${esc(unsubscribeUrl)}" style="color:#7fd4ff">Unsubscribe</a></p>
+</td></tr></table></td></tr></table></body></html>`;
+    return { subject, text, html };
+  }
   const n = packProjects(b.trade);
   const packs = promoPacksFor(b.trade);
   const mix = n > FOOD_OPENINGS ? `${FOOD_OPENINGS} new restaurants, grocery and quick-service openings plus ${AUTO_OPENINGS} new car washes, oil change, collision and auto repair shops` : "new restaurants, grocery and quick-service openings";
