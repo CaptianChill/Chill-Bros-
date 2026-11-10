@@ -1,11 +1,6 @@
-import { BRAND, PACKS, TRADES } from "@/lib/brand";
-import { publicStats } from "@/lib/db";
+import { BRAND } from "@/lib/brand";
 
-export const revalidate = 3600;
-
-export default async function SalesPage() {
-  const { openings } = await publicStats();
-  const growth = PACKS.find((p) => p.key === "growth")!;
+export default function SalesPage() {
   return (
     <main className="relative">
       <div className="pointer-events-none fixed inset-0 opacity-[0.07]" style={{ backgroundImage: "linear-gradient(#7FD4FF 1px, transparent 1px), linear-gradient(90deg, #7FD4FF 1px, transparent 1px)", backgroundSize: "48px 48px" }} aria-hidden="true" />
@@ -15,64 +10,42 @@ export default async function SalesPage() {
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#7FD4FF]">{BRAND.eyebrow}</p>
             <p className="text-2xl font-bold uppercase tracking-wide">{BRAND.wordmark}</p>
           </div>
-          <span className="rounded-md bg-[#FF7A59] px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#0B1E33]">Max 3 buyers per trade per project</span>
+          <span className="rounded-md bg-[#FF7A59] px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#0B1E33]">Availability by trade and area</span>
         </header>
 
         <section className="mt-12 max-w-3xl">
-          <h1 className="text-5xl font-bold uppercase leading-[0.95] sm:text-7xl">{openings} new commercial projects. <span className="text-[#FF7A59]">Building right now.</span></h1>
-          <p className="mt-5 max-w-2xl text-lg text-[#C9D6E3]">Verified San Antonio restaurant, retail and auto build-outs from Texas state construction filings, each with the owner or tenant contact and phone. {BRAND.tagline}</p>
-          <a href={growth.href} className="mt-7 inline-flex min-h-12 items-center rounded-xl bg-[#F5C542] px-6 text-lg font-bold text-[#0B1E33] hover:brightness-105">Packs from $89</a>
-          <p className="mt-3 text-sm text-[#8A9BB0]">Fixed project counts · private link by email within 2 hours</p>
+          <p className="text-sm font-bold uppercase tracking-widest text-[#7FD4FF]">San Antonio · Restaurant and retail openings</p>
+          <h1 className="mt-3 text-5xl font-bold leading-tight sm:text-7xl">Find commercial projects worth calling about</h1>
+          <p className="mt-5 max-w-2xl text-lg text-[#C9D6E3]">Start with five commercial cleaning project cards for $49. See the project stage, likely service fit and what to ask on the first call.</p>
+          <a href="/project-sample.html#cleaning-example" className="mt-7 inline-flex min-h-12 items-center rounded-xl bg-[#F5C542] px-6 text-lg font-bold text-[#0B1E33]">See a real redacted example</a>
+          <p className="mt-3 text-sm text-[#C9D6E3]">Request availability before payment. We confirm the match and delivery timing before sending a Square invoice.</p>
         </section>
 
-        <figure className="mt-12 max-w-3xl border-l-4 border-[#FF7A59] pl-5">
-          <blockquote className="text-2xl font-bold leading-snug sm:text-3xl">&ldquo;{BRAND.quote}&rdquo;</blockquote>
-        </figure>
-
-        <section className="mt-14 grid gap-x-4 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
-          {PACKS.map((p) => (
-            <div key={p.key} className={`relative flex flex-col rounded-2xl border p-5 ${p.best ? "border-[#7FD4FF] bg-[#12304D]" : "border-white/10 bg-[#102A44]"}`}>
-              {p.best || p.badge ? <span className="absolute -top-3 left-5 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">{p.best ? "Best value" : p.badge}</span> : null}
-              <p className="text-lg font-bold uppercase tracking-wide">{p.name}</p>
-              <p className="mt-3 flex items-baseline gap-3"><span className="text-5xl font-bold text-[#F5C542]">{p.price}</span>{p.period ? <span className="text-lg font-semibold">{p.period}</span> : null}{p.was ? <span className="text-[#8A9BB0] line-through">{p.was}</span> : null}</p>
-              <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[#C9D6E3]">{p.points().map((t) => <li key={t}>✓ {t}</li>)}</ul>
-              <a href={p.href} className={`mt-5 inline-flex min-h-12 items-center justify-center rounded-xl px-5 font-bold ${p.best ? "bg-[#F5C542] text-[#0B1E33]" : "border border-[#7FD4FF]/50 text-[#7FD4FF]"}`}>Buy now</a>
-            </div>
-          ))}
-        </section>
-
-        <section className="mt-14 grid gap-6 md:grid-cols-2 md:items-center">
-          <div>
-            <h2 className="text-3xl font-bold uppercase">What a lead looks like</h2>
-            <p className="mt-3 text-[#C9D6E3]">Every project comes from a state construction filing, so it&apos;s real, current and verifiable. You get who to call, their number, what&apos;s being built, how big, and when it opens.</p>
+        <section className="mt-14" aria-labelledby="packs">
+          <h2 id="packs" className="text-3xl font-bold">Launch packs</h2>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            {[
+              ["Launch Starter", "5 cards", "$49", "A short list for testing one trade and service area."],
+              ["Trade Pack", "9 cards", "$89", "A larger list for a contractor doing regular outreach."],
+              ["Growth Pack", "13 cards", "$119", "More projects for a crew with time to follow up."],
+            ].map(([name, count, price, description]) => (
+              <div key={name} className="rounded-2xl border border-white/10 bg-[#102A44] p-5">
+                <h3 className="text-lg font-bold">{name}</h3>
+                <p className="mt-2 text-3xl font-bold text-[#F5C542]">{price}</p>
+                <p className="mt-2 text-[#C9D6E3]">{count} · {description}</p>
+              </div>
+            ))}
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#102A44] p-5 font-mono text-sm">
-            <p className="text-xs uppercase tracking-wider text-[#7FD4FF]">Sample · details hidden</p>
-            <p className="mt-3 text-lg font-bold">Quick-service restaurant · North SA</p>
-            <dl className="mt-3 grid grid-cols-[110px_1fr] gap-y-1.5 text-[#C9D6E3]">
-              <dt className="text-[#8A9BB0]">Project</dt><dd>New 2,899 sf build, $1.2M</dd>
-              <dt className="text-[#8A9BB0]">Opening</dt><dd>Nov 2026</dd>
-              <dt className="text-[#8A9BB0]">Contact</dt><dd><span className="select-none rounded bg-white/15 px-10 text-transparent">hidden</span> (tenant)</dd>
-              <dt className="text-[#8A9BB0]">Phone</dt><dd><span className="select-none rounded bg-white/15 px-12 text-transparent">hidden</span></dd>
-              <dt className="text-[#8A9BB0]">Source</dt><dd>Texas TDLR filing #</dd>
-            </dl>
-          </div>
+          <a href="/project-sample.html#packs" className="mt-5 inline-flex min-h-12 items-center rounded-xl border border-[#7FD4FF]/50 px-5 font-bold text-[#7FD4FF]">Check pack availability</a>
         </section>
 
         <section className="mt-14">
-          <h2 className="text-3xl font-bold uppercase">How it works</h2>
+          <h2 className="text-3xl font-bold">How it works</h2>
           <ol className="mt-5 grid gap-4 sm:grid-cols-3">
-            {["Pick your trade and a pack or monthly plan.", "Pay securely with Square once we confirm your trade has open projects.", "A private link to your projects, with call openers and a spreadsheet, arrives by email within 2 hours."].map((t, i) => (
-              <li key={t} className="rounded-2xl border border-white/10 bg-[#102A44] p-5"><p className="text-3xl font-bold text-[#FF7A59]">0{i + 1}</p><p className="mt-2 text-[#C9D6E3]">{t}</p></li>
+            {["Tell us your trade, service area and pack size.", "We confirm availability and delivery timing before sending a Square invoice.", "After payment, we send your project cards privately."].map((step, index) => (
+              <li key={step} className="rounded-2xl border border-white/10 bg-[#102A44] p-5"><p className="text-3xl font-bold text-[#FF7A59]">0{index + 1}</p><p className="mt-2 text-[#C9D6E3]">{step}</p></li>
             ))}
           </ol>
-        </section>
-
-        <section className="mt-14">
-          <h2 className="text-3xl font-bold uppercase">Built for SA trades</h2>
-          <div className="mt-4 flex flex-wrap gap-2">{TRADES.map((t) => <span key={t} className="rounded-full border border-[#7FD4FF]/40 px-4 py-2 text-sm text-[#7FD4FF]">{t}</span>)}</div>
-          <p className="mt-5 max-w-3xl text-[#C9D6E3]">One commercial account is worth thousands a year in recurring work. No more than 3 contractors in your trade ever get the same project, so you&apos;re not fighting the whole city for the same jobs.</p>
-          <p className="mt-3 max-w-3xl font-semibold text-white"><span className="mr-2 rounded bg-[#FF7A59] px-2 py-0.5 text-xs font-bold uppercase text-[#0B1E33]">New</span>Now including auto: 13 new car washes, oil change, collision and dealer service shops. Included for every trade except hood cleaning and kitchen equipment.</p>
         </section>
 
         <footer className="mt-14 border-t border-white/10 pt-6 text-sm text-[#8A9BB0]">
