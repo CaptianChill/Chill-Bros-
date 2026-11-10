@@ -58,8 +58,10 @@ export default async function DeliveryPage({ params }: Props) {
                 <dt className="text-[#8A9BB0]">Project</dt><dd>{p.project}</dd>
                 <dt className="text-[#8A9BB0]">Timing</dt><dd>{p.timing}</dd>
                 <dt className="text-[#8A9BB0]">Source</dt><dd><a className="underline underline-offset-2" href={p.source_url} rel="noopener noreferrer" target="_blank">TDLR {p.key}</a></dd>
+                {p.fit ? <><dt className="text-[#8A9BB0]">Why it fits</dt><dd>{p.fit}</dd></> : null}
               </dl>
-              {p.opener ? <p className="mt-3 rounded-xl bg-[#0F2740] p-3 text-[15px] leading-relaxed text-white print:bg-white print:text-black">&ldquo;{p.opener}&rdquo;</p> : null}
+              {p.opener ? <p className="mt-3 rounded-xl bg-[#0F2740] p-3 text-[15px] leading-relaxed text-white print:bg-white print:text-black"><span className="mb-1 block text-xs uppercase tracking-wider text-[#7FD4FF] print:text-black">Call opener</span>&ldquo;{p.opener}&rdquo;</p> : null}
+              {p.email ? <p className="mt-2 rounded-xl bg-[#0F2740] p-3 text-[15px] leading-relaxed whitespace-pre-line text-white print:bg-white print:text-black"><span className="mb-1 block text-xs uppercase tracking-wider text-[#7FD4FF] print:text-black">Email opener</span>{p.email}</p> : null}
             </li>
           ))}
         </ol>
