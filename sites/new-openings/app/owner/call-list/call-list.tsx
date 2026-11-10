@@ -6,13 +6,16 @@ import { saveCall } from "./actions";
 
 type Buyer = { name: string; trade: string; phone: string; address: string; license: string; contact?: string };
 
-const OPENER: Record<string, string> = {
-  Electricians: "Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs from state filings. I've got 29 new commercial projects building in SA right now, restaurants, retail and auto shops, each needs panels, kitchen circuits and lighting before inspection, with the owner's contact and phone. I only sell it to 3 electricians. Can I text you the link?",
-  Plumbers: "Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs from state filings. I've got 29 new commercial projects building in SA right now, restaurants, retail and auto shops, each needs rough-in, grease traps and backflow before opening day, with the owner's contact and phone. I only sell it to 3 plumbers. Can I text you the link?",
-  "Pest control": "Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs from state filings. I've got 29 new commercial projects opening in SA, restaurants, retail and auto shops, every one needs a pest program in place before its health inspection, with the owner's contact and phone. I only sell it to 3 pest control companies. Can I text you the link?",
-  "HVAC & refrigeration": "Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs from state filings. I've got 29 new commercial projects building in SA right now, restaurants, retail and auto shops, every one needs rooftop units, walk-ins or ice machines installed and serviced, with the owner's contact and phone. I only sell it to 3 HVAC companies. Can I text you the link?",
-  "Sign companies": "Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs from state filings. I've got 29 new commercial projects opening in SA, restaurants, retail and auto shops, every one needs storefront and pylon signs before opening day, with the owner's contact and phone. I only sell it to 3 sign companies. Can I text you the link?",
+// Same honest call script as the main app's buyer-scripts.ts (2026-11-09 launch menu).
+const NEEDS: Record<string, [string, string]> = {
+  Electricians: ["electricians", "panels, kitchen circuits and lighting before inspection"],
+  Plumbers: ["plumbers", "rough-in, grease traps and backflow before opening day"],
+  "Pest control": ["pest control companies", "a pest program in place before the health inspection"],
+  "HVAC & refrigeration": ["HVAC and refrigeration companies", "rooftop units, walk-in coolers and ice machines installed and serviced"],
+  "Sign companies": ["sign companies", "storefront and pylon signs before opening day"],
 };
+const OPENER: Record<string, string> = Object.fromEntries(Object.entries(NEEDS).map(([t, [plural, need]]) => [t,
+  `Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs in San Antonio from Texas state filings: restaurants, retail and auto shops. Jobs like these often need ${need}. Each card shows the project stage, who's listed on the filing and why it may fit. No more than 3 ${plural} get the same project. Can I text you a real example? Packs start at $49 for 5 projects.`]));
 const OUTCOMES: [string, string][] = [["", "Not called"], ["called", "No answer / left VM"], ["callback", "Call back"], ["interested", "Interested, sent link"], ["sold", "Sold"], ["not_interested", "Not interested"], ["wrong_number", "Wrong number"]];
 const TONE: Record<string, string> = { sold: "text-emerald-300", interested: "text-[#F5C542]", callback: "text-[#7FD4FF]" };
 
@@ -45,7 +48,7 @@ export function CallList({ buyers, marks }: { buyers: Buyer[]; marks: Record<str
       </div>
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company name" className="h-11 w-full rounded-xl border border-white/15 bg-black/30 px-4" />
       {failed ? <p className="rounded-xl border border-[#FF7A59]/50 p-2 text-sm text-[#FF7A59]">That last update didn&apos;t save. Check your connection and try again.</p> : null}
-      <p className="text-sm text-[#8A9BB0]">{rows.length} contractors · {Object.keys(called).length} called · {Object.values(called).filter((v) => v === "sold").length} sold · Text after the call: {growth.href.split("?")[0]}</p>
+      <p className="text-sm text-[#8A9BB0]">{rows.length} contractors · {Object.keys(called).length} called · {Object.values(called).filter((v) => v === "sold").length} sold · Text after the call: https://san-antonio-new-openings.vercel.app{growth.href}</p>
       {trade !== "All" && OPENER[trade] ? <p className="rounded-xl border border-[#7FD4FF]/30 bg-[#12304D] p-3 text-sm">&ldquo;{OPENER[trade]}&rdquo;</p> : null}
       <ul className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-black/30">
         {rows.slice(0, 300).map((b) => (
