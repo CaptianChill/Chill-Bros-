@@ -12,9 +12,11 @@ export const LEADBIZ_POSTAL = "Chill Professionals LLC, 15226 Preston Pass, San 
 // chillprostx.com DNS points at Vercel (see docs/2026-09-21-session-log.md).
 export const LEADBIZ_TERMS_URL = "https://chill-bros.vercel.app/new-openings/terms";
 export const LEADBIZ_TERMS_EFFECTIVE = "November 6, 2026";
-// Public sales page. Every Buy goes through /new-openings/buy (capacity gate), never straight to Square.
-export const LEADBIZ_SALES_URL = "https://chill-bros.vercel.app/new-openings";
-export const salesLink = (trade: Trade) => `${LEADBIZ_SALES_URL}?trade=${TRADE_SLUG[trade]}`;
+// Public sales page (2026-11-09): the San Antonio New Openings site, whose packs ask for availability
+// before a Square invoice. The older /new-openings storefront on this app is no longer linked from
+// scripts or emails.
+export const LEADBIZ_SALES_URL = "https://san-antonio-new-openings.vercel.app";
+export const salesLink = (trade: Trade) => `${LEADBIZ_SALES_URL}/?trade=${TRADE_SLUG[trade]}`;
 
 // RETIRED Square links from the v1 lineup (all-projects packs + $449 exclusive). Not shown to
 // buyers anymore; listed on the owner page so they can be turned off in Square. If one is paid
@@ -269,7 +271,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
   const html = `<!doctype html><html><body style="margin:0;background:#081627">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#081627"><tr><td align="center" style="padding:20px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:Arial,Helvetica,sans-serif;color:#fff">
-<tr><td style="background:${navy};border:2px solid #ff705b;border-radius:14px;padding:22px">
+<tr><td style="background:${navy};border:2px solid #ff7a59;border-radius:14px;padding:22px">
 <div style="color:${sky};font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase">San Antonio New Openings</div>
 <div style="font-size:24px;font-weight:700;margin-top:6px;color:#fff">${n} new commercial projects for ${esc(t.plural)}</div>
 </td></tr>

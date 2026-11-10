@@ -11,21 +11,18 @@ export const BRAND = {
   attribution: "Project data from public Texas Department of Licensing and Regulation filings. Business data © OpenStreetMap contributors.",
 };
 
-// Buy buttons go to the main sales page, which asks the trade and checks that trade still has
-// open projects (max 3 buyers per trade per project) before sending the buyer to Square.
-// Lineup mirrors lib/chillbros/leadbiz/catalog.ts in the main app.
-export const SALES_URL = "https://chill-bros.vercel.app/new-openings";
-const buy = (key: string) => `${SALES_URL}?pack=${key}`;
+// The one buying menu (owner, 2026-11-09): launch prices, request first. "Check availability" opens the
+// sample page's pack section; we confirm open projects and timing, then send a Square invoice.
+export const SAMPLE_URL = "/project-sample.html";
+const request = `${SAMPLE_URL}#packs`;
 
 export const PACKS = [
-  { key: "starter", name: "Starter Pack", price: "$89", period: "", was: null, href: buy("starter"), best: false, badge: null,
-    points: () => ["5 verified new openings & remodels", "Owner or tenant contact + phone", "Project size, cost & timing", "Call opener for your trade"] },
-  { key: "trade", name: "Trade Pack", price: "$149", period: "", was: null, href: buy("trade"), best: false, badge: null,
-    points: () => ["9 verified new openings & remodels", "Owner or tenant contact + phone", "Project size, cost & timing", "Call opener for your trade"] },
-  { key: "growth", name: "Growth Pack", price: "$199", period: "", was: null, href: buy("growth"), best: true, badge: null,
-    points: () => ["13 verified new openings & remodels", "Owner or tenant contact + phone", "Project size, cost & timing", "Call opener for your trade"] },
-  { key: "pro", name: "Pro Bundle", price: "$249", period: "", was: null, href: buy("pro"), best: false, badge: null,
-    points: () => ["16 verified new openings & remodels", "+ 50 basic business contacts", "Call openers for your trade", "Spreadsheet download"] },
+  { key: "starter", name: "Launch Starter", price: "$49", period: "", was: null, href: request, best: false, badge: "Start here",
+    points: () => ["5 project cards for one trade and area", "Source filing, stage and target timing", "Who's listed on the filing", "Why it may fit your trade + a first question"] },
+  { key: "trade", name: "Trade Pack", price: "$89", period: "", was: null, href: request, best: false, badge: null,
+    points: () => ["9 project cards for one trade and area", "Source filing, stage and target timing", "Who's listed on the filing", "Why it may fit your trade + a first question"] },
+  { key: "growth", name: "Growth Pack", price: "$119", period: "", was: null, href: request, best: true, badge: null,
+    points: () => ["13 project cards for one trade and area", "Source filing, stage and target timing", "Who's listed on the filing", "Why it may fit your trade + a first question"] },
 ] as const;
 
 export const TRADES = ["Plumbers", "Electricians", "Hood cleaners", "Pest control", "Commercial cleaning", "Sign companies", "Low voltage", "Security", "HVAC & refrigeration", "Hot side / kitchen equipment"];
