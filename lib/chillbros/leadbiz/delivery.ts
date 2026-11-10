@@ -3,10 +3,13 @@ import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 import { productByKey } from "./catalog";
+import { copyFor, type ProjectFacts } from "./project-ai";
 
 export type DeliveredProject = {
   key: string; industry: "food" | "auto"; title: string;
   address: string; contact: string; role: string; phone: string; project: string; timing: string; source_url: string; opener: string;
+  /** Claude's per-trade copy; empty when the card has none yet. */
+  fit: string; email: string;
 };
 export type DeliveredContact = { name: string; address: string; phone: string; type: string; area: string; opener: string };
 export type Delivery = {
@@ -45,9 +48,10 @@ export async function loadDelivery(token: string): Promise<Delivery | null> {
     const p = (Array.isArray(r.chillbros_leadpack_projects) ? r.chillbros_leadpack_projects[0] : r.chillbros_leadpack_projects) as
       { key: string; industry: "food" | "auto"; title: string; data: Record<string, unknown> } | null;
     if (!p) return [];
-    const d = p.data as { address: string; contact: string; role: string; phone: string; project: string; timing: string; source_url: string; openers: Record<string, string> };
+    const d = p.data as { address: string; contact: string; role: string; phone: string; project: string; timing: string; source_url: string } & ProjectFacts["data"];
+    const copy = copyFor(d, order.trade);
     return [{ key: p.key, industry: p.industry, title: p.title, address: d.address, contact: d.contact, role: d.role, phone: d.phone,
-      project: d.project, timing: d.timing, source_url: d.source_url, opener: d.openers?.[order.trade] ?? "" }];
+      project: d.project, timing: d.timing, source_url: d.source_url, opener: copy.opener, fit: copy.fit, email: copy.email }];
   }).sort((a, b) => (a.industry === b.industry ? a.title.localeCompare(b.title) : a.industry === "food" ? -1 : 1));
 
   return {
@@ -67,8 +71,8 @@ export function deliveryCsv(d: Delivery) {
   const lines = [
     [stamp].map(cell).join(","),
     "",
-    ["Business / Project", "Industry", "Address", "Contact", "Role", "Phone", "Project", "Timing", "TDLR record", "Call opener"].map(cell).join(","),
-    ...d.projects.map((p) => [p.title, p.industry === "auto" ? "Auto" : "Restaurant & retail", p.address, p.contact, p.role, p.phone, p.project, p.timing, p.source_url, p.opener].map(cell).join(",")),
+    ["Business / Project", "Industry", "Address", "Contact", "Role", "Phone", "Project", "Timing", "TDLR record", "Why it fits your trade", "Call opener", "Email opener"].map(cell).join(","),
+    ...d.projects.map((p) => [p.title, p.industry === "auto" ? "Auto" : "Restaurant & retail", p.address, p.contact, p.role, p.phone, p.project, p.timing, p.source_url, p.fit, p.opener, p.email].map(cell).join(",")),
   ];
   if (d.contacts.length) {
     lines.push("", ["Business", "Address", "Phone", "Type", "Area", "Call opener"].map(cell).join(","),

@@ -6,12 +6,17 @@ import { SectionCard } from "@/components/section-card";
 import { LEGACY_PAY_LINKS, TRADE_LABEL } from "@/lib/chillbros/leadbiz/buyers";
 import { MAX_BUYERS_PER_TRADE, SLUG_TRADE } from "@/lib/chillbros/leadbiz/catalog";
 
-import { revokeLeadPackOrder } from "./actions";
+import { revokeLeadPackOrder, writeCardsWithClaude } from "./actions";
+import { claudeConfigured, CLAUDE_MODEL } from "@/lib/chillbros/claude";
+import { needsProjectAi, type ProjectFacts } from "@/lib/chillbros/leadbiz/project-ai";
+import { CLAUDE_OFF } from "@/lib/chillbros/leadbiz/project-ai-runner";
 import { getOwnerProfile } from "@/lib/chillbros/sent-invoice-history";
 import { TRADES, type Trade } from "@/lib/chillbros/trade-fit";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
+// Claude writes lead-pack cards from the owner's button; give it room.
+export const maxDuration = 300;
 
 type Buyer = { business_name: string; trade: Trade; email: string | null; status: string; emailed_at: string | null; followup_at: string | null; last_error: string | null };
 type Run = { ran_at: string; result: Record<string, unknown> };
@@ -27,11 +32,12 @@ function windows() {
 }
 
 // Owner view of the lead business: contractor outreach pipeline, last runs, and the sales links.
-export default async function LeadBusinessPage() {
+export default async function LeadBusinessPage({ searchParams }: { searchParams: Promise<{ claude?: string; ok?: string }> }) {
   if (!(await getOwnerProfile())) redirect("/");
+  const { claude: claudeNote, ok: claudeOk } = await searchParams;
   const db = createServiceRoleClient();
   const { dayAgo, weekAgo } = windows();
-  const [{ data: buyers }, { data: runs }, ready, unsubs, { data: usage }, { data: orders }, { data: products }] = await Promise.all([
+  const [{ data: buyers }, { data: runs }, ready, unsubs, { data: usage }, { data: orders }, { data: products }, { data: cards }] = await Promise.all([
     db.from("chillbros_leadbiz_buyers").select("business_name,trade,email,status,emailed_at,followup_at,last_error").order("emailed_at", { ascending: false, nullsFirst: false }).limit(2000),
     db.from("chillbros_leadbiz_runs").select("ran_at,result").order("id", { ascending: false }).limit(6),
     db.from("chillbros_revenue_prospects").select("id", { count: "exact", head: true }).eq("sales_status", "ready_to_call").eq("do_not_contact", false),
@@ -39,7 +45,11 @@ export default async function LeadBusinessPage() {
     db.rpc("chillbros_leadpack_trade_usage"),
     db.from("chillbros_leadpack_orders").select("id,square_ref,product,trade,buyer_email,buyer_name,amount_cents,status,note,projects_owed,projects_delivered,created_at,first_opened_at,open_count").order("created_at", { ascending: false }).limit(100),
     db.from("chillbros_leadpack_products").select("key,name,kind,price_cents,projects,contacts,on_sale,square_link").order("sort"),
+    db.from("chillbros_leadpack_projects").select("key,industry,title,data").eq("active", true),
   ]);
+  const cardRows = (cards ?? []) as ProjectFacts[];
+  const cardsWithClaude = cardRows.filter((c) => !needsProjectAi(c)).length;
+  const claudeOn = claudeConfigured();
   const usageRows = (usage ?? []) as Usage[];
   const orderRows = (orders ?? []) as Order[];
   const productRows = (products ?? []) as ProductRow[];
@@ -95,6 +105,18 @@ export default async function LeadBusinessPage() {
           <ul className="mt-2 space-y-1">{Object.entries(LEGACY_PAY_LINKS).map(([k, u]) => <li key={k}>{k}: <a className="underline" href={u} target="_blank">{u}</a></li>)}</ul>
           <p className="mt-2">If one is paid anyway the delivery still works and is recorded; the $449 Exclusive is auto-flagged for refund.</p>
         </details>
+      </SectionCard>
+
+      <div id="claude" />
+      <SectionCard title="Claude card writer" description="Claude writes, for every trade a card is sold to, why the job fits that trade, a call opener and a short email opener. It only uses the card's own facts; contact, phone, project and timing never change. Buyers see Claude's copy on their delivery page and spreadsheet; cards without it keep the standard opener.">
+        {!claudeOn ? <p className="rounded-xl border border-amber-300/40 bg-amber-400/10 p-3 text-sm text-amber-100">{CLAUDE_OFF}</p> : null}
+        {claudeNote ? <p className={`mb-3 rounded-xl border p-3 text-sm ${claudeOk === "1" ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-100" : "border-amber-300/40 bg-amber-400/10 text-amber-100"}`}>{claudeNote}</p> : null}
+        <p className="text-sm text-zinc-300">{cardsWithClaude} of {cardRows.length} active cards have Claude copy{claudeOn ? ` · model ${CLAUDE_MODEL}` : ""}.</p>
+        <div className="mt-3 flex flex-wrap gap-2 text-sm">
+          <form action={writeCardsWithClaude}><button disabled={!claudeOn} className="rounded-xl border border-cyan-300/40 px-4 py-2.5 text-cyan-100 disabled:opacity-40">Write missing cards with Claude</button></form>
+          <form action={writeCardsWithClaude}><input type="hidden" name="redo" value="1" /><button disabled={!claudeOn} className="rounded-xl border border-white/15 px-4 py-2.5 text-zinc-200 disabled:opacity-40">Rewrite all</button></form>
+        </div>
+        <p className="mt-2 text-xs text-zinc-500">About 10–20 seconds per card, three at a time. A long list may need a second tap.</p>
       </SectionCard>
 
       <SectionCard title="Projects left per trade" description={`Each project can go to ${MAX_BUYERS_PER_TRADE} buyers per trade. "Full" means all ${MAX_BUYERS_PER_TRADE} slots are taken.`}>
