@@ -148,6 +148,7 @@ function loadRunner(pages) {
     '@/lib/chillbros/google-places': run('lib/chillbros/google-places.ts', base),
     '@/lib/chillbros/revenue-discovery': { SCAN_AREAS: [{ name: 'Downtown', lat: 29.4, lon: -98.5, radiusM: 4000 }], fetchOverpass: async () => ({ elements: [] }) },
     './licenses': { fetchAllLicenses: async () => ({ buyers: [], failed: [] }) },
+    './project-ai-runner': { writeProjectCards: async () => ({ ok: true, written: 0, failed: 0, left: 0, message: '' }) },
     './buyers': b,
   };
   return run('lib/chillbros/leadbiz/runner.ts', (id) => (id in mods ? mods[id] : base(id)));
@@ -298,4 +299,13 @@ test('promo email asks for a reply (Square invoice after availability check), ne
   const hood = b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u');
   assert.doesNotMatch(hood.text + hood.html, /Growth Pack/);
   assert.match(hood.text, /Trade Pack: 9 cards/);
+});
+
+test('promo email matches the 2026-11-09 site: no struck-through "regular" prices, honest fit wording', () => {
+  for (const trade of Object.keys(b.TRADE_LABEL)) for (const f of [false, true]) {
+    const { text, html } = b.offerEmail({ business_name: 'X', trade }, 'u', f);
+    assert.doesNotMatch(text + html, /regularly|line-through|SAVE \$|% off|Buy now/i, trade);
+    assert.doesNotMatch(text, /will need/, trade);
+    assert.match(text, /Square invoice/);
+  }
 });
