@@ -12,13 +12,14 @@ import { searchPlacesTransient } from "@/lib/chillbros/google-places";
 import { fetchOverpass, SCAN_AREAS, type OsmElement } from "@/lib/chillbros/revenue-discovery";
 
 import { fetchAllLicenses } from "./licenses";
+import { writeProjectCards } from "./project-ai-runner";
 import { buyerFromElement, buyerFromOwnSite, buyerQueries, GOOGLE_TRADE_QUERIES, googleRotation, inSendWindow, isContractorName, LEADBIZ_BRAND, offerEmail, perRunFor, rampCap, type BuyerRow } from "./buyers";
 
 type Client = SupabaseClient;
 const TABLE = "chillbros_leadbiz_buyers";
 const FOLLOW_UP_DAYS = 5;
 
-export type LeadbizRun = { enabled: boolean; licenses?: string; google?: string; mapped?: number; discovered: number; enriched: number; sent: number; followedUp: number; failed: number; note?: string };
+export type LeadbizRun = { enabled: boolean; licenses?: string; cards?: string; google?: string; mapped?: number; discovered: number; enriched: number; sent: number; followedUp: number; failed: number; note?: string };
 
 function account() {
   const user = String(process.env.LEADBIZ_SMTP_USER || "").trim();
@@ -217,6 +218,12 @@ async function runCycle(client: Client, now: Date): Promise<LeadbizRun> {
   const deadline = Date.now() + 240_000;
   try { run.licenses = (await refreshContractors(client, now)) ?? undefined; }
   catch (error) { run.licenses = error instanceof Error ? error.message.slice(0, 200) : "license refresh failed"; }
+  // Keep every active lead-pack card written by Claude (fit, call opener, email opener). A few cards
+  // per run; once all are written this is one quick read.
+  try {
+    const cards = await writeProjectCards({ deadlineMs: 120_000 });
+    if (cards.written || cards.failed || !cards.ok) run.cards = cards.message.slice(0, 300);
+  } catch (error) { run.cards = error instanceof Error ? error.message.slice(0, 200) : "card writer failed"; }
   // Discovery and enrichment are read-only research and run even while sending is off.
   const { count: queued } = await client.from(TABLE).select("id", { count: "exact", head: true }).in("status", ["new", "ready"]);
   if ((queued ?? 0) < 40) {

@@ -189,7 +189,8 @@ export const packProjects = (trade: Trade) => FOOD_OPENINGS + (trade === "hood_c
 
 // Launch promo (owner, 2026-11-08): same packs and prices as the LinkedIn post and the free
 // sample page. Paid by Square invoice after we confirm the trade still has open spots, so the
-// email asks for a reply instead of linking to checkout.
+// email asks for a reply instead of linking to checkout. buyUrl links are kept for the owner's
+// own use but the outreach email never shows them (scripts/leadbiz.test.cjs enforces this).
 export const LEADBIZ_SITE_URL = "https://san-antonio-new-openings.vercel.app";
 export const LEADBIZ_SAMPLE_URL = `${LEADBIZ_SITE_URL}/project-sample.html?ref=email`;
 export const LEADBIZ_LOGO_URL = `${LEADBIZ_SITE_URL}/chill-pros-logo.png`;
@@ -230,20 +231,22 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
   const subject = followUp
     ? `Re: ${n} new San Antonio commercial projects for ${t.plural}`
     : `${n} new San Antonio commercial projects for ${t.plural}: free sample inside`;
+  // Owner + ChatGPT method (2026-11-09): honest fit ("may need", not "will need"), no struck-through
+  // "regular" prices, and request-first: we confirm availability, then send a Square invoice.
   const opener = followUp
-    ? `Quick follow-up. Each project goes to no more than ${MAX_BUYERS_PER_TRADE} ${t.plural}, so open spots go first come, first served. The launch promo is still on.`
-    : `I track new commercial build-outs across San Antonio from Texas state construction filings. Right now there are ${n} active projects (${mix}), and every one of them will need ${t.hook}.`;
-  const how = `Tap Buy now to check out securely with Square, then reply with your business name and trade so we send the right cards. Questions? Call or text ${LEADBIZ_PHONE}. Your project cards arrive by email after you pay.`;
+    ? `Quick follow-up on the San Antonio project cards. Each project goes to no more than ${MAX_BUYERS_PER_TRADE} ${t.plural}, and launch prices are still open.`
+    : `I track new commercial build-outs across San Antonio from Texas state construction filings. Right now there are ${n} active projects (${mix}). Jobs like these often need ${t.hook}. Each card shows the project stage, who to call and why it may fit your trade, so you can decide which ones are worth the call.`;
+  const how = `Reply to this email with the pack name, your trade and your service area. We confirm open projects and delivery timing first, then send a Square invoice. Your project cards arrive by email after you pay. Questions? Call or text ${LEADBIZ_PHONE}.`;
 
   const text = [
     greeting,
     "",
     opener,
     "",
-    `See a free sample project card for your trade (a demo, takes 10 seconds): ${LEADBIZ_SAMPLE_URL}`,
+    `See an example project card, real filing with contact details redacted (takes 10 seconds): ${LEADBIZ_SAMPLE_URL}`,
     "",
-    `Launch promo, first ${PROMO_BUYER_LIMIT} buyers only. Limited availability by trade and service area (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
-    ...packs.map((p) => `- ${p.name}: ${p.cards} cards · $${p.price} (regularly $${p.was})${p.buyUrl ? ` · Buy now: ${p.buyUrl}` : ""}`),
+    `Launch prices for the first ${PROMO_BUYER_LIMIT} buyers. Availability is limited by trade and service area (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
+    ...packs.map((p) => `- ${p.name}: ${p.cards} cards · $${p.price}`),
     "",
     how,
     "",
@@ -261,11 +264,8 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
   const packCells = packs.map((p) => `<td style="padding:6px;width:${Math.floor(100 / packs.length)}%" valign="top"><div style="border:1px solid #36526b;border-radius:8px;padding:14px;background:#102a44">
 <div style="color:#fff;font-weight:700;font-size:16px">${esc(p.name)}</div>
 <div style="color:${muted};font-size:14px">${p.cards} cards</div>
-<div style="margin:6px 0"><span style="color:#8a9bb0;text-decoration:line-through;font-size:15px">$${p.was}</span> <span style="color:${gold};font-weight:700;font-size:26px">$${p.price}</span></div>
-<div style="display:inline-block;background:#ff705b;color:#fff;font-size:11px;font-weight:700;border-radius:4px;padding:2px 6px;margin-bottom:8px">SAVE $${p.was - p.price}</div><br>
-${p.buyUrl
-  ? `<a href="${esc(p.buyUrl)}" style="display:inline-block;background:${gold};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:10px 14px;font-size:15px">Buy now $${p.price}</a>`
-  : `<a href="${esc(claimHref(p.name, t.plural, b.business_name))}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:8px 12px;font-size:14px">Check availability</a>`}</div></td>`).join("");
+<div style="margin:6px 0 10px"><span style="color:${gold};font-weight:700;font-size:26px">$${p.price}</span></div>
+<a href="${esc(claimHref(p.name, t.plural, b.business_name))}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:8px 12px;font-size:14px">Check availability</a></div></td>`).join("");
   const html = `<!doctype html><html><body style="margin:0;background:#081627">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#081627"><tr><td align="center" style="padding:20px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:Arial,Helvetica,sans-serif;color:#fff">
@@ -277,8 +277,8 @@ ${p.buyUrl
 <tr><td style="background:${navy};border-radius:14px;padding:22px;font-size:16px;line-height:1.5;color:${muted}">
 <p style="margin:0 0 12px;color:#fff">${esc(greeting)}</p>
 <p style="margin:0 0 16px">${esc(opener)}</p>
-<p style="margin:0 0 18px"><a href="${LEADBIZ_SAMPLE_URL}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:12px 18px">See your free sample card</a></p>
-<div style="background:${gold};color:${navy};font-weight:700;font-size:18px;border-radius:8px;padding:10px 14px;margin-bottom:8px;text-align:center">LAUNCH PROMO: up to 45% off, first ${PROMO_BUYER_LIMIT} buyers only</div>
+<p style="margin:0 0 18px"><a href="${LEADBIZ_SAMPLE_URL}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:12px 18px">See an example card</a></p>
+<div style="background:${gold};color:${navy};font-weight:700;font-size:18px;border-radius:8px;padding:10px 14px;margin-bottom:8px;text-align:center">Launch prices for the first ${PROMO_BUYER_LIMIT} buyers</div>
 <div style="font-size:14px;margin-bottom:6px">Limited availability by trade and service area. Never more than ${MAX_BUYERS_PER_TRADE} ${esc(t.plural)} get the same project.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${packCells}</tr></table>
 <p style="margin:16px 0 0">${esc(how)}</p>
