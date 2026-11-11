@@ -11,6 +11,8 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 // Shared by the signed-in staff action and the owner's command-center bridge.
 // Callers are responsible for checking who is allowed to send.
 
+const DUPLICATE_SEND_WINDOW_MS = 2 * 60_000;
+
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string; status?: string };
 
 function refreshInvoicePaths(portalToken?: string | null) {
@@ -34,6 +36,30 @@ export async function sendInvoiceCommunicationAs(actorId: string, invoiceId: str
   if (reminder && (invoice.status !== "approved" || invoice.paymentStatus === "paid")) return { ok: false, error: "Reminders are only for approved unpaid invoices." };
   const isQuote = invoice.invoiceNumber.toUpperCase().startsWith("Q-") || !invoice.issuedAt;
   const deliveryType = reminder ? "reminder" : invoice.paymentStatus === "paid" ? "receipt" : isQuote ? "estimate" : "invoice";
+  // Repeat taps on Send (Q-015 went to the customer 6 times, 4 within 10 seconds)
+  // must not email the customer again. Same document + channel + type sent in the
+  // last 2 minutes = already done.
+  const { data: recentSend } = await createServiceRoleClient()
+    .from("chillbros_delivery_log")
+    .select("recipient, created_at")
+    .eq("invoice_id", invoiceId)
+    .eq("channel", channel)
+    .eq("delivery_type", deliveryType)
+    .eq("status", "sent")
+    .gte("created_at", new Date(Date.now() - DUPLICATE_SEND_WINDOW_MS).toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  // An edit after that send means this is a real resend of the new version.
+  const { data: revisedSince } = recentSend ? await createServiceRoleClient()
+    .from("chillbros_workflow_events")
+    .select("id")
+    .eq("invoice_id", invoiceId)
+    .eq("stage", "document_revised")
+    .gt("created_at", recentSend.created_at)
+    .limit(1)
+    .maybeSingle() : { data: null };
+  if (recentSend && !revisedSince) return { ok: false, status: "duplicate", error: `Already sent to ${recentSend.recipient ?? "the customer"} less than 2 minutes ago, so it was not sent again.` };
   const result = await sendBillingDeliveryRecorded(invoiceId, deliveryType, channel, recipient);
   if (result.status === "sent" && reminder) {
     const supabase = createServiceRoleClient();
