@@ -11,8 +11,8 @@ const OPENAI_MODEL = process.env.OPENAI_TEXT_MODEL?.trim() || process.env.OPENAI
 
 // When a provider says the account is out of credits, retrying every call just
 // burns time and floods the logs (thousands of errors a day from the crons).
-// Pause that provider for 30 minutes and log once; it resumes on its own after a top-up.
-const BILLING_PAUSE_MS = 30 * 60_000;
+// Pause that provider for 5 minutes and log once; it resumes on its own after a top-up.
+const BILLING_PAUSE_MS = 5 * 60_000;
 const BILLING_ERROR = /no credits|credit balance|insufficient_quota|exceeded your current quota|billing/i;
 const pausedUntil: Record<"claude" | "openai", number> = { claude: 0, openai: 0 };
 
@@ -26,12 +26,12 @@ function providerPaused(provider: "claude" | "openai") {
 
 function notePaused(provider: "claude" | "openai", message: string) {
   if (!isBillingError(message)) return false;
-  if (!providerPaused(provider)) console.error(`[chill-ai] ${provider} is out of credits; pausing it for 30 minutes. Top up the account to restore AI. (${message})`);
+  if (!providerPaused(provider)) console.error(`[chill-ai] ${provider} is out of credits; pausing it for 5 minutes. Top up the account to restore AI. (${message})`);
   pausedUntil[provider] = Date.now() + BILLING_PAUSE_MS;
   return true;
 }
 
-const OUT_OF_CREDITS = "AI is paused: the AI account is out of credits. Add credits and it resumes automatically within 30 minutes.";
+const OUT_OF_CREDITS = "AI is paused: the AI account is out of credits. Add credits and it resumes automatically within 5 minutes.";
 
 export async function askAI({ system, messages, maxTokens = 1500, timeoutMs = 45000, reasoningEffort = "low" }: { system: string; messages: ClaudeMessage[]; maxTokens?: number; timeoutMs?: number; reasoningEffort?: "none" | "minimal" | "low" | "medium" }): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
   if (claudeConfigured() && !providerPaused("claude")) {
