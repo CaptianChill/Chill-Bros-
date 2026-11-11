@@ -28,6 +28,13 @@ export async function GET(request: Request) {
   const missingSalesSchema = overdueError && ["PGRST205", "42P01"].includes(String(overdueError.code || ""));
   if (overdueError && !missingSalesSchema) console.error("[revenue-radar-cron] overdue task update failed", overdueError);
 
+  // The city lead source blocks cloud servers, so the cloud scan failed every run
+  // (540+ errors since 2026-10-16). Scans run from the owner's PC instead. Set
+  // REVENUE_RADAR_CLOUD_SCAN=1 in Vercel to turn the cloud scan back on.
+  if (process.env.REVENUE_RADAR_CLOUD_SCAN !== "1") {
+    return Response.json({ ok: true, skipped: "cloud scan off; scans run from the PC", tasksMarkedOverdue: overdueRows?.length ?? 0, ranAt: now });
+  }
+
   // One area per quarter hour limits load on public sources while covering the
   // full region every four hours. Discovery never invokes outreach.
   try {
