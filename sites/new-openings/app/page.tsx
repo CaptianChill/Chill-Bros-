@@ -17,7 +17,7 @@ export default function SalesPage() {
           <div>
           <p className="text-sm font-bold uppercase tracking-widest text-[#7FD4FF]">San Antonio · Restaurant and retail openings</p>
           <h1 className="mt-3 max-w-[15ch] text-[clamp(2.5rem,5vw,5rem)] font-semibold leading-[1.05] tracking-tight">Find your next final clean.</h1>
-          <p className="mt-5 max-w-2xl text-lg text-[#C9D6E3]">Start with five commercial cleaning project cards for $49. See the project stage, likely service fit and what to ask on the first call.</p>
+          <p className="mt-5 max-w-2xl text-lg text-[#C9D6E3]">Start with five commercial cleaning project cards for $89. See the project stage, likely service fit and what to ask on the first call.</p>
           <a href="/project-sample.html#packs" className="mt-7 inline-flex min-h-12 items-center rounded-xl bg-[#7FD4FF] px-6 text-lg font-bold text-[#0B1E33]">Check availability</a>
           <p className="mt-3 text-sm text-[#C9D6E3]">Request availability before payment. We confirm the match and delivery timing before sending a Square invoice.</p>
           </div>
@@ -41,9 +41,9 @@ export default function SalesPage() {
           <h2 id="packs" className="text-3xl font-bold">Launch packs</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             {[
-              ["Launch Starter", "5 cards", "$49", "A short list for testing one trade and service area."],
-              ["Trade Pack", "9 cards", "$89", "A larger list for a contractor doing regular outreach."],
-              ["Growth Pack", "13 cards", "$119", "More projects for a crew with time to follow up."],
+              ["Starter Pack", "5 cards", "$89", "A short list for testing one trade and service area."],
+              ["Trade Pack", "9 cards", "$149", "A larger list for a contractor doing regular outreach."],
+              ["Growth Pack", "13 cards", "$199", "More projects for a crew with time to follow up."],
             ].map(([name, count, price, description]) => (
               <div key={name} className="rounded-lg border border-[#D8DEE0] bg-white p-6">
                 <h3 className="text-lg font-bold">{name}</h3>

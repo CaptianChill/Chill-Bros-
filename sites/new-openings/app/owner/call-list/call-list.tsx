@@ -15,7 +15,7 @@ const NEEDS: Record<string, [string, string]> = {
   "Sign companies": ["sign companies", "storefront and pylon signs before opening day"],
 };
 const OPENER: Record<string, string> = Object.fromEntries(Object.entries(NEEDS).map(([t, [plural, need]]) => [t,
-  `Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs in San Antonio from Texas state filings: restaurants, retail and auto shops. Jobs like these often need ${need}. Each card shows the project stage, who's listed on the filing and why it may fit. No more than 3 ${plural} get the same project. Can I text you a real example? Packs start at $49 for 5 projects.`]));
+  `Hi, this is [you] with San Antonio New Openings. We track new commercial build-outs in San Antonio from Texas state filings: restaurants, retail and auto shops. Jobs like these often need ${need}. Each card shows the project stage, who's listed on the filing and why it may fit. No more than 3 ${plural} get the same project. Can I text you a real example? Packs start at $89 for 5 projects.`]));
 const OUTCOMES: [string, string][] = [["", "Not called"], ["called", "No answer / left VM"], ["callback", "Call back"], ["interested", "Interested, sent link"], ["sold", "Sold"], ["not_interested", "Not interested"], ["wrong_number", "Wrong number"]];
 const TONE: Record<string, string> = { sold: "text-emerald-300", interested: "text-[#F5C542]", callback: "text-[#7FD4FF]" };
 

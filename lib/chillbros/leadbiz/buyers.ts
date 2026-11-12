@@ -198,15 +198,13 @@ export const LEADBIZ_SAMPLE_URL = `${LEADBIZ_SITE_URL}/project-sample.html?ref=e
 export const LEADBIZ_LOGO_URL = `${LEADBIZ_SITE_URL}/chill-pros-logo.png`;
 export const LEADBIZ_EMAIL = "satxnewopenings@gmail.com";
 export const LEADBIZ_POWERED_BY = "Powered by Chill Pros";
-// Launch promo is open to the first 30 buyers (owner, 2026-11-08): about 10 trades x 3 buyers per trade.
-export const PROMO_BUYER_LIMIT = 30;
-// `was` is the regular price shown struck through. `buyUrl` is a Square payment link AT THE PROMO PRICE;
-// leave it empty until one exists so the card falls back to "Check availability" (never link a promo card
-// to a regular-price checkout).
-export const PROMO_PACKS: readonly { name: string; cards: number; price: number; was: number; buyUrl: string }[] = [
-  { name: "Launch Starter", cards: 5, price: 49, was: 89, buyUrl: "https://square.link/u/R7RAsl2b" },
-  { name: "Trade Pack", cards: 9, price: 89, was: 149, buyUrl: "https://square.link/u/DNl5zcUw" },
-  { name: "Growth Pack", cards: 13, price: 119, was: 199, buyUrl: "https://square.link/u/7HVs131n" },
+// Launch promo ($49/$89/$119) ended by the owner on 2026-11-12: every card, email and the site now show
+// the regular prices, matching chillbros_leadpack_products and the regular Square links.
+// (Name kept as PROMO_PACKS so existing imports keep working.)
+export const PROMO_PACKS: readonly { name: string; cards: number; price: number; buyUrl: string }[] = [
+  { name: "Starter Pack", cards: 5, price: 89, buyUrl: "https://square.link/u/IlWFL0ci" },
+  { name: "Trade Pack", cards: 9, price: 149, buyUrl: "https://square.link/u/FY9LJP2N" },
+  { name: "Growth Pack", cards: 13, price: 199, buyUrl: "https://square.link/u/XpXPZGtI" },
 ];
 /** Promo packs this trade can actually be filled with today (hood/kitchen get restaurant projects only). */
 export const promoPacksFor = (trade: Trade) => PROMO_PACKS.filter((p) => p.cards <= packProjects(trade));
@@ -236,7 +234,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
   // Owner + ChatGPT method (2026-11-09): honest fit ("may need", not "will need"), no struck-through
   // "regular" prices, and request-first: we confirm availability, then send a Square invoice.
   const opener = followUp
-    ? `Quick follow-up on the San Antonio project cards. Each project goes to no more than ${MAX_BUYERS_PER_TRADE} ${t.plural}, and launch prices are still open.`
+    ? `Quick follow-up on the San Antonio project cards. Each project goes to no more than ${MAX_BUYERS_PER_TRADE} ${t.plural}, and packs start at $89.`
     : `I track new commercial build-outs across San Antonio from Texas state construction filings. Right now there are ${n} active projects (${mix}). Jobs like these often need ${t.hook}. Each card shows the project stage, who to call and why it may fit your trade, so you can decide which ones are worth the call.`;
   const how = `Reply to this email with the pack name, your trade and your service area. We confirm open projects and delivery timing first, then send a Square invoice. Your project cards arrive by email after you pay. Questions? Call or text ${LEADBIZ_PHONE}.`;
 
@@ -247,7 +245,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
     "",
     `See an example project card, real filing with contact details redacted (takes 10 seconds): ${LEADBIZ_SAMPLE_URL}`,
     "",
-    `Launch prices for the first ${PROMO_BUYER_LIMIT} buyers. Availability is limited by trade and service area (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
+    `Project packs. Availability is limited by trade and service area (never more than ${MAX_BUYERS_PER_TRADE} ${t.plural} get the same project):`,
     ...packs.map((p) => `- ${p.name}: ${p.cards} cards · $${p.price}`),
     "",
     how,
@@ -280,7 +278,7 @@ export function offerEmail(b: { business_name: string; trade: Trade }, unsubscri
 <p style="margin:0 0 12px;color:#fff">${esc(greeting)}</p>
 <p style="margin:0 0 16px">${esc(opener)}</p>
 <p style="margin:0 0 18px"><a href="${LEADBIZ_SAMPLE_URL}" style="display:inline-block;background:${sky};color:${navy};font-weight:700;text-decoration:none;border-radius:8px;padding:12px 18px">See an example card</a></p>
-<div style="background:${gold};color:${navy};font-weight:700;font-size:18px;border-radius:8px;padding:10px 14px;margin-bottom:8px;text-align:center">Launch prices for the first ${PROMO_BUYER_LIMIT} buyers</div>
+<div style="background:${gold};color:${navy};font-weight:700;font-size:18px;border-radius:8px;padding:10px 14px;margin-bottom:8px;text-align:center">Project packs from $89</div>
 <div style="font-size:14px;margin-bottom:6px">Limited availability by trade and service area. Never more than ${MAX_BUYERS_PER_TRADE} ${esc(t.plural)} get the same project.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${packCells}</tr></table>
 <p style="margin:16px 0 0">${esc(how)}</p>
