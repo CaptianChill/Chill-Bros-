@@ -17,11 +17,11 @@ export const SAMPLE_URL = "/project-sample.html";
 const request = `${SAMPLE_URL}#packs`;
 
 export const PACKS = [
-  { key: "starter", name: "Launch Starter", price: "$49", period: "", was: null, href: request, best: false, badge: "Start here",
+  { key: "starter", name: "Starter Pack", price: "$89", period: "", was: null, href: request, best: false, badge: "Start here",
     points: () => ["5 project cards for one trade and area", "Source filing, stage and target timing", "Who's listed on the filing", "Why it may fit your trade + a first question"] },
-  { key: "trade", name: "Trade Pack", price: "$89", period: "", was: null, href: request, best: false, badge: null,
+  { key: "trade", name: "Trade Pack", price: "$149", period: "", was: null, href: request, best: false, badge: null,
     points: () => ["9 project cards for one trade and area", "Source filing, stage and target timing", "Who's listed on the filing", "Why it may fit your trade + a first question"] },
-  { key: "growth", name: "Growth Pack", price: "$119", period: "", was: null, href: request, best: true, badge: null,
+  { key: "growth", name: "Growth Pack", price: "$199", period: "", was: null, href: request, best: true, badge: null,
     points: () => ["13 project cards for one trade and area", "Source filing, stage and target timing", "Who's listed on the filing", "Why it may fit your trade + a first question"] },
 ] as const;
 

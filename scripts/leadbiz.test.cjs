@@ -62,7 +62,8 @@ test('offer email is trade-specific, sells the launch promo with the free sample
   assert.match(subject, /pest control companies/);
   assert.ok(text.includes('https://san-antonio-new-openings.vercel.app/project-sample.html?ref=email'));
   for (const p of b.PROMO_PACKS) assert.ok(text.includes(`${p.name}: ${p.cards} cards · $${p.price}`) && html.includes(`$${p.price}`), p.name);
-  assert.match(text, /first 30 buyers/);
+  assert.doesNotMatch(text + html, /first 30 buyers|\$49|\$119|Launch Starter/);
+  assert.deepEqual(b.PROMO_PACKS.map((p) => p.price), c.PACKS.slice(0, 3).map((p) => p.price), 'cards match catalog prices');
   assert.match(html, /Unsubscribe<\/a>/);
   assert.match(html, /15226 Preston Pass/);
   if (!c.PLANS_ON_SALE) for (const p of c.PLANS) assert.ok(!text.includes(p.name), `${p.name} is off sale`);
@@ -293,7 +294,7 @@ test('promo email asks for a reply (Square invoice after availability check), ne
   const { text, html } = b.offerEmail({ business_name: 'P & Sons', trade: 'plumbing' }, 'u');
   assert.doesNotMatch(text + html, /square\.link/);
   assert.match(text, /Reply to this email with the pack name/);
-  assert.match(html, /mailto:satxnewopenings@gmail\.com\?subject=Launch%20Starter%20availability/);
+  assert.match(html, /mailto:satxnewopenings@gmail\.com\?subject=Starter%20Pack%20availability/);
   assert.match(html, /P &amp; Sons/, 'business name is HTML-escaped');
   // Hood cleaning / kitchen equipment only have 12 restaurant projects: no 13-card Growth Pack offered.
   const hood = b.offerEmail({ business_name: 'H', trade: 'hood_cleaning' }, 'u');
