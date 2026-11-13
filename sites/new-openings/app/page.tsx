@@ -59,7 +59,7 @@ export default function SalesPage() {
           <h2 className="text-3xl font-bold">How it works</h2>
           <ol className="mt-5 grid gap-4 sm:grid-cols-3">
             {["Tell us your trade, service area and pack size.", "We confirm availability and delivery timing before sending a Square invoice.", "After payment, we send your project cards privately."].map((step, index) => (
-              <li key={step} className="rounded-2xl border border-white/10 bg-[#102A44] p-5"><p className="text-3xl font-bold text-[#0B1E33]">0{index + 1}</p><p className="mt-2 text-[#455769]">{step}</p></li>
+              <li key={step} className="rounded-2xl border border-white/10 bg-[#102A44] p-5"><p className="text-3xl font-bold text-[#FF3F72]">0{index + 1}</p><p className="mt-2 font-semibold text-[#FF3F72]">{step}</p></li>
             ))}
           </ol>
         </section>
