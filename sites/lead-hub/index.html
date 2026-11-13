@@ -41,91 +41,36 @@
   .t3 { position:relative; background:#090406; } .t3 .logo { position:absolute; top:16px; right:10px; height:78px; width:auto; } .t3 .tag, .t3 h2 { padding-right:104px; }
   footer { color:#7f93a8; font-size:12px; text-align:center; padding:0 20px 28px; }
 
-  /* GIBAM atmosphere: isolated from program cards and their existing actions. */
-  body { background:#020904; position:relative; isolation:isolate; overflow-x:hidden; }
-  body::before { content:""; position:fixed; inset:-35%; z-index:-2; pointer-events:none; opacity:.52;
-    background:radial-gradient(ellipse at 20% 25%,rgba(48,255,38,.23),transparent 35%),
-      radial-gradient(ellipse at 78% 42%,rgba(14,135,29,.3),transparent 38%),
-      radial-gradient(ellipse at 48% 85%,rgba(74,255,30,.16),transparent 38%);
-    filter:blur(40px); animation:atmosphere 24s ease-in-out infinite alternate; }
-  .smoke { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
-  .smoke i { position:absolute; width:75vmax; height:30vmax; left:-30vmax; top:var(--top);
-    border-radius:50%; transform:rotate(-25deg); opacity:.32; filter:blur(35px);
-    background:radial-gradient(ellipse at 50% 50%,transparent 24%,rgba(47,255,53,.18) 35%,rgba(34,195,39,.36) 45%,transparent 68%);
-    animation:drift var(--duration) ease-in-out infinite alternate; animation-delay:var(--delay); }
-  .smoke i:nth-child(2n){left:55vw;transform:rotate(28deg);opacity:.24;}
-  @keyframes drift { from { translate:-8vw -5vh; rotate:-12deg; scale:.85; } to { translate:18vw 12vh; rotate:20deg; scale:1.3; } }
-  @keyframes atmosphere { from {transform:translate(-4%,-3%) rotate(-8deg)} to {transform:translate(5%,4%) rotate(8deg)} }
-  header { position:relative; overflow:hidden; padding:26px 20px 30px; border-bottom:2px solid #39ed43;
-    background:radial-gradient(ellipse at 50% 10%,rgba(48,255,41,.23),transparent 65%),#020703;
-    box-shadow:0 8px 36px rgba(35,255,40,.17); }
-  header::before { content:""; position:absolute; inset:-60% -10%; pointer-events:none;
-    background:conic-gradient(from 60deg at 50% 50%,transparent 0deg,rgba(43,255,40,.16) 40deg,transparent 85deg,rgba(30,175,30,.12) 180deg,transparent 270deg);
-    filter:blur(38px); animation:atmosphere 20s ease-in-out infinite alternate; }
-  header .wrap { position:relative; z-index:1; }
-  .gibam { display:block; width:fit-content; max-width:100%; margin:0 auto 18px; text-align:center;
-    font-family:system-ui,sans-serif; font-weight:1000; font-style:italic; font-size:clamp(74px,14vw,170px);
-    letter-spacing:-.095em; line-height:1.08; padding:0 .15em .16em 0;
-    color:#36dc28; -webkit-text-stroke:clamp(2px,.5vw,6px) #031805;
-    text-shadow:3px 5px 0 #091b08,8px 12px 0 #010301,0 0 18px #28fa2a,0 0 48px #0e9e13;
-    filter:drop-shadow(0 0 15px rgba(33,255,25,.3)); }
-  .gibam::after { content:""; display:block; width:65%; height:7px; border-radius:100%; margin:-.04em auto 0;
-    background:#31f52b; box-shadow:0 0 14px #30ff29; transform:skewX(-20deg) rotate(-3deg); }
-  .money-mark { position:absolute; color:#4aff45; font-weight:900; font-size:clamp(35px,7vw,90px);
-    opacity:.65; text-shadow:0 0 25px #24ec25; pointer-events:none; }
-  .money-mark.left { left:4%; top:5%; transform:rotate(-20deg); }
-  .money-mark.right { right:7%; top:18%; transform:rotate(18deg); }
-  .kicker { color:#75d8ff; }
-  .grid { position:relative; }
-  .tile { backdrop-filter:blur(5px); transition:transform .25s ease,box-shadow .25s ease; }
-  .tile:hover { transform:translateY(-3px); }
-  .t1 { border-color:#29cfff; box-shadow:0 0 0 1px rgba(45,220,255,.2),0 0 25px rgba(25,202,255,.26); }
-  .t2 { border-color:#f5c542; box-shadow:0 0 0 1px rgba(245,197,66,.15),0 0 26px rgba(245,197,66,.18); }
-  .t3 { border-color:#e2b72e; box-shadow:0 0 22px rgba(235,194,63,.15); }
-  .links a:focus-visible,.main-btn:focus-visible { outline:3px solid #73f967;outline-offset:3px; }
-  @media(max-width:900px) { .gibam{font-size:clamp(66px,16vw,130px);} header{padding-top:22px;} }
-  @media(prefers-reduced-motion:reduce){.smoke i,body::before,header::before{animation:none!important}.tile{transition:none!important}}
-
-/* Border-only overlay: cards retain their original contents, colors and links. */
-main.wrap { position:relative; z-index:1; }
-main.wrap::before,main.wrap::after {content:"";position:absolute;top:0;bottom:0;width:clamp(8px,2vw,30px);pointer-events:none;z-index:-1;
-background:radial-gradient(ellipse at center,rgba(69,255,30,.85),rgba(31,180,26,.38) 35%,transparent 72%);
-filter:blur(9px);animation:edge-flow 17s ease-in-out infinite alternate;}
-main.wrap::before{left:-10px} main.wrap::after{right:-10px;animation-delay:-8s}
-@keyframes edge-flow{from{transform:translateY(-3%) scaleX(.7);opacity:.55}to{transform:translateY(3%) scaleX(1.3);opacity:.95}}
-@media(prefers-reduced-motion:reduce){main.wrap::before,main.wrap::after{animation:none}}
-
-/* Decorative matte airbrush edge artwork, isolated from card UI. */
-.art-edge{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
-.art-edge svg{position:absolute;width:clamp(95px,17vw,245px);height:auto;filter:drop-shadow(0 0 14px rgba(55,255,33,.45))}
-.art-skull{left:max(-12px,calc(50% - 690px));top:10px;opacity:.87}
-.art-cash{right:max(-16px,calc(50% - 680px));top:30px;opacity:.85;transform:rotate(12deg)}
-.art-leaf{right:max(-16px,calc(50% - 650px));bottom:-70px;opacity:.8;transform:rotate(-16deg)}
-header .wrap{z-index:2}
-@media(max-width:650px){.art-edge svg{width:105px;opacity:.45}.art-skull{top:65px;left:-40px}.art-cash{top:80px;right:-40px}.art-leaf{display:none}.gibam{position:relative;z-index:2}}
-
-/* Smooth, GPU-friendly smoke along the perimeter, never over interactive controls. */
-.smoke { position:fixed; inset:0; z-index:3; pointer-events:none; contain:layout paint; }
-.smoke::before,.smoke::after { content:"";position:absolute;top:-15%;bottom:-15%;width:65px;opacity:.5;filter:blur(13px);
-background:radial-gradient(ellipse at 20% 18%,transparent 25%,rgba(73,255,28,.75) 39%,transparent 55%),radial-gradient(ellipse at 80% 50%,transparent 22%,rgba(33,236,21,.65) 40%,transparent 58%),radial-gradient(ellipse at 25% 83%,transparent 20%,rgba(81,255,42,.7) 37%,transparent 58%);
-background-size:100% 72%;animation:smoke-scroll 28s ease-in-out infinite alternate;will-change:transform; }
-.smoke::before{left:-30px}.smoke::after{right:-30px;animation-delay:-14s;transform:scaleX(-1)}
-@keyframes smoke-scroll{from{translate:0 -4%;opacity:.35}to{translate:0 4%;opacity:.65}}
-@media(prefers-reduced-motion:reduce){.smoke::before,.smoke::after{animation:none}}
+  /* GIBAM frame: the owner's own art (top banner, side smoke, bottom banner). Cards are unchanged. */
+  html,body { background:#000; }
+  body { overflow-x:hidden; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .frame { position:relative; max-width:820px; margin:0 auto; background:#000; }
+  .frame-top, .frame-bottom { display:block; width:100%; height:auto; position:relative; z-index:0; pointer-events:none; user-select:none; }
+  .frame-top { margin-bottom:-4%; }
+  .frame-bottom { margin-top:-6%; }
+  .frame-mid { position:relative; z-index:1; padding:0 clamp(44px,7.6%,96px); }
+  .frame-mid::before, .frame-mid::after { content:""; position:absolute; top:-60px; bottom:-90px; width:clamp(44px,7.6%,96px); z-index:-1; pointer-events:none;
+    background-repeat:no-repeat; background-size:100% 100%;
+    -webkit-mask-image:linear-gradient(transparent,#000 7%,#000 93%,transparent); mask-image:linear-gradient(transparent,#000 7%,#000 93%,transparent); }
+  .frame-mid::before { left:0; background-image:url(/gibam-left.webp); }
+  .frame-mid::after { right:0; background-image:url(/gibam-right.webp); }
+  main { padding:0 0 8px; }
+  main.wrap { max-width:none; }
+  footer { position:relative; z-index:2; width:fit-content; margin:14px auto 0; color:#d8ffd2; background:rgba(0,0,0,.72); border-radius:14px; padding:8px 14px; text-align:center; }
+  .grid { grid-template-columns:1fr !important; }
+  .t1 { box-shadow:0 0 26px rgba(25,202,255,.25); }
+  .t2 { border-color:rgba(245,197,66,.35); box-shadow:0 0 24px rgba(60,255,40,.25); }
+  .t3 { border-color:#2A2A30; box-shadow:0 0 24px rgba(60,255,40,.25); }
+  .links a:focus-visible,.main-btn:focus-visible { outline:3px solid #73f967; outline-offset:3px; }
+  body { background:#000 radial-gradient(ellipse at 50% 40%,rgba(40,200,30,.18),transparent 70%) fixed; }
 </style>
 </head>
 <body>
-<div class="smoke" aria-hidden="true"><i style="--top:5%;--duration:23s;--delay:-3s"></i><i style="--top:30%;--duration:29s;--delay:-12s"></i><i style="--top:58%;--duration:26s;--delay:-7s"></i><i style="--top:80%;--duration:34s;--delay:-18s"></i></div>
-<header><div class="art-edge" aria-hidden="true">
-<svg class="art-skull" viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="sk" cx=".35" cy=".25"><stop stop-color="#a9ff81"/><stop offset=".6" stop-color="#4cba34"/><stop offset="1" stop-color="#0c4013"/></radialGradient></defs><path d="M45 92Q35 18 122 13Q216 14 209 100L192 153L178 177L180 216L154 240H85L61 217V175L43 151Z" fill="url(#sk)" stroke="#05280b" stroke-width="9"/><path d="M58 116Q76 79 109 119L92 150L60 146ZM130 119Q164 79 190 116L184 146L146 150Z" fill="#021807"/><path d="M118 143L100 177H139Z" fill="#05200a"/><path d="M74 190Q120 206 168 190L158 225H87Z" fill="#05220a"/><path d="M97 195V226M120 201V231M143 198V226" stroke="#77d45b" stroke-width="7"/><path d="M30 90Q6 115 28 154M213 90Q236 121 211 152" fill="none" stroke="#72f550" stroke-width="9" opacity=".7"/></svg><svg class="art-cash" viewBox="0 0 250 230" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-13 125 115)" stroke="#08320a" stroke-width="5"><rect x="20" y="55" width="185" height="104" rx="8" fill="#176c24"/><rect x="31" y="43" width="185" height="104" rx="8" fill="#42aa40"/><rect x="44" y="29" width="185" height="104" rx="8" fill="#8bdc64"/><rect x="61" y="43" width="150" height="76" rx="7" fill="none" stroke="#23762a" stroke-width="4"/><circle cx="134" cy="81" r="31" fill="#3a8b31"/><text x="134" y="98" font-size="53" text-anchor="middle" font-weight="900" fill="#c1ffa1" stroke="none">$</text><path d="M79 29V132M186 29V132" stroke="#d5e6aa" stroke-width="17"/></g></svg><svg class="art-leaf" viewBox="0 0 250 280" xmlns="http://www.w3.org/2000/svg"><g fill="#369a26" stroke="#0a4c13" stroke-width="4"><path d="M126 227Q98 160 117 20Q157 90 132 205Q177 65 228 58Q211 158 141 218Q218 138 241 169Q193 224 143 230Q176 236 185 254Q148 253 126 239Q97 256 66 254Q85 234 112 230Q38 231 9 170Q65 167 108 218Q26 157 23 62Q99 86 119 207Z"/></g><path d="M125 218L128 279" stroke="#81e35b" stroke-width="9"/><path d="M125 219L117 45M127 222L212 82M122 220L35 86" stroke="#9bff70" stroke-width="3" fill="none"/></svg></div>
-  <div class="wrap">
-    <span class="money-mark left" aria-hidden="true">$</span><span class="money-mark right" aria-hidden="true">$</span>
-    <div class="gibam" aria-label="GIBAM">GIBAM</div>
-    <div class="kicker">Private &middot; Owner only</div>
-    <h1>Lead Hub</h1>
-    <p>All three lead programs in one place. Tap a program to open it.</p>
-  </div>
-</header>
+<div class="frame">
+<img class="frame-top" src="/gibam-top.webp" alt="" width="1320" height="432" fetchpriority="high">
+<h1 class="sr">GiBAM Lead Hub (owner only)</h1>
+<div class="frame-mid">
 <main class="wrap">
   <div class="grid">
     <section class="tile t1">
@@ -178,5 +123,8 @@ background-size:100% 72%;animation:smoke-scroll 28s ease-in-out infinite alterna
   </div>
 </main>
 <footer>Each program keeps its own sign-in. Add this page to your phone's home screen for one-tap access.</footer>
+</div>
+<img class="frame-bottom" src="/gibam-bottom.webp" alt="" width="1320" height="523" loading="lazy">
+</div>
 </body>
 </html>
