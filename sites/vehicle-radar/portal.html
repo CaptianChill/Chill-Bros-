@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="My Leads">
+<title>Lead Portal</title>
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/race.css">
+<link rel="icon" href="/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="manifest" href="/portal.webmanifest">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+</head>
+<body class="race">
+<header class="top"><div class="in">
+  <div style="display:flex;align-items:center;gap:12px"><img id="shopLogo" src="/vp-logo.webp" alt="" hidden style="height:52px;width:auto;border-radius:8px"><div class="brand"><small id="shop">Lead Portal</small><b id="shopName">Pit Lane</b></div></div>
+  <div class="who" id="who"></div>
+</div></header>
+<nav class="tabs" id="tabs" hidden><div class="in">
+  <button class="tab on" data-t="cards">Business Leads <span class="n" id="n-cards">0</span></button>
+  <button class="tab" data-t="quotes">Customer Quotes <span class="n" id="n-quotes">0</span></button>
+  <button class="tab" data-t="results">Scoreboard</button>
+</div></nav>
+<main id="app"><div class="empty">Loading your leads…</div></main>
+<script src="/app.js"></script>
+<script>
+const { esc, tel, when, pill, toast, card } = VR;
+const TOKEN = location.pathname.split('/p/')[1]?.split(/[/?#]/)[0] || new URLSearchParams(location.search).get('t') || '';
+const STATUSES = ['new', 'contacted', 'quoted', 'booked', 'lost'];
+let D = { buyer: {}, leads: [], cards: [] }, TAB = 'cards', F = 'open';
+// Closing script for a customer quote, written for the service they asked for.
+function closer(l) {
+  const first = String(l.name || '').trim().split(/\s+/)[0] || 'there';
+  if (l.kind === 'commercial') {
+    return esc(`Hi ${first}, this is ____ with ____. You asked about ${String(l.service || 'branding').toLowerCase()} for ${l.company || 'your business'}${l.fleet_size ? ` (${l.fleet_size} vehicle${l.fleet_size === '1' ? '' : 's'})` : ''}. We wrap and protect business vehicles all over San Antonio, and we can do them in batches so you're never short a vehicle. Do you have a logo file I can start a design proof with? I'd like to see one of the vehicles in person and get you a firm price. What day this week works for a quick look?`);
+  }
+  const car = l.vehicle ? `your ${l.vehicle}` : 'your vehicle';
+  const svc = String(l.service || '');
+  const when = /week/i.test(l.timeline || '') ? 'I can get you in this week.' : 'I can lock in a date that works for you.';
+  let pitch, ask;
+  if (/fleet|business/i.test(svc)) { pitch = `A full branded wrap turns every truck into a billboard. We handle design proofs, print and install, and we can do one vehicle at a time so you're never short a truck.`; ask = `How many vehicles are we wrapping, and do you have a logo file I can start the proof with?`; }
+  else if (/chrome|accent/i.test(svc)) { pitch = `A chrome delete or accent wrap is a quick, clean change. It's usually done in a day and fully removable later without touching the paint.`; ask = `Which pieces do you want done, gloss black or satin?`; }
+  else if (/wrap/i.test(svc)) { pitch = `A color-change wrap gives you a whole new look and protects the factory paint underneath, so resale stays strong. We'll show you samples in person so you can see the finish in the sun.`; ask = `Do you have a color in mind? I can bring two or three samples to your quote.`; }
+  else { pitch = `PPF is clear, self-healing film that stops rock chips, bug stains and swirl marks, which is a big deal on San Antonio highways. Most new-car owners do the front end first: bumper, hood, fenders and mirrors.`; ask = `Is ${car} new, or does it have any chips we should look at first?`; }
+  return esc(`Hi ${first}, this is ____ with ____. You asked for a quote on ${svc.toLowerCase() || 'protection'} for ${car}. ${pitch} ${ask} ${when} What day works best for you to come by?`);
+}
+
+async function api(method, payload) {
+  const r = await fetch('/api/portal', { method, headers: { 'Content-Type': 'application/json', 'x-portal-token': TOKEN }, body: payload ? JSON.stringify(payload) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || 'Something went wrong'), { code: r.status });
+  return j;
+}
+async function load() {
+  try { D = await api('GET'); }
+  catch (e) { document.getElementById('app').innerHTML = `<div class="login" style="text-align:center"><b style="font-size:18px">Link not active</b><p class="meta">${esc(e.message)}</p></div>`; return; }
+  document.getElementById('tabs').hidden = false;
+  document.getElementById('shopName').textContent = D.buyer.business_name;
+  if (/v\s*performance/i.test(D.buyer.business_name)) { const lg = document.getElementById('shopLogo'); lg.hidden = false; lg.alt = D.buyer.business_name; }
+  document.getElementById('shop').textContent = 'Lead Portal · Pit Lane';
+  document.title = `${D.buyer.business_name} · Lead Portal`;
+  document.getElementById('who').innerHTML = D.buyer.contact_name ? `Driver: <b style="color:#fff">${esc(D.buyer.contact_name)}</b>` : '';
+  const open = (x) => !['booked', 'lost'].includes(x.buyer_status);
+  document.getElementById('n-cards').textContent = D.cards.filter(open).length;
+  document.getElementById('n-quotes').textContent = D.leads.filter(open).length;
+  render();
+}
+async function save(kind, id) {
+  const status = document.getElementById(`s-${kind}-${id}`).value, notes = document.getElementById(`n-${kind}-${id}`).value;
+  try { await api('POST', { kind, id, status, notes }); toast('Saved'); await load(); } catch (e) { toast(e.message); }
+}
+const filt = (arr) => arr.filter((x) => F === 'all' || (F === 'open' ? !['booked', 'lost'].includes(x.buyer_status) : x.buyer_status === F));
+const chips = (arr) => ['open', ...STATUSES, 'all'].map((s) => {
+  const n = s === 'all' ? arr.length : s === 'open' ? arr.filter((x) => !['booked', 'lost'].includes(x.buyer_status)).length : arr.filter((x) => x.buyer_status === s).length;
+  return `<button class="chip ${F === s ? 'on' : ''}" data-f="${s}">${s[0].toUpperCase() + s.slice(1)} (${n})</button>`;
+}).join('');
+const worker = (kind, id, status, notes) => `<div class="grid2" style="align-items:end">
+  <div><label class="f" style="margin-top:0">Status</label><select id="s-${kind}-${id}" style="width:100%">${STATUSES.map((s) => `<option ${s === status ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+  <div><button class="btn gold" style="width:100%" data-save="${kind}:${id}">Save</button></div></div>
+  <label class="f">Notes</label><textarea id="n-${kind}-${id}" placeholder="Who you talked to, quote amount, next step…">${esc(notes || '')}</textarea>`;
+
+function cards() {
+  const list = filt(D.cards);
+  return `<div class="hexled"></div><h2 class="sec">Business Leads</h2><p class="sub">Dealers, fleets and builders that need PPF or vinyl. Open a card for the pitch and call script, then tap the number to call.</p>
+  <div class="filters">${chips(D.cards)}</div>
+  ${list.length ? list.map((c) => card(c, { kicker: `Lead card · sent ${when(c.assigned_at)}`, footer: `<div class="row" style="margin-bottom:8px">${pill(c.buyer_status)}</div>${worker('card', c.assignment_id, c.buyer_status, c.buyer_notes)}` })).join('') : '<div class="empty">No business leads here yet. New leads show up as soon as they are sent to you.</div>'}`;
+}
+function quotes() {
+  const list = filt(D.leads);
+  return `<div class="hexled"></div><h2 class="sec">Customer Quotes</h2><p class="sub">Local shoppers and businesses who asked for a quote. They expect a call or text, so reach out fast.</p>
+  <div class="filters">${chips(D.leads)}</div>
+  ${list.length ? list.map((l) => `<div class="panel" style="border-top:4px solid var(--pink)">
+    <div class="row"><div><div class="name">${l.kind === 'commercial' ? `${esc(l.company)} <span class="pill assigned">Commercial</span>` : `${esc(l.name)} <span class="pill contacted">Local</span>`}</div>
+      ${l.kind === 'commercial' ? `<div class="meta">Contact: ${esc(l.name)} · ${esc(l.fleet_size)} vehicle(s)${l.vehicle_types ? ' · ' + esc(l.vehicle_types) : ''}</div>` : ''}
+      <div class="meta">${esc(l.service)}${l.kind === 'commercial' ? '' : ' · ' + esc(l.coverage)}</div>
+      <div class="meta">${esc(l.vehicle) || 'Vehicle not given'} · ${esc(l.timeline)} · ZIP ${esc(l.zip) || 'n/a'}</div>
+      ${l.notes ? `<div class="meta">"${esc(l.notes)}"</div>` : ''}
+      <div class="meta">Sent to you ${when(l.assigned_at)}</div></div>${pill(l.buyer_status)}</div>
+    <div class="actions"><a class="btn pink" href="tel:${tel(l.phone)}">Call ${esc(l.phone)}</a><a class="btn" href="sms:${tel(l.phone)}">Text</a>${l.email ? `<a class="btn" href="mailto:${esc(l.email)}">Email</a>` : ''}</div>
+    <details class="more" open><summary>Closing script</summary><div class="script" style="margin-top:8px">${closer(l)}</div>
+      <p class="meta">Call within the first hour if you can. Quote requests go cold fast.</p></details>
+    <div style="margin-top:12px">${worker('lead', l.id, l.buyer_status, l.buyer_notes)}</div></div>`).join('') : '<div class="empty">No customer quotes here yet.</div>'}`;
+}
+function results() {
+  const all = [...D.cards, ...D.leads];
+  const c = (s) => all.filter((x) => x.buyer_status === s).length;
+  return `<div class="hexled"></div><h2 class="sec">Scoreboard</h2><p class="sub">Everything sent to you, by where it stands.</p>
+  <div class="stats"><div class="stat"><div class="v">${all.length}</div><div class="l">Total leads</div></div>
+  <div class="stat"><div class="v">${c('contacted') + c('quoted')}</div><div class="l">In progress</div></div>
+  <div class="stat"><div class="v">${c('booked')}</div><div class="l">Booked</div></div>
+  <div class="stat"><div class="v">${c('new')}</div><div class="l">Not contacted yet</div></div></div>
+  <div class="panel"><b>Tip</b><p class="meta">Mark each lead as you go. Contacted, Quoted, then Booked or Lost. Updating your status helps you get more leads that fit your shop.</p></div>`;
+}
+function render() {
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.t === TAB));
+  document.getElementById('app').innerHTML = { cards, quotes, results }[TAB]();
+}
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.t) { TAB = t.dataset.t; F = 'open'; render(); window.scrollTo(0, 0); }
+  else if (t.dataset.f) { F = t.dataset.f; render(); }
+  else if (t.dataset.save) { const [k, id] = t.dataset.save.split(':'); save(k, id); }
+});
+load();
+</script>
+</body>
+</html>

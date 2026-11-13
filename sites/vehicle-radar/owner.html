@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0B1E33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vehicle Radar">
+<title>Vehicle Radar · Owner</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="top"><div class="in">
+  <div class="brand"><small>Vehicle Radar</small><b>Owner Console</b></div>
+  <div class="who" id="who"></div>
+</div></header>
+<nav class="tabs" id="tabs" hidden><div class="in">
+  <button class="tab on" data-t="overview">Overview</button>
+  <button class="tab" data-t="cards">Lead Cards <span class="n" id="n-cards">0</span></button>
+  <button class="tab" data-t="quotes">Customer Requests <span class="n" id="n-quotes">0</span></button>
+  <button class="tab" data-t="buyers">Buyers <span class="n" id="n-buyers">0</span></button>
+</div></nav>
+<main id="app">
+  <div class="login">
+    <b style="font-size:18px">Owner sign-in</b>
+    <p class="meta">Enter your PIN.</p>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="12">
+    <button class="btn gold" id="go" style="width:100%">Open console</button>
+    <p class="err" id="lerr"></p>
+  </div>
+</main>
+<script src="/app.js"></script>
+<script>
+const { esc, tel, when, pill, toast, card } = VR;
+let PIN = sessionStorage.getItem('vr_pin') || '';
+let D = { leads: [], prospects: [], buyers: [], assignments: [] };
+let TAB = 'overview', CF = 'new', QF = 'all', KF = 'all';
+const PORTAL = (t) => `${location.origin}/p/${t}`;
+
+async function api(method, payload) {
+  const r = await fetch('/api/owner', { method, headers: { 'Content-Type': 'application/json', 'x-admin-pin': PIN }, body: payload ? JSON.stringify(payload) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { const had = sessionStorage.getItem('vr_pin'); sessionStorage.removeItem('vr_pin'); if (had) location.reload(); throw new Error('Wrong PIN'); }
+  if (!r.ok) throw new Error(j.error || 'Something went wrong');
+  return j;
+}
+async function act(payload, msg) { try { await api('POST', payload); if (msg) toast(msg); await load(); } catch (e) { toast(e.message); } }
+async function load() {
+  D = await api('GET');
+  sessionStorage.setItem('vr_pin', PIN);
+  document.getElementById('tabs').hidden = false;
+  document.getElementById('who').textContent = 'Signed in';
+  document.getElementById('n-cards').textContent = D.prospects.filter((p) => p.owner_status === 'new').length;
+  document.getElementById('n-quotes').textContent = D.leads.filter((l) => l.status === 'new').length;
+  document.getElementById('n-buyers').textContent = D.buyers.filter((b) => b.active).length;
+  render();
+}
+const buyerName = (id) => (D.buyers.find((b) => b.id === id) || {}).business_name || 'Unknown';
+const buyerOptions = (sel) => `<option value="">Choose buyer…</option>` + D.buyers.filter((b) => b.active).map((b) => `<option value="${b.id}" ${b.id === sel ? 'selected' : ''}>${esc(b.business_name)}</option>`).join('');
+
+function overview() {
+  const sentCards = D.assignments.length;
+  const booked = D.assignments.filter((a) => a.buyer_status === 'booked').length + D.leads.filter((l) => l.buyer_status === 'booked').length;
+  const recent = [...D.assignments.map((a) => ({ t: a.assigned_at, s: a.buyer_status, n: (D.prospects.find((p) => p.id === a.prospect_id) || {}).name, b: buyerName(a.buyer_id), k: 'Card' })),
+    ...D.leads.filter((l) => l.buyer_id).map((l) => ({ t: l.assigned_at, s: l.buyer_status, n: l.name, b: buyerName(l.buyer_id), k: 'Quote' }))]
+    .sort((a, b) => new Date(b.t) - new Date(a.t)).slice(0, 12);
+  return `<h2 class="sec">Overview</h2><p class="sub">Find leads, review them, send them to your buyers, and track what they book.</p>
+  <div class="stats">
+    <div class="stat"><div class="v">${D.prospects.filter((p) => p.owner_status === 'new').length}</div><div class="l">New AI-found cards</div></div>
+    <div class="stat"><div class="v">${D.leads.filter((l) => l.status === 'new').length}</div><div class="l">Quote requests to send</div></div>
+    <div class="stat"><div class="v">${sentCards + D.leads.filter((l) => l.buyer_id).length}</div><div class="l">Sent to buyers</div></div>
+    <div class="stat"><div class="v">${booked}</div><div class="l">Booked by buyers</div></div>
+  </div>
+  <div class="panel"><b>How it works</b><ol class="meta" style="margin:8px 0 0;padding-left:18px">
+    <li><b>AI finds leads</b>: dealers, fleets and builders land in Lead Cards as "new".</li>
+    <li><b>You review</b>: work a card yourself, or tap Send to give it to a buyer.</li>
+    <li><b>Local shoppers and businesses</b> who fill out your quote page land in Customer Requests. Send those to a buyer too.</li>
+    <li><b>Buyers</b> work everything in their portal and their results show up here.</li></ol></div>
+  <div class="panel"><b>Latest buyer activity</b>${recent.length ? recent.map((r) => `<div class="row" style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px"><div><b>${esc(r.n)}</b><div class="meta">${r.k} · ${esc(r.b)} · sent ${when(r.t)}</div></div>${pill(r.s)}</div>`).join('') : '<p class="meta">Nothing sent yet. Create a buyer, then send them cards.</p>'}</div>`;
+}
+
+function cards() {
+  const list = D.prospects.filter((p) => CF === 'all' || p.owner_status === CF);
+  const chips = ['new', 'working', 'sent', 'won', 'dead', 'all'].map((s) => `<button class="chip ${CF === s ? 'on' : ''}" data-cf="${s}">${s === 'new' ? 'New (AI found)' : s[0].toUpperCase() + s.slice(1)} (${s === 'all' ? D.prospects.length : D.prospects.filter((p) => p.owner_status === s).length})</button>`).join('');
+  const body = list.length ? list.map((p) => {
+    const sentTo = D.assignments.filter((a) => a.prospect_id === p.id);
+    const foot = `<div class="row"><div>${pill(p.owner_status)} <span class="meta">${esc(p.found_by || '')}</span></div></div>
+      ${sentTo.length ? `<div class="meta" style="margin-top:8px">Sent to: ${sentTo.map((a) => `<b>${esc(buyerName(a.buyer_id))}</b> ${pill(a.buyer_status)}${a.buyer_notes ? ` <i>"${esc(a.buyer_notes)}"</i>` : ''} <button class="btn sm" data-unassign="${p.id}:${a.buyer_id}">Take back</button>`).join(' ')}</div>` : ''}
+      <div class="actions"><select id="sb-${p.id}">${buyerOptions()}</select><button class="btn pink" data-send="${p.id}">Send to buyer</button>
+        <select data-cstatus="${p.id}">${['new', 'working', 'sent', 'won', 'dead'].map((s) => `<option ${s === p.owner_status ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+      <label class="f">Your notes (only you see these)</label><textarea data-cnote="${p.id}" placeholder="Called, left voicemail…">${esc(p.owner_notes || '')}</textarea>`;
+    return card(p, { kicker: 'Vehicle Radar · AI-found lead', footer: foot });
+  }).join('') : '<div class="empty">No cards here.</div>';
+  return `<div class="row"><div><h2 class="sec">Lead Cards</h2><p class="sub">Businesses that need PPF or vinyl work, found by AI research. Work them yourself or send them to a buyer.</p></div><button class="btn navy" id="add-card">+ Add a card</button></div>
+  <div id="card-form"></div><div class="filters">${chips}</div>${body}`;
+}
+
+function cardForm() {
+  return `<div class="panel"><b>Add a lead card</b>
+  <div class="grid2"><div><label class="f">Business name</label><input id="c-name" style="width:100%"></div>
+  <div><label class="f">Score</label><select id="c-score" style="width:100%"><option>A</option><option selected>B</option><option>C</option></select></div>
+  <div><label class="f">Need</label><input id="c-need" value="PPF + Vinyl" style="width:100%"></div>
+  <div><label class="f">Type</label><input id="c-type" value="B2B fleet account" style="width:100%"></div></div>
+  <label class="f">Contact (one per line, "Label: value")</label><textarea id="c-contact" placeholder="Address: 123 Main St&#10;Phone: (210) 555-0100&#10;Ask for: Owner"></textarea>
+  <label class="f">Why they're a lead (one per line)</label><textarea id="c-why"></textarea>
+  <label class="f">What to pitch (one per line)</label><textarea id="c-pitch"></textarea>
+  <label class="f">Call script</label><textarea id="c-script"></textarea>
+  <label class="f">Deal value estimate</label><textarea id="c-value"></textarea>
+  <div class="actions"><button class="btn gold" id="save-card">Save card</button><button class="btn" id="cancel-card">Cancel</button></div></div>`;
+}
+
+function quotes() {
+  const list = D.leads.filter((l) => (QF === 'all' || l.status === QF) && (KF === 'all' || (l.kind || 'local') === KF));
+  const kchips = ['all', 'local', 'commercial'].map((k) => `<button class="chip ${KF === k ? 'on' : ''}" data-kf="${k}">${k === 'all' ? 'Local + Commercial' : k === 'local' ? 'Local shoppers' : 'Commercial'} (${k === 'all' ? D.leads.length : D.leads.filter((l) => (l.kind || 'local') === k).length})</button>`).join('');
+  const chips = ['new', 'assigned', 'sold', 'junk', 'all'].map((s) => `<button class="chip ${QF === s ? 'on' : ''}" data-qf="${s}">${s[0].toUpperCase() + s.slice(1)} (${s === 'all' ? D.leads.length : D.leads.filter((l) => l.status === s).length})</button>`).join('');
+  const body = list.length ? list.map((l) => `<div class="panel">
+    <div class="row"><div><div class="name">${l.kind === 'commercial' ? `${esc(l.company)} <span class="pill assigned">Commercial</span>` : `${esc(l.name)} <span class="pill contacted">Local</span>`}</div>
+      ${l.kind === 'commercial' ? `<div class="meta">Contact: ${esc(l.name)} · ${esc(l.fleet_size)} vehicle(s)${l.vehicle_types ? ' · ' + esc(l.vehicle_types) : ''}</div>` : ''}
+      <div class="meta"><a href="tel:${tel(l.phone)}">${esc(l.phone)}</a>${l.email ? ` · <a href="mailto:${esc(l.email)}">${esc(l.email)}</a>` : ''}</div>
+      <div class="meta">${esc(l.service)} · ${esc(l.coverage)} · ${esc(l.vehicle) || 'vehicle n/a'} · ${esc(l.timeline)} · ZIP ${esc(l.zip) || 'n/a'}</div>
+      ${l.notes ? `<div class="meta">"${esc(l.notes)}"</div>` : ''}
+      <div class="meta">Came in ${when(l.created_at)} · source: ${esc(l.source)}</div>
+      ${l.buyer_id ? `<div class="meta">Sent to <b>${esc(buyerName(l.buyer_id))}</b> ${pill(l.buyer_status)}${l.buyer_notes ? ` <i>"${esc(l.buyer_notes)}"</i>` : ''}</div>` : ''}
+    </div>${pill(l.status)}</div>
+    <div class="actions"><select id="qb-${l.id}">${buyerOptions(l.buyer_id)}</select><button class="btn pink" data-qsend="${l.id}">${l.buyer_id ? 'Change buyer' : 'Send to buyer'}</button>
+      <select data-qstatus="${l.id}">${['new', 'assigned', 'sold', 'junk'].map((s) => `<option ${s === l.status ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+  </div>`).join('') : '<div class="empty">No quote requests here yet. Share your quote page to start collecting them.</div>';
+  return `<h2 class="sec">Quote Requests</h2><p class="sub">Local shoppers and businesses who asked for a quote on <a href="/" target="_blank">your quote page</a>. Send each one to a buyer.</p><div class="filters">${kchips}</div><div class="filters">${chips}</div>${body}`;
+}
+
+function buyers() {
+  const list = D.buyers.map((b) => {
+    const nCards = D.assignments.filter((a) => a.buyer_id === b.id).length, nQ = D.leads.filter((l) => l.buyer_id === b.id).length;
+    const booked = D.assignments.filter((a) => a.buyer_id === b.id && a.buyer_status === 'booked').length + D.leads.filter((l) => l.buyer_id === b.id && l.buyer_status === 'booked').length;
+    return `<div class="panel"><div class="row"><div><div class="name">${esc(b.business_name)}</div>
+      <div class="meta">${esc(b.contact_name || '')}${b.phone ? ` · <a href="tel:${tel(b.phone)}">${esc(b.phone)}</a>` : ''}${b.email ? ` · ${esc(b.email)}` : ''}</div>
+      <div class="meta">${(b.services || []).map(esc).join(', ')} · ${nCards} cards · ${nQ} quote requests · ${booked} booked</div></div>
+      ${pill(b.active ? 'active' : 'paused')}</div>
+      <label class="f">Their private portal link</label>
+      <div class="actions" style="margin-top:0"><input readonly value="${PORTAL(b.token)}" style="flex:1;min-width:220px">
+        <button class="btn gold" data-copy="${PORTAL(b.token)}">Copy link</button>
+        <a class="btn" href="sms:${tel(b.phone)}?&body=${encodeURIComponent('Your Vehicle Radar leads portal: ' + PORTAL(b.token))}">Text it</a>
+        <a class="btn" href="/p/${b.token}" target="_blank">Preview</a></div>
+      <div class="actions"><button class="btn sm" data-active="${b.id}:${b.active ? 0 : 1}">${b.active ? 'Pause access' : 'Turn access back on'}</button>
+        <button class="btn sm" data-relink="${b.id}">Make a new link (old one stops working)</button></div></div>`;
+  }).join('');
+  return `<h2 class="sec">Buyers</h2><p class="sub">The shops you sell leads to. Each one gets a private portal link. Pause it any time, for example if they stop paying.</p>
+  <div class="panel"><b>Add a buyer</b><div class="grid2">
+    <div><label class="f">Business name</label><input id="b-name" style="width:100%" placeholder="e.g. Elite Detailing SA"></div>
+    <div><label class="f">Contact name</label><input id="b-contact" style="width:100%"></div>
+    <div><label class="f">Phone</label><input id="b-phone" type="tel" style="width:100%"></div>
+    <div><label class="f">Email</label><input id="b-email" type="email" style="width:100%"></div></div>
+    <label class="f">Services they buy (comma separated)</label><input id="b-services" value="PPF, Vinyl" style="width:100%">
+    <div class="actions"><button class="btn gold" id="add-buyer">Create buyer &amp; portal link</button></div></div>
+  ${list || '<div class="empty">No buyers yet.</div>'}`;
+}
+
+function render() {
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.t === TAB));
+  document.getElementById('app').innerHTML = { overview, cards, quotes, buyers }[TAB]();
+  window.scrollTo(0, 0);
+}
+
+document.addEventListener('click', async (e) => {
+  const t = e.target.closest('button, a'); if (!t) return;
+  const d = t.dataset;
+  if (d.t) { TAB = d.t; render(); }
+  else if (d.cf) { CF = d.cf; render(); }
+  else if (d.qf) { QF = d.qf; render(); }
+  else if (d.kf) { KF = d.kf; render(); }
+  else if (d.send) { const b = document.getElementById('sb-' + d.send).value; if (!b) return toast('Choose a buyer first'); act({ action: 'assign_card', prospect_id: d.send, buyer_id: b }, 'Sent to buyer'); }
+  else if (d.unassign) { const [p, b] = d.unassign.split(':'); act({ action: 'unassign_card', prospect_id: p, buyer_id: b }, 'Taken back'); }
+  else if (d.qsend) { const b = document.getElementById('qb-' + d.qsend).value; if (!b) return toast('Choose a buyer first'); act({ action: 'assign_lead', id: d.qsend, buyer_id: b }, 'Sent to buyer'); }
+  else if (d.copy) { try { await navigator.clipboard.writeText(d.copy); toast('Link copied'); } catch { toast('Press and hold the link to copy'); } }
+  else if (d.active) { const [id, on] = d.active.split(':'); act({ action: 'set_buyer_active', id, active: on === '1' }, on === '1' ? 'Access on' : 'Access paused'); }
+  else if (d.relink) { if (confirm('Make a new link? The old link will stop working.')) act({ action: 'new_buyer_link', id: d.relink }, 'New link made'); }
+  else if (t.id === 'add-buyer') {
+    const v = (id) => document.getElementById(id).value;
+    act({ action: 'create_buyer', business_name: v('b-name'), contact_name: v('b-contact'), phone: v('b-phone'), email: v('b-email'), services: v('b-services').split(',').map((s) => s.trim()).filter(Boolean) }, 'Buyer created');
+  }
+  else if (t.id === 'add-card') { document.getElementById('card-form').innerHTML = cardForm(); }
+  else if (t.id === 'cancel-card') { document.getElementById('card-form').innerHTML = ''; }
+  else if (t.id === 'save-card') {
+    const v = (id) => document.getElementById(id).value;
+    act({ action: 'create_card', name: v('c-name'), score: v('c-score'), need: v('c-need'), type: v('c-type'), contact: v('c-contact'), why: v('c-why'), pitch: v('c-pitch'), script: v('c-script'), value: v('c-value') }, 'Card saved');
+  }
+});
+document.addEventListener('change', (e) => {
+  const d = e.target.dataset;
+  if (d.cstatus) act({ action: 'card_status', id: d.cstatus, status: e.target.value }, 'Status saved');
+  else if (d.qstatus) act({ action: 'lead_status', id: d.qstatus, status: e.target.value }, 'Status saved');
+  else if (d.cnote) act({ action: 'card_note', id: d.cnote, note: e.target.value }, 'Note saved');
+});
+document.getElementById('go').onclick = () => { PIN = document.getElementById('pin').value.trim(); load().catch(() => { document.getElementById('lerr').textContent = 'Wrong PIN'; }); };
+document.getElementById('pin').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('go').click(); });
+if (PIN) load().catch(() => {});
+</script>
+</body>
+</html>

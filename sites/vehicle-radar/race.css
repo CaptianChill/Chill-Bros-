@@ -1,0 +1,55 @@
+/* V Performance racing theme: black garage, hex LED ceiling, yellow/black checker floor. */
+body.race {
+  --navy:#0A0A0C; --panel:#141417; --ice:#FFFFFF; --gold:#EBC23F; --pink:#EBC23F; --off:#0E0E11;
+  --ink:#F4F4F5; --muted:#A1A1AA; --line:#2A2A30; --soft:#D4D4D8;
+  background:#0A0A0C; color:var(--ink);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='104' viewBox='0 0 120 104'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.06' stroke-width='3'%3E%3Cpath d='M30 2 L60 2 L75 28 L60 54 L30 54 L15 28 Z'/%3E%3Cpath d='M90 54 L120 54 L135 80 L120 106 L90 106 L75 80 Z'/%3E%3Cpath d='M-30 54 L0 54 L15 80 L0 106 L-30 106 L-45 80 Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-attachment:fixed;
+}
+body.race a { color:#EBC23F; }
+.race .top { background:#000; border-bottom:0; position:sticky; }
+.race .top::after { content:""; display:block; height:8px;
+  background:repeating-conic-gradient(#EBC23F 0 25%, #0A0A0C 0 50%) 0 0/16px 16px; }
+.race .brand small { color:#EBC23F; letter-spacing:.28em; }
+.race .brand b, .race h1, .race h2.sec, .race .name, .race .lc-head h3 {
+  font-style:italic; font-weight:900; text-transform:uppercase; letter-spacing:.01em; }
+.race .brand b { font-size:22px; text-shadow:0 0 14px rgba(255,255,255,.35); }
+.race .tabs { background:#111114; border-bottom:1px solid #222; top:calc(74px + env(safe-area-inset-top)); }
+.race .tab { color:#A1A1AA; text-transform:uppercase; font-style:italic; letter-spacing:.04em; }
+.race .tab.on { color:#fff; border-bottom-color:#EBC23F; text-shadow:0 0 10px rgba(235,194,63,.5); }
+.race .panel, .race .stat, .race .lc, .race .login {
+  background:linear-gradient(180deg,#17171B,#111114); border-color:#2A2A30; color:var(--ink);
+  box-shadow:0 0 0 1px rgba(255,255,255,.02), 0 10px 30px rgba(0,0,0,.45); }
+.race .stat { border-top:3px solid #EBC23F; } .race .stat:nth-child(2n){ border-top-color:#fff; }
+.race .stat .v { font-style:italic; color:#EBC23F; text-shadow:0 0 16px rgba(235,194,63,.35); }
+.race .lc-head { background:#000; border-bottom:0; position:relative; }
+.race .lc-head::after { content:""; position:absolute; left:0; right:0; bottom:0; height:6px;
+  background:repeating-conic-gradient(#EBC23F 0 25%, #000 0 50%) 0 0/12px 12px; }
+.race .lc-head small { color:#EBC23F; }
+.race .lc-body { color:var(--ink); }
+.race .lc-body h4 { border-left-color:#EBC23F; color:#fff; font-style:italic; }
+.race .kv dt { color:#A1A1AA; }
+.race .script { background:#0B0B0D; border-left-color:#EBC23F; color:#E4E4E7; }
+.race .lc-foot { background:#0F0F12; border-top-color:#2A2A30; }
+.race .score { background:#EBC23F; box-shadow:0 0 18px rgba(235,194,63,.45); }
+.race .btn { background:#1C1C21; border-color:#33333A; color:#fff; text-transform:uppercase; font-style:italic; letter-spacing:.03em; }
+.race .btn.gold, .race .btn.pink { background:#EBC23F; border-color:#EBC23F; color:#000; box-shadow:0 0 18px rgba(235,194,63,.35); }
+.race .btn.navy { background:#fff; border-color:#fff; color:#000; }
+.race select, .race input, .race textarea { background:#0B0B0D; border-color:#33333A; color:#fff; }
+.race select:focus, .race input:focus, .race textarea:focus { outline:2px solid #EBC23F; border-color:#EBC23F; }
+.race .chip { background:#141417; border-color:#33333A; color:#D4D4D8; font-style:italic; text-transform:uppercase; font-size:12px; }
+.race .chip.on { background:#EBC23F; border-color:#EBC23F; color:#000; }
+.race .pill { background:#1C1C21; border-color:#3A3A42; color:#E4E4E7; }
+.race .pill.new { background:#EBC23F; border-color:#EBC23F; color:#000; }
+.race .pill.contacted { background:#fff; border-color:#fff; color:#000; }
+.race .pill.quoted { background:#1C1C21; border-color:#EBC23F; color:#EBC23F; }
+.race .pill.booked { background:#16A34A; border-color:#16A34A; color:#fff; }
+.race .pill.assigned { background:#000; border-color:#EBC23F; color:#EBC23F; }
+.race .meta, .race p.sub { color:#A1A1AA; }
+.race .toast { background:#000; border-left-color:#EBC23F; }
+.race .empty { color:#71717A; }
+/* Glowing hex LED strip used as a section divider */
+.hexled { height:46px; margin:8px 0 18px; opacity:.95;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='46' viewBox='0 0 52 46'%3E%3Cpath d='M13 2 L39 2 L51 23 L39 44 L13 44 L1 23 Z' fill='none' stroke='%23ffffff' stroke-width='2.6'/%3E%3C/svg%3E") repeat-x center/52px 46px;
+  filter:drop-shadow(0 0 4px rgba(255,255,255,.9)) drop-shadow(0 0 12px rgba(255,255,255,.45)); }
+.checker { height:10px; background:repeating-conic-gradient(#EBC23F 0 25%, #0A0A0C 0 50%) 0 0/20px 20px; }

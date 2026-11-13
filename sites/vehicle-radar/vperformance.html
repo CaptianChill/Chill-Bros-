@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>V Performance Auto Body | PPF, Wraps &amp; Fleet Branding in San Antonio</title>
+<meta name="description" content="V Performance in San Antonio: paint protection film, vinyl wraps, chrome deletes and fleet branding. Get a free quote for your car or your business.">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="V Performance">
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/race.css">
+<link rel="icon" href="/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="manifest" href="/vp.webmanifest">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<style>
+  .hero { background:var(--navy); color:#fff; border-bottom:4px solid var(--gold); padding:44px 18px 56px; }
+  .hero .in { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1.05fr 1fr; gap:36px; align-items:start; }
+  @media (max-width:880px){ .hero .in { grid-template-columns:1fr; } .hero { padding-top:28px; } }
+  .kick { color:var(--ice); font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+  .hero h1 { font-size:clamp(30px,5vw,48px); line-height:1.08; margin:10px 0 12px; }
+  .hero .lede { color:var(--soft); font-size:17px; line-height:1.55; max-width:540px; margin:0; }
+  .checks { list-style:none; padding:0; margin:20px 0 0; }
+  .checks li { padding:6px 0 6px 26px; position:relative; color:#E4ECF3; }
+  .checks li::before { content:"\2713"; position:absolute; left:0; color:var(--gold); font-weight:800; }
+  .jump { display:none; margin-top:18px; }
+  @media (max-width:880px){ .jump { display:inline-flex; } }
+  form.q { background:#fff; color:var(--ink); border-radius:16px; padding:22px; border-top:5px solid var(--pink); box-shadow:0 20px 50px rgba(0,0,0,.3); scroll-margin-top:16px; }
+  form.q h2 { margin:0 0 2px; font-size:22px; }
+  .doors { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0 4px; }
+  .door { border:2px solid var(--line); background:#fff; border-radius:12px; padding:12px 10px; text-align:left; cursor:pointer; }
+  .door b { display:block; font-size:15px; } .door span { color:var(--muted); font-size:12px; }
+  .door.on { border-color:var(--navy); background:var(--navy); color:#fff; } .door.on span { color:var(--soft); }
+  form.q input, form.q select, form.q textarea { width:100%; }
+  .consent { display:flex; gap:10px; align-items:flex-start; font-size:12.5px; color:var(--muted); margin-top:14px; font-weight:400; }
+  .consent input { width:auto !important; min-height:0; margin-top:3px; }
+  .submit { width:100%; margin-top:14px; min-height:52px; font-size:17px; }
+  .hp { position:absolute; left:-9999px; }
+  .done { text-align:center; padding:30px 8px; }
+  section.s { padding:52px 18px; } section.s .in { max-width:1100px; margin:0 auto; }
+  section.dark { background:var(--navy); color:#fff; } section.dark .sec { color:#fff; }
+  .three { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  @media (max-width:880px){ .three { grid-template-columns:1fr; } }
+  .feat { background:#fff; border:1px solid var(--line); border-top:4px solid var(--pink); border-radius:12px; padding:20px; }
+  .feat h3 { margin:0 0 6px; } .feat p { margin:0; color:var(--muted); line-height:1.5; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; } @media (max-width:880px){ .two { grid-template-columns:1fr; } }
+  .aud { background:var(--panel); border-radius:14px; padding:22px; border-left:5px solid var(--gold); }
+  .aud.c { border-left-color:var(--ice); } .aud h3 { margin:0 0 8px; } .aud ul { margin:0; padding-left:18px; color:var(--soft); line-height:1.7; }
+  .faq details { background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+  .faq summary { font-weight:800; cursor:pointer; } .faq p { color:var(--muted); line-height:1.6; margin:10px 0 0; }
+  .foot { border-top:1px solid var(--line); color:var(--muted); font-size:13px; padding:22px 18px calc(22px + env(safe-area-inset-bottom)); text-align:center; }
+  .race .hero { background:radial-gradient(ellipse at 70% -10%, rgba(255,255,255,.10), transparent 60%), #050506; border-bottom:0; }
+  .race .hero h1 { font-size:clamp(34px,6vw,60px); line-height:1; text-shadow:0 0 22px rgba(255,255,255,.25); }
+  .race .hero h1 em { color:#EBC23F; font-style:italic; }
+  .race .hero .lede { color:#D4D4D8; }
+  .race form.q { background:linear-gradient(180deg,#17171B,#0F0F12); color:#F4F4F5; border-top:5px solid #EBC23F; box-shadow:0 0 0 1px #2A2A30, 0 0 40px rgba(235,194,63,.12), 0 20px 50px rgba(0,0,0,.6); }
+  .race form.q h2 { font-style:italic; text-transform:uppercase; font-weight:900; }
+  .race .door { background:#0B0B0D; border-color:#33333A; color:#fff; }
+  .race .door span { color:#A1A1AA; }
+  .race .door.on { background:#EBC23F; border-color:#EBC23F; color:#000; } .race .door.on span { color:#3a3000; }
+  .race .feat { background:linear-gradient(180deg,#17171B,#111114); border-color:#2A2A30; border-top:4px solid #EBC23F; }
+  .race .feat h3, .race .aud h3 { font-style:italic; text-transform:uppercase; }
+  .race .feat p { color:#A1A1AA; }
+  .race section.dark { background:#000; }
+  .race .aud { background:#141417; border-left-color:#EBC23F; } .race .aud.c { border-left-color:#fff; }
+  .race .faq details { background:#141417; border-color:#2A2A30; } .race .faq summary { color:#fff; } .race .faq p { color:#A1A1AA; }
+  .race .foot { border-top:0; color:#71717A; }
+  .vbar { background:#000; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; max-width:none; }
+  .vbar { background:#000; } .vlogo { height:72px; width:auto; display:block; }
+  .vbar .logo { font-weight:900; font-style:italic; font-size:24px; letter-spacing:.02em; text-transform:uppercase; color:#fff; text-shadow:0 0 14px rgba(255,255,255,.4); }
+  .vbar .logo span { color:#EBC23F; }
+  .gal { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:18px; }
+  @media (max-width:880px){ .gal { grid-template-columns:repeat(2,1fr); } }
+  .gal figure { margin:0; position:relative; border-radius:12px; overflow:hidden; border:1px solid #2A2A30; background:#000; aspect-ratio:4/5; }
+  .gal figure.wide { grid-column:1/-1; aspect-ratio:auto; max-height:420px; }
+  .gal img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .35s; }
+  .gal figure:hover img { transform:scale(1.04); }
+  .gal figcaption { position:absolute; left:0; right:0; bottom:0; padding:22px 10px 8px; font-size:12px; font-weight:800; font-style:italic; text-transform:uppercase; letter-spacing:.04em; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.85)); }
+  .gal figcaption::before { content:""; display:inline-block; width:10px; height:10px; margin-right:6px; background:#EBC23F; transform:skewX(-20deg); }
+  .vbar .tag { color:#A1A1AA; font-size:12px; letter-spacing:.2em; text-transform:uppercase; font-weight:800; }
+</style>
+</head>
+<body class="race">
+<div class="vbar"><img class="vlogo" src="/vp-logo.webp" alt="V Performance Auto Body" width="194" height="160"><div class="tag">San Antonio, TX</div></div>
+<div class="checker"></div>
+<section class="hero"><div class="in">
+  <div>
+    <div class="kick" style="color:#EBC23F">PPF &middot; Wraps &middot; Fleet branding</div>
+    <h1>Protect it. Wrap it. <em>Race ready.</em></h1>
+    <p class="lede">Paint protection film, color-change wraps, chrome deletes and fleet branding from the V Performance shop in San Antonio. Tell us about your build and we'll reach out with pricing, usually within one business day.</p>
+    <ul class="checks">
+      <li>PPF / clear bra: front end, track pack or full body</li>
+      <li>Color-change wraps, chrome deletes and accents</li>
+      <li>Fleet, work van, food truck and trailer wraps</li>
+      <li>Dealer PPF and wrap programs</li>
+    </ul>
+    <a class="btn gold jump" href="#quote">Get my free quote &darr;</a>
+  </div>
+
+  <form class="q" id="quote" novalidate>
+    <div id="formBody">
+      <h2>Get your free quote</h2>
+      <p class="meta" style="margin:0">Takes about 60 seconds. No obligation.</p>
+      <div class="doors" role="tablist">
+        <button type="button" class="door on" data-kind="local"><b>For my car</b><span>Personal vehicle</span></button>
+        <button type="button" class="door" data-kind="commercial"><b>For my business</b><span>Fleet, dealer, food truck</span></button>
+      </div>
+
+      <div id="biz" hidden>
+        <label class="f" for="company">Business name</label>
+        <input id="company" name="company" maxlength="160" autocomplete="organization">
+        <div class="grid2">
+          <div><label class="f" for="fleet_size">How many vehicles?</label>
+            <select id="fleet_size" name="fleet_size"><option>1</option><option>2-5</option><option>6-15</option><option>16-50</option><option>50+</option></select></div>
+          <div><label class="f" for="vehicle_types">Vehicle types</label>
+            <input id="vehicle_types" name="vehicle_types" maxlength="200" placeholder="Vans, pickups, trailer..."></div>
+        </div>
+      </div>
+
+      <label class="f" for="service">What do you need?</label>
+      <select id="service" name="service"></select>
+      <div id="covWrap"><label class="f" for="coverage">Coverage</label>
+        <select id="coverage" name="coverage">
+          <option>Front end (bumper, hood, fenders, mirrors)</option>
+          <option>Full front + rocker panels</option>
+          <option>Full vehicle</option>
+          <option>Just a few parts</option>
+          <option>Not sure</option>
+        </select></div>
+      <div id="vehWrap"><label class="f" for="vehicle">Vehicle (year, make, model)</label>
+        <input id="vehicle" name="vehicle" maxlength="160" placeholder="e.g. 2025 Tesla Model Y"></div>
+      <div class="grid2">
+        <div><label class="f" for="timeline">When?</label>
+          <select id="timeline" name="timeline"><option>This week</option><option>Within 2 weeks</option><option>This month</option><option>Just pricing for now</option></select></div>
+        <div><label class="f" for="zip">ZIP code</label><input id="zip" name="zip" inputmode="numeric" maxlength="10" placeholder="78230"></div>
+      </div>
+      <label class="f" for="name">Your name</label>
+      <input id="name" name="name" autocomplete="name" maxlength="120" required>
+      <div class="grid2">
+        <div><label class="f" for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="40" required></div>
+        <div><label class="f" for="email">Email (optional)</label><input id="email" name="email" type="email" autocomplete="email" maxlength="160"></div>
+      </div>
+      <label class="f" for="notes">Anything else? (optional)</label>
+      <textarea id="notes" name="notes" rows="2" maxlength="1000" placeholder="Color you want, delivery date, logo ready..."></textarea>
+      <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <label class="consent"><input type="checkbox" id="consent"> <span>I agree to be contacted by phone, text or email about my quote by V Performance. Consent isn't a condition of purchase. Msg &amp; data rates may apply.</span></label>
+      <button type="submit" class="btn gold submit" id="submit">Get my free quote</button>
+      <p class="err" id="msg" role="status"></p>
+    </div>
+  </form>
+</div></section>
+
+<div class="hexled" style="margin:0"></div>
+<section class="s"><div class="in">
+  <h2 class="sec">What we do</h2><p class="sub">One request, real pricing from the shop.</p>
+  <div class="three">
+    <div class="feat"><h3>Paint protection film</h3><p>Clear, self-healing film that stops rock chips, bug acid and scratches. It's the go-to for new cars on Texas highways.</p></div>
+    <div class="feat"><h3>Vinyl wraps</h3><p>Change your color or finish without touching factory paint. Satin, matte, gloss and specialty films that remove cleanly later.</p></div>
+    <div class="feat"><h3>Fleet &amp; business</h3><p>Logos, phone numbers and full graphics for vans, pickups, food trucks and trailers. Every vehicle becomes a billboard.</p></div>
+  </div>
+</div></section>
+
+<section class="s dark"><div class="in">
+  <h2 class="sec">Built for drivers and businesses</h2>
+  <div class="two" style="margin-top:16px">
+    <div class="aud"><h3>Car owners</h3><ul><li>New car protection before the first rock chip</li><li>Color changes and chrome deletes</li><li>Trucks, Teslas, sports and luxury cars</li></ul></div>
+    <div class="aud c"><h3>Businesses</h3><ul><li>Fleet branding for contractors and service companies</li><li>Dealer PPF programs at delivery</li><li>Food trucks, trailers and limo fleets</li></ul></div>
+  </div>
+</div></section>
+
+<section class="s dark"><div class="in">
+  <h2 class="sec">From the shop</h2><p class="sub">Builds, bays and the V Performance garage in San Antonio.</p>
+  <div class="gal">
+    <figure class="wide"><img src="/img/shop-wall.webp" alt="V Performance shop wall with wheels and mural" loading="lazy"><figcaption>The V Performance shop</figcaption></figure>
+    <figure><img src="/img/supra-hex.webp" alt="Yellow Toyota Supra under the shop's hexagon lights" loading="lazy"><figcaption>Supra under the hex lights</figcaption></figure>
+    <figure><img src="/img/black-exotic.webp" alt="Black exotic car in the V Performance bay" loading="lazy"><figcaption>In the bay</figcaption></figure>
+    <figure><img src="/img/bmw-rear.webp" alt="Black car on the checker floor" loading="lazy"><figcaption>Checker-floor finish</figcaption></figure>
+    <figure><img src="/img/hex-bay.webp" alt="Empty V Performance bay with hexagon LED ceiling" loading="lazy"><figcaption>The install bay</figcaption></figure>
+    <figure class="wide"><img src="/img/bmw-red.webp" alt="Red BMW with black hood outside the shop" loading="lazy"><figcaption>Customer build</figcaption></figure>
+  </div>
+</div></section>
+
+<section class="s"><div class="in faq">
+  <h2 class="sec">Common questions</h2>
+  <details><summary>How much does PPF cost?</summary><p>It depends on the vehicle and how much you cover. Front-end packages cost much less than full body. Send the form and you'll get real pricing for your car.</p></details>
+  <details><summary>Do you do whole fleets?</summary><p>Yes. Tell us how many vehicles and what kind. Fleets are usually done in batches so you're never short a truck.</p></details>
+  <details><summary>Will a wrap damage my paint?</summary><p>On healthy factory paint, a properly installed and removed wrap protects the paint underneath. Repainted or damaged paint should be checked first.</p></details>
+  <details><summary>Who will contact me?</summary><p>The V Performance team will call or text you about your quote. You're never obligated to book.</p></details>
+</div></section>
+
+<div class="checker"></div>
+<div class="foot">V Performance &middot; PPF, wraps and fleet branding &middot; San Antonio, TX</div>
+
+<script>
+const SERVICES = {
+  local: ['Paint protection film (PPF)', 'Vinyl wrap: color change', 'Chrome delete / accent wrap', 'PPF + wrap combo', 'Not sure, need advice'],
+  commercial: ['Fleet wrap / branding', 'Logo & lettering', 'Food truck or trailer wrap', 'Dealer PPF / wrap program', 'PPF on company vehicles', 'Not sure, need advice'],
+};
+let KIND = 'local';
+const $ = (id) => document.getElementById(id);
+function setKind(k) {
+  KIND = k;
+  document.querySelectorAll('.door').forEach((d) => d.classList.toggle('on', d.dataset.kind === k));
+  $('biz').hidden = k !== 'commercial';
+  $('covWrap').hidden = k === 'commercial';
+  $('vehWrap').querySelector('label').textContent = k === 'commercial' ? 'Example vehicle (optional)' : 'Vehicle (year, make, model)';
+  $('vehicle').placeholder = k === 'commercial' ? 'e.g. 2024 Ford Transit' : 'e.g. 2025 Tesla Model Y';
+  $('service').innerHTML = SERVICES[k].map((s) => `<option>${s}</option>`).join('');
+  $('notes').placeholder = k === 'commercial' ? 'Logo ready? Deadline? Number of locations?' : 'Color you want, delivery date, existing damage...';
+}
+document.querySelectorAll('.door').forEach((d) => d.addEventListener('click', () => setKind(d.dataset.kind)));
+const params = new URLSearchParams(location.search);
+setKind(params.get('for') === 'business' ? 'commercial' : 'local');
+
+$('quote').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = $('msg'), btn = $('submit'); msg.textContent = '';
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  data.kind = KIND; data.consent = $('consent').checked;
+  if (KIND === 'commercial') data.coverage = 'Fleet / business';
+  data.source = 'V Performance page / ' + (params.get('src') || params.get('utm_source') || document.referrer || 'direct');
+  if (KIND === 'commercial' && !data.company.trim()) { msg.textContent = 'Please enter your business name.'; return; }
+  if (!data.name.trim() || data.phone.replace(/\D/g, '').length < 10) { msg.textContent = 'Please enter your name and a valid phone number.'; return; }
+  if (!data.consent) { msg.textContent = 'Please check the box so an installer can contact you.'; return; }
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    const r = await fetch('/api/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'Something went wrong. Please try again.');
+    $('formBody').innerHTML = '<div class="done"><h2>Got it, thanks!</h2><p class="meta">The V Performance team will reach out soon with your quote.</p></div>';
+  } catch (err) { msg.textContent = err.message; btn.disabled = false; btn.textContent = 'Get my free quote'; }
+});
+</script>
+</body>
+</html>

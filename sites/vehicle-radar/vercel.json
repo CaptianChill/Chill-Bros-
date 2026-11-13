@@ -1,0 +1,12 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/p/:token", "destination": "/portal" }
+  ],
+  "redirects": [
+    { "source": "/admin", "destination": "/owner", "permanent": false }
+  ],
+  "headers": [
+    { "source": "/(owner|portal|p/.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }, { "key": "Referrer-Policy", "value": "no-referrer" }] }
+  ]
+}
