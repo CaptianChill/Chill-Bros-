@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { db, body, clean, OWNER_LEAD_STATUSES, noStore } from './_util.js';
+import { db, body, clean, OWNER_LEAD_STATUSES, noStore, rateLimit, clientIp } from './_util.js';
 
 const CARD_STATUSES = ['new', 'working', 'sent', 'won', 'dead'];
 
@@ -7,15 +7,16 @@ const lines = (v) => clean(v, 4000).split('\n').map((s) => s.trim()).filter(Bool
 
 export default async function handler(req, res) {
   noStore(res);
+  if (!rateLimit(`owner:${clientIp(req)}`, 10, 10 * 60 * 1000)) return res.status(429).json({ error: 'Too many attempts. Please wait a few minutes and try again.' });
   if (!process.env.ADMIN_PIN || req.headers['x-admin-pin'] !== process.env.ADMIN_PIN) return res.status(401).json({ error: 'Wrong PIN' });
   const sql = db();
   try {
     if (req.method === 'GET') {
       const [leads, prospects, buyers, assignments] = await Promise.all([
         sql`SELECT * FROM leads ORDER BY created_at DESC LIMIT 1000`,
-        sql`SELECT * FROM prospects ORDER BY score, created_at DESC`,
-        sql`SELECT * FROM buyers ORDER BY created_at DESC`,
-        sql`SELECT * FROM assignments ORDER BY assigned_at DESC`,
+        sql`SELECT * FROM prospects ORDER BY score, created_at DESC LIMIT 2000`,
+        sql`SELECT * FROM buyers ORDER BY created_at DESC LIMIT 500`,
+        sql`SELECT * FROM assignments ORDER BY assigned_at DESC LIMIT 2000`,
       ]);
       return res.status(200).json({ leads, prospects, buyers, assignments });
     }
