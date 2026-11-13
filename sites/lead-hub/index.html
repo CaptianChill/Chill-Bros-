@@ -103,6 +103,15 @@ main.wrap::before{left:-10px} main.wrap::after{right:-10px;animation-delay:-8s}
 .art-leaf{right:max(-16px,calc(50% - 650px));bottom:-70px;opacity:.8;transform:rotate(-16deg)}
 header .wrap{z-index:2}
 @media(max-width:650px){.art-edge svg{width:105px;opacity:.45}.art-skull{top:65px;left:-40px}.art-cash{top:80px;right:-40px}.art-leaf{display:none}.gibam{position:relative;z-index:2}}
+
+/* Smooth, GPU-friendly smoke along the perimeter, never over interactive controls. */
+.smoke { position:fixed; inset:0; z-index:3; pointer-events:none; contain:layout paint; }
+.smoke::before,.smoke::after { content:"";position:absolute;top:-15%;bottom:-15%;width:65px;opacity:.5;filter:blur(13px);
+background:radial-gradient(ellipse at 20% 18%,transparent 25%,rgba(73,255,28,.75) 39%,transparent 55%),radial-gradient(ellipse at 80% 50%,transparent 22%,rgba(33,236,21,.65) 40%,transparent 58%),radial-gradient(ellipse at 25% 83%,transparent 20%,rgba(81,255,42,.7) 37%,transparent 58%);
+background-size:100% 72%;animation:smoke-scroll 28s ease-in-out infinite alternate;will-change:transform; }
+.smoke::before{left:-30px}.smoke::after{right:-30px;animation-delay:-14s;transform:scaleX(-1)}
+@keyframes smoke-scroll{from{translate:0 -4%;opacity:.35}to{translate:0 4%;opacity:.65}}
+@media(prefers-reduced-motion:reduce){.smoke::before,.smoke::after{animation:none}}
 </style>
 </head>
 <body>
