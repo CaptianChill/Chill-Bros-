@@ -140,8 +140,9 @@ section.s{padding:92px 0}
 .why span{font-size:13.5px;color:var(--mut)}
 
 /* gallery */
-.gal{columns:3 300px;column-gap:12px}
-.gal figure{margin:0 0 12px;position:relative;overflow:hidden;border-radius:12px;border:1px solid var(--line);break-inside:avoid;background:#0b0b0d}
+.gal{display:flex;flex-wrap:wrap;gap:12px}
+.gal::after{content:"";flex-grow:999}
+.gal figure{margin:0;position:relative;overflow:hidden;border-radius:12px;border:1px solid var(--line);background:#0b0b0d;flex-grow:calc(var(--r)*100);flex-basis:calc(var(--r)*290px)}
 .gal img{width:100%;height:auto;display:block;transition:transform .5s}
 .gal figure:hover img{transform:scale(1.03)}
 .gal figcaption{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,.75);border-left:3px solid var(--gold);padding:5px 10px;font-family:var(--hd);font-style:italic;font-weight:800;text-transform:uppercase;font-size:15px}
@@ -263,7 +264,7 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
   .about .grid,.quote .grid{grid-template-columns:1fr;gap:34px}
   .about .pics{height:380px}
   .why{grid-template-columns:1fr}
-  .gal{columns:2;column-gap:8px}.gal figure{margin-bottom:8px}.gal figcaption{font-size:13px;left:8px;bottom:8px}
+  .gal{gap:8px}.gal::after{display:none}.gal figure{flex-basis:calc(var(--r)*140px)}.gal figcaption{font-size:11px;left:6px;bottom:6px;padding:4px 7px;white-space:nowrap}
   form.q{padding:20px}.g2{grid-template-columns:1fr}
   footer .grid{grid-template-columns:1fr}
   footer{padding-bottom:96px}
@@ -339,13 +340,9 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
       <a class="btn y lg" href="#quote"><span style="display:inline-flex;gap:9px;align-items:center"><svg class="ic"><use href="#i-tool"/></svg>Get a Quote</span></a>
       <a class="btn w lg" href="#videos"><span style="display:inline-flex;gap:9px;align-items:center"><svg class="ic"><use href="#i-play"/></svg>Watch Our Work</span></a>
     </div>
-    <div class="trust">
-      <span><svg class="ic"><use href="#i-bolt"/></svg>Fast turnaround</span>
-      <span><svg class="ic"><use href="#i-shield"/></svg>Insurance claims handled</span>
-      <span><svg class="ic"><use href="#i-card"/></svg>$0-down financing</span>
-    </div>
   </div></div>
 </section>
+
 
 <nav class="strip" aria-label="Services"><div class="wrap">
   <a href="#services"><svg class="ic"><use href="#i-body"/></svg><b>Auto Body<br>&amp; Collision</b></a>
@@ -419,14 +416,11 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
     <p class="eyebrow">About V Performance</p>
     <h2 class="h-it">Where performance<br><span class="gold">meets style.</span></h2>
     <p>V Performance is a full-service auto repair, performance and customization shop on O'Connor Road in San Antonio. Bring in a daily driver that needs a fix, or a build you've been dreaming about. Either way, you're in the right garage.</p>
-    <p>We share the building with <b>MGC Car Audio</b>, so mechanical work and electronics happen in one stop.</p>
-    <div class="why">
+        <div class="why">
       <div><svg class="ic"><use href="#i-bolt"/></svg><p style="margin:0"><b>Fast turnaround</b><span>Same-day coilover fixes and misfire diagnoses.</span></p></div>
       <div><svg class="ic"><use href="#i-shield"/></svg><p style="margin:0"><b>Honest communication</b><span>Straight answers before any work starts.</span></p></div>
-      <div><svg class="ic"><use href="#i-tag"/></svg><p style="margin:0"><b>Competitive pricing</b><span>Flexible payment, $0-down financing.</span></p></div>
-      <div><svg class="ic"><use href="#i-audio"/></svg><p style="margin:0"><b>Audio next door</b><span>MGC Car Audio in the same building.</span></p></div>
-      <div><svg class="ic"><use href="#i-wifi"/></svg><p style="margin:0"><b>Free Wi-Fi</b><span>Get work done while you wait.</span></p></div>
-      <div><svg class="ic"><use href="#i-card"/></svg><p style="margin:0"><b>Insurance claims</b><span>Collision claims handled for you.</span></p></div>
+      <div><svg class="ic"><use href="#i-tag"/></svg><p style="margin:0"><b>Fair pricing</b><span>Competitive quotes and $0-down financing.</span></p></div>
+      <div><svg class="ic"><use href="#i-audio"/></svg><p style="margin:0"><b>One-stop shop</b><span>MGC Car Audio on site, free Wi-Fi while you wait.</span></p></div>
     </div>
   </div>
 </div></section>
@@ -435,19 +429,14 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
   <div class="sh"><div><p class="eyebrow">Gallery</p><h2 class="h-it">Straight from<br><span class="gold">the garage.</span></h2></div>
     <p>Real cars, real builds, real bays. Follow <a class="gold" href="https://www.instagram.com/vperformanceusa/" target="_blank" rel="noopener">@vperformanceusa</a> for the latest.</p></div>
   <div class="gal">
-    <figure><img src="/img/vp-purple-supra.webp" alt="Purple widebody Supra" width="1200" height="994" loading="lazy"><figcaption>Widebody Supra</figcaption></figure>
-    <figure><img src="/img/vp-hero.webp" alt="Green and yellow BMWs outside V Performance at sunset" width="1448" height="1086" loading="lazy"><figcaption>After hours</figcaption></figure>
-    <figure><img src="/img/vp-green-rear.webp" alt="Rear of the green BMW with a matte black spoiler" width="1200" height="1752" loading="lazy"><figcaption>Color change</figcaption></figure>
-    <figure><img src="/img/vp-m3-angel.webp" alt="Grey BMW M3 with yellow angel-eye headlights" width="1200" height="976" loading="lazy"><figcaption>BMW M3</figcaption></figure>
-    <figure><img src="/img/vp-praise-van.webp" alt="Praise Detailing van with full lettering" width="1200" height="1264" loading="lazy"><figcaption>Fleet lettering</figcaption></figure>
-    <figure><img src="/img/vp-green-install.webp" alt="Installers fitting green vinyl wrap on a BMW" width="1200" height="1686" loading="lazy"><figcaption>Wrap install</figcaption></figure>
-    <figure><img src="/img/vp-green-bmw.webp" alt="Finished green BMW with a matte black hood" width="1200" height="1077" loading="lazy"><figcaption>Green M Sport</figcaption></figure>
-    <figure><img src="/img/vp-praise-lettering.webp" alt="Close-up of Praise Detailing van lettering" width="1200" height="1269" loading="lazy"><figcaption>Business graphics</figcaption></figure>
-    <figure><img src="/img/vp-charger.webp" alt="Dodge Charger SRT with the hood up" width="1000" height="1265" loading="lazy"><figcaption>Charger SRT</figcaption></figure>
-    <figure><img src="/img/vp-supra-bay.webp" alt="Yellow Toyota Supra under the hex lights" width="900" height="1279" loading="lazy"><figcaption>Supra</figcaption></figure>
-    <figure><img src="/img/vp-camaro-headers.webp" alt="Camaro with long-tube headers" width="1000" height="1170" loading="lazy"><figcaption>Camaro SS</figcaption></figure>
-    <figure><img src="/img/vp-hex-bay.webp" alt="Install bay with hexagon lights" width="1400" height="902" loading="lazy"><figcaption>The bay</figcaption></figure>
-    <figure><img src="/img/vp-showroom.webp" alt="V Performance showroom" width="1000" height="1130" loading="lazy"><figcaption>The showroom</figcaption></figure>
+    <figure style="--r:1.207"><img src="/img/vp-purple-supra.webp" alt="Purple widebody Supra" width="1200" height="994" loading="lazy"><figcaption>Widebody Supra</figcaption></figure>
+    <figure style="--r:0.946"><img src="/img/vp-praise-lettering.webp" alt="Close-up of Praise Detailing van lettering" width="1200" height="1269" loading="lazy"><figcaption>Business graphics</figcaption></figure>
+    <figure style="--r:1.230"><img src="/img/vp-m3-angel.webp" alt="Grey BMW M3 with yellow angel-eye headlights" width="1200" height="976" loading="lazy"><figcaption>BMW M3</figcaption></figure>
+    <figure style="--r:0.685"><img src="/img/vp-green-rear.webp" alt="Rear of the green BMW with a matte black spoiler" width="1200" height="1752" loading="lazy"><figcaption>Color change</figcaption></figure>
+    <figure style="--r:1.114"><img src="/img/vp-green-bmw.webp" alt="Finished green BMW with a matte black hood" width="1200" height="1077" loading="lazy"><figcaption>Green M Sport</figcaption></figure>
+    <figure style="--r:0.949"><img src="/img/vp-praise-van.webp" alt="Praise Detailing van with full lettering" width="1200" height="1264" loading="lazy"><figcaption>Fleet lettering</figcaption></figure>
+    <figure style="--r:1.552"><img src="/img/vp-hex-bay.webp" alt="Install bay with hexagon lights" width="1400" height="902" loading="lazy"><figcaption>The bay</figcaption></figure>
+    <figure style="--r:0.791"><img src="/img/vp-charger.webp" alt="Dodge Charger SRT with the hood up" width="1000" height="1265" loading="lazy"><figcaption>Charger SRT</figcaption></figure>
   </div>
   <div class="ig-cta"><a class="btn o" href="https://www.instagram.com/vperformanceusa/" target="_blank" rel="noopener"><svg class="ic fill"><use href="#i-ig"/></svg>More builds on Instagram</a></div>
 </div></section>
@@ -460,11 +449,6 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
     <div class="contact-card">
       <div class="row"><svg class="ic"><use href="#i-phone"/></svg><div><small>Call or text</small><a class="big" href="tel:+12108573456">(210) 857-3456</a></div></div>
       <div class="row"><svg class="ic"><use href="#i-pin"/></svg><div><small>Visit the shop</small><a href="https://www.google.com/maps/search/?api=1&amp;query=V+Performance+13850+O%27Connor+Rd+San+Antonio+TX+78233" target="_blank" rel="noopener">13850 O'Connor Rd<br>San Antonio, TX 78233</a></div></div>
-      <div class="row"><svg class="ic"><use href="#i-cal"/></svg><div><small>Hours</small>Call or text for today's hours</div></div>
-      <div class="row"><svg class="ic fill"><use href="#i-ig"/></svg><div><small>Follow us</small><div class="socials" style="margin-top:6px">
-        <a href="https://www.instagram.com/vperformanceusa/" target="_blank" rel="noopener" aria-label="Instagram"><svg class="ic fill"><use href="#i-ig"/></svg></a>
-        <a href="https://www.facebook.com/VPerformanceUSA" target="_blank" rel="noopener" aria-label="Facebook"><svg class="ic fill"><use href="#i-fb"/></svg></a>
-        <a href="https://www.yelp.com/search?find_desc=V+Performance&amp;find_loc=13850+O%27Connor+Rd%2C+San+Antonio%2C+TX+78233" target="_blank" rel="noopener" aria-label="Yelp"><svg class="ic fill"><use href="#i-yelp"/></svg></a></div></div></div>
       <div class="acts"><a class="btn y" href="tel:+12108573456"><svg class="ic"><use href="#i-phone"/></svg>Call</a><a class="btn o" href="sms:+12108573456"><svg class="ic"><use href="#i-sms"/></svg>Text</a><a class="btn o" href="https://www.google.com/maps/dir/?api=1&amp;destination=13850+O%27Connor+Rd+San+Antonio+TX+78233" target="_blank" rel="noopener"><svg class="ic"><use href="#i-pin"/></svg>Directions</a></div>
       <div class="map"><iframe title="Map to V Performance" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=13850+O%27Connor+Rd,+San+Antonio,+TX+78233&amp;output=embed"></iframe></div>
     </div>
@@ -513,13 +497,6 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
   </form>
 </div></section>
 
-<section class="s" style="padding-top:20px"><div class="wrap faq">
-  <p class="eyebrow">Good to know</p>
-  <details><summary>Do you offer financing?</summary><p>Yes. Flexible payment options are available, including $0-down financing. Ask the shop when you call or come in.</p></details>
-  <details><summary>Can you handle my insurance claim?</summary><p>Yes. For collision and body work, V Performance can work through the insurance claim with you.</p></details>
-  <details><summary>How fast can you get my car done?</summary><p>Quick jobs like diagnostics and coilover fixes are often done the same day. Bigger builds depend on parts. You'll get a timeline with your quote.</p></details>
-  <details><summary>What vehicles do you work on?</summary><p>Import and domestic performance cars like BMW, Audi, Porsche, Corvette, Mustang and Supra, plus trucks, diesels and motorcycles.</p></details>
-</div></section>
 </main>
 
 <div class="checker"></div>
@@ -541,7 +518,7 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
       <li><a href="sms:+12108573456">Text the shop</a></li>
       <li><a href="https://www.google.com/maps/search/?api=1&amp;query=V+Performance+13850+O%27Connor+Rd+San+Antonio+TX+78233" target="_blank" rel="noopener">13850 O'Connor Rd<br>San Antonio, TX 78233</a></li></ul></div>
   </div>
-  <div class="legal"><span>© <span id="yr">2026</span> V Performance Auto Body · San Antonio, TX</span><span>Free Wi-Fi · Financing available · MGC Car Audio on site</span></div>
+  <div class="legal"><span>© <span id="yr">2026</span> V Performance Auto Body · San Antonio, TX</span><span>Performance · Tuning · Wraps · Body &amp; Collision</span></div>
 </div></footer>
 
 <div class="mbar">
