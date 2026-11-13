@@ -140,11 +140,10 @@ section.s{padding:92px 0}
 .why span{font-size:13.5px;color:var(--mut)}
 
 /* gallery */
-.gal{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:260px;gap:10px}
-.gal figure{margin:0;position:relative;overflow:hidden;border-radius:12px;border:1px solid var(--line)}
-.gal .tall{grid-row:span 2}.gal .wide{grid-column:span 2}
-.gal img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
-.gal figure:hover img{transform:scale(1.05)}
+.gal{columns:3 300px;column-gap:12px}
+.gal figure{margin:0 0 12px;position:relative;overflow:hidden;border-radius:12px;border:1px solid var(--line);break-inside:avoid;background:#0b0b0d}
+.gal img{width:100%;height:auto;display:block;transition:transform .5s}
+.gal figure:hover img{transform:scale(1.03)}
 .gal figcaption{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,.75);border-left:3px solid var(--gold);padding:5px 10px;font-family:var(--hd);font-style:italic;font-weight:800;text-transform:uppercase;font-size:15px}
 .ig-cta{display:flex;justify-content:center;margin-top:28px}
 
@@ -157,9 +156,9 @@ section.s{padding:92px 0}
 .vids .pts{list-style:none;padding:0;margin:0 0 26px;display:grid;gap:10px}
 .vids .pts li{display:flex;gap:10px;align-items:center;font-family:var(--hd);font-style:italic;font-weight:800;text-transform:uppercase;font-size:18px}
 .vids .pts .ic{width:20px;height:20px;color:var(--gold)}
-.reels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.reel{position:relative;margin:0;border-radius:16px;overflow:hidden;background:#000;border:1px solid #2a2a30;aspect-ratio:9/14;box-shadow:0 24px 60px rgba(0,0,0,.55)}
-.reel:nth-child(2){transform:translateY(34px)}
+.reels{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.reel{position:relative;margin:0;border-radius:16px;overflow:hidden;background:#000;border:1px solid #2a2a30;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.reel:nth-child(2){margin-top:60px}
 .reel video{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
 .reel::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,transparent 22%,transparent 62%,rgba(0,0,0,.88) 100%)}
 .reel figcaption{position:absolute;left:16px;right:62px;bottom:14px;z-index:2;pointer-events:none}
@@ -260,11 +259,11 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
   .vids .grid{grid-template-columns:1fr;gap:28px}
   .reels{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;margin:0 -22px;padding:0 22px 6px;scrollbar-width:none}
   .reels::-webkit-scrollbar{display:none}
-  .reel{flex:0 0 78%;scroll-snap-align:center}.reel:nth-child(2){transform:none}
+  .reel{flex:0 0 78%;scroll-snap-align:center}.reel:nth-child(2){margin-top:0;flex-basis:88%}
   .about .grid,.quote .grid{grid-template-columns:1fr;gap:34px}
   .about .pics{height:380px}
   .why{grid-template-columns:1fr}
-  .gal{grid-template-columns:1fr 1fr;grid-auto-rows:170px;grid-auto-flow:dense}.gal .wide{grid-column:span 2}
+  .gal{columns:2;column-gap:8px}.gal figure{margin-bottom:8px}.gal figcaption{font-size:13px;left:8px;bottom:8px}
   form.q{padding:20px}.g2{grid-template-columns:1fr}
   footer .grid{grid-template-columns:1fr}
   footer{padding-bottom:96px}
@@ -358,11 +357,11 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
 </div></nav>
 
 <div class="builds" aria-label="Featured builds">
-  <figure><img src="/img/vp-dyno.webp" alt="White Honda Civic Type R on the dyno with the hood up" width="1000" height="1487" loading="lazy"><figcaption><small>Dyno day</small>Tuned &amp; tested</figcaption></figure>
-  <figure><img src="/img/vp-mpower.webp" alt="Technician working on a BMW M Power engine" width="1000" height="1201" loading="lazy"><figcaption><small>BMW M</small>Engine work</figcaption></figure>
-  <figure><img src="/img/vp-r8.webp" alt="Black Audi R8 under the hexagon lights on the shop floor" width="1000" height="1377" loading="lazy"><figcaption><small>In the bay</small>Audi R8</figcaption></figure>
-  <figure><img src="/img/vp-camaro-headers.webp" alt="Blue Camaro with new long-tube headers on the hood" width="1000" height="1170" loading="lazy"><figcaption><small>Bolt-ons</small>Camaro headers</figcaption></figure>
-  <figure><img src="/img/vp-diagnostics.webp" alt="Technician running diagnostics on a Maserati" width="1000" height="1500" loading="lazy"><figcaption><small>Diagnostics</small>Quick &amp; honest</figcaption></figure>
+  <figure><img src="/img/vp-dyno.webp" alt="White Honda Civic Type R on the dyno with the hood up" width="1000" height="1487" loading="lazy" style="object-position:55% 55%"><figcaption><small>Dyno day</small>Tuned &amp; tested</figcaption></figure>
+  <figure><img src="/img/vp-mpower.webp" alt="Technician working on a BMW M Power engine" width="1000" height="1201" loading="lazy" style="object-position:50% 55%"><figcaption><small>BMW M</small>Engine work</figcaption></figure>
+  <figure><img src="/img/vp-r8.webp" alt="Black Audi R8 under the hexagon lights on the shop floor" width="1000" height="1377" loading="lazy" style="object-position:50% 68%"><figcaption><small>In the bay</small>Audi R8</figcaption></figure>
+  <figure><img src="/img/vp-camaro-headers.webp" alt="Blue Camaro with new long-tube headers on the hood" width="1000" height="1170" loading="lazy" style="object-position:50% 45%"><figcaption><small>Bolt-ons</small>Camaro headers</figcaption></figure>
+  <figure><img src="/img/vp-diagnostics.webp" alt="Technician running diagnostics on a Maserati" width="1000" height="1500" loading="lazy" style="object-position:70% 62%"><figcaption><small>Diagnostics</small>Quick &amp; honest</figcaption></figure>
 </div>
 <div class="bar-title">Featured Builds</div>
 
@@ -370,7 +369,7 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
   <div>
     <p class="eyebrow">Watch our work</p>
     <h2 class="h-it">See it<br><span class="gold">in motion.</span></h2>
-    <p class="lead">Watch a full color-change wrap come together in the bay, then take a walk through the V Performance showroom: the parts wall, the merch, the hex-lit install bay.</p>
+    <p class="lead">Watch a color-change wrap come together in the bay, then take a walk through the V Performance showroom: the parts wall, the merch, the hex-lit install bay.</p>
     <ul class="pts">
       <li><svg class="ic"><use href="#i-wrap"/></svg>Color-change wrap, start to finish</li>
       <li><svg class="ic"><use href="#i-wheel"/></svg>Parts, wheels &amp; performance in stock</li>
@@ -379,14 +378,13 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
     <a class="btn y" href="#quote"><svg class="ic"><use href="#i-tool"/></svg>Start your build</a>
   </div>
   <div class="reels">
-    <figure class="reel">
+    <figure class="reel" style="aspect-ratio:720/1162">
       <video src="/img/vp-wrap-build.mp4" poster="/img/vp-wrap-build.webp" muted loop playsinline preload="none" aria-label="Video: purple color-change wrap on a BMW Z4"></video>
       <span class="tag">Wrap build</span>
-      <button class="snd" type="button" aria-label="Turn sound on" aria-pressed="false"><svg class="ic"><use href="#i-mute"/></svg></button>
       <button class="pp" type="button" aria-label="Pause video"><svg class="ic"><use href="#i-pause"/></svg></button>
       <figcaption><small>Color change</small><b>Midnight purple Z4</b></figcaption>
     </figure>
-    <figure class="reel">
+    <figure class="reel" style="aspect-ratio:720/860">
       <video src="/img/vp-shop-tour.mp4" poster="/img/vp-shop-tour.webp" muted loop playsinline preload="none" aria-label="Video: walk-through of the V Performance showroom"></video>
       <span class="tag">Shop tour</span>
       <button class="pp" type="button" aria-label="Pause video"><svg class="ic"><use href="#i-pause"/></svg></button>
@@ -413,9 +411,9 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
 
 <section class="s about" id="about"><div class="wrap grid">
   <div class="pics">
-    <img src="/img/vp-supra-bay.webp" alt="Yellow Toyota Supra under the hexagon LED ceiling" width="900" height="1279" loading="lazy">
-    <img src="/img/vp-showroom.webp" alt="V Performance showroom with wheel wall and display cases" width="1000" height="1130" loading="lazy">
-    <img src="/img/vp-hex-bay.webp" alt="Green car under the hexagon lights in the install bay" width="1400" height="902" loading="lazy">
+    <img src="/img/vp-supra-bay.webp" alt="Yellow Toyota Supra under the hexagon LED ceiling" width="900" height="1279" loading="lazy" style="object-position:40% 78%">
+    <img src="/img/vp-showroom.webp" alt="V Performance showroom with wheel wall and display cases" width="1000" height="1130" loading="lazy" style="object-position:50% 35%">
+    <img src="/img/vp-green-install.webp" alt="Installers fitting green vinyl wrap on a BMW in the bay" width="1200" height="1686" loading="lazy" style="object-position:50% 12%">
   </div>
   <div>
     <p class="eyebrow">About V Performance</p>
@@ -437,13 +435,19 @@ footer .socials{margin-top:16px}footer .socials a{width:40px;height:40px}footer 
   <div class="sh"><div><p class="eyebrow">Gallery</p><h2 class="h-it">Straight from<br><span class="gold">the garage.</span></h2></div>
     <p>Real cars, real builds, real bays. Follow <a class="gold" href="https://www.instagram.com/vperformanceusa/" target="_blank" rel="noopener">@vperformanceusa</a> for the latest.</p></div>
   <div class="gal">
-    <figure class="tall"><img src="/img/vp-r8.webp" alt="Audi R8 on the checker floor" loading="lazy"><figcaption>Audi R8</figcaption></figure>
-    <figure class="wide"><img src="/img/vp-hero.webp" alt="BMWs outside V Performance at sunset" loading="lazy"><figcaption>After hours</figcaption></figure>
-    <figure class="tall"><img src="/img/vp-supra-bay.webp" alt="Toyota Supra under hex lights" loading="lazy"><figcaption>Supra</figcaption></figure>
-    <figure><img src="/img/vp-charger.webp" alt="Dodge Charger SRT with the hood up" loading="lazy"><figcaption>Charger SRT</figcaption></figure>
-    <figure><img src="/img/vp-camaro-headers.webp" alt="Camaro with headers" loading="lazy"><figcaption>Camaro SS</figcaption></figure>
-    <figure class="wide"><img src="/img/vp-hex-bay.webp" alt="Install bay with hexagon lights" loading="lazy"><figcaption>The bay</figcaption></figure>
-    <figure class="wide"><img src="/img/vp-showroom.webp" alt="V Performance showroom" loading="lazy"><figcaption>The showroom</figcaption></figure>
+    <figure><img src="/img/vp-purple-supra.webp" alt="Purple widebody Supra" width="1200" height="994" loading="lazy"><figcaption>Widebody Supra</figcaption></figure>
+    <figure><img src="/img/vp-hero.webp" alt="Green and yellow BMWs outside V Performance at sunset" width="1448" height="1086" loading="lazy"><figcaption>After hours</figcaption></figure>
+    <figure><img src="/img/vp-green-rear.webp" alt="Rear of the green BMW with a matte black spoiler" width="1200" height="1752" loading="lazy"><figcaption>Color change</figcaption></figure>
+    <figure><img src="/img/vp-m3-angel.webp" alt="Grey BMW M3 with yellow angel-eye headlights" width="1200" height="976" loading="lazy"><figcaption>BMW M3</figcaption></figure>
+    <figure><img src="/img/vp-praise-van.webp" alt="Praise Detailing van with full lettering" width="1200" height="1264" loading="lazy"><figcaption>Fleet lettering</figcaption></figure>
+    <figure><img src="/img/vp-green-install.webp" alt="Installers fitting green vinyl wrap on a BMW" width="1200" height="1686" loading="lazy"><figcaption>Wrap install</figcaption></figure>
+    <figure><img src="/img/vp-green-bmw.webp" alt="Finished green BMW with a matte black hood" width="1200" height="1077" loading="lazy"><figcaption>Green M Sport</figcaption></figure>
+    <figure><img src="/img/vp-praise-lettering.webp" alt="Close-up of Praise Detailing van lettering" width="1200" height="1269" loading="lazy"><figcaption>Business graphics</figcaption></figure>
+    <figure><img src="/img/vp-charger.webp" alt="Dodge Charger SRT with the hood up" width="1000" height="1265" loading="lazy"><figcaption>Charger SRT</figcaption></figure>
+    <figure><img src="/img/vp-supra-bay.webp" alt="Yellow Toyota Supra under the hex lights" width="900" height="1279" loading="lazy"><figcaption>Supra</figcaption></figure>
+    <figure><img src="/img/vp-camaro-headers.webp" alt="Camaro with long-tube headers" width="1000" height="1170" loading="lazy"><figcaption>Camaro SS</figcaption></figure>
+    <figure><img src="/img/vp-hex-bay.webp" alt="Install bay with hexagon lights" width="1400" height="902" loading="lazy"><figcaption>The bay</figcaption></figure>
+    <figure><img src="/img/vp-showroom.webp" alt="V Performance showroom" width="1000" height="1130" loading="lazy"><figcaption>The showroom</figcaption></figure>
   </div>
   <div class="ig-cta"><a class="btn o" href="https://www.instagram.com/vperformanceusa/" target="_blank" rel="noopener"><svg class="ic fill"><use href="#i-ig"/></svg>More builds on Instagram</a></div>
 </div></section>
@@ -559,7 +563,7 @@ addEventListener('scroll', () => {
   links.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + cur.id));
 }, { passive: true });
 
-// Videos: play when on screen, pause when off. Sound is opt-in (browsers block autoplay with sound).
+// Videos: silent, play when on screen, pause when scrolled away.
 const reels = [...document.querySelectorAll('.reel')];
 const setPP = (r) => { const v = r.querySelector('video'), b = r.querySelector('.pp'); b.innerHTML = `<svg class="ic"><use href="#i-${v.paused ? 'play' : 'pause'}"/></svg>`; b.setAttribute('aria-label', v.paused ? 'Play video' : 'Pause video'); };
 const play = (v) => { v.preload = 'auto'; const p = v.play(); if (p) p.catch(() => {}); };
@@ -568,12 +572,6 @@ reels.forEach((r) => {
   v.addEventListener('play', () => setPP(r)); v.addEventListener('pause', () => setPP(r));
   const toggle = () => { r.dataset.user = '1'; v.paused ? play(v) : v.pause(); };
   v.addEventListener('click', toggle); r.querySelector('.pp').addEventListener('click', toggle);
-  const s = r.querySelector('.snd');
-  if (s) s.addEventListener('click', () => {
-    v.muted = !v.muted; if (!v.muted) { reels.forEach((o) => { const ov = o.querySelector('video'); if (ov !== v) { ov.muted = true; const os = o.querySelector('.snd'); if (os) { os.classList.remove('on'); os.innerHTML = '<svg class="ic"><use href="#i-mute"/></svg>'; } } }); play(v); }
-    s.classList.toggle('on', !v.muted); s.setAttribute('aria-pressed', String(!v.muted)); s.setAttribute('aria-label', v.muted ? 'Turn sound on' : 'Turn sound off');
-    s.innerHTML = `<svg class="ic"><use href="#i-${v.muted ? 'mute' : 'sound'}"/></svg>`;
-  });
 });
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if ('IntersectionObserver' in window) {
