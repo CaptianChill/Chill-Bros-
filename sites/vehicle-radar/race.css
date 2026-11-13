@@ -49,7 +49,7 @@ body.race a { color:#EBC23F; }
 .race .toast { background:#000; border-left-color:#EBC23F; }
 .race .empty { color:#71717A; }
 /* Glowing hex LED strip used as a section divider */
-.hexled { height:46px; margin:8px 0 18px; opacity:.95;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='46' viewBox='0 0 52 46'%3E%3Cpath d='M13 2 L39 2 L51 23 L39 44 L13 44 L1 23 Z' fill='none' stroke='%23ffffff' stroke-width='2.6'/%3E%3C/svg%3E") repeat-x center/52px 46px;
-  filter:drop-shadow(0 0 4px rgba(255,255,255,.9)) drop-shadow(0 0 12px rgba(255,255,255,.45)); }
+.hexled { height:46px; margin:8px 0 18px; opacity:1;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='46' viewBox='0 0 52 46'%3E%3Cpath d='M13 2 L39 2 L51 23 L39 44 L13 44 L1 23 Z' fill='none' stroke='%23ffffff' stroke-width='3.2'/%3E%3C/svg%3E") repeat-x center/52px 46px;
+  filter:drop-shadow(0 0 3px #fff) drop-shadow(0 0 10px rgba(255,255,255,.95)) drop-shadow(0 0 22px rgba(235,194,63,.65)) drop-shadow(0 0 34px rgba(235,194,63,.35)); }
 .checker { height:10px; background:repeating-conic-gradient(#EBC23F 0 25%, #0A0A0C 0 50%) 0 0/20px 20px; }
