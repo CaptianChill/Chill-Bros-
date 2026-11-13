@@ -52,7 +52,7 @@ async function load() {
   D = await api('GET');
   sessionStorage.setItem('vr_pin', PIN);
   document.getElementById('tabs').hidden = false;
-  document.getElementById('who').textContent = 'Signed in';
+  document.getElementById('who').innerHTML = 'Signed in <button class="btn sm" id="signout" type="button">Sign out</button>';
   document.getElementById('n-cards').textContent = D.prospects.filter((p) => p.owner_status === 'new').length;
   document.getElementById('n-quotes').textContent = D.leads.filter((l) => l.status === 'new').length;
   document.getElementById('n-buyers').textContent = D.buyers.filter((b) => b.active).length;
@@ -167,6 +167,7 @@ function render() {
 document.addEventListener('click', async (e) => {
   const t = e.target.closest('button, a'); if (!t) return;
   const d = t.dataset;
+  if (t.id === 'signout') { sessionStorage.removeItem('vr_pin'); location.reload(); return; }
   if (d.t) { TAB = d.t; render(); }
   else if (d.cf) { CF = d.cf; render(); }
   else if (d.qf) { QF = d.qf; render(); }
