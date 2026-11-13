@@ -94,11 +94,21 @@ filter:blur(9px);animation:edge-flow 17s ease-in-out infinite alternate;}
 main.wrap::before{left:-10px} main.wrap::after{right:-10px;animation-delay:-8s}
 @keyframes edge-flow{from{transform:translateY(-3%) scaleX(.7);opacity:.55}to{transform:translateY(3%) scaleX(1.3);opacity:.95}}
 @media(prefers-reduced-motion:reduce){main.wrap::before,main.wrap::after{animation:none}}
+
+/* Decorative matte airbrush edge artwork, isolated from card UI. */
+.art-edge{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.art-edge svg{position:absolute;width:clamp(95px,17vw,245px);height:auto;filter:drop-shadow(0 0 14px rgba(55,255,33,.45))}
+.art-skull{left:max(-12px,calc(50% - 690px));top:10px;opacity:.87}
+.art-cash{right:max(-16px,calc(50% - 680px));top:30px;opacity:.85;transform:rotate(12deg)}
+.art-leaf{right:max(-16px,calc(50% - 650px));bottom:-70px;opacity:.8;transform:rotate(-16deg)}
+header .wrap{z-index:2}
+@media(max-width:650px){.art-edge svg{width:105px;opacity:.45}.art-skull{top:65px;left:-40px}.art-cash{top:80px;right:-40px}.art-leaf{display:none}.gibam{position:relative;z-index:2}}
 </style>
 </head>
 <body>
 <div class="smoke" aria-hidden="true"><i style="--top:5%;--duration:23s;--delay:-3s"></i><i style="--top:30%;--duration:29s;--delay:-12s"></i><i style="--top:58%;--duration:26s;--delay:-7s"></i><i style="--top:80%;--duration:34s;--delay:-18s"></i></div>
-<header>
+<header><div class="art-edge" aria-hidden="true">
+<svg class="art-skull" viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="sk" cx=".35" cy=".25"><stop stop-color="#a9ff81"/><stop offset=".6" stop-color="#4cba34"/><stop offset="1" stop-color="#0c4013"/></radialGradient></defs><path d="M45 92Q35 18 122 13Q216 14 209 100L192 153L178 177L180 216L154 240H85L61 217V175L43 151Z" fill="url(#sk)" stroke="#05280b" stroke-width="9"/><path d="M58 116Q76 79 109 119L92 150L60 146ZM130 119Q164 79 190 116L184 146L146 150Z" fill="#021807"/><path d="M118 143L100 177H139Z" fill="#05200a"/><path d="M74 190Q120 206 168 190L158 225H87Z" fill="#05220a"/><path d="M97 195V226M120 201V231M143 198V226" stroke="#77d45b" stroke-width="7"/><path d="M30 90Q6 115 28 154M213 90Q236 121 211 152" fill="none" stroke="#72f550" stroke-width="9" opacity=".7"/></svg><svg class="art-cash" viewBox="0 0 250 230" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-13 125 115)" stroke="#08320a" stroke-width="5"><rect x="20" y="55" width="185" height="104" rx="8" fill="#176c24"/><rect x="31" y="43" width="185" height="104" rx="8" fill="#42aa40"/><rect x="44" y="29" width="185" height="104" rx="8" fill="#8bdc64"/><rect x="61" y="43" width="150" height="76" rx="7" fill="none" stroke="#23762a" stroke-width="4"/><circle cx="134" cy="81" r="31" fill="#3a8b31"/><text x="134" y="98" font-size="53" text-anchor="middle" font-weight="900" fill="#c1ffa1" stroke="none">$</text><path d="M79 29V132M186 29V132" stroke="#d5e6aa" stroke-width="17"/></g></svg><svg class="art-leaf" viewBox="0 0 250 280" xmlns="http://www.w3.org/2000/svg"><g fill="#369a26" stroke="#0a4c13" stroke-width="4"><path d="M126 227Q98 160 117 20Q157 90 132 205Q177 65 228 58Q211 158 141 218Q218 138 241 169Q193 224 143 230Q176 236 185 254Q148 253 126 239Q97 256 66 254Q85 234 112 230Q38 231 9 170Q65 167 108 218Q26 157 23 62Q99 86 119 207Z"/></g><path d="M125 218L128 279" stroke="#81e35b" stroke-width="9"/><path d="M125 219L117 45M127 222L212 82M122 220L35 86" stroke="#9bff70" stroke-width="3" fill="none"/></svg></div>
   <div class="wrap">
     <span class="money-mark left" aria-hidden="true">$</span><span class="money-mark right" aria-hidden="true">$</span>
     <div class="gibam" aria-label="GIBAM">GIBAM</div>
