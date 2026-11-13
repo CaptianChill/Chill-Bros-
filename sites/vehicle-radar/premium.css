@@ -2,11 +2,11 @@
 body.race{--gold:#c9ae76;--pink:#c9ae76;--line:#343436;--muted:#aaa9a5;background:#101011;background-image:none;font-family:Inter,"Segoe UI",Arial,sans-serif;color:#f4f2ed}
 body.race a{color:#d3bb88}
 .race .brand b,.race h1,.race h2.sec,.race .name,.race .lc-head h3,.race .tab,.race .btn{font-style:normal;text-transform:none;letter-spacing:-.02em;text-shadow:none}
-.race .top{background:#101011;border-bottom:1px solid #303032}
+.race .top{position:relative;background:#101011;border-bottom:1px solid #303032}
 .race .top::after{display:none}
 .race .brand small{color:#c9ae76;letter-spacing:.15em}
 .race .brand b{font-size:21px;font-weight:600}
-.race .tabs{background:#171718;border-bottom:1px solid #303032;top:calc(74px + env(safe-area-inset-top))}
+.race .tabs{background:#171718;border-bottom:1px solid #303032;top:0}
 .race .tab{font-size:13px;font-weight:500;min-height:48px}
 .race .tab.on{color:#f5f1e8;border-bottom-color:#c9ae76;text-shadow:none}
 .race .panel,.race .stat,.race .lc,.race .login{background:#1a1a1c;border:1px solid #343436;border-radius:8px;box-shadow:none}
@@ -87,7 +87,8 @@ body.studio-site{background:#101011;color:#f4f2ed}
 .studio-site .quote-section{gap:60px}
 .quote-steps>div>span{color:#c9ae76;border-color:#514b3e}
 .quote-steps b{font-weight:500}
-.studio-site .door.on{border-color:#c9ae76;background:#c9ae7612;box-shadow:none}
+.studio-site .door.on{border-color:#c9ae76;background:#c9ae7612;color:#f4f2ed;box-shadow:none}
+.studio-site .door.on span{color:#c7bcaa}
 .studio-footer>div>p:not(.eyebrow){font-style:normal;font-weight:500;text-transform:none;letter-spacing:-.02em}
 .studio-footer{border-color:#343436}
 .studio-portal .pit-banner{grid-template-columns:1.15fr 1fr;min-height:300px;background:#19191b;border-color:#343436;border-radius:4px}
