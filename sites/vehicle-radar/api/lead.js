@@ -1,7 +1,8 @@
-import { db, body, clean } from './_util.js';
+import { db, body, clean, rateLimit, clientIp } from './_util.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!rateLimit(`lead:${clientIp(req)}`, 5, 60 * 60 * 1000)) return res.status(429).json({ error: 'Too many requests. Please try again in a bit.' });
   const b = body(req);
   if (b.website) return res.status(200).json({ ok: true }); // honeypot
   const kind = b.kind === 'commercial' ? 'commercial' : 'local';
