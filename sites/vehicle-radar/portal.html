@@ -16,12 +16,14 @@
 <link rel="manifest" href="/portal.webmanifest">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="stylesheet" href="/interface.css?v=2">
+<link rel="stylesheet" href="/studio.css?v=3">
 </head>
-<body class="race workspace portal-workspace">
+<body class="race workspace portal-workspace studio-portal">
 <header class="top"><div class="in">
-  <div style="display:flex;align-items:center;gap:12px"><img id="shopLogo" src="/vp-logo.webp" alt="" hidden style="height:52px;width:auto;border-radius:8px"><div class="brand"><small id="shop">Lead Portal</small><b id="shopName">Pit Lane</b></div></div>
+  <div style="display:flex;align-items:center;gap:12px"><img id="shopLogo" src="/img/official-logo.png" alt="" hidden style="height:72px;width:auto"><div class="brand"><small id="shop">Lead Portal</small><b id="shopName">Pit Lane</b></div></div>
   <div class="who" id="who"></div>
 </div></header>
+<section class="pit-banner" id="pit-banner" hidden><div class="pit-banner-copy"><p class="eyebrow">V PERFORMANCE / PARTNER WORKSPACE</p><h1>Your garage.<br><em>Your next move.</em></h1><p>Good builds start with a conversation.<br>Keep every lead, quote and next step in view.</p><div class="pit-links"><a class="btn gold" href="/vperformance" target="_blank" rel="noreferrer">Open customer page ↗</a><button class="btn" type="button" id="refresh-leads">Refresh leads ↻</button></div><svg class="led-art" viewBox="0 0 500 250" fill="none" aria-hidden="true"><g stroke="currentColor" stroke-width="2"><path d="M50 12h80l40 69-40 69H50L10 81Z M170 81h80l40 69-40 69h-80l-40-69Z M290 12h80l40 69-40 69h-80l-40-69Z M410 81h80l40 69-40 69h-80l-40-69Z"/><path opacity=".4" d="M50 12 10-57m120 69 40-69M50 150 10 219m120-69 40 69m120-69-40 69m120-69 40 69"/></g></svg></div><div class="pit-banner-photo"><div class="photo-crop "><img src="/img/corvette-hd.webp" alt="Black Corvette beneath the V Performance hexagon lights" width="1320" height="2868" fetchpriority="high"></div><div class="pit-photo-tag">THE GARAGE / SAN ANTONIO</div></div></section>
 <nav class="tabs" id="tabs" hidden><div class="in">
   <button class="tab on" data-t="cards">Business Leads <span class="n" id="n-cards">0</span></button>
   <button class="tab" data-t="quotes">Customer Quotes <span class="n" id="n-quotes">0</span></button>
@@ -33,7 +35,7 @@
 const { esc, tel, when, pill, toast, card } = VR;
 const TOKEN = location.pathname.split('/p/')[1]?.split(/[/?#]/)[0] || new URLSearchParams(location.search).get('t') || '';
 const STATUSES = ['new', 'contacted', 'quoted', 'booked', 'lost'];
-let D = { buyer: {}, leads: [], cards: [] }, TAB = 'cards', F = 'open';
+let D = { buyer: {}, leads: [], cards: [] }, TAB = 'cards', F = 'open', SEARCH = '';
 // Closing script for a customer quote, written for the service they asked for.
 function closer(l) {
   const first = String(l.name || '').trim().split(/\s+/)[0] || 'there';
@@ -61,6 +63,7 @@ async function load() {
   try { D = await api('GET'); }
   catch (e) { document.getElementById('app').innerHTML = `<div class="login" style="text-align:center"><b style="font-size:18px">Link not active</b><p class="meta">${esc(e.message)}</p></div>`; return; }
   document.getElementById('tabs').hidden = false;
+  document.getElementById('pit-banner').hidden = !/v\s*performance/i.test(D.buyer.business_name);
   document.getElementById('shopName').textContent = D.buyer.business_name;
   if (/v\s*performance/i.test(D.buyer.business_name)) { const lg = document.getElementById('shopLogo'); lg.hidden = false; lg.alt = D.buyer.business_name; }
   document.getElementById('shop').textContent = 'Lead Portal · Pit Lane';
@@ -75,7 +78,7 @@ async function save(kind, id) {
   const status = document.getElementById(`s-${kind}-${id}`).value, notes = document.getElementById(`n-${kind}-${id}`).value;
   try { await api('POST', { kind, id, status, notes }); toast('Saved'); await load(); } catch (e) { toast(e.message); }
 }
-const filt = (arr) => arr.filter((x) => F === 'all' || (F === 'open' ? !['booked', 'lost'].includes(x.buyer_status) : x.buyer_status === F));
+const filt = (arr) => arr.filter((x) => (F === 'all' || (F === 'open' ? !['booked', 'lost'].includes(x.buyer_status) : x.buyer_status === F)) && [x.name,x.company,x.vehicle,x.service,x.need,x.type].join(' ').toLowerCase().includes(SEARCH.toLowerCase()));
 const chips = (arr) => ['open', ...STATUSES, 'all'].map((s) => {
   const n = s === 'all' ? arr.length : s === 'open' ? arr.filter((x) => !['booked', 'lost'].includes(x.buyer_status)).length : arr.filter((x) => x.buyer_status === s).length;
   return `<button class="chip ${F === s ? 'on' : ''}" data-f="${s}">${s[0].toUpperCase() + s.slice(1)} (${n})</button>`;
@@ -119,14 +122,20 @@ function results() {
 }
 function render() {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.t === TAB));
-  document.getElementById('app').innerHTML = { cards, quotes, results }[TAB]();
+  const all = [...D.cards, ...D.leads];
+  const count = (s) => all.filter(x => x.buyer_status === s).length;
+  const summary = '<div class="pit-stats"><div><span>NEEDS A FIRST TOUCH</span><b>'+count('new')+'</b><small>New opportunities</small></div><div><span>CONVERSATIONS IN MOTION</span><b>'+(count('contacted')+count('quoted'))+'</b><small>Contacted &amp; quoted</small></div><div><span>BUILDS ON THE BOARD</span><b>'+count('booked')+'</b><small>Booked leads</small></div></div>';
+  const search = TAB === 'results' ? '' : '<form class="pit-search" id="lead-search"><label for="search-leads">Find an opportunity</label><div><input id="search-leads" type="search" value="'+esc(SEARCH)+'" placeholder="Search name, vehicle or service"><button class="btn" type="submit">Search</button></div></form>';
+  document.getElementById('app').innerHTML = summary + search + { cards, quotes, results }[TAB]();
 }
 document.addEventListener('click', (e) => {
   const t = e.target.closest('button'); if (!t) return;
-  if (t.dataset.t) { TAB = t.dataset.t; F = 'open'; render(); window.scrollTo(0, 0); }
+  if (t.id === 'refresh-leads') { load(); }
+  else if (t.dataset.t) { TAB = t.dataset.t; F = 'open'; SEARCH = ''; render(); window.scrollTo(0, 0); }
   else if (t.dataset.f) { F = t.dataset.f; render(); }
   else if (t.dataset.save) { const [k, id] = t.dataset.save.split(':'); save(k, id); }
 });
+document.addEventListener('submit', e => { if(e.target.id === 'lead-search'){e.preventDefault();SEARCH=document.getElementById('search-leads').value.trim();render();} });
 load();
 </script>
 </body>
