@@ -15,8 +15,9 @@
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="manifest" href="/portal.webmanifest">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="stylesheet" href="/interface.css">
 </head>
-<body class="race">
+<body class="race workspace portal-workspace">
 <header class="top"><div class="in">
   <div style="display:flex;align-items:center;gap:12px"><img id="shopLogo" src="/vp-logo.webp" alt="" hidden style="height:52px;width:auto;border-radius:8px"><div class="brand"><small id="shop">Lead Portal</small><b id="shopName">Pit Lane</b></div></div>
   <div class="who" id="who"></div>
@@ -41,7 +42,7 @@ function closer(l) {
   }
   const car = l.vehicle ? `your ${l.vehicle}` : 'your vehicle';
   const svc = String(l.service || '');
-  const when = /week/i.test(l.timeline || '') ? 'I can get you in this week.' : 'I can lock in a date that works for you.';
+  const when = 'Let’s check the shop schedule for a date that works for you.';
   let pitch, ask;
   if (/fleet|business/i.test(svc)) { pitch = `A full branded wrap turns every truck into a billboard. We handle design proofs, print and install, and we can do one vehicle at a time so you're never short a truck.`; ask = `How many vehicles are we wrapping, and do you have a logo file I can start the proof with?`; }
   else if (/chrome|accent/i.test(svc)) { pitch = `A chrome delete or accent wrap is a quick, clean change. It's usually done in a day and fully removable later without touching the paint.`; ask = `Which pieces do you want done, gloss black or satin?`; }

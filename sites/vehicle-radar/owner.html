@@ -9,8 +9,9 @@
 <meta name="apple-mobile-web-app-title" content="Vehicle Radar">
 <title>Vehicle Radar · Owner</title>
 <link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/interface.css">
 </head>
-<body>
+<body class="workspace owner-workspace">
 <header class="top"><div class="in">
   <div class="brand"><small>Vehicle Radar</small><b>Owner Console</b></div>
   <div class="who" id="who"></div>
@@ -23,8 +24,8 @@
 </div></nav>
 <main id="app">
   <div class="login">
-    <b style="font-size:18px">Owner sign-in</b>
-    <p class="meta">Enter your PIN.</p>
+    <p class="eyebrow">VEHICLE RADAR / MISSION CONTROL</p><h1 style="font-size:28px;margin:10px 0">Welcome back.</h1>
+    <p class="meta">Your leads, buyers and next opportunities in one place.</p><label class="f" for="pin">Owner PIN</label>
     <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="12">
     <button class="btn gold" id="go" style="width:100%">Open console</button>
     <p class="err" id="lerr"></p>
