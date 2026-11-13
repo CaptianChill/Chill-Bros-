@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0B1E33">
+<title>Design preview · Revenue Radar and Lead Business</title>
+<style>
+  :root { --navy:#0B1E33; --panel:#102A44; --ice:#7FD4FF; --gold:#F5C542; --pink:#FF3F72; --off:#F7F5EF; --ink:#0B1E33; --muted:#5A6B7D; --line:#E4E1D8; --acc:var(--ice); }
+  * { box-sizing:border-box; } html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--off); color:var(--ink); font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding-bottom:calc(84px + env(safe-area-inset-bottom)); }
+  button { font:inherit; cursor:pointer; }
+  .note { background:var(--gold); color:var(--navy); text-align:center; font-size:12.5px; font-weight:700; padding:7px 12px; }
+  .pick { background:var(--navy); padding:10px 12px; display:flex; gap:8px; overflow-x:auto; position:sticky; top:0; z-index:9; }
+  .pick button { flex:0 0 auto; border:1px solid rgba(255,255,255,.18); background:transparent; color:#C9D6E3; border-radius:999px; padding:8px 14px; font-weight:700; font-size:13px; }
+  .pick button.on { background:#fff; color:var(--navy); border-color:#fff; }
+  header.h { background:var(--navy); color:#fff; padding:22px 18px 54px; }
+  .in { max-width:760px; margin:0 auto; }
+  .eyebrow { color:var(--acc); font-size:11px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; }
+  h1 { margin:6px 0 2px; font-size:28px; letter-spacing:-.02em; } header p { margin:0; color:#C9D6E3; }
+  main { max-width:760px; margin:-38px auto 0; padding:0 14px; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  @media (max-width:560px){ .stats { grid-template-columns:repeat(2,1fr); } }
+  .stat { background:#fff; border-radius:16px; padding:14px; box-shadow:0 6px 20px rgba(11,30,51,.08); }
+  .stat b { display:block; font-size:26px; letter-spacing:-.02em; } .stat span { color:var(--muted); font-size:12.5px; }
+  h2 { font-size:13px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:26px 4px 10px; }
+  .card { background:#fff; border-radius:18px; padding:16px; box-shadow:0 6px 20px rgba(11,30,51,.07); margin-bottom:12px; }
+  .hero { border-top:5px solid var(--acc); }
+  .row { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+  .name { font-weight:800; font-size:18px; letter-spacing:-.01em; } .meta { color:var(--muted); font-size:13px; margin-top:3px; }
+  .badge { flex:0 0 auto; font-size:11px; font-weight:800; padding:4px 10px; border-radius:999px; background:var(--off); }
+  .badge.hot { background:var(--pink); color:#fff; } .badge.warm { background:var(--gold); } .badge.ok { background:#DDF5E9; color:#12693F; } .badge.blue { background:#E3F6FF; }
+  .why { background:var(--off); border-radius:12px; padding:11px 12px; margin:12px 0; font-size:14px; }
+  .why b { display:block; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
+  .cta { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:8px; }
+  .btn { border:0; border-radius:12px; min-height:48px; font-weight:800; background:var(--off); color:var(--ink); }
+  .btn.main { background:var(--navy); color:#fff; } .btn.go { background:var(--acc); color:var(--navy); }
+  .out { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .out button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:7px 12px; font-size:13px; font-weight:700; }
+  .out button.sel { background:var(--navy); color:#fff; border-color:var(--navy); }
+  .li { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0; border-top:1px solid var(--line); }
+  .li:first-child { border-top:0; padding-top:0; } .li:last-child { padding-bottom:0; }
+  .chips { display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; padding-bottom:2px; }
+  .chips span { flex:0 0 auto; background:#fff; border:1px solid var(--line); border-radius:999px; padding:6px 12px; font-size:13px; font-weight:700; }
+  .chips span.on { background:var(--navy); color:#fff; border-color:var(--navy); }
+  .bar { height:8px; border-radius:99px; background:var(--off); overflow:hidden; margin-top:8px; } .bar i { display:block; height:100%; background:var(--acc); border-radius:99px; }
+  nav.b { position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line); display:flex; justify-content:space-around; padding:8px 6px calc(8px + env(safe-area-inset-bottom)); z-index:8; }
+  nav.b div { text-align:center; font-size:11px; font-weight:700; color:var(--muted); min-width:56px; }
+  nav.b div i { display:block; width:26px; height:26px; margin:0 auto 3px; border-radius:9px; background:var(--off); }
+  nav.b div.on { color:var(--navy); } nav.b div.on i { background:var(--acc); }
+</style>
+</head>
+<body>
+<div class="note">Design preview with sample data. Not connected to your live leads yet.</div>
+<div class="pick" id="pick"></div>
+<div id="screen"></div>
+<script>
+const S = {
+  radar: { acc:'#7FD4FF', eye:'Chill Pros · Revenue Radar', title:'Today', sub:'6 calls to make. Start with the one on top.',
+    stats:[['6','Calls today'],['3','Follow-ups due'],['4','Open quotes'],['2','Won this month']],
+    nav:['Today','Leads','Pipeline','Tasks','More'],
+    body:() => `<h2>Next best call</h2>
+      <div class="card hero"><div class="row"><div><div class="name">Sample Taqueria (example)</div><div class="meta">Restaurant · North Central · walk-in cooler + 2 ice machines</div></div><span class="badge hot">HOT</span></div>
+        <div class="why"><b>Why now</b>Opened 14 months ago, no service contract on file, summer equipment is due for maintenance.</div>
+        <div class="why"><b>Say this</b>"Hi, this is Brae with Chill Pros. We service walk-ins and ice machines for restaurants near you. Who handles your refrigeration when something goes down?"</div>
+        <div class="cta"><button class="btn main">Call</button><button class="btn">Text</button><button class="btn">Skip</button></div>
+        <div class="out" id="out">${['No answer','Call back','Quote sent','Booked','Not interested','Do not call'].map(o=>`<button>${o}</button>`).join('')}</div></div>
+      <h2>Up next</h2><div class="card">${[['Sample Hotel (example)','Hotel · 3 rooftop units','warm','WARM'],['Sample Grocery (example)','Grocery · reach-in coolers','warm','WARM'],['Sample Bar & Grill (example)','Bar · ice machine, fryer','blue','FOLLOW-UP']].map(r=>`<div class="li"><div><b>${r[0]}</b><div class="meta">${r[1]}</div></div><span class="badge ${r[2]}">${r[3]}</span></div>`).join('')}</div>
+      <h2>Pipeline</h2><div class="card">${[['New',12,60],['Contacted',7,38],['Quote sent',4,22],['Won',2,12]].map(p=>`<div style="margin-bottom:12px"><div class="row"><b>${p[0]}</b><span class="meta">${p[1]}</span></div><div class="bar"><i style="width:${p[2]}%"></i></div></div>`).join('')}</div>` },
+  lead: { acc:'#F5C542', eye:'Lead Business · Owner', title:'Lead packs', sub:'Projects ready to sell, orders and buyers in one view.',
+    stats:[['22','Projects ready'],['3','Orders this week'],['41','Buyers to call'],['1','Needs you']],
+    nav:['Home','Projects','Orders','Buyers','More'],
+    body:() => `<h2>Needs you</h2>
+      <div class="card hero"><div class="row"><div><div class="name">Order needs a trade</div><div class="meta">Starter Pack · buyer did not say which trade</div></div><span class="badge hot">ACTION</span></div>
+        <div class="cta" style="margin-top:12px"><button class="btn main">Pick trade</button><button class="btn">Email buyer</button><button class="btn">Refund</button></div></div>
+      <h2>Projects by trade</h2><div class="chips">${['All 22','Plumbers 9','Electricians 8','Cleaning 11','Signs 7','HVAC/R 6','Security 5'].map((c,i)=>`<span class="${i?'':'on'}">${c}</span>`).join('')}</div>
+      <div class="card">${[['Restaurant buildout (example)','Southeast · opens Spring 2027','2 of 3 sold'],['Retail shell finish-out (example)','Stone Oak · opens Jan 2027','0 of 3 sold'],['Auto service bay (example)','West side · opens Feb 2027','1 of 3 sold']].map(r=>`<div class="li"><div><b>${r[0]}</b><div class="meta">${r[1]}</div></div><span class="badge">${r[2]}</span></div>`).join('')}</div>
+      <h2>Recent orders</h2><div class="card">${[['Growth Pack · Plumber','13 projects','ok','DELIVERED'],['Trade Pack · Sign shop','9 projects','ok','DELIVERED'],['Starter Pack','5 projects','warm','WAITING']].map(r=>`<div class="li"><div><b>${r[0]}</b><div class="meta">${r[1]}</div></div><span class="badge ${r[2]}">${r[3]}</span></div>`).join('')}</div>` },
+  buyer: { acc:'#FF3F72', eye:'San Antonio New Openings', title:'Your projects', sub:'9 projects in your pack. Call within 48 hours for the best shot.',
+    stats:[['9','Projects'],['4','Called'],['2','Quoted'],['1','Won']],
+    nav:['Projects','Called','Won','Download','Help'],
+    body:() => `<h2>Call these first</h2>
+      <div class="card hero"><div class="row"><div><div class="name">Restaurant buildout (example)</div><div class="meta">Southeast San Antonio · opens Spring 2027</div></div><span class="badge hot">CALL NOW</span></div>
+        <div class="why"><b>Who to ask for</b>Owner or tenant contact · (210) 555-0100</div>
+        <div class="why"><b>Open with</b>"I saw your new location is under construction. Who is handling your plumbing rough-in and grease trap?"</div>
+        <div class="cta"><button class="btn go">Call</button><button class="btn">Text</button><button class="btn">Notes</button></div>
+        <div class="out" id="out">${['Not called','No answer','Talked','Quoted','Won','Lost'].map(o=>`<button>${o}</button>`).join('')}</div></div>
+      <div class="card">${[['Retail shell finish-out (example)','Stone Oak · opens Jan 2027','blue','TALKED'],['Auto service bay (example)','West side · opens Feb 2027','','NOT CALLED'],['Coffee shop (example)','Downtown · opens Mar 2027','warm','QUOTED']].map(r=>`<div class="li"><div><b>${r[0]}</b><div class="meta">${r[1]}</div></div><span class="badge ${r[2]}">${r[3]}</span></div>`).join('')}</div>
+      <h2>Your pack</h2><div class="card"><div class="row"><b>Trade Pack · 9 projects</b><span class="meta">4 of 9 called</span></div><div class="bar"><i style="width:44%"></i></div><button class="btn" style="width:100%;margin-top:14px">Download spreadsheet</button></div>` },
+};
+const TABS = [['radar','Revenue Radar (you)'],['lead','Lead Business (you)'],['buyer','Buyer portal (contractor)']];
+function show(k) {
+  const s = S[k]; document.documentElement.style.setProperty('--acc', s.acc);
+  document.getElementById('pick').innerHTML = TABS.map(t=>`<button class="${t[0]===k?'on':''}" data-k="${t[0]}">${t[1]}</button>`).join('');
+  document.getElementById('screen').innerHTML = `<header class="h"><div class="in"><div class="eyebrow">${s.eye}</div><h1>${s.title}</h1><p>${s.sub}</p></div></header>
+    <main><div class="stats">${s.stats.map(x=>`<div class="stat"><b>${x[0]}</b><span>${x[1]}</span></div>`).join('')}</div>${s.body()}</main>
+    <nav class="b">${s.nav.map((n,i)=>`<div class="${i?'':'on'}"><i></i>${n}</div>`).join('')}</nav>`;
+  window.scrollTo(0,0);
+}
+document.addEventListener('click', e => {
+  const p = e.target.closest('#pick button'); if (p) return show(p.dataset.k);
+  const o = e.target.closest('#out button'); if (o) { o.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('sel')); o.classList.add('sel'); }
+});
+show(new URLSearchParams(location.search).get('s') || 'radar');
+</script>
+</body>
+</html>
