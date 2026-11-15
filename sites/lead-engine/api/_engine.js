@@ -4,6 +4,8 @@ const OVERPASS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+  "https://overpass.osm.jp/api/interpreter",
 ];
 const UA = "LeadEngine/1.0 (San Antonio local business research; read-only)";
 const SOCIAL = /(facebook\.com|fb\.com|instagram\.com|yelp\.com|linktr\.ee|tiktok\.com|google\.com\/maps|business\.site|maps\.app\.goo\.gl|nextdoor\.com|mapquest\.com)/i;
@@ -24,7 +26,7 @@ async function overpassBox(profile, box, deadline, offset = 0) {
   const errors = [];
   for (let k = 0; k < OVERPASS.length; k++) {
     const url = OVERPASS[(k + offset) % OVERPASS.length];
-    const budget = Math.min(28000, deadline - Date.now() - 15000);
+    const budget = Math.min(20000, deadline - Date.now() - 12000);
     if (budget < 5000) break;
     try {
       const r = await fetch(url, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": UA, accept: "application/json" }, body: new URLSearchParams({ data: query }), signal: AbortSignal.timeout(budget) });
