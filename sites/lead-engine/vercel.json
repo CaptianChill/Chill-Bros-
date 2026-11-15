@@ -1,1 +1,1 @@
-{ "functions": { "api/scan.js": { "maxDuration": 120 } } }
+{ "functions": { "api/scan.js": { "maxDuration": 240 } } }

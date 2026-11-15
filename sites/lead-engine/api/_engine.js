@@ -18,22 +18,37 @@ export function km(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-export async function overpass(profile, deadline) {
-  const b = `${SA_BOX.south},${SA_BOX.west},${SA_BOX.north},${SA_BOX.east}`;
-  const query = `[out:json][timeout:60];(${profile.overpass(b)});out tags center 5000;`;
+async function overpassBox(profile, box, deadline, offset = 0) {
+  const b = `${box.south},${box.west},${box.north},${box.east}`;
+  const query = `[out:json][timeout:45];(${profile.overpass(b)});out tags center 4000;`;
   const errors = [];
-  for (const url of OVERPASS) {
-    const budget = Math.min(70000, deadline - Date.now() - 5000);
+  for (let k = 0; k < OVERPASS.length * 2; k++) {
+    const url = OVERPASS[(k + offset) % OVERPASS.length];
+    const budget = Math.min(50000, deadline - Date.now() - 5000);
     if (budget < 5000) break;
     try {
       const r = await fetch(url, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": UA, accept: "application/json" }, body: new URLSearchParams({ data: query }), signal: AbortSignal.timeout(budget) });
-      if (!r.ok) { errors.push(`${new URL(url).hostname} ${r.status}`); continue; }
+      if (!r.ok) { errors.push(`${new URL(url).hostname} ${r.status}`); await new Promise((z) => setTimeout(z, 1500)); continue; }
       const j = await r.json();
       if (Array.isArray(j.elements) && !j.remark) return { elements: j.elements, source: new URL(url).hostname };
-      errors.push(`${new URL(url).hostname} partial: ${j.remark ?? "no elements"}`);
+      errors.push(`${new URL(url).hostname} partial`);
     } catch (e) { errors.push(`${new URL(url).hostname} ${e.name}`); }
   }
-  throw new Error(`Map source unavailable: ${errors.join("; ")}`);
+  throw new Error(errors.join("; "));
+}
+
+// Splits the metro box into n x n tiles so heavy categories (restaurants) don't overload the free map servers.
+export async function overpass(profile, deadline) {
+  const n = profile.tiles ?? 1;
+  const tiles = [];
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const dLat = (SA_BOX.north - SA_BOX.south) / n, dLon = (SA_BOX.east - SA_BOX.west) / n;
+    tiles.push({ south: SA_BOX.south + i * dLat, north: SA_BOX.south + (i + 1) * dLat, west: SA_BOX.west + j * dLon, east: SA_BOX.west + (j + 1) * dLon });
+  }
+  const results = await pool(tiles, 3, (t, k) => overpassBox(profile, t, deadline, k).catch((e) => ({ error: e.message })));
+  const ok = results.filter((r) => r.elements);
+  if (!ok.length) throw new Error(`Map source unavailable: ${results.map((r) => r.error).join(" | ")}`);
+  return { elements: ok.flatMap((r) => r.elements), source: [...new Set(ok.map((r) => r.source))].join(", "), tilesOk: ok.length, tiles: tiles.length };
 }
 
 const pick = (t, ...keys) => { for (const k of keys) if (t[k]) return t[k]; return null; };
@@ -201,7 +216,7 @@ export async function runScan({ profileId, limit = 50, enrich = 80, budgetMs = 1
   const profile = PROFILES[profileId];
   if (!profile) throw new Error(`Unknown profile ${profileId}`);
   const deadline = Date.now() + budgetMs;
-  const { elements, source } = await overpass(profile, deadline);
+  const { elements, source, tilesOk, tiles } = await overpass(profile, deadline);
 
   // De-duplicate (same name within ~150 m) and drop unnamed.
   const seen = new Map();
@@ -228,7 +243,7 @@ export async function runScan({ profileId, limit = 50, enrich = 80, budgetMs = 1
   const ranked = [...rescored, ...rest].sort((a, b) => b.score - a.score).slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
   return {
     profile: { id: profile.id, label: profile.label, offer: profile.offer, weights: profile.weights },
-    found: elements.length, unique: leads.length, eligible: prelim.length, audited: top.length, source,
+    found: elements.length, coverage: tiles ? `${tilesOk}/${tiles} map tiles` : "full", unique: leads.length, eligible: prelim.length, audited: top.length, source,
     generatedAt: new Date().toISOString(), leads: ranked,
   };
 }

@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   const limit = Math.min(300, Number(url.searchParams.get("limit") ?? 60));
   const enrich = Math.min(150, Number(url.searchParams.get("enrich") ?? 90));
   try {
-    const result = await runScan({ profileId, limit, enrich, budgetMs: 105000, includeChains: url.searchParams.get("chains") === "1" });
+    const result = await runScan({ profileId, limit, enrich, budgetMs: 220000, includeChains: url.searchParams.get("chains") === "1" });
     res.setHeader("cache-control", "no-store");
     if (url.searchParams.get("format") === "csv") {
       res.setHeader("content-type", "text/csv; charset=utf-8");
