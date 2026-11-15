@@ -168,15 +168,15 @@ export function scoreLead(profile, lead, web) {
     why.push(...need.notes, sub.kind, `reach: ${reach.note}`);
   } else {
     const hrs = hoursProfile(lead.hours);
-    f.load = sub.value; f.independence = never ? 0 : chain ? 20 : 100;
+    f.load = sub.value; f.independence = never ? 0 : chain ? 15 : web.multiLocation ? 60 : 100;
     f.runtime = hrs.score; f.proximity = prox.score; f.reach = reach.score;
     let size = 50;
-    if (web.catering) size += 20; if (web.multiLocation) size += 20; if (web.onlineOrdering) size += 10;
+    if (web.catering) size += 20; if (web.multiLocation) size += 5; if (web.onlineOrdering) size += 10;
     if (lead.tags.drive_through === "yes") size += 10;
     f.size = clamp(size);
     why.push(sub.kind, hrs.note, prox.km != null ? `${prox.km} km from base` : "location unknown", `reach: ${reach.note}`);
     if (web.catering) why.push("does catering (bigger kitchen)");
-    if (web.multiLocation) why.push("multi-location (one contract, several sites)");
+    if (web.multiLocation && !chain) why.push("multi-location group: ask for the owner or facilities manager (one contract can cover several sites)");
     if (chain) why.push("chain/franchise: vendor may be set by corporate");
   }
 
@@ -186,7 +186,7 @@ export function scoreLead(profile, lead, web) {
     rank: 0, score, grade: grade(score), name: lead.name, type: sub.kind,
     pitch: buildPitch(profile, lead, sub, web),
     why: why.filter(Boolean).join("; "), equipment: sub.equipment ?? null,
-    phone: lead.phone, email: lead.email ?? web.email ?? null, website: lead.website, facebook: lead.facebook, instagram: lead.instagram,
+    phone: lead.phone, email: [lead.email, web.email].find((e) => e && /^[^\s@${}]+@[^\s@]+\.[a-z]{2,}$/i.test(e)) ?? null, website: lead.website, facebook: lead.facebook, instagram: lead.instagram,
     address: lead.address, hours: lead.hours, km_from_base: prox.km, chain, excluded,
     factors: f, map: lead.osm, lat: lead.lat, lon: lead.lon,
   };

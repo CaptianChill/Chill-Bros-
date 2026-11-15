@@ -42,11 +42,11 @@ export const FOOD_CHAINS = rx([
   "springhill", "homewood", "home2", "tru by", "candlewood", "staybridge", "extended stay", "wyndham",
   "quality inn", "sleep inn", "americas best value", "hyatt", "sheraton", "westin", "omni", "doubletree",
   "crowne plaza", "spec'?s", "total wine", "chuck e\\.? cheese", "cinemark", "regal", "golden chick",
-  "pollo tropical", "el pollo loco", "wingstop", "rudy'?s", "black bear diner", "ihop", "whataburger",
+  "pollo tropical", "el pollo loco", "little caesar'?s", "pluckers", "bubba gump", "landry'?s", "perry'?s", "fish city grill", "russo'?s", "mash'?d", "rock & brews", "taco palenque", "kung fu saloon", "flying saucer", "smashin crab", "bras[aã]o", "avenida brazil", "fogo de ch[aã]o", "texas de brazil", "ruth'?s chris", "fleming'?s", "kona grill", "yard house", "bj'?s restaurant", "twin peaks", "bombshells", "saltgrass", "pappasito'?s", "la madeleine", "luby'?s", "freebirds", "taco john'?s", "church'?s chicken", "bill miller", "pei wei", "wahlburgers", "salata", "cava", "sweetgreen", "first watch", "snooze", "shipley", "rudy'?s", "dickey'?s", "black rifle", "scooter'?s", "7 brew", "swig", "sonic", "wingstop", "rudy'?s", "black bear diner", "ihop", "whataburger",
 ]);
 
 // Big boxes that never hire a local refrigeration contractor directly.
-export const NEVER_FOOD = rx(["h-?e-?b", "walmart", "target", "costco", "sam'?s club", "whole foods", "trader joe'?s", "aldi", "kroger", "walgreens", "cvs", "dollar general", "family dollar", "dollar tree", "buc-?ee'?s"]);
+export const NEVER_FOOD = rx(["soap", "vape", "smoke shop", "tobacco", "pharmacy", "church", "ministry", "nail", "salon", "h-?e-?b", "walmart", "target", "costco", "sam'?s club", "whole foods", "trader joe'?s", "aldi", "kroger", "walgreens", "cvs", "dollar general", "family dollar", "dollar tree", "buc-?ee'?s"]);
 
 // ---------------------------------------------------------------- AUTO: website services
 export const autoWeb = {
@@ -100,7 +100,8 @@ export const chillCommercial = {
   label: "Chill Pros → walk-ins, freezers, ice machines, cooking equipment",
   offer: "Commercial refrigeration, ice machine and cooking-equipment repair + preventive maintenance plans",
   overpass: (b) => `
-    nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub|biergarten|ice_cream|food_court|nursing_home|social_facility)$"]["name"](${b});
+    nwr["amenity"~"^(restaurant|fast_food|cafe|bar|pub|biergarten|ice_cream|food_court|nursing_home)$"]["name"](${b});
+    nwr["amenity"="social_facility"]["social_facility"~"^(nursing_home|assisted_living|group_home)$"]["name"](${b});
     nwr["shop"~"^(supermarket|convenience|butcher|seafood|deli|bakery|alcohol|beverages|frozen_food|greengrocer|florist|pastry|confectionery)$"]["name"](${b});
     nwr["tourism"~"^(hotel|motel)$"]["name"](${b});
     nwr["craft"~"^(brewery|winery|caterer)$"]["name"](${b});`,
@@ -118,12 +119,12 @@ export const chillCommercial = {
     if (c === "brewery" || c === "winery") return eq("Brewery / winery", 90, "glycol chillers, walk-in cold room, ice machine", "glycol and cold-room downtime ruins batches; offer chiller PM");
     if (c === "caterer") return eq("Caterer / commissary", 90, "walk-ins, reach-ins, ovens, steamers, holding cabinets", "commissary kitchens run hard; offer combined refrigeration + cooking-line PM");
     if (a === "nursing_home" || a === "social_facility") return eq("Senior living / care kitchen", 90, "walk-in cooler & freezer, ice machines, ovens, dish machine", "regulated kitchens can't go down; sell a quarterly PM with documented temps");
+    if (a === "ice_cream" || /ice cream|paleteria|raspa|gelato|frozen yogurt|yogurt/.test(cuisine)) return eq("Ice cream / paletería", 85, "dipping cabinets, freezers, walk-in freezer, soft-serve", "freezer failures melt the whole product line; sell freezer PM + fast response");
     if (/sushi|seafood|fish|poke|oyster|crawfish|cajun/.test(cuisine)) return eq("Seafood / sushi restaurant", 95, "ice machines, walk-in, sushi cases, reach-ins", "they burn through ice and cold storage; open with an ice machine cleaning + walk-in check");
     if (/bbq|barbecue|steak|smokehouse|brisket/.test(cuisine)) return eq("BBQ / steakhouse", 92, "walk-in cooler & freezer, smokers, ranges, ice machine", "meat inventory lives in the walk-in; offer walk-in PM + smoker/range service");
-    if (a === "bar" || a === "pub" || a === "biergarten" || /cantina|icehouse|bar\b|tavern|saloon/.test(cuisine)) return eq("Bar / icehouse", 88, "ice machines, bar coolers, keg walk-in, glass froster", "no ice = no sales on a Friday; lead with ice machine cleaning + emergency service");
+    if (a === "bar" || a === "pub" || a === "biergarten" || /cantina|icehouse|(?<!espresso |coffee |juice |salad )bar\b|tavern|saloon|pub\b/.test(cuisine)) return eq("Bar / icehouse", 88, "ice machines, bar coolers, keg walk-in, glass froster", "no ice = no sales on a Friday; lead with ice machine cleaning + emergency service");
     if (/mexican|tex-mex|tex_mex|taco|taqueria|latin|salvador|cuban|peruvian|seafood/.test(cuisine)) return eq("Mexican / Tex-Mex restaurant", 86, "ice machine (margaritas/drinks), walk-in, flat-tops, fryers, steam tables", "busy lines + margarita ice; offer an ice machine & walk-in PM package");
     if (s === "bakery" || s === "pastry" || s === "confectionery" || /bakery|panaderia|donut|kolache/.test(cuisine)) return eq("Bakery / panadería", 80, "deck/convection ovens, proofers, walk-in, reach-ins", "oven and proofer downtime kills the morning bake; offer oven + walk-in service");
-    if (a === "ice_cream" || /ice cream|paleteria|raspa|gelato|frozen yogurt|yogurt/.test(cuisine)) return eq("Ice cream / paletería", 85, "dipping cabinets, freezers, walk-in freezer, soft-serve", "freezer failures melt the whole product line; sell freezer PM + fast response");
     if (s === "deli") return eq("Deli", 78, "deli cases, walk-in, slicers' refrigerated prep", "case temps are inspected; offer case + walk-in PM");
     if (a === "restaurant" || a === "food_court") return eq("Full-service restaurant", 82, "walk-in cooler & freezer, ice machine, reach-ins, ranges, fryers, ovens", "full kitchens have every piece we fix; offer a full-kitchen PM walk-through");
     if (t === "hotel") return eq("Hotel", 75, "ice machines on each floor, kitchen/breakfast refrigeration, PTAC/HVAC", "every floor has an ice machine; sell a property-wide ice machine PM contract");
