@@ -5,7 +5,6 @@ const OVERPASS = [
   "https://overpass.private.coffee/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
   "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-  "https://overpass.osm.jp/api/interpreter",
 ];
 const UA = "LeadEngine/1.0 (San Antonio local business research; read-only)";
 const SOCIAL = /(facebook\.com|fb\.com|instagram\.com|yelp\.com|linktr\.ee|tiktok\.com|google\.com\/maps|business\.site|maps\.app\.goo\.gl|nextdoor\.com|mapquest\.com)/i;
