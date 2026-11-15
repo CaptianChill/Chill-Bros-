@@ -22,21 +22,19 @@ export function km(a, b) {
 
 async function overpassBox(profile, box, deadline, offset = 0) {
   const b = `${box.south},${box.west},${box.north},${box.east}`;
-  const query = `[out:json][timeout:25];(${profile.overpass(b)});out tags center 4000;`;
-  const errors = [];
-  for (let k = 0; k < OVERPASS.length; k++) {
-    const url = OVERPASS[(k + offset) % OVERPASS.length];
-    const budget = Math.min(20000, deadline - Date.now() - 12000);
-    if (budget < 5000) break;
-    try {
-      const r = await fetch(url, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": UA, accept: "application/json" }, body: new URLSearchParams({ data: query }), signal: AbortSignal.timeout(budget) });
-      if (!r.ok) { errors.push(`${new URL(url).hostname} ${r.status}`); continue; }
-      const j = await r.json();
-      if (Array.isArray(j.elements) && !j.remark) return { elements: j.elements, source: new URL(url).hostname };
-      errors.push(`${new URL(url).hostname} partial`);
-    } catch (e) { errors.push(`${new URL(url).hostname} ${e.name}`); }
-  }
-  throw new Error(errors.join("; "));
+  const query = `[out:json][timeout:40];(${profile.overpass(b)});out tags center 4000;`;
+  const budget = Math.max(5000, deadline - Date.now() - 10000);
+  // Race every mirror at once and take the first complete answer: public servers are often overloaded.
+  const ctrl = new AbortController();
+  const tries = OVERPASS.map((url) => (async () => {
+    const r = await fetch(url, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": UA, accept: "application/json" }, body: new URLSearchParams({ data: query }), signal: AbortSignal.any([ctrl.signal, AbortSignal.timeout(budget)]) });
+    if (!r.ok) throw new Error(`${new URL(url).hostname} ${r.status}`);
+    const j = await r.json();
+    if (!Array.isArray(j.elements) || j.remark) throw new Error(`${new URL(url).hostname} partial`);
+    return { elements: j.elements, source: new URL(url).hostname };
+  })().catch((e) => { throw new Error(e.message.includes(".") ? e.message : `${new URL(url).hostname} ${e.name}`); }));
+  try { const win = await Promise.any(tries); ctrl.abort(); return win; }
+  catch (e) { throw new Error((e.errors ?? [e]).map((x) => x.message).join("; ")); }
 }
 
 // Splits the metro box into n x n tiles so heavy categories (restaurants) don't overload the free map servers.
