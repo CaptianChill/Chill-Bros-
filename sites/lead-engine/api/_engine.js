@@ -20,15 +20,15 @@ export function km(a, b) {
 
 async function overpassBox(profile, box, deadline, offset = 0) {
   const b = `${box.south},${box.west},${box.north},${box.east}`;
-  const query = `[out:json][timeout:45];(${profile.overpass(b)});out tags center 4000;`;
+  const query = `[out:json][timeout:25];(${profile.overpass(b)});out tags center 4000;`;
   const errors = [];
-  for (let k = 0; k < OVERPASS.length * 2; k++) {
+  for (let k = 0; k < OVERPASS.length; k++) {
     const url = OVERPASS[(k + offset) % OVERPASS.length];
-    const budget = Math.min(50000, deadline - Date.now() - 5000);
+    const budget = Math.min(28000, deadline - Date.now() - 15000);
     if (budget < 5000) break;
     try {
       const r = await fetch(url, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": UA, accept: "application/json" }, body: new URLSearchParams({ data: query }), signal: AbortSignal.timeout(budget) });
-      if (!r.ok) { errors.push(`${new URL(url).hostname} ${r.status}`); await new Promise((z) => setTimeout(z, 1500)); continue; }
+      if (!r.ok) { errors.push(`${new URL(url).hostname} ${r.status}`); continue; }
       const j = await r.json();
       if (Array.isArray(j.elements) && !j.remark) return { elements: j.elements, source: new URL(url).hostname };
       errors.push(`${new URL(url).hostname} partial`);
@@ -237,8 +237,8 @@ export async function runScan({ profileId, limit = 50, enrich = 80, budgetMs = 1
 
   // Pass 2: audit websites of the strongest candidates, then re-score.
   const top = prelim.slice(0, enrich);
-  const timePer = Math.max(4000, Math.min(9000, deadline - Date.now() - 8000));
-  const rescored = await pool(top, 12, async ({ lead }) => scoreLead(profile, lead, Date.now() < deadline - 6000 ? await auditWebsite(lead.website, timePer) : { listed: Boolean(lead.website), checked: false }));
+  const timePer = Math.max(3000, Math.min(6000, deadline - Date.now() - 4000));
+  const rescored = await pool(top, 24, async ({ lead }) => scoreLead(profile, lead, Date.now() < deadline - 4000 ? await auditWebsite(lead.website, timePer) : { listed: Boolean(lead.website), checked: false }));
   const rest = prelim.slice(enrich).map((x) => x.s);
   const ranked = [...rescored, ...rest].sort((a, b) => b.score - a.score).slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
   return {

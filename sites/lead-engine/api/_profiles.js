@@ -57,7 +57,7 @@ export const autoWeb = {
     nwr["shop"~"^(car_repair|tyres|motorcycle_repair|car_parts)$"]["name"](${b});
     nwr["craft"~"^(car_repair|car_painter|upholsterer)$"]["name"](${b});
     nwr["amenity"="car_wash"]["name"](${b});`,
-  tiles: 2,
+  tiles: 1,
   weights: { need: 0.30, value: 0.20, independence: 0.15, reach: 0.20, established: 0.10, proximity: 0.05 },
   excludeChains: true,
   chainRegex: AUTO_CHAINS,
@@ -105,7 +105,7 @@ export const chillCommercial = {
     nwr["shop"~"^(supermarket|convenience|butcher|seafood|deli|bakery|alcohol|beverages|frozen_food|greengrocer|florist|pastry|confectionery)$"]["name"](${b});
     nwr["tourism"~"^(hotel|motel)$"]["name"](${b});
     nwr["craft"~"^(brewery|winery|caterer)$"]["name"](${b});`,
-  tiles: 3,
+  tiles: 2,
   weights: { load: 0.30, independence: 0.25, runtime: 0.15, proximity: 0.15, reach: 0.10, size: 0.05 },
   excludeChains: false, // franchisees sometimes pick local vendors; discount instead
   chainRegex: FOOD_CHAINS,
