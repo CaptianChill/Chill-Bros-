@@ -181,7 +181,7 @@ function buildPitch(profile, lead, sub, web) {
   if (profile.id === "auto_web") {
     const hook = !web.listed ? "You don't have a website, so Google sends 'near me' searches to shops that do."
       : web.socialOnly ? `Your only site is a ${web.socialOnly} page; customers searching Google can't get a quote.`
-      : web.checked && !web.ok ? "Your website isn't loading right now; anyone who clicks it bounces to a competitor."
+      : web.checked && !web.ok && web.error !== "timed out" ? "Your website isn't loading right now; anyone who clicks it bounces to a competitor."
       : web.checked && !web.mobile ? "Your site doesn't fit a phone screen, and most car owners search from their phone."
       : web.checked && !web.leadCapture ? "Your site has no quote or booking form, so visitors have to call during business hours or leave."
       : "Your site works but isn't capturing leads 24/7.";

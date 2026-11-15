@@ -19,7 +19,7 @@ export const AUTO_CHAINS = rx([
   "costco", "sam'?s club", "brakes plus", "sun devil", "tire pros", "express oil", "kwik kar", "lube ?stop",
   "safelite", "o'?reilly", "autozone", "advance auto", "napa auto", "carmax", "toyota", "honda", "ford",
   "chevrolet", "nissan", "hyundai", "kia", "bmw of", "mercedes-benz of", "lexus", "subaru", "mazda",
-  "jeep", "dodge", "volkswagen", "cadillac", "buick", "gmc", "acura", "infiniti", "audi", "porsche", "tesla",
+  "jeep", "dodge", "brake check", "h-?e-?b", "swiftwater", "champions car wash", "go car wash", "club car wash", "racer", "wash tub", "mister car wash", "quick quack", "tommy'?s express", "whistle express", "take 5 car wash", "caliber collision", "christian brothers", "firestone", "jiffy", "volkswagen", "cadillac", "buick", "gmc", "acura", "infiniti", "audi", "porsche", "tesla",
   "abra", "car-?mart", "u-?haul", "enterprise", "hertz", "avis", "penske", "ryder", "tire kingdom", "conn'?s",
 ]);
 
@@ -57,27 +57,29 @@ export const autoWeb = {
     nwr["shop"~"^(car_repair|tyres|motorcycle_repair|car_parts)$"]["name"](${b});
     nwr["craft"~"^(car_repair|car_painter|upholsterer)$"]["name"](${b});
     nwr["amenity"="car_wash"]["name"](${b});`,
-  weights: { need: 0.35, value: 0.20, independence: 0.15, reach: 0.15, established: 0.10, proximity: 0.05 },
+  weights: { need: 0.30, value: 0.20, independence: 0.15, reach: 0.20, established: 0.10, proximity: 0.05 },
   excludeChains: true,
   chainRegex: AUTO_CHAINS,
   subtype(tags, name) {
-    const s = `${name} ${tags.shop ?? ""} ${tags.craft ?? ""} ${tags.service ?? ""} ${Object.keys(tags).filter((k) => k.startsWith("service:vehicle:") && tags[k] === "yes").join(" ")}`.toLowerCase();
+    const s = `${name} ${tags.shop ?? ""} ${tags.craft ?? ""} ${tags.amenity ?? ""} ${tags.service ?? ""} ${Object.keys(tags).filter((k) => k.startsWith("service:vehicle:") && tags[k] === "yes").join(" ")}`.toLowerCase();
+    if (/car_wash|car wash|wash\b|detail/.test(s)) return { kind: "Detailing / wash", value: 45, angle: "detail packages and memberships sell on photos and online booking" };
+    if (/glass|windshield/.test(s)) return { kind: "Auto glass", value: 70, angle: "glass jobs are insurance-driven and booked online; a quote form wins them" };
     if (/collision|body|paint|car_painter|bodywork|hail|dent/.test(s)) return { kind: "Collision / body & paint", value: 100, angle: "insurance-claim and collision customers search 'body shop near me' and pick whoever has photos + a quote form" };
     if (/performance|custom|tuning|dyno|wrap|tint|ppf|vinyl|audio|lift|offroad|off-road|4x4|motorsport/.test(s)) return { kind: "Performance / custom / wrap", value: 100, angle: "build photos and video sell these jobs; a gallery site turns Instagram followers into booked builds" };
     if (/transmission|diesel|fleet|truck|heavy/.test(s)) return { kind: "Transmission / diesel / fleet", value: 90, angle: "big-ticket jobs and fleet accounts check you out online before they call" };
     if (/upholster|restoration|classic/.test(s)) return { kind: "Restoration / upholstery", value: 85, angle: "project customers want to see past restorations before trusting you with their car" };
     if (/motorcycle/.test(s)) return { kind: "Motorcycle repair", value: 75, angle: "riders research shops online; a site with services + booking wins the ride-in" };
     if (/tyre|tire|wheel/.test(s)) return { kind: "Tire & wheel", value: 60, angle: "tire shoppers compare price online; a site with a 'get a tire quote' form captures them" };
-    if (/car_wash|detail/.test(s)) return { kind: "Detailing / wash", value: 60, angle: "detail packages sell on photos and online booking" };
     if (/car_parts/.test(s)) return { kind: "Parts store", value: 35, angle: "local parts counter: a simple site with hours and inventory call-in" };
     if (/oil|lube|quick/.test(s)) return { kind: "Quick lube", value: 45, angle: "quick-service shops win on 'open now' searches and coupons" };
     return { kind: "General repair", value: 80, angle: "general repair lives on Google: a real site + review flow moves them up the map pack" };
   },
   // Need for the offer: the worse their web presence, the higher.
   need(web) {
-    if (!web.listed) return { score: 100, notes: ["no website listed anywhere on the map"] };
+    if (!web.listed) return { score: 88, notes: ["no website on its map listing (verify on Google)"] };
     if (web.socialOnly) return { score: 95, notes: [`"website" is only a ${web.socialOnly} page`] };
     if (!web.checked) return { score: 70, notes: ["website listed but not audited"] };
+    if (!web.ok && web.error === "timed out") return { score: 60, notes: ["website slow/blocked our check (verify)"] };
     if (!web.ok) return { score: 95, notes: [`website is down/broken (${web.error ?? web.status})`] };
     let score = 15; const notes = [];
     if (!web.https) { score += 25; notes.push("no secure https"); }
